@@ -13,6 +13,14 @@ document](specifications/vision.md) is the entry point and outlines goals and th
 catalog.
 
 There is a [directory](feature-requests) with descriptions of planned development efforts.
+Before starting any non-trivial change, read
+[feature-requests/CLAUDE.md](feature-requests/CLAUDE.md): it defines the required process —
+numbered `NNN-slug/README.md` subdirs, a `**Status:**` line, a fixed set of sections, and a
+lifecycle that on completion folds durable decisions back into `specifications/`, moves the
+subdir into `feature-requests/done/`, and moves the entry from
+[NEXT_STEPS.md](feature-requests/NEXT_STEPS.md) to
+[HISTORY.md](feature-requests/HISTORY.md). `NEXT_STEPS.md` is the list of active/remaining
+efforts; `HISTORY.md` is the log of what has landed.
 
 ## Project status
 
@@ -23,18 +31,21 @@ for what's planned beyond it, and [feature-requests/](feature-requests/) for wor
 ## Commands
 
 ```bash
-# Editable install (repo root)
+# Editable install (repo root). The system Python is PEP 668 externally-managed
+# and has no `python` alias, so work inside a venv and use `python3`.
+python3 -m venv .venv && . .venv/bin/activate
 pip install -e .
 
 # Run the server (stdio transport; talks to blender_mcp's add-on over TCP)
 mpfb-mcp
 
 # Run all tests (stdlib unittest, no live Blender required — the add-on socket
-# is faked/mocked)
-python -m unittest discover -s tests -v
+# is faked/mocked). Needs the package installed: every test module imports
+# `mcp`, so a bare system-python run fails at import, not at assertion.
+python3 -m unittest discover -s tests -v
 
 # Run a single test
-python -m unittest tests.test_create_human.CreateHumanToolTests.test_default_call_uses_mpfb_default_macro_dict -v
+python3 -m unittest tests.test_create_human.CreateHumanToolTests.test_default_call_uses_mpfb_default_macro_dict -v
 ```
 
 `mcp[cli]` is pinned to `<2` ([pyproject.toml](pyproject.toml)) — mcp 2.x renamed `FastMCP` to
@@ -84,6 +95,30 @@ mpfb-mcp tool  →  build Python source (mpfb_codegen.py)  →  send_code() over
 Tools return blender_mcp's response envelope as-is (`{"status": "ok"/"error", "result": ...}` or
 `{"status": "error", "message": ...}`), the same convention blender_mcp's own tools use — callers
 need to check `status` rather than assume success.
+
+### Tests
+
+Stdlib `unittest`, no pytest. Because MPFB is only ever reachable through generated code sent
+into a live Blender, the suite can *never* exercise real MPFB behavior — it verifies the two
+things on this side of the socket:
+
+- [tests/test_connection.py](tests/test_connection.py) — the wire protocol, against a throwaway
+  local `socketserver.TCPServer` standing in for the blender_mcp add-on (framing, error
+  envelopes, `BLENDER_MCP_HOST`/`BLENDER_MCP_PORT` handling).
+- [tests/test_create_human.py](tests/test_create_human.py) — tool parameter validation and the
+  generated source, with `mpfbmcp.tools.create_human.send_code` mocked out. It reaches the
+  underlying sync callable via `mcp._tool_manager._tools[...].fn`, since `@mcp.tool` wraps it in
+  a coroutine.
+
+Anything needing real MPFB is a manual integration check against a running Blender (see
+[Commands](#commands)), and feature requests are expected to say so explicitly.
+
+### Code conventions in this repo
+
+`from __future__ import annotations` and an explicit `__all__` in every module; `.format()`
+rather than f-strings throughout; SPDX `GPL-3.0-or-later` header on test modules; module-level
+docstrings that explain *why* (the MPFB-extension bootstrap, the deliberate protocol
+duplication) rather than restate the code.
 
 ## Relationship to sibling projects
 
