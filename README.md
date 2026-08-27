@@ -1,8 +1,14 @@
 # MPFB MCP
 
-This is currently only an idea: create a MCP server with MPFB tools, which piggy-backs on 
-the [existing blender mcp](../blender_mcp) implementation, using it's tcp connection to
-execute MPFB-related code.
+An MCP server with MPFB tools, which piggy-backs on the [existing blender
+mcp](../blender_mcp) implementation, using its TCP connection to execute
+MPFB-related code.
+
+## Status
+
+Proof of concept. One tool is implemented: `mpfb_create_human`, which wraps
+MPFB's `HumanService.create_human()`. See [src/mpfbmcp](src/mpfbmcp) and
+[CLAUDE.md](CLAUDE.md) for how it works and how to run it.
 
 ## Shape
 

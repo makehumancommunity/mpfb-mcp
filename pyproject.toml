@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mpfb-mcp"
+version = "0.1.0"
+description = "MCP server exposing MPFB (MakeHuman Plugin For Blender) tools"
+requires-python = ">=3.10"
+dependencies = [
+    # Pinned below 2.0: mcp 2.x renamed FastMCP to MCPServer and changed
+    # other APIs this code (and blender_mcp's) is written against.
+    "mcp[cli]>=1.2.0,<2",
+]
+
+[project.scripts]
+mpfb-mcp = "mpfbmcp:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
