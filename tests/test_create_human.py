@@ -3,7 +3,7 @@
 """
 Tests for the mpfb_create_human tool: parameter validation and generated code,
 independent of a live Blender connection (mpfbmcp.connection.send_code is
-mocked out).
+mocked out). Assembly itself is covered in tests/test_codegen.py.
 
 Run with::
 
@@ -18,6 +18,22 @@ from unittest import mock
 from mcp.server.fastmcp import FastMCP
 
 from mpfbmcp.tools import create_human
+
+
+def _params_in(code: str) -> dict:
+    """
+    The PARAMS the generated source will bind, by executing its prelude.
+
+    Parameters are carried into the payload as JSON data rather than
+    interpolated into it, so the values are asserted on after execution rather
+    than as substrings of the source.
+    """
+    prelude, _sep, _payload = code.partition("# --- payload:")
+    # The prelude sits behind the raising bootstrap, which would fail here with
+    # no MPFB loaded, so run only the two lines that bind PARAMS.
+    namespace: dict = {}
+    exec(prelude[prelude.index("import json"):], namespace)  # noqa: S102
+    return namespace["PARAMS"]
 
 
 def _register_and_get_tool() -> object:
@@ -42,10 +58,14 @@ class CreateHumanToolTests(unittest.TestCase):
         self.assertEqual(response, {"status": "ok", "result": {"object_name": "Human"}})
         (code,), kwargs = mock_send_code.call_args
         self.assertTrue(kwargs.get("strict_json"))
-        self.assertIn("HumanService.create_human(scale=0.1", code)
-        self.assertIn('"gender": 0.5', code)
-        self.assertIn('"race"', code)
-        self.assertIn('"asian": 0.33', code)
+        self.assertIn("HumanService.create_human(", code)
+        params = _params_in(code)
+        self.assertEqual(params["scale"], 0.1)
+        self.assertEqual(params["macro_detail_dict"]["gender"], 0.5)
+        self.assertEqual(
+            params["macro_detail_dict"]["race"],
+            {"asian": 0.33, "caucasian": 0.33, "african": 0.33},
+        )
 
     @mock.patch("mpfbmcp.tools.create_human.send_code")
     def test_custom_values_are_passed_through(self, mock_send_code: mock.Mock) -> None:
@@ -54,9 +74,10 @@ class CreateHumanToolTests(unittest.TestCase):
         self.mpfb_create_human(gender=1.0, age=0.2, scale=0.05)
 
         (code,), _kwargs = mock_send_code.call_args
-        self.assertIn("scale=0.05", code)
-        self.assertIn('"gender": 1.0', code)
-        self.assertIn('"age": 0.2', code)
+        params = _params_in(code)
+        self.assertEqual(params["scale"], 0.05)
+        self.assertEqual(params["macro_detail_dict"]["gender"], 1.0)
+        self.assertEqual(params["macro_detail_dict"]["age"], 0.2)
 
     @mock.patch("mpfbmcp.tools.create_human.send_code")
     def test_bootstrap_still_raises_when_mpfb_is_unusable(self, mock_send_code: mock.Mock) -> None:

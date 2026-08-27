@@ -18,3 +18,16 @@ mpfb-mcp = "mpfbmcp:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+# Without this, discovery defaults to including directories that have no
+# __init__.py as namespace packages - which would pick up codegen/payloads/ and
+# ship the payload files as modules of this package. They are data, not modules
+# (see below), so discovery is told to consider only real packages.
+namespaces = false
+
+# codegen/payloads/ holds generated-code payload files: ordinary .py files that
+# are read and sent to Blender, never imported here (they reference bpy and
+# MPFB's services). Having no __init__.py keeps them out of package discovery,
+# so this is what actually ships them. Without it, an editable install keeps
+# working while a real install ships a package with no payloads in it.
+[tool.setuptools.package-data]
+"mpfbmcp.codegen" = ["payloads/*.py"]

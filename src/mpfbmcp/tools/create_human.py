@@ -9,8 +9,8 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import codegen
 from mpfbmcp.connection import send_code
-from mpfbmcp.mpfb_codegen import build_create_human_code
 
 # create_human()'s own default scale (0.1 = decimeters). Kept here rather than
 # guessed so the tool's default matches MPFB's regardless of MPFB version.
@@ -77,8 +77,12 @@ def register(mcp: FastMCP) -> None:
             },
         }
 
-        code = build_create_human_code(macro_detail_dict, scale)
-        # `result` (built in mpfb_codegen.py) is always plain JSON-safe data,
-        # so strict_json=True to surface a clear error if that ever stops
-        # being true, rather than silently falling back to `repr`.
+        code = codegen.assemble(
+            "create_human.py",
+            bootstrap="raising",
+            params={"macro_detail_dict": macro_detail_dict, "scale": scale},
+        )
+        # `result` (built in codegen/payloads/create_human.py) is always plain
+        # JSON-safe data, so strict_json=True to surface a clear error if that
+        # ever stops being true, rather than silently falling back to `repr`.
         return send_code(code, strict_json=True)

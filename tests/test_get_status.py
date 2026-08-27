@@ -26,7 +26,7 @@ from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
 
-from mpfbmcp.mpfb_codegen import build_get_status_code
+from mpfbmcp import codegen
 from mpfbmcp.tools import get_status
 
 # SystemService's module, which is where MPFB keeps LOWEST_FUNCTIONAL_BLENDER_VERSION
@@ -34,6 +34,11 @@ from mpfbmcp.tools import get_status
 # the candidate scan would pick it up.
 _STUB_SYSTEMSERVICE_MODULE = "mpfb_stub_services_systemservice"
 _STUB_PACKAGE = "bl_ext.test_repo.mpfb"
+
+
+def _get_status_code() -> str:
+    """The source mpfb_get_status sends, assembled exactly as the tool does."""
+    return codegen.assemble("get_status.py", bootstrap="non_raising")
 
 
 class _LocationServiceStub:
@@ -174,10 +179,10 @@ class GetStatusToolTests(unittest.TestCase):
 
 class GetStatusCodeTests(unittest.TestCase):
     def test_generated_code_compiles(self) -> None:
-        compile(build_get_status_code(), "<generated>", "exec")
+        compile(_get_status_code(), "<generated>", "exec")
 
     def test_generated_code_classifies_rather_than_raises(self) -> None:
-        code = build_get_status_code()
+        code = _get_status_code()
         # The two conditions that would otherwise escape as TypeError/KeyError,
         # in exactly the states a broken MPFB install produces.
         self.assertIn("_mpfb_contextual_information is None", code)
@@ -189,7 +194,7 @@ class GetStatusCodeTests(unittest.TestCase):
     def test_generated_code_does_not_import_mpfb_submodules(self) -> None:
         # locationservice.py creates directories on disk at import time, so
         # generated code must reach services only through the SERVICES dict.
-        code = build_get_status_code()
+        code = _get_status_code()
         self.assertNotIn("import_module", code)
         self.assertNotIn("importlib", code)
 
@@ -213,7 +218,7 @@ class GeneratedCodeExecutionTests(unittest.TestCase):
     def _run(self, enabled_addons=()):
         namespace = {}
         with mock.patch.dict(sys.modules, {"bpy": _make_bpy_stub(enabled_addons)}):
-            exec(build_get_status_code(), namespace)  # noqa: S102
+            exec(_get_status_code(), namespace)  # noqa: S102
         return namespace["result"]
 
     def test_absent_still_reports_blender_version(self) -> None:

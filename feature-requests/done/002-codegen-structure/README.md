@@ -1,11 +1,11 @@
 # Restructure code generation for readability and growth
 
-**Status:** Accepted
+**Status:** Done
 
-With only two tools implemented, [`src/mpfbmcp/mpfb_codegen.py`](../../src/mpfbmcp/mpfb_codegen.py)
+With only two tools implemented, `src/mpfbmcp/mpfb_codegen.py`
 is already 233 lines and holds every tool's payload. Two distinct problems follow from that, and
 both get worse with each tool in the
-[target catalog](../../specifications/vision.md#target-tool-catalog):
+[target catalog](../../../specifications/vision.md#target-tool-catalog):
 
 **Structure.** All build logic is central, so adding a tool means editing a shared module that
 every other tool also depends on. The module's `__all__` grows one entry per tool, unrelated
@@ -32,7 +32,7 @@ highlighted, lintable Python in its own file, and make adding a tool a matter of
 rather than editing shared ones.
 
 Secondary: state readability/developer experience as an explicit, prioritized non-functional
-requirement in [specifications/architecture.md](../../specifications/architecture.md), so it is a
+requirement in [specifications/architecture.md](../../../specifications/architecture.md), so it is a
 standing rule rather than a one-off cleanup.
 
 Explicit non-goal: changing what any tool does, what it accepts, or what it returns. This is a
@@ -47,7 +47,7 @@ annotations and response envelopes.
    composed into a tool's payload rather than copied into it.
 3. Adding a new tool requires **no edit to any shared code-generation module** — only a new tool
    module, a new payload file, and the `register()` call in
-   [`__init__.py`](../../src/mpfbmcp/__init__.py). This is the objective test of the structural
+   [`__init__.py`](../../../src/mpfbmcp/__init__.py). This is the objective test of the structural
    goal.
 4. Parameters reach the payload as **data, not string interpolation**. A payload file must not
    contain a placeholder that a builder substitutes into; it reads values from a name the
@@ -96,7 +96,7 @@ src/mpfbmcp/
         get_status.py
 ```
 
-[`mpfb_codegen.py`](../../src/mpfbmcp/mpfb_codegen.py) goes away rather than becoming a shim —
+`mpfb_codegen.py` goes away rather than becoming a shim —
 this is a proof of concept with no external consumers, and a compatibility shim would preserve
 exactly the central module this request exists to remove. Its two `build_*_code()` functions
 disappear: with parameters injected as data, assembly is a single call at the point of use, so
@@ -113,7 +113,7 @@ def assemble(payload: str, *, bootstrap: str = "raising", params: dict | None = 
 
 returning `bootstrap source + params prelude + payload source`. `bootstrap` selects between the
 two variants documented in
-[architecture.md](../../specifications/architecture.md#two-bootstrap-variants); `payload` names a
+[architecture.md](../../../specifications/architecture.md#two-bootstrap-variants); `payload` names a
 file under `codegen/payloads/`.
 
 The prelude binds one name — `PARAMS` — from a JSON literal:
@@ -143,7 +143,7 @@ and it is worth stating in the file rather than leaving a developer to work it o
   (`importlib.resources.files("mpfbmcp.codegen").joinpath("payloads/x.py").read_text()`).
 - **Packaging.** Because `payloads/` is deliberately not a package,
   `[tool.setuptools.packages.find]` will not pick it up. Add explicit package data to
-  [pyproject.toml](../../pyproject.toml):
+  [pyproject.toml](../../../pyproject.toml):
   `[tool.setuptools.package-data] "mpfbmcp.codegen" = ["payloads/*.py"]`. Requirement 6 exists
   because this is easy to miss — an editable install keeps working while a real install ships a
   package with no payloads.
@@ -155,7 +155,7 @@ and it is worth stating in the file rather than leaving a developer to work it o
   comment line naming the payload file at the seam, so the offset can be read off the generated
   source when debugging.
 - **Move the bootstraps verbatim.** `_MPFB_MODULE_SCAN`, `_MPFB_BOOTSTRAP` and
-  `_MPFB_STATUS_BOOTSTRAP` encode decisions made in [FR 001](../done/001-mpfb-get-status/README.md)
+  `_MPFB_STATUS_BOOTSTRAP` encode decisions made in [FR 001](../001-mpfb-get-status/README.md)
   — all candidates rather than the first, `None` and missing-`"SERVICES"` handled separately,
   never importing MPFB submodules. Move them, do not rewrite them; the module docstring
   explaining *why* moves with them to `codegen/bootstrap.py`.
@@ -166,7 +166,7 @@ and it is worth stating in the file rather than leaving a developer to work it o
 
 ## Affected specifications
 
-- [architecture.md](../../specifications/architecture.md) — two additions:
+- [architecture.md](../../../specifications/architecture.md) — two additions:
   - A new standing section on **readability and developer experience as prioritized
     non-functional requirements**, stating that generated code is code and is held to the same
     readability standard as the rest of the repo; that a payload must be editable as ordinary
@@ -176,12 +176,12 @@ and it is worth stating in the file rather than leaving a developer to work it o
   - A statement of the **code-generation layout** as a convention new tools follow: shared
     bootstrap, per-tool payload file, data-based parameter injection, and the rule that adding a
     tool must not require editing shared code-generation modules. This sits naturally beside the
-    existing [One module per tool](../../specifications/architecture.md#one-module-per-tool) and
-    [Validate before crossing the socket](../../specifications/architecture.md#validate-before-crossing-the-socket)
+    existing [One module per tool](../../../specifications/architecture.md#one-module-per-tool) and
+    [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket)
     sections.
-- [vision.md](../../specifications/vision.md) — no change. No tool is added, removed or altered.
+- [vision.md](../../../specifications/vision.md) — no change. No tool is added, removed or altered.
 
-Outside the specifications, the repo's [CLAUDE.md](../../CLAUDE.md) describes
+Outside the specifications, the repo's [CLAUDE.md](../../../CLAUDE.md) describes
 `mpfb_codegen.py` by name in its Architecture section, including the two bootstraps and the rule
 about resolving services. That section must be updated in the same change, or it will point at a
 file that no longer exists.
@@ -189,7 +189,7 @@ file that no longer exists.
 ## Tests
 
 The existing suite is the safety net for requirement 5, and needs adjusting where it names moved
-symbols: [tests/test_get_status.py](../../tests/test_get_status.py) imports
+symbols: [tests/test_get_status.py](../../../tests/test_get_status.py) imports
 `build_get_status_code` from `mpfbmcp.mpfb_codegen`, and both tool tests assert on substrings of
 the generated source.
 
@@ -202,7 +202,7 @@ Add or adapt:
   justified or reverted. This is a temporary development aid, not a committed test.
 - **Every payload file compiles.** Enumerate `codegen/payloads/*.py` and `compile()` each one on
   its own. This catches a syntax error in a file nothing imports — the obvious new failure mode
-  this layout introduces. [test_get_status.py](../../tests/test_get_status.py) already compiles
+  this layout introduces. [test_get_status.py](../../../tests/test_get_status.py) already compiles
   assembled source; this extends the idea to the files themselves.
 - **Assembly.** `assemble()` selects the right bootstrap, emits a `PARAMS` prelude that round
   trips (exec the prelude, compare `PARAMS` to the input dict), and produces compilable output.
@@ -210,7 +210,7 @@ Add or adapt:
   `"""` sequence survives assembly as *data*: exec the assembled prelude and assert `PARAMS`
   equals the input, rather than asserting on the source text.
 - **Exec-based branch tests keep working.** The `absent` / `not_initialized` / `ok` tests in
-  [test_get_status.py](../../tests/test_get_status.py) execute the generated source against a
+  [test_get_status.py](../../../tests/test_get_status.py) execute the generated source against a
   stubbed `bpy` and stubbed `sys.modules` entries. They should need no change beyond the import,
   and are the strongest evidence the `get_status` payload survived the move intact.
 - **Installed-package load.** Requirement 6 is not covered by a source-tree test run. Verify it
@@ -220,17 +220,52 @@ Add or adapt:
 
 **Real-Blender verification.** Unit tests cannot show that the assembled code still works inside
 Blender (see
-[architecture.md](../../specifications/architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp)).
+[architecture.md](../../../specifications/architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp)).
 Because this refactor is behavior-preserving by design, one smoke pass is enough: with Blender +
 MPFB + blender_mcp running, call `mpfb_create_human` once and `mpfb_get_status` once and confirm
 both still return `status: "ok"` with the same shape as before. This is a *separate*, much
-smaller check than the manual verification [FR 001](../done/001-mpfb-get-status/README.md#verification-status)
+smaller check than the manual verification [FR 001](../001-mpfb-get-status/README.md#verification-status)
 still owes — that debt is not settled by this request and should not be folded into it.
+
+## Verification status
+
+Added when this request was marked `Done`. The refactor landed with the full unit suite passing
+and with the two checks below run; the **real-Blender smoke pass described under
+[Tests](#tests) was deliberately left out of scope and has not been run.**
+
+Covered locally:
+
+- [x] Full suite green (32 tests): the `absent` / `not_initialized` / `ok` exec-based tests in
+      [tests/test_get_status.py](../../../tests/test_get_status.py) pass unchanged apart from the
+      moved symbol, which is the evidence the `get_status` payload survived the move intact.
+- [x] Characterization diff against the pre-refactor output of `build_create_human_code()` and
+      `build_get_status_code()`: the only differences are the `PARAMS` prelude, the seam comment,
+      the payload docstrings, and `create_human`'s two inlined `macro_detail_dict` literals
+      becoming `PARAMS["macro_detail_dict"]` lookups. No executable statement changed otherwise.
+      MPFB's `create_human()` only reads that dict, so the two call sites now sharing one object
+      changes nothing (requirement 5).
+- [x] Requirement 6, installed-package load: built and installed into a throwaway target
+      directory, confirmed `mpfbmcp/codegen/payloads/*.py` ship, and assembled both payloads from
+      the installed copy. This turned up one thing the request did not anticipate: setuptools'
+      `packages.find` defaults to `namespaces = true`, so a directory without an `__init__.py` is
+      picked up as a *namespace package* regardless — the payloads shipped as byte-compiled
+      modules rather than as data, and the package-data line was doing nothing. `namespaces =
+      false` is set alongside it, and the pairing is recorded in
+      [architecture.md](../../../specifications/architecture.md#code-generation-layout).
+
+Still outstanding:
+
+- [ ] Real-Blender smoke pass: with Blender + MPFB + blender_mcp running, one `mpfb_create_human`
+      call and one `mpfb_get_status` call, both returning `status: "ok"` with the same shape as
+      before.
+
+[FR 001](../001-mpfb-get-status/README.md#verification-status)'s own outstanding verification is
+**separate and not settled here**, as its Tests section already noted.
 
 ## References
 
-- [NEXT_STEPS.md](../NEXT_STEPS.md) — originating entry, "Code structure and readability".
-- [FR 001](../done/001-mpfb-get-status/README.md) — introduced the second bootstrap and the
+- [NEXT_STEPS.md](../../NEXT_STEPS.md) — originating entry, "Code structure and readability".
+- [FR 001](../001-mpfb-get-status/README.md) — introduced the second bootstrap and the
   three-tier status payload; its decisions must survive this move unchanged.
-- [architecture.md](../../specifications/architecture.md#resolving-mpfb-from-generated-code) —
+- [architecture.md](../../../specifications/architecture.md#resolving-mpfb-from-generated-code) —
   the bootstrap rules being relocated, not rewritten.

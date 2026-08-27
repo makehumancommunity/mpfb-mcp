@@ -2,7 +2,8 @@
 The ``mpfb_get_status`` tool: reports whether MPFB is present and usable.
 
 Deliberately does no interpretation on this side of the socket. All the
-classification lives in the generated code (see ``mpfb_codegen``), so that
+classification lives in the generated code (see
+``mpfbmcp.codegen.payloads.get_status``), so that
 "MPFB isn't there" and "MPFB is there but broken" come back as ordinary
 successful answers rather than as an error envelope a caller has to guess at.
 """
@@ -16,8 +17,8 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import codegen
 from mpfbmcp.connection import send_code
-from mpfbmcp.mpfb_codegen import build_get_status_code
 
 
 def register(mcp: FastMCP) -> None:
@@ -64,7 +65,8 @@ def register(mcp: FastMCP) -> None:
         (`paths.second_root` and anything derived from it) are scene-scoped and
         change when a different .blend is loaded. Re-call rather than cache.
         """
-        # `result` (built in mpfb_codegen.py) is always plain JSON-safe data,
-        # so strict_json=True to surface a clear error if that ever stops
-        # being true, rather than silently falling back to `repr`.
-        return send_code(build_get_status_code(), strict_json=True)
+        # `result` (built in codegen/payloads/get_status.py) is always plain
+        # JSON-safe data, so strict_json=True to surface a clear error if that
+        # ever stops being true, rather than silently falling back to `repr`.
+        code = codegen.assemble("get_status.py", bootstrap="non_raising")
+        return send_code(code, strict_json=True)

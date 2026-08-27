@@ -66,11 +66,11 @@ direct Python dependency on MPFB or on blender_mcp — everything crosses via ge
 over a TCP socket, [connection.py](src/mpfbmcp/connection.py):
 
 ```
-mpfb-mcp tool  →  build Python source (mpfb_codegen.py)  →  send_code() over TCP :9876
-                                                                      ↓
-                                                       blender_mcp add-on: exec() in Blender
-                                                                      ↓
-                                                              MPFB HumanService, etc.
+mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP :9876
+                                                                  ↓
+                                                   blender_mcp add-on: exec() in Blender
+                                                                  ↓
+                                                          MPFB HumanService, etc.
 ```
 
 - **[connection.py](src/mpfbmcp/connection.py)** — the wire client: JSON request + NUL-delimiter
@@ -78,22 +78,38 @@ mpfb-mcp tool  →  build Python source (mpfb_codegen.py)  →  send_code() over
   duplicate of blender_mcp's `blmcp.tools_helpers.connection` protocol (see the module docstring),
   not an import of it — mpfb-mcp installs and runs without a blender_mcp checkout on the path.
   If blender_mcp's wire protocol changes, this needs to be updated to match by hand.
-- **[mpfb_codegen.py](src/mpfbmcp/mpfb_codegen.py)** — builds the Python source string executed
-  inside Blender. The interesting part is the bootstrap: MPFB is a Blender *extension*, so it
-  has no stable absolute import path (it depends on which extension repo the user installed from,
-  e.g. `bl_ext.user_default.mpfb`). MPFB documents and itself uses a workaround for this in
-  `mpfb/__init__.py` / `test/tests/__init__.py` (in `../mpfb2`): scan `sys.modules` for a module
-  name ending in `"mpfb"`, then pull classes out of the `MPFB_CONTEXTUAL_INFORMATION["SERVICES"]`
-  dict it publishes on that module. `_MPFB_MODULE_SCAN` is that scan, and two bootstraps are
-  built on it — `_MPFB_BOOTSTRAP`, which raises `RuntimeError` unless MPFB is fully initialized
-  (for tools that cannot proceed without it), and `_MPFB_STATUS_BOOTSTRAP`, which never raises and
-  instead classifies the install as `absent`/`not_initialized`/`ok` (for `mpfb_get_status`). Reuse
-  one of them for any future tool that needs an MPFB service class; never resolve a service by
-  importing an MPFB submodule, since some have import-time side effects (`locationservice.py`
-  creates directories). Note that a loaded `mpfb` module is *not* the same as an initialized one:
-  `MPFB_CONTEXTUAL_INFORMATION` is `None` until `register()`'s last line, and `unregister()` never
-  resets it. See
-  [specifications/architecture.md](specifications/architecture.md#resolving-mpfb-from-generated-code).
+- **[codegen/](src/mpfbmcp/codegen)** — assembles the Python source executed inside Blender, out
+  of three parts in a fixed order: a shared bootstrap, a parameter prelude, and a per-tool payload
+  file. `codegen.assemble("create_human.py", bootstrap="raising", params={...})` is the single
+  entry point; adding a tool adds a payload file rather than editing anything here.
+  - **[codegen/bootstrap.py](src/mpfbmcp/codegen/bootstrap.py)** — the only shared, still-a-string
+    part, and the interesting one: MPFB is a Blender *extension*, so it has no stable absolute
+    import path (it depends on which extension repo the user installed from, e.g.
+    `bl_ext.user_default.mpfb`). MPFB documents and itself uses a workaround for this in
+    `mpfb/__init__.py` / `test/tests/__init__.py` (in `../mpfb2`): scan `sys.modules` for a module
+    name ending in `"mpfb"`, then pull classes out of the `MPFB_CONTEXTUAL_INFORMATION["SERVICES"]`
+    dict it publishes on that module. `_MPFB_MODULE_SCAN` is that scan, and two bootstraps are
+    built on it — `MPFB_BOOTSTRAP`, which raises `RuntimeError` unless MPFB is fully initialized
+    (for tools that cannot proceed without it), and `MPFB_STATUS_BOOTSTRAP`, which never raises and
+    instead classifies the install as `absent`/`not_initialized`/`ok` (for `mpfb_get_status`).
+    Reuse one of them for any future tool that needs an MPFB service class; never resolve a service
+    by importing an MPFB submodule, since some have import-time side effects
+    (`locationservice.py` creates directories). Note that a loaded `mpfb` module is *not* the same
+    as an initialized one: `MPFB_CONTEXTUAL_INFORMATION` is `None` until `register()`'s last line,
+    and `unregister()` never resets it. See
+    [specifications/architecture.md](specifications/architecture.md#resolving-mpfb-from-generated-code).
+  - **[codegen/payloads/](src/mpfbmcp/codegen/payloads)** — one ordinary `.py` file per tool,
+    holding the code that does the actual work. These are *not* modules of this package and are
+    never imported here (they reference `bpy` and MPFB services): the directory has no
+    `__init__.py`, and they are read as package resources. `pyproject.toml` therefore both
+    declares them as package data — or a non-editable install ships no payloads — and sets
+    `namespaces = false`, or setuptools' discovery picks `payloads/` up as a namespace package and
+    ships them as modules instead of data. Parameters reach a payload as data —
+    the prelude binds `PARAMS` from a JSON literal — so a payload contains no placeholders and no
+    escaping, and no caller-supplied value can alter the structure of the generated program. Each
+    payload's docstring names the assembler-bound names it relies on, since a linter flags those
+    as undefined. See
+    [specifications/architecture.md](specifications/architecture.md#code-generation-layout).
 - **[tools/](src/mpfbmcp/tools)** — one module per MCP tool, each with a `register(mcp)` function,
   following blender_mcp's own tool-module convention. `tools/create_human.py` validates inputs
   (0.0-1.0 macro sliders) *before* generating/sending code, so bad input fails locally rather than
@@ -101,7 +117,9 @@ mpfb-mcp tool  →  build Python source (mpfb_codegen.py)  →  send_code() over
   interpretation of the response either — all of its state classification lives in the generated
   code, so "MPFB isn't there" comes back as a successful answer rather than an error envelope.
 - **[__init__.py](src/mpfbmcp/__init__.py)** — `main()`: builds the `FastMCP` server, calls each
-  tool module's `register()`, runs over stdio.
+  tool module's `register()`, runs over stdio. Together with a tool module and a payload file,
+  this `register()` call is the *whole* of what adding a tool touches — no shared
+  code-generation module is edited.
 
 Tools return blender_mcp's response envelope as-is (`{"status": "ok"/"error", "result": ...}` or
 `{"status": "error", "message": ...}`), the same convention blender_mcp's own tools use — callers
@@ -116,6 +134,11 @@ this side of the socket:
 - [tests/test_connection.py](tests/test_connection.py) — the wire protocol, against a throwaway
   local `socketserver.TCPServer` standing in for the blender_mcp add-on (framing, error
   envelopes, `BLENDER_MCP_HOST`/`BLENDER_MCP_PORT` handling).
+- [tests/test_codegen.py](tests/test_codegen.py) — assembly: that every payload file compiles on
+  its own (nothing imports them, so a syntax error would otherwise surface only inside Blender),
+  that the right bootstrap is selected, and that `PARAMS` round-trips — including for a value
+  full of quotes, newlines and `"""`, asserted by executing the prelude and comparing values
+  rather than by matching source text.
 - [tests/test_create_human.py](tests/test_create_human.py) — tool parameter validation and the
   generated source, with `mpfbmcp.tools.create_human.send_code` mocked out. It reaches the
   underlying sync callable via `mcp._tool_manager._tools[...].fn`, since `@mcp.tool` wraps it in
@@ -131,7 +154,9 @@ Anything needing real MPFB is a manual integration check against a running Blend
 ### Code conventions in this repo
 
 `from __future__ import annotations` and an explicit `__all__` in every module; `.format()`
-rather than f-strings throughout; SPDX `GPL-3.0-or-later` header on test modules; module-level
+rather than f-strings throughout; readability and developer experience treated as prioritized
+non-functional requirements, generated code included (see
+[specifications/architecture.md](specifications/architecture.md#readability-and-developer-experience-are-prioritized)); SPDX `GPL-3.0-or-later` header on test modules; module-level
 docstrings that explain *why* (the MPFB-extension bootstrap, the deliberate protocol
 duplication) rather than restate the code.
 

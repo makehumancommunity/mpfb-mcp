@@ -10,6 +10,22 @@ to keep mpfb-mcp installable and runnable without a local checkout of either MPF
 blender_mcp, and to keep it working across MPFB installs regardless of how the extension was
 installed.
 
+## Readability and developer experience are prioritized
+
+These are first-class, non-functional requirements, not a finishing touch. Where readability and
+brevity or cleverness conflict, readability wins.
+
+**Generated code is code.** The Python that mpfb-mcp builds and sends into Blender is where the
+actual work happens, so it is held to the same standard as the rest of the repo: it must be
+editable as ordinary Python, in its own file, with syntax highlighting, working editor
+indentation and a linter that mostly applies. A payload written as an escaped string literal —
+`\n` separators, doubled braces, `.format()` placeholders — fails this standard however well it
+works, because it is the form the next developer copies.
+
+**Adding a tool should mean adding files, not editing shared ones.** A structure where every new
+tool edits a module that all the other tools depend on does not scale past a handful of them; see
+[Code-generation layout](#code-generation-layout) for what this means concretely.
+
 ## No direct dependency on MPFB or blender_mcp
 
 mpfb-mcp never imports MPFB or blender_mcp Python code directly, and is never run *inside*
@@ -83,6 +99,35 @@ A tool that did this to work around a missing `SERVICES` dict would be writing t
 exactly the state where MPFB is already broken. When the services are unavailable, report only
 what is readable off the module object itself (`VERSION`, `BUILD_INFO`, `__name__`) and from
 `bpy`.
+
+## Code-generation layout
+
+A generated program is assembled from three parts, in a fixed order: the shared **bootstrap**
+above, a **parameter prelude**, and a per-tool **payload**.
+
+- **One payload file per tool**, `src/mpfbmcp/codegen/payloads/<tool>.py`, written as ordinary
+  Python containing no placeholders and no escaping. This is what makes the requirement in
+  [Readability and developer experience are prioritized](#readability-and-developer-experience-are-prioritized)
+  concrete for generated code. A payload reads its arguments from `PARAMS` and leaves `result`
+  bound.
+- **Parameters are injected as data, never as source.** The prelude binds a single name from a
+  JSON literal (`PARAMS = json.loads('...')`, built as `repr(json.dumps(params))`). A
+  caller-supplied value is therefore parsed by `json.loads()` at run time and never by the Python
+  parser, so it cannot alter the structure of the generated program — which matters in a system
+  whose entire job is to `exec()` code it built. A tool taking a string argument (an asset name,
+  a target name) would otherwise be an injection hole.
+- **Payloads are read, never imported.** They reference `bpy` and MPFB's services, so importing
+  one on the mpfb-mcp side would fail. The payload directory deliberately has no `__init__.py`,
+  and payloads are loaded as package resources. Packaging has to be told this twice: declare the
+  payloads as package data, or a real (non-editable) install ships a package with no payloads in
+  it; *and* turn off namespace-package discovery, or the build back end picks the directory up as
+  a package anyway and ships the payloads as modules rather than as data.
+- **Adding a tool must not require editing a shared code-generation module.** A new tool is a new
+  tool module, a new payload file, and one `register()` call. This is the objective test of the
+  layout: if a change to shared code is needed to add an ordinary tool, the layout has drifted.
+- **Assembly keeps failures traceable.** A traceback from inside Blender reports a line in the
+  assembled string, not in a payload file, so the order of the three parts is fixed and the seam
+  is marked with a comment naming the payload.
 
 ## One module per tool
 

@@ -15,30 +15,17 @@ running Blender is still outstanding and is tracked in the request itself, under
 [Verification status](done/001-mpfb-get-status/README.md#verification-status), rather than as
 an effort here.
 
+The code-structure and readability rework has also landed — see
+[FR 002](done/002-codegen-structure/README.md) and its
+[entry in HISTORY.md](HISTORY.md#fr-002--code-generation-restructured-into-per-tool-payload-files).
+Its real-Blender smoke pass is likewise still outstanding, tracked under
+[Verification status](done/002-codegen-structure/README.md#verification-status) in the request.
+
 See [specifications/vision.md](../specifications/vision.md#target-tool-catalog) for the rest of
 the target tool catalog — `mpfb_get_human_summary` and `mpfb_list_assets` are the natural next
-introspection tools, but no tool beyond FR 001 has been scoped into a feature request yet.
-The one scoped effort in flight is [FR 002](002-codegen-structure/README.md), a refactor rather
-than a new tool.
+introspection tools, but no tool beyond FR 001 has been scoped into a feature request yet. No
+effort below is currently scoped into a feature request.
 
-## Code structure and readability
-
-Scoped as [FR 002](002-codegen-structure/README.md) (status: Accepted).
-
-With only two tools implemented, `src/mpfbmcp/mpfb_codegen.py` already looks like it is 
-going to grow very large. All in all, the code structure should take into account that the 
-number of tools might grow significantly. Thus keeping all the code build logic in one file 
-seems like it is going to become a problem. Maybe the "build_..." functions specific to each 
-tool could live in the tool python files rather than centrally and import the bootstrap logic 
-from the codegen file? 
-
-Further, the "build_..." functions are hard to read, since all specific code ends up on a single 
-line with escaped newlines. A way need to be found to turn this code into something which 
-is convenient for developers to work with and modify.
-
-It should be noted in the specifications that code readability and developer experience
-are proritized non-functional requirements.
- 
 ## Observability
 
 Logging should be added so that it is possible to see the exact python code sent to blender,
