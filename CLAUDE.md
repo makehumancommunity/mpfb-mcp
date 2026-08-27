@@ -2,11 +2,23 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Documentation
+
+There is a [specifications directory](specifications/) which describes the system. **Note
+that these specifications are visionary** — they describe the *desired end state* of the
+system, not necessarily how it is built today. Where the code diverges, the specs express the
+intent, not a description of current behavior. For how the system *currently* works, rely on
+the code and the [Architecture](#architecture) section below. The [vision
+document](specifications/vision.md) is the entry point and outlines goals and the target tool
+catalog.
+
+There is a [directory](feature-requests) with descriptions of planned development efforts.
+
 ## Project status
 
 Proof of concept. One tool is implemented: `mpfb_create_human`, wrapping MPFB's
-`HumanService.create_human()`. The rest of the design in [README.md](README.md) (status/asset
-introspection, macro/target setting, asset/skin/rig tools, doc search) is not yet built.
+`HumanService.create_human()`. See [specifications/vision.md](specifications/vision.md#target-tool-catalog)
+for what's planned beyond it, and [feature-requests/](feature-requests/) for work in progress.
 
 ## Commands
 
@@ -86,7 +98,7 @@ need to check `status` rather than assume success.
 
 ## Open design question
 
-There are two unrelated projects called "blender mcp": blender lab's implementation (the intended
-backend, at `../blender_mcp`) and a separate, more feature-rich [community
-implementation](https://github.com/ahujasid/blender-mcp). Some users may have the latter
-installed instead. Whether to support both as backends is unresolved.
+There are two unrelated projects called "blender mcp"; mpfb-mcp piggybacks on blender lab's
+implementation, not the more feature-rich community one some users may have installed
+instead. See [specifications/vision.md](specifications/vision.md#open-design-question-which-blender-mcp)
+for details — whether to support both as backends is unresolved.
