@@ -8,7 +8,7 @@ Completed efforts are no longer listed here — they move to [HISTORY.md](HISTOR
 records what has already landed and why. When an effort below is finished, move it there
 (see the [lifecycle in CLAUDE.md](CLAUDE.md#lifecycle)).
 
-No efforts are currently active. `mpfb_get_status`, the first introspection tool, has landed —
+`mpfb_get_status`, the first introspection tool, has landed —
 see [FR 001](done/001-mpfb-get-status/README.md) and its
 [entry in HISTORY.md](HISTORY.md#fr-001--mpfb_get_status). Its manual verification against a
 running Blender is still outstanding and is tracked in the request itself, under
@@ -17,9 +17,13 @@ an effort here.
 
 See [specifications/vision.md](../specifications/vision.md#target-tool-catalog) for the rest of
 the target tool catalog — `mpfb_get_human_summary` and `mpfb_list_assets` are the natural next
-introspection tools, but nothing beyond FR 001 has been scoped into a feature request yet.
+introspection tools, but no tool beyond FR 001 has been scoped into a feature request yet.
+The one scoped effort in flight is [FR 002](002-codegen-structure/README.md), a refactor rather
+than a new tool.
 
-## Code structure and readability 
+## Code structure and readability
+
+Scoped as [FR 002](002-codegen-structure/README.md) (status: Accepted).
 
 With only two tools implemented, `src/mpfbmcp/mpfb_codegen.py` already looks like it is 
 going to grow very large. All in all, the code structure should take into account that the 
