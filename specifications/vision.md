@@ -38,13 +38,18 @@ implemented.
 
 ## Target tool catalog
 
-These are the intended tools; only `mpfb_create_human` exists today (see
+These are the intended tools; only those marked **Implemented** exist today (see
 [CLAUDE.md](../CLAUDE.md)). Naming and grouping below is indicative, not committed — each
 tool should get its own feature request when scoped.
 
 **Introspection (read-only)**
 
 - `mpfb_get_status` — MPFB present? version? data roots configured? asset packs installed?
+  **Implemented.** Takes no arguments and always answers, classifying the install as `absent`,
+  `not_initialized` (loaded but `register()` did not complete) or `ok`; when `ok` it also
+  reports version, install path, configured paths, the data roots MPFB will actually search,
+  installed asset packs, and Blender version/platform/compatibility. The tool to reach for
+  first when another MPFB tool fails unexpectedly.
 - `mpfb_get_human_summary` — for a given/active human: macro details, equipped assets, rig,
   skin, active targets
 - `mpfb_list_assets` — clothes / skins / proxies / poses, optionally filtered by pack

@@ -58,6 +58,19 @@ class CreateHumanToolTests(unittest.TestCase):
         self.assertIn('"gender": 1.0', code)
         self.assertIn('"age": 0.2', code)
 
+    @mock.patch("mpfbmcp.tools.create_human.send_code")
+    def test_bootstrap_still_raises_when_mpfb_is_unusable(self, mock_send_code: mock.Mock) -> None:
+        # This tool cannot do its job without MPFB, so it keeps the raising
+        # bootstrap - unlike mpfb_get_status, which shares the same module scan
+        # but classifies instead. Guards against the refactor that split the two.
+        mock_send_code.return_value = {"status": "ok", "result": {}}
+
+        self.mpfb_create_human()
+
+        (code,), _kwargs = mock_send_code.call_args
+        self.assertIn("raise RuntimeError", code)
+        self.assertIn("_MPFB_SERVICES", code)
+
     def test_out_of_range_macro_value_is_rejected_locally(self) -> None:
         # Should raise before ever touching the network.
         with mock.patch("mpfbmcp.tools.create_human.send_code") as mock_send_code:

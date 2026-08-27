@@ -1,8 +1,8 @@
 # mpfb_get_status: MPFB presence, version, and configured paths
 
-**Status:** Accepted
+**Status:** Done
 
-Every tool in the [target catalog](../../specifications/vision.md#target-tool-catalog) beyond
+Every tool in the [target catalog](../../../specifications/vision.md#target-tool-catalog) beyond
 `mpfb_create_human` assumes MPFB is present in the connected Blender instance, at a compatible
 version, and pointed at the asset roots the caller expects — but nothing today lets a caller
 (human or agent) check any of that before acting. `mpfb_create_human` already fails with a bare
@@ -34,7 +34,7 @@ initialize — with a `result` shaped as follows.
 ### Resolution state
 
 MPFB's module is found by scanning `sys.modules` (see
-[architecture.md](../../specifications/architecture.md#resolving-mpfb-from-generated-code)),
+[architecture.md](../../../specifications/architecture.md#resolving-mpfb-from-generated-code)),
 but being *found* is not the same as being *usable*. `mpfb/__init__.py` declares
 `MPFB_CONTEXTUAL_INFORMATION = None` at module level and only builds it inside `register()` —
 with the `"SERVICES"` entry assigned on that function's very last line. `unregister()` never
@@ -162,7 +162,7 @@ Both read directly off the resolved module, needing no services:
     raising variant collapses both into its existing `RuntimeError`; the status variant maps
     them to `absent` / `not_initialized` / `ok`.
 
-  This is the concrete follow-up [architecture.md](../../specifications/architecture.md#resolving-mpfb-from-generated-code)
+  This is the concrete follow-up [architecture.md](../../../specifications/architecture.md#resolving-mpfb-from-generated-code)
   should fold back in once this lands (see Affected specifications below).
 - **Pitfall — do not import MPFB submodules to work around a missing `SERVICES` dict.** When
   `state` is `not_initialized` it is tempting to reach the services directly (e.g.
@@ -205,7 +205,7 @@ Both read directly off the resolved module, needing no services:
 
 ## Affected specifications
 
-- [architecture.md](../../specifications/architecture.md#resolving-mpfb-from-generated-code) —
+- [architecture.md](../../../specifications/architecture.md#resolving-mpfb-from-generated-code) —
   currently documents only the raising bootstrap ("Every tool that needs an MPFB service class
   should reuse this same bootstrap"), and describes resolution as a single step. Once this lands,
   fold in:
@@ -221,13 +221,13 @@ Both read directly off the resolved module, needing no services:
   - the standing rule that generated code must resolve services **only** through the
     `SERVICES` dict and never by importing MPFB submodules directly, since several of them have
     import-time side effects (`locationservice.py` creates directories).
-- [vision.md](../../specifications/vision.md#target-tool-catalog) — move `mpfb_get_status` from
+- [vision.md](../../../specifications/vision.md#target-tool-catalog) — move `mpfb_get_status` from
   the planned list to "Implemented", matching how `mpfb_create_human` is marked today.
 
 ## Tests
 
 Unit tests (stdlib `unittest`, mocking `send_code` — see
-[architecture.md](../../specifications/architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp))
+[architecture.md](../../../specifications/architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp))
 can cover:
 
 - The generated code compiles (`compile(code, "<generated>", "exec")`). Note this is a *new*
@@ -243,7 +243,7 @@ can cover:
   code, not in Python on the mpfb-mcp side).
 
 What unit tests **cannot** cover (per
-[architecture.md](../../specifications/architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp)):
+[architecture.md](../../../specifications/architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp)):
 whether the generated code actually produces the documented field values. This needs a manual
 verification pass against a real Blender + MPFB + blender_mcp instance before marking this
 `Done`, the same kind of end-to-end check already done for `mpfb_create_human`. At minimum:
@@ -266,6 +266,32 @@ than raises.
 
 - `mpfb2/docs/services/locationservice.md`, `mpfb2/docs/services/assetservice.md`,
   `mpfb2/docs/services/systemservice.md` — source docs for every field above.
-- [specifications/vision.md](../../specifications/vision.md#target-tool-catalog) — originating
+- [specifications/vision.md](../../../specifications/vision.md#target-tool-catalog) — originating
   entry: "`mpfb_get_status` — MPFB present? version? data roots configured? asset packs
   installed?".
+
+## Verification status
+
+Added when this request was marked `Done`. The implementation landed with its unit tests
+passing, but **the manual verification pass described under [Tests](#tests) was deliberately
+left out of scope and has not been run**. Nothing here has been exercised against a real
+Blender + MPFB + blender_mcp instance, so the documented field values rest on reading MPFB's
+source, not on observation.
+
+Covered locally instead: `tests/test_get_status.py` executes the generated source against a
+stubbed `bpy` and stubbed `mpfb` entries injected into `sys.modules`, asserting the
+`absent` / `not_initialized` / `ok` branching, the two-install case, the disabled-but-loaded
+case, and the shape of `result` in each. That validates the branching, not MPFB's actual
+return values.
+
+Still outstanding, in the order given under [Tests](#tests):
+
+- [ ] MPFB enabled — `state: "ok"`, `enabled: true`, every field populated, every non-null path
+      an existing absolute path.
+- [ ] MPFB never enabled in this session — `state: "absent"`, empty `candidate_modules`,
+      populated `blender.version`.
+- [ ] MPFB enabled, then disabled from preferences — expect `enabled: false`; record whether
+      `state` really comes back `"ok"`.
+- [ ] `not_initialized` — approximate by setting `MPFB_CONTEXTUAL_INFORMATION = None` on the
+      resolved module from Blender's Python console, and confirm the tool reports rather than
+      raises.

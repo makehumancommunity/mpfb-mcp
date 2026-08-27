@@ -28,12 +28,15 @@ def main() -> int:
             "Tools for creating MakeHuman characters via the MPFB Blender add-on. "
             "Requires the blender_mcp add-on's socket server to be running inside "
             "Blender (see BLENDER_MCP_HOST / BLENDER_MCP_PORT), with the MPFB "
-            "extension installed and enabled in that Blender instance."
+            "extension installed and enabled in that Blender instance. When an "
+            "MPFB tool fails unexpectedly, call mpfb_get_status first: it reports "
+            "whether MPFB is present, initialized and correctly configured."
         ),
     )
 
-    from mpfbmcp.tools import create_human
+    from mpfbmcp.tools import create_human, get_status
     create_human.register(mcp)
+    get_status.register(mcp)
 
     mcp.run(transport="stdio")
     return 0

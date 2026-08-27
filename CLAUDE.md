@@ -24,9 +24,11 @@ efforts; `HISTORY.md` is the log of what has landed.
 
 ## Project status
 
-Proof of concept. One tool is implemented: `mpfb_create_human`, wrapping MPFB's
-`HumanService.create_human()`. See [specifications/vision.md](specifications/vision.md#target-tool-catalog)
-for what's planned beyond it, and [feature-requests/](feature-requests/) for work in progress.
+Proof of concept. Two tools are implemented: `mpfb_create_human`, wrapping MPFB's
+`HumanService.create_human()`, and `mpfb_get_status`, reporting whether MPFB is present,
+initialized and how it is configured. See
+[specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's planned
+beyond them, and [feature-requests/](feature-requests/) for work in progress.
 
 ## Commands
 
@@ -77,18 +79,27 @@ mpfb-mcp tool  →  build Python source (mpfb_codegen.py)  →  send_code() over
   not an import of it — mpfb-mcp installs and runs without a blender_mcp checkout on the path.
   If blender_mcp's wire protocol changes, this needs to be updated to match by hand.
 - **[mpfb_codegen.py](src/mpfbmcp/mpfb_codegen.py)** — builds the Python source string executed
-  inside Blender. The interesting part is `_MPFB_BOOTSTRAP`: MPFB is a Blender *extension*, so it
+  inside Blender. The interesting part is the bootstrap: MPFB is a Blender *extension*, so it
   has no stable absolute import path (it depends on which extension repo the user installed from,
   e.g. `bl_ext.user_default.mpfb`). MPFB documents and itself uses a workaround for this in
   `mpfb/__init__.py` / `test/tests/__init__.py` (in `../mpfb2`): scan `sys.modules` for a module
   name ending in `"mpfb"`, then pull classes out of the `MPFB_CONTEXTUAL_INFORMATION["SERVICES"]`
-  dict it publishes on that module. `_MPFB_BOOTSTRAP` reproduces that same pattern so generated
-  code can resolve `HumanService` (or other services) without knowing MPFB's install path. Reuse
-  this bootstrap for any future tool that needs another MPFB service class.
+  dict it publishes on that module. `_MPFB_MODULE_SCAN` is that scan, and two bootstraps are
+  built on it — `_MPFB_BOOTSTRAP`, which raises `RuntimeError` unless MPFB is fully initialized
+  (for tools that cannot proceed without it), and `_MPFB_STATUS_BOOTSTRAP`, which never raises and
+  instead classifies the install as `absent`/`not_initialized`/`ok` (for `mpfb_get_status`). Reuse
+  one of them for any future tool that needs an MPFB service class; never resolve a service by
+  importing an MPFB submodule, since some have import-time side effects (`locationservice.py`
+  creates directories). Note that a loaded `mpfb` module is *not* the same as an initialized one:
+  `MPFB_CONTEXTUAL_INFORMATION` is `None` until `register()`'s last line, and `unregister()` never
+  resets it. See
+  [specifications/architecture.md](specifications/architecture.md#resolving-mpfb-from-generated-code).
 - **[tools/](src/mpfbmcp/tools)** — one module per MCP tool, each with a `register(mcp)` function,
   following blender_mcp's own tool-module convention. `tools/create_human.py` validates inputs
   (0.0-1.0 macro sliders) *before* generating/sending code, so bad input fails locally rather than
-  round-tripping to Blender.
+  round-tripping to Blender. `tools/get_status.py` is the opposite shape: no input, and no
+  interpretation of the response either — all of its state classification lives in the generated
+  code, so "MPFB isn't there" comes back as a successful answer rather than an error envelope.
 - **[__init__.py](src/mpfbmcp/__init__.py)** — `main()`: builds the `FastMCP` server, calls each
   tool module's `register()`, runs over stdio.
 
@@ -99,8 +110,8 @@ need to check `status` rather than assume success.
 ### Tests
 
 Stdlib `unittest`, no pytest. Because MPFB is only ever reachable through generated code sent
-into a live Blender, the suite can *never* exercise real MPFB behavior — it verifies the two
-things on this side of the socket:
+into a live Blender, the suite can *never* exercise real MPFB behavior — it verifies what is on
+this side of the socket:
 
 - [tests/test_connection.py](tests/test_connection.py) — the wire protocol, against a throwaway
   local `socketserver.TCPServer` standing in for the blender_mcp add-on (framing, error
@@ -109,6 +120,10 @@ things on this side of the socket:
   generated source, with `mpfbmcp.tools.create_human.send_code` mocked out. It reaches the
   underlying sync callable via `mcp._tool_manager._tools[...].fn`, since `@mcp.tool` wraps it in
   a coroutine.
+- [tests/test_get_status.py](tests/test_get_status.py) — same mocking approach, plus a set of
+  tests that actually `exec()` the generated source against a stubbed `bpy` and stubbed `mpfb`
+  entries injected into `sys.modules`. That exercises the three-state branching locally; it still
+  proves nothing about the values real MPFB returns.
 
 Anything needing real MPFB is a manual integration check against a running Blender (see
 [Commands](#commands)), and feature requests are expected to say so explicitly.

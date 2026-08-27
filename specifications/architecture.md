@@ -36,9 +36,53 @@ package name depends on which extension repository the user installed it from (e
 path. Instead it uses the resolution mechanism MPFB itself documents and uses in its own test
 suite (`mpfb2/mpfb/__init__.py`, `mpfb2/test/tests/__init__.py`): scan `sys.modules` for a
 module whose name ends in `"mpfb"`, then read the classes it needs off the
-`MPFB_CONTEXTUAL_INFORMATION["SERVICES"]` dict that module publishes. Every tool that needs
-an MPFB service class should reuse this same bootstrap rather than inventing another
-resolution strategy.
+`MPFB_CONTEXTUAL_INFORMATION["SERVICES"]` dict that module publishes. Every tool that needs an
+MPFB service class should reuse this same bootstrap rather than inventing another resolution
+strategy.
+
+### Resolution is two steps, not one
+
+Finding such a module says nothing about whether it is *usable*. MPFB declares
+`MPFB_CONTEXTUAL_INFORMATION = None` at module level and only builds it inside `register()`,
+assigning the `"SERVICES"` entry on that function's very last line; `unregister()` never resets
+it. So the scan and the services check are separate questions, and generated code must treat
+them separately:
+
+1. **Is a module whose name ends in `"mpfb"` loaded?** If not, MPFB is not installed, or was
+   never imported.
+2. **Has that module completed `register()`?** If `MPFB_CONTEXTUAL_INFORMATION` is `None`, or is
+   a dict without a `"SERVICES"` key, MPFB is installed but broken or half-registered — a state
+   an unwary bootstrap surfaces as a bare `TypeError`/`KeyError`.
+
+Two further consequences. The scan can match **more than one** module, meaning MPFB is installed
+under two extension repositories (or a stale legacy addon lingers beside an extension install);
+which one a bootstrap picks is then arbitrary, so any tool reporting on the install should report
+all candidates rather than only the winner. And a *disabled* MPFB still passes both steps, since
+`unregister()` leaves the dict populated in `sys.modules` — only
+`bpy.context.preferences.addons` distinguishes it from a live one.
+
+### Two bootstrap variants
+
+Both are built on the same shared `sys.modules` scan, so the resolution logic exists once:
+
+- **Raising** — for tools that cannot do their job without MPFB anyway (e.g.
+  `mpfb_create_human`). Fails with a `RuntimeError` naming the likely cause, distinguishing "not
+  loaded" from "loaded but not initialized", and pointing at `mpfb_get_status`.
+- **Non-raising** — for tools whose job is partly *to answer* whether MPFB is present (e.g.
+  `mpfb_get_status`). Classifies the situation instead of failing, so absence and partial
+  initialization come back as ordinary successful answers.
+
+### Never import MPFB submodules directly
+
+Generated code resolves services **only** through the `SERVICES` dict. Reaching a service by
+importing its module (`importlib.import_module(package + ".services.locationservice")`) is
+tempting when the dict is unavailable, but several MPFB modules have import-time side effects —
+`locationservice.py` ends with `LocationService = _LocationService()` followed by
+`LocationService.ensure_relevant_directories_exist()`, which **creates directories on disk**.
+A tool that did this to work around a missing `SERVICES` dict would be writing to disk in
+exactly the state where MPFB is already broken. When the services are unavailable, report only
+what is readable off the module object itself (`VERSION`, `BUILD_INFO`, `__name__`) and from
+`bpy`.
 
 ## One module per tool
 
