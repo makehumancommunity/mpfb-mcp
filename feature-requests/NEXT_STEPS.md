@@ -8,5 +8,14 @@ Completed efforts are no longer listed here — they move to [HISTORY.md](HISTOR
 records what has already landed and why. When an effort below is finished, move it there
 (see the [lifecycle in CLAUDE.md](CLAUDE.md#lifecycle)).
 
-Nothing has been scoped yet. See [specifications/vision.md](../specifications/vision.md#target-tool-catalog)
-for the target tool catalog this project is expected to grow into.
+## Introspection tools
+
+- [FR 001](001-mpfb-get-status/README.md) (Accepted) — `mpfb_get_status`: MPFB presence,
+  version, addon install path, and configured/available data roots and asset packs. The
+  natural first introspection tool from the [target
+  catalog](../specifications/vision.md#target-tool-catalog), and the tool an agent should
+  reach for first when any other MPFB tool call fails unexpectedly.
+
+Beyond FR 001, see [specifications/vision.md](../specifications/vision.md#target-tool-catalog)
+for the rest of the target tool catalog — nothing else has been scoped into a feature request
+yet.
