@@ -23,10 +23,14 @@ Its real-Blender smoke pass is likewise still outstanding, tracked under
 
 See [specifications/vision.md](../specifications/vision.md#target-tool-catalog) for the rest of
 the target tool catalog — `mpfb_get_human_summary` and `mpfb_list_assets` are the natural next
-introspection tools, but no tool beyond FR 001 has been scoped into a feature request yet. No
-effort below is currently scoped into a feature request.
+introspection tools, but neither has been scoped into a feature request yet. Of the efforts
+below, only "Basic object finding and identification" is currently scoped, as
+[FR 003](003-object-finding/README.md).
 
 ## Basic object finding and identification
+
+Scoped as [FR 003](003-object-finding/README.md) (status: Accepted), which narrows the four
+tools below to two parameterized ones — `mpfb_list_objects` and `mpfb_get_object_info`.
 
 There are some fundamental tools which need to come into place, in order to find and identify
 makehuman objects:
