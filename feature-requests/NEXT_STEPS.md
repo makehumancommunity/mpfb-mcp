@@ -26,6 +26,19 @@ the target tool catalog — `mpfb_get_human_summary` and `mpfb_list_assets` are 
 introspection tools, but no tool beyond FR 001 has been scoped into a feature request yet. No
 effort below is currently scoped into a feature request.
 
+## Basic object finding and identification
+
+There are some fundamental tools which need to come into place, in order to find and identify
+makehuman objects:
+
+- A tool for listing the names of all objects identified as of type Basemesh
+- A tool for listing the names of all objects identified as of type Skeleton
+- A tool for identifying which makehuman type an object is (object specified by name)
+- A tool for listing the names and types of all related objects (rigs, child meshes...) of a 
+  makehuman object (any makehuman object, specified by name)
+
+ObjectService has many of the necessary methods for finding and identifying makehuman objects.
+
 ## Observability
 
 Logging should be added so that it is possible to see the exact python code sent to blender,
