@@ -19,6 +19,8 @@ Run with::
 __all__ = ()
 
 import inspect
+import json
+import pathlib
 import sys
 import types
 import unittest
@@ -50,7 +52,11 @@ class _LocationServiceStub:
 
     @staticmethod
     def get_mpfb_root(sub_path=None):
-        return "/addons/mpfb"
+        # A pathlib.Path, not a str, despite LocationService's annotation: MPFB
+        # keeps this one path as a Path and returns it unchanged when no
+        # sub-path is given. Reporting it raw made the whole response fail
+        # strict_json, so the stub keeps the real type here.
+        return pathlib.Path("/addons/mpfb")
 
     @staticmethod
     def get_mpfb_data(sub_path=None):
@@ -262,6 +268,9 @@ class GeneratedCodeExecutionTests(unittest.TestCase):
         self.assertTrue(result["enabled"])
         self.assertTrue(result["is_source_dist"])
         self.assertEqual(result["addon_installation_path"], "/addons/mpfb")
+        # The tool sends this with strict_json=True, so anything left in result
+        # that json cannot encode turns the whole call into an error envelope.
+        json.dumps(result)
         self.assertEqual(
             result["paths"]["user_data"], {"path": "/home/user/mpfb/data", "configured": True})
         # The two optional roots: unset must read as "not configured", not as a path.

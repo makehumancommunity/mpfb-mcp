@@ -26,10 +26,19 @@ def _mpfb_dotted(version):
         return None
     return ".".join([str(part) for part in version])
 
+def _mpfb_str_path(path):
+    # LocationService is annotated as returning str throughout, but
+    # get_mpfb_root() hands back a pathlib.Path (its backing field is a Path and
+    # the shared _return_path() passes it through unchanged when no sub-path is
+    # given). That is not JSON-serializable, so coerce every path we report.
+    if path is None:
+        return None
+    return str(path)
+
 def _mpfb_path_entry(path):
     # get_second_root() and get_mh_user_data() return None when unset; the flag
     # separates "not configured" from "configured but does not exist on disk".
-    return {"path": path, "configured": bool(path)}
+    return {"path": _mpfb_str_path(path), "configured": bool(path)}
 
 _MPFB_STATE_MESSAGES = {
     "absent": "MPFB is not loaded in this Blender instance: no loaded module name ends in "
@@ -77,7 +86,8 @@ if _mpfb_services is not None:
     # Kept alongside build_info: a build rewrites BUILD_INFO *and* drops test/, so
     # the two disagreeing points at an unusual or partial install.
     result["is_source_dist"] = bool(_mpfb_location_service.is_source_dist())
-    result["addon_installation_path"] = _mpfb_location_service.get_mpfb_root()
+    result["addon_installation_path"] = _mpfb_str_path(
+        _mpfb_location_service.get_mpfb_root())
     result["paths"] = {
         "mpfb_data": _mpfb_path_entry(_mpfb_location_service.get_mpfb_data()),
         "user_home": _mpfb_path_entry(_mpfb_location_service.get_user_home()),
@@ -92,7 +102,8 @@ if _mpfb_services is not None:
     }
     # paths shows what is *configured*; asset_roots shows what MPFB will actually
     # search (already filtered to directories that exist).
-    result["asset_roots"] = list(_mpfb_asset_service.get_available_data_roots())
+    result["asset_roots"] = [
+        _mpfb_str_path(_mpfb_root) for _mpfb_root in _mpfb_asset_service.get_available_data_roots()]
     _mpfb_pack_names = list(_mpfb_asset_service.get_pack_names())
     result["asset_packs"] = {
         "count": len(_mpfb_pack_names),
