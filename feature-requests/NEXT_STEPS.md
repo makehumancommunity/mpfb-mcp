@@ -29,14 +29,23 @@ on reading MPFB's source rather than on observation; it is tracked under
 [Verification status](done/003-object-finding/README.md#verification-status) in the request.
 
 See [specifications/vision.md](../specifications/vision.md#target-tool-catalog) for the rest of
-the target tool catalog — `mpfb_get_human_summary` and `mpfb_list_assets` are the natural next
-introspection tools, and both can now take their subject from FR 003's tools rather than
-assuming one is known, but neither has been scoped into a feature request yet. None of the
-efforts below is currently scoped.
+the target tool catalog. `mpfb_get_human_summary` is the natural next introspection tool and can
+now take its subject from FR 003's tools rather than assuming one is known, but it has not been
+scoped into a feature request yet.
 
 ## Finding available assets
 
+All three subsections below have been scoped, as one feature request each: they share a theme but
+almost nothing else — different MPFB services, different sources on disk, and different response
+shapes — so splitting them keeps each request small enough to implement in one pass. The three are
+independent of each other and can land in any order. Two conventions are shared and whichever
+lands first should fold them into the standing specifications: the capped-and-paged response
+(FR 005 and FR 006) and reporting the exact identifier an acting tool will need rather than a
+display name (all three).
+
 ### Finding available rigs
+
+Scoped as [FR 004](004-list-rigs/README.md) — `mpfb_list_rigs`.
 
 There should be a tool for retrieving a list of available rigs. The output should include
 rig name, absolute path and (if that is a separate thing) how it should be referred to 
@@ -44,6 +53,8 @@ when requesting that a rig be added via HumanService. Functionality for actually
 rigs is out of scope here. The list should include custom rigs.
 
 ### Finding and filtering lists of assets from asset subdirs
+
+Scoped as [FR 005](005-list-assets/README.md) — `mpfb_list_assets`.
 
 There need to be tools for finding assets located in asset subdirs. Parts of this matches 
 what can be done via AssetService. It should be possible to:
@@ -60,6 +71,9 @@ Each item in the returned list should include:
 - Absolute path to the asset
 
 ### Get available detail targets
+
+Scoped as [FR 006](006-list-targets/README.md) — `mpfb_list_targets`. Note that the file is
+`target.json`, singular, not `targets.json` as written below.
 
 In order to model, the LLM needs to know which targets are available. These come from two
 distinct sources: `targets.json` in the system data directory and the targets installed 
