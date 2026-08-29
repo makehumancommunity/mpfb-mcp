@@ -3,12 +3,13 @@
 """
 Stand-ins for Blender and MPFB, for executing generated payloads locally.
 
-The payloads for ``mpfb_list_objects`` and ``mpfb_get_object_info`` carry real
-branching - type filtering, relationship walking, three asset_info shapes - so
-they are worth running, and they can only be run against stubs: MPFB is
-reachable only from inside Blender (see specifications/architecture.md). This
-module is shared by both tools' test modules because they need the same stub
-scene; it holds no tests of its own.
+The payloads for ``mpfb_list_objects``, ``mpfb_get_object_info`` and
+``mpfb_list_rigs`` carry real branching - type filtering, relationship walking,
+three asset_info shapes, a weights fallback walk - so they are worth running,
+and they can only be run against stubs: MPFB is reachable only from inside
+Blender (see specifications/architecture.md). This module is shared by those
+tools' test modules because they need the same stub scene and services; it holds
+no tests of its own.
 
 The stubs reimplement the MPFB behavior the payloads actually depend on rather
 than returning convenient values, since several of those behaviors are the
@@ -19,6 +20,11 @@ reason the payload is written the way it is:
 - ``object_is_any_makehuman_object()`` returns a *string*, not a bool.
 - ``find_related_objects()`` yields the object it was asked about, first.
 - ``get_list_of_children()`` walks the whole file, not the current scene.
+- ``get_mpfb_root()`` hands back a ``pathlib.Path`` when given no sub-path, and
+  a ``str`` when given one.
+- ``get_second_root()`` really can be None.
+- ``get_rig_weight_fallbacks()`` carries MPFB's real table, so the two rigs that
+  own no weights file of their own resolve to another rig's rather than to none.
 
 What they cannot do is tell us anything about the values real MPFB returns;
 that remains a manual check against a running Blender.
@@ -26,10 +32,14 @@ that remains a manual check against a running Blender.
 
 __all__ = (
     "GeneratedCodeTestCase",
+    "StubAssetService",
+    "StubLocationService",
     "StubMaterial",
     "StubObject",
+    "StubSystemService",
 )
 
+import pathlib
 import sys
 import types
 import unittest
@@ -185,10 +195,25 @@ class StubAssetService:
         StubAssetService.calls.append((asset_path_fragment, asset_subdir))
         return StubAssetService.resolutions.get(asset_path_fragment)
 
+    # What get_custom_rigs() should answer, and how it was asked. Set by a test
+    # that wants a particular set of custom rigs on disk.
+    custom_rigs = ()
+    custom_rig_calls = []
+    invalidations = 0
+    # Set by a test exercising the payload's fallback for an MPFB whose
+    # get_custom_rigs() predates the use_cache keyword.
+    reject_use_cache = False
+
     @staticmethod
     def get_custom_rigs(use_cache=True):
-        return [{"name": "my_rig", "path": "/home/user/data/rigs/my_rig.json",
-                 "identifying_bones": ["root"]}]
+        if StubAssetService.reject_use_cache and not use_cache:
+            raise TypeError("get_custom_rigs() got an unexpected keyword argument 'use_cache'")
+        StubAssetService.custom_rig_calls.append(use_cache)
+        return [dict(record) for record in StubAssetService.custom_rigs]
+
+    @staticmethod
+    def invalidate_custom_rig_cache():
+        StubAssetService.invalidations += 1
 
 
 class StubClothesService:
@@ -215,15 +240,34 @@ class StubMaterialService:
 
 
 class StubRigService:
+    # MPFB's real fallback table, verbatim. The payload mirrors add_builtin_rig()
+    # by walking this list, so a stub that returned only the rig itself would
+    # make the two entries that actually need a fallback look unweighted.
+    WEIGHT_FALLBACKS = {
+        "default_no_toes": ["default"],
+        "rigify.human": ["rigify.human_toes"],
+        "rigify.human_toes": ["rigify.human"],
+    }
+
     @staticmethod
     def identify_rig(armature_object):
         # Never None: "unknown" is the miss.
         return armature_object.rig_type
 
+    @staticmethod
+    def get_rig_weight_fallbacks(rig_type):
+        return [rig_type, *StubRigService.WEIGHT_FALLBACKS.get(rig_type, [])]
+
 
 class StubLocationService:
     # Set by a test that wants rig_definition_path to resolve to a real file.
     mpfb_data = "/nonexistent-mpfb-data"
+    # MPFB keeps this one as a pathlib.Path despite the str annotation, so the
+    # stub does too - a payload that forgets to coerce fails strict_json for
+    # real, and only this type reproduces that here.
+    mpfb_root = pathlib.Path("/nonexistent-mpfb-root")
+    user_data = "/nonexistent-user-data"
+    second_root = None
 
     @staticmethod
     def get_mpfb_data(sub_path=None):
@@ -231,6 +275,43 @@ class StubLocationService:
         if sub_path is None:
             return StubLocationService.mpfb_data
         return os.path.join(StubLocationService.mpfb_data, sub_path)
+
+    @staticmethod
+    def get_mpfb_root(sub_path=None):
+        import os
+        if sub_path is None:
+            # A Path, exactly as MPFB returns it.
+            return StubLocationService.mpfb_root
+        # ...but os.path.join() turns it back into a str, which is why the
+        # coercion only bites on the no-sub-path form.
+        return os.path.join(StubLocationService.mpfb_root, sub_path)
+
+    @staticmethod
+    def get_user_data(sub_path=None):
+        import os
+        if sub_path is None:
+            return StubLocationService.user_data
+        return os.path.join(StubLocationService.user_data, sub_path)
+
+    @staticmethod
+    def get_second_root(sub_path=None):
+        import os
+        # Really can be None, and get_custom_rigs() guards for exactly that.
+        if StubLocationService.second_root is None:
+            return None
+        if sub_path is None:
+            return StubLocationService.second_root
+        return os.path.join(StubLocationService.second_root, sub_path)
+
+
+class StubSystemService:
+    # Never a truthy non-bool, unlike several ObjectService helpers: the real
+    # check_for_rigify() does return a real bool.
+    rigify_available = True
+
+    @staticmethod
+    def check_for_rigify():
+        return StubSystemService.rigify_available
 
 
 class StubHumanService:
@@ -245,6 +326,7 @@ _SERVICES = {
     "RigService": StubRigService,
     "LocationService": StubLocationService,
     "HumanService": StubHumanService,
+    "SystemService": StubSystemService,
 }
 
 
@@ -287,7 +369,18 @@ class GeneratedCodeTestCase(unittest.TestCase):
 
         StubAssetService.calls = []
         StubAssetService.resolutions = {}
+        StubAssetService.custom_rigs = (
+            {"name": "my_rig", "path": "/home/user/data/rigs/my_rig.json",
+             "identifying_bones": ["root"]},
+        )
+        StubAssetService.custom_rig_calls = []
+        StubAssetService.invalidations = 0
+        StubAssetService.reject_use_cache = False
         StubLocationService.mpfb_data = "/nonexistent-mpfb-data"
+        StubLocationService.mpfb_root = pathlib.Path("/nonexistent-mpfb-root")
+        StubLocationService.user_data = "/nonexistent-user-data"
+        StubLocationService.second_root = None
+        StubSystemService.rigify_available = True
 
         # The payloads reach the type vocabulary and the two property sets off
         # the module of a service that imported them, so the stub classes'

@@ -201,7 +201,14 @@ target file contents, which are vertex-offset data of no use to a caller.
   list has no target-listing entry. Add `mpfb_list_targets` and mark it **Implemented** when this
   lands. The `mpfb_set_target_value` entry ("arbitrary named target") should be amended to say the
   name it takes is the `shapekey_name` this tool reports, not a filename.
-- [architecture.md](../../specifications/architecture.md) — two candidate additions:
+- [architecture.md](../../specifications/architecture.md) — one convention to *follow* and two
+  candidate additions.
+  - **Already standing, since [FR 004](../done/004-list-rigs/README.md) landed:**
+    [How tools name things that can be added](../../specifications/architecture.md#how-tools-name-things-that-can-be-added).
+    `shapekey_name` is this tool's identifier under that convention, consumed by
+    `mpfb_set_target_value`. Its last clause is the one to read closely here: a catalogue vocabulary
+    and an identification vocabulary overlap without matching, which is exactly the relationship
+    between a target's `shapekey_name` and its filename.
   - **The capped-and-paged response convention**, shared with
     [FR 005](../005-list-assets/README.md). Whichever of the two lands first should write it down;
     the second should follow it rather than restate it.

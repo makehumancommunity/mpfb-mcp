@@ -65,6 +65,17 @@ tool should get its own feature request when scoped.
   MPFB's own properties. That field is *not* gated on the object lacking an MPFB type: MPFB
   tags the rig it generates through Rigify as a `Skeleton`, so the commonest generated rig
   there is would otherwise be the one case that never reported the field.
+- `mpfb_list_rigs` — which rigs could be added to a character, and under what name?
+  **Implemented.** Takes no required arguments and always answers, listing MPFB's bundled
+  standard and Rigify rigs alongside the custom rigs found in the user's data roots. Each entry
+  carries the `identifier` an adding function takes and the `add_function` that takes it (see
+  [How tools name things that can be added](architecture.md#how-tools-name-things-that-can-be-added)),
+  plus what adding it would do about weights — MPFB resolves those through a fallback table
+  rather than by filename, so two rigs legitimately borrow another's. Reports `rigify_available`,
+  the directories scanned and the files MPFB silently refused, so an absent rig is explainable
+  rather than merely absent. Its vocabulary overlaps `mpfb_get_object_info`'s `rig_type` without
+  matching it: `rigify_generated.*` and `unknown` describe an existing armature and name nothing
+  that can be added.
 - `mpfb_get_human_summary` — for a given/active human: macro details, equipped assets, rig,
   skin, active targets. Takes its subject from `mpfb_list_objects` / `mpfb_get_object_info`
   rather than assuming one is already known.
@@ -82,7 +93,9 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
 - `mpfb_set_target_value` — arbitrary named target
 - `mpfb_add_asset` — clothes/proxy via `add_mhclo_asset()`
 - `mpfb_set_skin` — via `set_character_skin()`
-- `mpfb_add_rig` — builtin or custom
+- `mpfb_add_rig` — builtin or custom. Takes its `identifier` and the function to dispatch
+  on from `mpfb_list_rigs`, the same way the tools above take their subject from
+  `mpfb_list_objects` / `mpfb_get_object_info`.
 
 **Documentation**
 

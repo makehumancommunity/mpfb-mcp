@@ -1,0 +1,117 @@
+"""
+The ``mpfb_list_rigs`` tool: which rigs this Blender could add to a character.
+
+The catalogue counterpart to ``mpfb_get_object_info``'s ``rig_type``, which says
+what an *existing* armature looks like. The two vocabularies overlap without
+being interchangeable, and closing that gap is the reason this tool exists: what
+is reported here is, per rig, the exact string an adding function takes, plus
+which of two non-interchangeable functions takes it.
+
+Nothing about the rig list is validated on this side of the socket. The
+directories are the authority on which rigs exist, and they are only readable
+from inside Blender; a list kept here would drift from them silently.
+"""
+
+from __future__ import annotations
+
+__all__ = (
+    "register",
+)
+
+from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
+from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
+
+from mpfbmcp import codegen
+from mpfbmcp.connection import send_code
+
+
+def _validated_refresh(refresh: object) -> bool:
+    """Reject locally what would otherwise round-trip to Blender to fail there."""
+    if not isinstance(refresh, bool):
+        # Deliberately not truthiness: 0/1 and "false" are how a caller signals
+        # a bool it did not manage to build, and quietly accepting them would
+        # make `refresh="false"` rescan the disk.
+        raise ValueError(
+            "refresh must be a bool, got {!r}".format(refresh))
+    return refresh
+
+
+def register(mcp: FastMCP) -> None:
+    @mcp.tool(
+        annotations=ToolAnnotations(
+            title="List Available Rigs",
+            readOnlyHint=True,
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=False,
+        )
+    )
+    def mpfb_list_rigs(refresh: bool = False) -> dict[str, object]:
+        """
+        List every rig this Blender could add to a MakeHuman basemesh: MPFB's
+        bundled standard and Rigify rigs, plus custom rigs found in the user's
+        data directories. Reads only; adds nothing to the scene.
+
+        **Pass a rig's `identifier`, not its `name`, to whatever adds it**, and
+        pass it to the function that entry's `add_function` names. The two are
+        not the same string and the two functions are not interchangeable: a
+        standard rig is `"default_no_toes"`, a Rigify one `"rigify.human"` and a
+        custom one `"custom.my_rig"`. Crossing them fails in ways that do not
+        read as the mistake they are: `"custom.my_rig"` handed to
+        `add_builtin_rig()` looks for a file called `rig.custom.my_rig.json`,
+        and a built-in name handed to `add_custom_rig()` has its first seven
+        characters stripped as though they were a `custom.` prefix, so
+        `"default_no_toes"` is reported missing under the name `"_no_toes"`.
+
+        `refresh=true` rescans the user data directories for custom rigs before
+        answering. MPFB caches that list for the lifetime of the Blender
+        session, so a rig installed after Blender started will not appear
+        otherwise. It is opt-in because it writes MPFB's cache, which the
+        custom-rig UI panel reads too; the default path mutates nothing.
+
+        Returns blender_mcp's response envelope. On `status: "ok"`, `result`
+        carries:
+
+          - `rigs`: one entry per available rig, with `name`, `identifier`,
+            `family` ("standard"/"rigify"/"custom"), `path` (absolute, or null),
+            `label`/`description` (MPFB's own UI text, null for custom rigs),
+            `add_function`, `available` and `unavailable_reason`.
+          - Per entry, what adding it would do about weights: `has_weights`,
+            `weights_path` and `weights_from`. **MPFB resolves weights through a
+            fallback table, not by filename**, so `weights_from` differs from
+            `name` for `default_no_toes` (which borrows `default`'s weights) and
+            `rigify.human` (which borrows `rigify.human_toes`'s). That is
+            normal. `has_weights: false` is not: adding that rig produces a
+            character with no vertex weights.
+          - `count`, and `rigify_available` - whether Rigify is enabled here.
+            Rigify rigs are listed either way, carrying `available: false` when
+            it is not, since `add_builtin_rig()` raises rather than degrading.
+          - `rig_dirs`: every directory looked in, each flagged with whether it
+            exists, so a user whose custom rig did not appear can see where it
+            was expected. Note MPFB scans only its own data dir and the user
+            data roots for rigs - not the MakeHuman user data directory.
+          - `unrecognized_custom_rig_files`: `.json` files in a scanned user
+            rigs directory that MPFB refused as rig definitions (a name outside
+            `[A-Za-z0-9_]`, or no `identifying_bones` key). MPFB drops these
+            silently, which otherwise makes "I put the file there and it does
+            not show up" undiagnosable.
+          - `families` and `message`.
+
+        **Do not expect this list to match `mpfb_get_object_info`'s `rig_type`.**
+        That value comes from MPFB identifying an armature by its bone names and
+        can be `rigify_generated.*` or `unknown`, neither of which appears here,
+        because neither names something that can be added. A character whose rig
+        is not in this list is ordinary, not an error.
+
+        Cheap enough to re-call rather than cache; built-in rigs change only
+        when MPFB is upgraded, custom ones whenever the user adds a file.
+        """
+        # `result` (built in codegen/payloads/list_rigs.py) is always plain JSON-
+        # safe data, so strict_json=True to surface a clear error if that ever
+        # stops being true, rather than silently falling back to `repr`.
+        code = codegen.assemble(
+            "list_rigs.py",
+            bootstrap="raising",
+            params={"refresh": _validated_refresh(refresh)},
+        )
+        return send_code(code, strict_json=True)

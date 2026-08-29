@@ -24,10 +24,12 @@ efforts; `HISTORY.md` is the log of what has landed.
 
 ## Project status
 
-Proof of concept. Four tools are implemented: `mpfb_create_human`, wrapping MPFB's
+Proof of concept. Five tools are implemented: `mpfb_create_human`, wrapping MPFB's
 `HumanService.create_human()`; `mpfb_get_status`, reporting whether MPFB is present, initialized
-and how it is configured; and the object-finding pair `mpfb_list_objects` and
-`mpfb_get_object_info`, which is how every later tool is meant to name the object it acts on. See
+and how it is configured; the object-finding pair `mpfb_list_objects` and
+`mpfb_get_object_info`, which is how every later tool is meant to name the object it acts on; and
+`mpfb_list_rigs`, the first catalogue tool — what could be *added*, rather than what is already
+there, named by the identifier the adding function will want. See
 [specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's planned
 beyond them, and [feature-requests/](feature-requests/) for work in progress.
 
@@ -134,7 +136,11 @@ mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP
   *vocabulary* — a list of valid MPFB type names kept here would drift from MPFB's own, so the
   generated code answers that with `type_recognized` and `known_types` instead. Like
   `get_status.py`, they treat absence as an answer: an unresolvable object name comes back as
-  `found: false`, not as an error envelope.
+  `found: false`, not as an error envelope. `tools/list_rigs.py` is the strictest of the four about
+  its one argument — `refresh` must be a real `bool`, not a truthy value, since `refresh="false"`
+  would otherwise rescan the disk — and its payload does all the rest, including the two things
+  that cannot be derived from a filename: which of `add_builtin_rig()` / `add_custom_rig()` takes
+  a given identifier, and which rig's weights file would actually be loaded.
 - **[__init__.py](src/mpfbmcp/__init__.py)** — `main()`: builds the `FastMCP` server, calls each
   tool module's `register()`, runs over stdio. Together with a tool module and a payload file,
   this `register()` call is the *whole* of what adding a tool touches — no shared
@@ -182,6 +188,12 @@ this side of the socket:
   service module's name must not end in `"mpfb"`, or the bootstrap's candidate scan claims it, and
   the stub class's `__module__` is reassigned by hand so the payload's
   `sys.modules[Service.__module__]` lookup lands on it.
+- [tests/test_list_rigs.py](tests/test_list_rigs.py) — the same two layers, but run against a real
+  `tempfile` rig tree rather than a mocked filesystem: the payload's job *is* `os.listdir()` and
+  `os.path.isfile()`, so mocking those away would leave nothing under test. The tree reproduces the
+  asymmetries a real MPFB install has — a rig with no weights file of its own, a weights file with
+  no rig, a rig absent from the UI enum — because each one is a branch the payload exists to get
+  right.
 
 Anything needing real MPFB is a manual integration check against a running Blender (see
 [Commands](#commands)), and feature requests are expected to say so explicitly.

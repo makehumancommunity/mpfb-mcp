@@ -35,22 +35,19 @@ scoped into a feature request yet.
 
 ## Finding available assets
 
-All three subsections below have been scoped, as one feature request each: they share a theme but
-almost nothing else — different MPFB services, different sources on disk, and different response
-shapes — so splitting them keeps each request small enough to implement in one pass. The three are
-independent of each other and can land in any order. Two conventions are shared and whichever
-lands first should fold them into the standing specifications: the capped-and-paged response
-(FR 005 and FR 006) and reporting the exact identifier an acting tool will need rather than a
-display name (all three).
+All three subsections were scoped, as one feature request each: they share a theme but almost
+nothing else — different MPFB services, different sources on disk, and different response shapes —
+so splitting them keeps each request small enough to implement in one pass. The remaining two are
+independent of each other and can land in either order.
 
-### Finding available rigs
-
-Scoped as [FR 004](004-list-rigs/README.md) — `mpfb_list_rigs`.
-
-There should be a tool for retrieving a list of available rigs. The output should include
-rig name, absolute path and (if that is a separate thing) how it should be referred to 
-when requesting that a rig be added via HumanService. Functionality for actually adding
-rigs is out of scope here. The list should include custom rigs.
+The rig half has landed, as `mpfb_list_rigs` — see [FR 004](done/004-list-rigs/README.md) and its
+[entry in HISTORY.md](HISTORY.md#fr-004--mpfb_list_rigs). Unlike FR 001-003, its live verification
+was run as part of the effort rather than left outstanding. With it landed the first of the two
+conventions the three requests share: reporting the exact identifier an acting tool will need
+rather than a display name, now standing as
+[How tools name things that can be added](../specifications/architecture.md#how-tools-name-things-that-can-be-added).
+The second — the capped-and-paged response, shared by FR 005 and FR 006 — is still unfolded, and
+whichever of those two lands first should fold it in.
 
 ### Finding and filtering lists of assets from asset subdirs
 

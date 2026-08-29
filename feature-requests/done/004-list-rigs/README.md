@@ -1,6 +1,6 @@
 # Finding available rigs
 
-**Status:** Proposed
+**Status:** Done
 
 `mpfb_get_object_info` can already say which rig an *existing* armature looks like — FR 003 reports
 `rig_type` and `rig_definition_path` for every `Skeleton` and `Subrig` it finds. Nothing says which
@@ -59,7 +59,7 @@ bad trade.
     Rigify one, `"custom.my_rig"` for a custom one.
   - `family` — `"standard"`, `"rigify"` or `"custom"`.
   - `path` — absolute path of the rig definition JSON. Always absolute or `null`, per
-    [architecture.md](../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object).
+    [architecture.md](../../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object).
   - `label` / `description` — human-readable text from MPFB's own UI enums where there is any,
     `null` otherwise (custom rigs have none). This is what lets an agent map "the game engine rig"
     onto `game_engine` without a hardcoded table here.
@@ -114,8 +114,8 @@ errors.
 
 - One tool module `src/mpfbmcp/tools/list_rigs.py`, one payload
   `src/mpfbmcp/codegen/payloads/list_rigs.py`, one `register()` call in
-  [`__init__.py`](../../src/mpfbmcp/__init__.py) — the shape
-  [architecture.md](../../specifications/architecture.md#code-generation-layout) requires.
+  [`__init__.py`](../../../src/mpfbmcp/__init__.py) — the shape
+  [architecture.md](../../../specifications/architecture.md#code-generation-layout) requires.
 - **Use the raising bootstrap** (`bootstrap="raising"`). Without `LocationService` there is nothing
   to answer, and its `RuntimeError` already points at `mpfb_get_status`.
 - Services needed — `LocationService`, `AssetService`, `RigService`, `SystemService` — are all in
@@ -131,9 +131,9 @@ errors.
   `[identifier, label, description, index]`. Read them with `LocationService.get_mpfb_root(...)`,
   wrapped in try/except, and fall back to `label: null` — these are UI resource files, not an API,
   and their location may move. Do **not** import the UI modules to get at them: MPFB UI modules run
-  scans at import time (see [FR 006](../006-list-targets/README.md), where that behavior is the
+  scans at import time (see [FR 006](../../006-list-targets/README.md), where that behavior is the
   central pitfall), and
-  [architecture.md](../../specifications/architecture.md#never-import-mpfb-submodules-directly)
+  [architecture.md](../../../specifications/architecture.md#never-import-mpfb-submodules-directly)
   forbids it anyway. Note the enum is not the authority on what exists — the directory is; a rig
   file present with no enum entry is still addable and must be listed.
 - **Pitfall — `get_mpfb_root()` returns a `pathlib.Path`, not a `str`,** despite its annotation
@@ -168,31 +168,35 @@ errors.
 - **`rigify_available` is `SystemService.check_for_rigify()`.** The same check
   `add_builtin_rig()` makes before raising `NotImplementedError`. Coerce to a real bool.
 - Input validation, per
-  [Validate before crossing the socket](../../specifications/architecture.md#validate-before-crossing-the-socket):
+  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket):
   `refresh` must be a real bool, rejected locally otherwise. There is no vocabulary to validate.
 - Response envelope unchanged: return `send_code(...)` as-is with `strict_json=True`.
 
 ## Affected specifications
 
-- [vision.md](../../specifications/vision.md#target-tool-catalog) — the "Introspection (read-only)"
+- [vision.md](../../../specifications/vision.md#target-tool-catalog) — the "Introspection (read-only)"
   list has no rig-listing entry. Add `mpfb_list_rigs` and mark it **Implemented** when this lands.
   The `mpfb_add_rig` entry ("builtin or custom") should be amended to say it takes its `identifier`
   from this tool, the same way the modification tools take their subject from FR 003's pair.
-- [architecture.md](../../specifications/architecture.md) — one candidate addition, worth deciding
+- [architecture.md](../../../specifications/architecture.md) — one candidate addition, worth deciding
   at implementation time: **how tools name things that can be added.** FR 003 established how a
   tool names an *object*; this effort establishes the parallel convention for a *catalogue entry* —
   report the exact identifier the acting tool will need, never a display name or a filename the
   caller must transform, and say which function consumes it when there is more than one. FR 005 and
   FR 006 both follow the same rule with `fragment` and `shapekey_name`, which is what makes it a
-  convention rather than a local choice.
+  convention rather than a local choice. **Decided: added**, as
+  [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added),
+  with two clauses this request did not anticipate — report what acting on an entry would do where
+  the entry does not imply it (the weights fallback), and say explicitly where a catalogue
+  vocabulary overlaps an identification vocabulary without matching it.
 
 ## Tests
 
-Follow [tests/test_get_status.py](../../tests/test_get_status.py)'s two-layer approach: argument
+Follow [tests/test_get_status.py](../../../tests/test_get_status.py)'s two-layer approach: argument
 validation with `mpfbmcp.tools.list_rigs.send_code` mocked, then the generated source `exec()`d
 against stubs.
 
-The stubs belong in [tests/blender_stubs.py](../../tests/blender_stubs.py) beside the existing
+The stubs belong in [tests/blender_stubs.py](../../../tests/blender_stubs.py) beside the existing
 scene stubs, and must reproduce MPFB's actual behavior rather than convenient values — the same
 discipline that module already applies:
 
@@ -219,6 +223,71 @@ request says and parse into the labels shown; that `get_mpfb_root()` still misbe
 and that the custom-rig path works with a real MakeRig export. Record the outcome in a
 `## Verification status` section here, as FR 001–003 do.
 
+## Verification status
+
+**Implemented and live-verified** (2026-08-29), against Blender 5.1.0 with MPFB running
+`FROM_SOURCE` out of `../mpfb2`, driven through the real tool callable over the blender_mcp
+socket. The install held all 8 standard rigs, both Rigify rigs and three real custom rigs
+(`gurgel`, `meh`, `yada`) in `~/makehuman/mpfb/data/rigs`, each with a weights file beside it.
+
+Every scene mutation made for the test was reverted: a snapshot of object, mesh, armature, action
+and collection counts, the scene's object names, the active object and the dirty flag compares
+**identical** before and after. The `.blend` was never saved.
+
+### What changed against this request
+
+**`unrecognized_custom_rig_files` had to exclude the `weights.*.json` companions.** The set
+difference as specified here reports them: `weights.gurgel.json` and friends are `.json` files in a
+scanned user `rigs/` dir, and their stems fail `get_custom_rigs()`'s `^[A-Za-z0-9_]+$` test, so it
+drops them exactly as it drops a genuinely malformed file. Confirmed live — the naive diff returns
+`["weights.gurgel.json", "weights.meh.json", "weights.yada.json"]` on this install, and would do so
+on every install that has a custom rig at all, burying the one file a user actually needs to see.
+The payload therefore subtracts the `weights.` prefix that `add_custom_rig()` itself defines. The
+remainder of the field is still a pure difference against what `get_custom_rigs()` accepted, not a
+second implementation of its rules. A second, smaller version of the same mistake was caught in
+unit tests before it ran: the difference must be taken over the *user* rigs dirs only, or every
+`rig.*.json` MPFB ships is reported as an unrecognized custom rig.
+
+**`refresh` uses `get_custom_rigs(use_cache=False)`, not `invalidate_custom_rig_cache()`.** The
+keyword exists and is not mentioned above. It rescans and repopulates the same module global in one
+call, where invalidating leaves it at `None` for the custom-rig UI panel that reads it. The
+invalidator remains as a fallback if the keyword ever goes away.
+
+**`rig_dirs` entries are objects, not strings** — `path`, `family` and `exists`. A directory that
+does not exist is still reported, flagged. Listing only the dirs actually scanned would have left a
+user whose `rigs/` dir is missing with no answer at all, which is the case the field exists for.
+
+**The `get_mpfb_root()` pitfall is narrower than described.** It returns a `pathlib.Path` only when
+called with no sub-path; with one, `os.path.join()` turns it back into a `str`. This payload always
+passes a sub-path, so the coercion is belt-and-braces here rather than load-bearing. The stub
+reproduces both forms.
+
+### Checklist
+
+- [x] Every rig on disk listed and nothing else — 13 entries: 8 standard, 2 rigify, 3 custom. The
+      `weights.*.json` files sharing those directories are not listed as rigs.
+- [x] Labels resolve from MPFB's real UI property JSONs, at the paths this request names, so the
+      `label: null` fallback was *not* what was being observed. Note MPFB's own rigify labels read
+      as swapped (`human_toes` is the one it calls "Default"); they are reported verbatim.
+- [x] Weights fallbacks — `default_no_toes` reports `weights_from: "default"` and `rigify.human`
+      reports `human_toes`, and both really do load weights when added. Testing
+      `weights.<name>.json` alone would have called both unweighted.
+- [x] **Every one of the 13 `identifier`s was actually added**, each to its own scratch basemesh,
+      through the `add_function` the entry named. All 13 returned an armature, parented the
+      basemesh, got an armature modifier targeting it, and came back with real non-zero vertex
+      weights. All 13 were then deleted, leaving nothing behind.
+- [x] The negative that justifies `add_function`, both ways. `add_builtin_rig("custom.gurgel")`
+      raises `OSError: Could not find the rig file: .../rigs/standard/rig.custom.gurgel.json`. The
+      reverse is worse and was not anticipated here: `add_custom_rig("default_no_toes")` strips the
+      first seven characters unconditionally and reports `Custom rig '_no_toes' not found` — an
+      error naming a rig that never existed. Both are now in the tool docstring.
+- [x] `refresh=true` returns the same list, twice in a row, without disturbing the cache global.
+- [x] `rigify_available` is `true` on this install, so the `available: false` branch was exercised
+      only in unit tests; the flag itself is `SystemService.check_for_rigify()` coerced to a bool.
+- [x] `rig_dirs` names the two bundled dirs under the source-dist MPFB and the one real user rigs
+      dir, all three flagged as existing.
+- [x] Whole response survives `strict_json` with real data.
+
 ## References
 
 - MPFB `services/humanservice.py` — `add_builtin_rig()` (path assembly, Rigify guard, weights
@@ -230,5 +299,5 @@ and that the custom-rig path works with a real MakeRig export. Record the outcom
 - MPFB `ui/rigging/` — `standardrig/properties/standard_rig.json`,
   `rigifyrig/properties/rigify_rig.json` (labels), `customrig/operators/addcustomrig.py` (where the
   `custom.` prefix is added).
-- [FR 003](../done/003-object-finding/README.md) — `rig_type` / `rig_definition_path` in
+- [FR 003](../003-object-finding/README.md) — `rig_type` / `rig_definition_path` in
   `asset_info`, the other half of the rig vocabulary.

@@ -223,6 +223,39 @@ when the object is later edited by hand; where they disagree, the identified val
 reality, and both are heuristics rather than authorities. And resolving a fragment is an `os.walk`
 of the asset roots, so it must happen only when there is a fragment to resolve.
 
+## How tools name things that can be added
+
+[How tools report the asset behind an object](#how-tools-report-the-asset-behind-an-object) covers
+naming something that already exists. A *catalogue* tool — one listing what could be added, such as
+`mpfb_list_rigs` — has the parallel problem, and it is not solved by reporting a name:
+
+- **Report the exact identifier the acting tool will need**, as its own field, never a display name
+  or a filename the caller must transform. A rig is *called* `human` and *added* as
+  `rigify.human`; a custom one is added as `custom.my_rig`. Any part of that string the caller has
+  to assemble is a part they can assemble wrongly, and reassembling it is precisely the guesswork a
+  catalogue exists to remove.
+- **Say which function consumes it, when there is more than one.** `HumanService` adds rigs through
+  `add_builtin_rig()` and `add_custom_rig()`, and they are not interchangeable. Crossing them does
+  not fail legibly: `add_builtin_rig("custom.my_rig")` looks for a file called
+  `rig.custom.my_rig.json`, while `add_custom_rig()` strips the first seven characters of whatever
+  it is given as though they were a `custom.` prefix, so a built-in name comes back missing under a
+  mangled one. A later acting tool has to dispatch on this, and a caller reading the response should
+  be able to see why.
+- **Report what acting on the entry would do, where that is not implied by the entry.** A rig with
+  no weights produces an unweighted character, and MPFB resolves weights through a fallback table
+  rather than by filename — so an entry whose weights come from a *different* rig is normal, and one
+  with no weights at all is not. Mirror the acting function's own resolution rather than guessing
+  from filenames, and report the outcome.
+- **An absent entry must be explainable.** Report the directories that were actually scanned (not
+  every configured data root — MPFB does not look in all of them for everything), anything a scan
+  silently refused, and any precondition that makes a whole family unusable. This is the same
+  quality attribute as `mpfb_list_objects`' `type_recognized`: an agent that reads a short list as
+  the whole truth will conclude rather than investigate.
+- **A catalogue vocabulary and an identification vocabulary are not the same set**, even when they
+  overlap. `RigService.identify_rig()` reports `rigify_generated.*` and `unknown`, neither of which
+  names anything addable. Where a tool's values overlap another tool's without matching them, the
+  docstring must say so, or a caller will read a legitimate miss as a failure.
+
 ## Response shape
 
 Tools return blender_mcp's response envelope largely as-is: `{"status": "ok", "result": ...}`

@@ -131,3 +131,39 @@ stubs all shared — MPFB *does* tag the rig it generates through Rigify, as a `
 why the fix reports `rigify_role` whatever the object's type. Details, including a checklist item
 that was itself wrong rather than the code, are under "Verification status" in
 [the request itself](done/003-object-finding/README.md#verification-status).
+
+## [FR 004](done/004-list-rigs/README.md) — `mpfb_list_rigs`
+
+Landed the first of the three "finding available assets" efforts: `mpfb_list_rigs`, which takes no
+required arguments and always answers, listing every rig this Blender could add to a basemesh —
+MPFB's bundled standard and Rigify rigs, enumerated from the directories rather than hardcoded, plus
+the custom rigs `AssetService.get_custom_rigs()` finds in the user data roots.
+
+Its reason to exist is the `identifier` field. A rig's bare name is not what an adding function
+takes (`human` is added as `rigify.human`, `my_rig` as `custom.my_rig`), and the two functions that
+take them are not interchangeable — hence `add_function` beside it. Each entry also reports what
+adding it would do about weights, resolved by mirroring `add_builtin_rig()`'s walk of
+`RigService.get_rig_weight_fallbacks()` rather than by testing for `weights.<name>.json`: two of
+MPFB's rigs ship no weights file of their own and are not unweighted. Absence is made explainable
+through `rigify_available`, the directories actually scanned, and the files `get_custom_rigs()`
+silently refused.
+
+The convention behind all of that is now standing, as
+[How tools name things that can be added](../specifications/architecture.md#how-tools-name-things-that-can-be-added)
+— the catalogue counterpart to FR 003's rules for naming an object, which FR 005 and FR 006 inherit.
+
+Three files added and three shared ones touched, as
+[the layout](../specifications/architecture.md#code-generation-layout) requires. Unit tests grew
+from 89 to 129, over stubs extended to carry MPFB's real weights fallback table and the
+`pathlib.Path`/`str` split in `get_mpfb_root()`.
+
+**Live verification was run as part of the effort**, not deferred. Every one of the 13 identifiers
+the tool reported was actually added to a scratch basemesh through the function the entry named, and
+every one produced a parented, weighted armature; the scene compares identical before and after and
+the `.blend` was never saved. It confirmed a defect that had been caught during planning rather than
+in the field: the request's set difference for `unrecognized_custom_rig_files` reports the
+`weights.*.json` companion of every custom rig, on every install that has one. It also turned up a
+sharper justification for `add_function` than the request had — `add_custom_rig()` strips seven
+characters from whatever it is given, so a built-in name comes back missing under a name that never
+existed. Details, and three smaller corrections to the request, are under "Verification status" in
+[the request itself](done/004-list-rigs/README.md#verification-status).

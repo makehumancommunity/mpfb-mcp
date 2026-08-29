@@ -37,11 +37,13 @@ def main() -> int:
         ),
     )
 
-    from mpfbmcp.tools import create_human, get_object_info, get_status, list_objects
+    from mpfbmcp.tools import (
+        create_human, get_object_info, get_status, list_objects, list_rigs)
     create_human.register(mcp)
     get_object_info.register(mcp)
     get_status.register(mcp)
     list_objects.register(mcp)
+    list_rigs.register(mcp)
 
     mcp.run(transport="stdio")
     return 0

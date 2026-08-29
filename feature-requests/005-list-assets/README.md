@@ -215,7 +215,14 @@ character, which is FR 003's and `mpfb_get_human_summary`'s question.
   with what this actually is: every subdir in MPFB's own section table, filtered by subdir, name and
   pack, capped and paged, reporting the fragment later tools need. Mark it **Implemented** when this
   lands, and note that `mpfb_add_asset` / `mpfb_set_skin` take their `fragment` from it.
-- [architecture.md](../../specifications/architecture.md) — two candidate additions:
+- [architecture.md](../../specifications/architecture.md) — one convention to *follow* and two
+  candidate additions.
+  - **Already standing, since [FR 004](../done/004-list-rigs/README.md) landed:**
+    [How tools name things that can be added](../../specifications/architecture.md#how-tools-name-things-that-can-be-added).
+    `fragment` is this tool's identifier under that convention, and `mpfb_add_asset` /
+    `mpfb_set_skin` are the functions that consume it. Follow it rather than restate it; the only
+    thing left to check is its "say which function consumes it when there is more than one" clause,
+    which applies here — a skin and an mhclo asset are applied by different functions.
   - **How tools bound a large answer.** This is the first tool whose natural answer does not fit:
     the cap plus `total_count` plus a `truncated` flag that is always present, and the rule that a
     filtered call still reports the totals it filtered out of. `mpfb_list_targets`
@@ -237,7 +244,12 @@ argument validation with `mpfbmcp.tools.list_assets.send_code` mocked, then the 
 `exec()`d against stubs in [tests/blender_stubs.py](../../tests/blender_stubs.py).
 
 The stub `AssetService` must reproduce MPFB's real behavior, including the parts that are
-inconvenient — that discipline is why the existing stubs exist:
+inconvenient — that discipline is why the existing stubs exist. One specific thing to check, from
+[FR 004](../done/004-list-rigs/README.md#verification-status): a scanned directory holds more than the
+files a listing wants. FR 004's diff of "files MPFB refused" reported the `weights.*.json` companion
+of every custom rig until it excluded them, and that was only visible against a *real* install. Any
+listing here that enumerates a directory rather than asking a service should be checked against real
+asset roots, where thumbnails, materials and other companions sit beside the asset file.
 
 - `get_asset_list()` returning items with MPFB's exact key set, keyed by label, **including a
   label collision** so the under-reporting limitation is pinned by a test rather than only
