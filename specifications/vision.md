@@ -50,11 +50,26 @@ tool should get its own feature request when scoped.
   reports version, install path, configured paths, the data roots MPFB will actually search,
   installed asset packs, and Blender version/platform/compatibility. The tool to reach for
   first when another MPFB tool fails unexpectedly.
+- `mpfb_list_objects` — which MakeHuman objects are in the current scene, and of what type?
+  **Implemented.** Optionally filtered by MPFB object type, using MPFB's own substring
+  matching rather than equality. Reports each object's name, MPFB type and Blender type, plus
+  MPFB's full type vocabulary and whether the requested filter named a type MPFB knows — so an
+  empty list is never ambiguous. Cheap enough to call before anything else: a scene iteration
+  and property reads, with no file lookups.
+- `mpfb_get_object_info` — what is this object, what was it made from, and what belongs with
+  it? **Implemented.** Takes a Blender object name, or the active object when given none, and
+  answers rather than fails when neither resolves. Reports the MPFB and Blender types, whether
+  the object is linked into the current scene, the asset behind it (`asset_info`), and its
+  MakeHuman and non-MakeHuman relatives.
 - `mpfb_get_human_summary` — for a given/active human: macro details, equipped assets, rig,
-  skin, active targets
+  skin, active targets. Takes its subject from `mpfb_list_objects` / `mpfb_get_object_info`
+  rather than assuming one is already known.
 - `mpfb_list_assets` — clothes / skins / proxies / poses, optionally filtered by pack
 
 **Creation and modification**
+
+Every tool below except `mpfb_create_human` acts on an object that already exists, and names it
+the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
 
 - `mpfb_create_human` — wraps `HumanService.create_human()` plus a macro-detail dict.
   **Implemented**, as a proof of concept covering scale + the macro-detail dict only (not

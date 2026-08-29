@@ -24,9 +24,10 @@ efforts; `HISTORY.md` is the log of what has landed.
 
 ## Project status
 
-Proof of concept. Two tools are implemented: `mpfb_create_human`, wrapping MPFB's
-`HumanService.create_human()`, and `mpfb_get_status`, reporting whether MPFB is present,
-initialized and how it is configured. See
+Proof of concept. Four tools are implemented: `mpfb_create_human`, wrapping MPFB's
+`HumanService.create_human()`; `mpfb_get_status`, reporting whether MPFB is present, initialized
+and how it is configured; and the object-finding pair `mpfb_list_objects` and
+`mpfb_get_object_info`, which is how every later tool is meant to name the object it acts on. See
 [specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's planned
 beyond them, and [feature-requests/](feature-requests/) for work in progress.
 
@@ -127,6 +128,13 @@ mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP
   round-tripping to Blender. `tools/get_status.py` is the opposite shape: no input, and no
   interpretation of the response either — all of its state classification lives in the generated
   code, so "MPFB isn't there" comes back as a successful answer rather than an error envelope.
+  `tools/list_objects.py` and `tools/get_object_info.py` sit between the two: they validate the
+  *shape* of their string arguments locally (non-string, empty or whitespace-only is rejected, and
+  an explicitly empty value is never quietly treated as an omitted one), but deliberately not the
+  *vocabulary* — a list of valid MPFB type names kept here would drift from MPFB's own, so the
+  generated code answers that with `type_recognized` and `known_types` instead. Like
+  `get_status.py`, they treat absence as an answer: an unresolvable object name comes back as
+  `found: false`, not as an error envelope.
 - **[__init__.py](src/mpfbmcp/__init__.py)** — `main()`: builds the `FastMCP` server, calls each
   tool module's `register()`, runs over stdio. Together with a tool module and a payload file,
   this `register()` call is the *whole* of what adding a tool touches — no shared
@@ -158,6 +166,22 @@ this side of the socket:
   tests that actually `exec()` the generated source against a stubbed `bpy` and stubbed `mpfb`
   entries injected into `sys.modules`. That exercises the three-state branching locally; it still
   proves nothing about the values real MPFB returns.
+- [tests/blender_stubs.py](tests/blender_stubs.py) — holds no tests. It is the stub Blender scene
+  and stub MPFB services that the two object-finding tools' generated code is executed against,
+  shared because both need the same scene. The stubs deliberately reimplement MPFB's *actual*
+  behavior rather than returning convenient values — `""` and not `None` from
+  `get_object_type()`, a non-bool `object_is_any_makehuman_object()`, a `find_related_objects()`
+  that yields the object it was asked about, a `get_list_of_children()` that walks the whole file
+  — because those quirks are the reason the payloads are written as they are.
+- [tests/test_list_objects.py](tests/test_list_objects.py) and
+  [tests/test_get_object_info.py](tests/test_get_object_info.py) — argument validation with
+  `send_code` mocked, then the generated code run against those stubs: subject resolution by name
+  and by active object (including the no-active-object branch, which is what crashes on
+  `None.name` if missed), the relationship walk, and all three `asset_info` shapes with all three
+  resolution outcomes each. Note the two mechanics these inherit from `test_get_status.py`: a stub
+  service module's name must not end in `"mpfb"`, or the bootstrap's candidate scan claims it, and
+  the stub class's `__module__` is reassigned by hand so the payload's
+  `sys.modules[Service.__module__]` lookup lands on it.
 
 Anything needing real MPFB is a manual integration check against a running Blender (see
 [Commands](#commands)), and feature requests are expected to say so explicitly.

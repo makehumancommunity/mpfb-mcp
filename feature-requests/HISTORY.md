@@ -63,3 +63,60 @@ turned up something the request had not anticipated: package data alone is not e
 setuptools' package discovery treats a directory without an `__init__.py` as a namespace package
 by default and ships its files as modules. Both halves are now set in `pyproject.toml` and stated
 in the spec.
+
+## [FR 003](done/003-object-finding/README.md) — object finding and identification
+
+Landed the layer every later tool needs in order to name its subject: `mpfb_list_objects`, which
+names the MakeHuman objects in the current scene and optionally filters them by MPFB object type,
+and `mpfb_get_object_info`, which identifies one object — named, or simply the one that is active —
+reports what asset it was made from, and lists what else belongs with it. Both are read-only and
+touch none of `ObjectService`'s destructive or selection-mutating methods; in particular nothing is
+selected or activated in order to be inspected.
+
+Two things kept an empty or absent answer from being ambiguous, which was the request's stated
+quality attribute throughout. `mpfb_list_objects` reports `type_recognized` and MPFB's full
+`known_types` beside the list, so "no basemeshes here" and "you asked for `Basemseh`" are different
+answers, and a caller can correct itself from the same response. `mpfb_get_object_info` treats an
+unresolvable subject as a successful answer rather than an error, the same stance
+[FR 001](done/001-mpfb-get-status/README.md) took for a missing MPFB. The type vocabulary is read
+out of MPFB rather than duplicated here, since a list copied into mpfb-mcp drifts silently and this
+one is guidance an agent acts on.
+
+Three standing conventions were recorded in
+[architecture.md](../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish):
+reading module-level names MPFB does not publish — now covering non-`SERVICES` *entities* such as
+`GeneralObjectProperties`, not only constants — via `sys.modules[Service.__module__]`, never a
+fresh import, always with a fallback;
+[how generated code addresses objects](../specifications/architecture.md#how-generated-code-addresses-objects),
+by Blender object name, listing scoped to the scene while resolution is scoped to the file, with
+"exists elsewhere" a distinct answer; and
+[how tools report the asset behind an object](../specifications/architecture.md#how-tools-report-the-asset-behind-an-object),
+the fragment-plus-absolute-path pairing and the type-varying rather than unioned shape.
+[Validate before crossing the socket](../specifications/architecture.md#validate-before-crossing-the-socket)
+gained the distinction this effort turned on: validate a string argument's *shape* locally, never
+its *vocabulary*.
+
+Reading MPFB's source closely to write the payloads turned up several places where the request had
+the API wrong, all corrected in the request text: there is no `HumanService.set_skin()` (it is
+`set_character_skin()`); `get_object_type()` returns `""` rather than `None`, and
+`object_is_any_makehuman_object()` and `object_is_generated_rigify_rig()` return strings rather
+than bools, so the response has to coerce; `identify_rig()`'s vocabulary is nearly twice as long as
+listed, and never returns `None`; and the `pathlib.Path` of commit `631989c` comes specifically
+from `get_mpfb_root()`. The consequential one was scope creep in the opposite direction from
+expected: the request anticipated only Rigify's pairing helpers reaching outside the current scene,
+but `ObjectService.get_list_of_children()` walks `bpy.data.objects` too, and *every* relative is
+found through it. Rather than filter those out — which would silently drop a real relationship —
+every `related_objects` and `other_related_objects` entry carries its own `in_current_scene`, which
+is the remedy the request had already named for the narrower case.
+
+Adding the two tools touched no shared code-generation module, as
+[the layout](../specifications/architecture.md#code-generation-layout) requires: two tool modules,
+two payload files, and two `register()` calls. The only shared edits were to `tests/test_codegen.py`,
+which hardcodes the payload list twice. Unit tests grew from 32 to 82, over a shared
+`tests/blender_stubs.py` that reimplements the MPFB behaviors above rather than returning
+convenient values — the stubs are the reason those API corrections surfaced as test failures rather
+than as live surprises. **Landed without the live verification its own Tests section calls for**,
+which for this effort is a larger gap than for FR 001 or FR 002: every `asset_info` value comes
+from an MPFB property or helper whose real content the stubs assert nothing about. The outstanding
+checks are listed under "Verification status" in
+[the request itself](done/003-object-finding/README.md#verification-status).

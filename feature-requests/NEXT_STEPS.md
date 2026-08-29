@@ -21,27 +21,18 @@ The code-structure and readability rework has also landed — see
 Its real-Blender smoke pass is likewise still outstanding, tracked under
 [Verification status](done/002-codegen-structure/README.md#verification-status) in the request.
 
+Basic object finding and identification has landed too, as `mpfb_list_objects` and
+`mpfb_get_object_info` — see [FR 003](done/003-object-finding/README.md) and its
+[entry in HISTORY.md](HISTORY.md#fr-003--object-finding-and-identification). Its live
+verification is the largest outstanding one of the three, since every `asset_info` value rests
+on reading MPFB's source rather than on observation; it is tracked under
+[Verification status](done/003-object-finding/README.md#verification-status) in the request.
+
 See [specifications/vision.md](../specifications/vision.md#target-tool-catalog) for the rest of
 the target tool catalog — `mpfb_get_human_summary` and `mpfb_list_assets` are the natural next
-introspection tools, but neither has been scoped into a feature request yet. Of the efforts
-below, only "Basic object finding and identification" is currently scoped, as
-[FR 003](003-object-finding/README.md).
-
-## Basic object finding and identification
-
-Scoped as [FR 003](003-object-finding/README.md) (status: Accepted), which narrows the four
-tools below to two parameterized ones — `mpfb_list_objects` and `mpfb_get_object_info`.
-
-There are some fundamental tools which need to come into place, in order to find and identify
-makehuman objects:
-
-- A tool for listing the names of all objects identified as of type Basemesh
-- A tool for listing the names of all objects identified as of type Skeleton
-- A tool for identifying which makehuman type an object is (object specified by name)
-- A tool for listing the names and types of all related objects (rigs, child meshes...) of a 
-  makehuman object (any makehuman object, specified by name)
-
-ObjectService has many of the necessary methods for finding and identifying makehuman objects.
+introspection tools, and both can now take their subject from FR 003's tools rather than
+assuming one is known, but neither has been scoped into a feature request yet. None of the
+efforts below is currently scoped.
 
 ## Observability
 

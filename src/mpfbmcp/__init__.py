@@ -30,13 +30,18 @@ def main() -> int:
             "Blender (see BLENDER_MCP_HOST / BLENDER_MCP_PORT), with the MPFB "
             "extension installed and enabled in that Blender instance. When an "
             "MPFB tool fails unexpectedly, call mpfb_get_status first: it reports "
-            "whether MPFB is present, initialized and correctly configured."
+            "whether MPFB is present, initialized and correctly configured. To act "
+            "on a character this session did not create, find it with "
+            "mpfb_list_objects and identify it with mpfb_get_object_info rather "
+            "than guessing from Blender object names."
         ),
     )
 
-    from mpfbmcp.tools import create_human, get_status
+    from mpfbmcp.tools import create_human, get_object_info, get_status, list_objects
     create_human.register(mcp)
+    get_object_info.register(mcp)
     get_status.register(mcp)
+    list_objects.register(mcp)
 
     mcp.run(transport="stdio")
     return 0

@@ -100,6 +100,26 @@ exactly the state where MPFB is already broken. When the services are unavailabl
 what is readable off the module object itself (`VERSION`, `BUILD_INFO`, `__name__`) and from
 `bpy`.
 
+### Reading module-level names MPFB does not publish
+
+Not everything a tool needs is in the `SERVICES` dict. MPFB keeps some constants and some
+entities at module level: `LOWEST_FUNCTIONAL_BLENDER_VERSION` in `systemservice.py`, the object
+type vocabulary `_ALL_TYPES` / `_MESH_ASSET_TYPES` / `_SKELETON_TYPES` in `objectservice.py`, and
+the `BlenderConfigSet` entities `GeneralObjectProperties` and `HumanObjectProperties`, which are
+how custom properties such as `object_type`, `asset_source` and `material_source` are actually
+read. These are reachable, under three rules:
+
+- **Through a service's module, never a fresh import.** `sys.modules[SomeService.__module__]` is
+  necessarily populated once that service resolved out of `SERVICES`, and reading it re-executes
+  nothing — which is what keeps
+  [Never import MPFB submodules directly](#never-import-mpfb-submodules-directly) intact. Pick a
+  service whose module actually imports the name: `GeneralObjectProperties` is on
+  `ObjectService`'s module, while `HumanObjectProperties` is not, and is on `HumanService`'s.
+- **Always with a fallback.** These names are underscore-private or merely undocumented, and MPFB
+  may rename them without notice. Read them with `getattr(module, name, default)` and degrade —
+  a stale local copy of the type vocabulary is a better answer than a failed call.
+- **Never as a substitute for a service.** If what is wanted is in `SERVICES`, take it from there.
+
 ## Code-generation layout
 
 A generated program is assembled from three parts, in a fixed order: the shared **bootstrap**
@@ -141,6 +161,67 @@ This keeps tools independently testable and keeps the server's own `main()` a fl
 Where a tool takes structured input (e.g. macro-detail sliders, which are only meaningful in
 `0.0`-`1.0`), validate it in the tool function *before* generating and sending code. A bad
 call should fail fast and locally, not round-trip to Blender to fail there.
+
+The same holds for the *shape* of a string argument: reject a non-string, or an empty or
+whitespace-only one, and never quietly treat an explicitly empty value as an omitted one, since
+the two arise from different mistakes. But validate only the shape, never the **vocabulary**. A
+list of valid MPFB type names, asset names or target names kept on this side of the socket would
+drift silently from MPFB's own. Send the value across instead and let the generated code answer
+authoritatively, reporting alongside the result both whether the value was recognized and what the
+valid values actually are — so a caller can correct itself from the same response rather than
+needing a second tool or a hardcoded list.
+
+## How generated code addresses objects
+
+Tools name a Blender object by its **Blender object name**. Names are unique across the whole
+`.blend`, which is what makes them a usable address, but that has consequences a tool must not
+paper over:
+
+- **Listing is scoped to the current scene** (`bpy.context.scene.objects`), so results match what
+  the user is looking at, while **resolution is scoped to the file** (`bpy.data.objects`). A name
+  can therefore resolve to an object that a listing did not mention. Report that as a distinct
+  answer — an `in_current_scene` flag — rather than as "not found", which would be false, or
+  silently, which would make two tools look as if they contradict each other.
+- **Every object in a response carries that flag, not only the subject.** MPFB's relationship walk
+  reaches relatives through `ObjectService.get_list_of_children()`, which iterates
+  `bpy.data.objects`, and several of its Rigify helpers do the same. A relative can sit outside the
+  current scene, and filtering it out would silently drop a real relationship.
+- **A subject may also be "whatever is active"**, read as `bpy.context.view_layer.objects.active`
+  rather than `bpy.context.active_object`: generated code runs in the add-on's execution context,
+  not from a viewport operator, and the view-layer form does not depend on which UI area happens to
+  be current. It is `None` whenever nothing is active, which is an ordinary answer rather than a
+  failure. A response should say which way its subject was resolved, because the two have very
+  different lifetimes: a name stays valid until the object is renamed or deleted, while an
+  active-object answer is stale the moment the user clicks elsewhere.
+
+Object addresses are never cacheable. Unlike `mpfb_get_status`'s output they are things later
+mutating tools will act on, so a stale one is worse than a missing one.
+
+## How tools report the asset behind an object
+
+MPFB records what an object was made from as a short *fragment* — `"fedora/fedora.mhclo"`, one
+directory level plus a filename — which is resolved to a file by walking the configured asset
+roots. Any tool reporting that follows three conventions:
+
+- **Report the fragment and the resolved path as separate fields**, and make every `*_path` either
+  an absolute path or `null`, never a fragment. A fragment looks path-shaped, and a caller that
+  hands one to a file-opening tool gets a confusing failure far from here.
+- **Keeping both is also what tells two situations apart.** A `null` fragment means the object
+  records no such asset: it was built rather than imported, or it is using a default. A fragment
+  with a `null` path means the asset *is* recorded but is not installed under any asset root this
+  Blender can see — the user moved or uninstalled the pack. The first is ordinary; the second is
+  something a caller may want to raise with the user, and one undifferentiated `null` would hide it.
+- **Let the keys vary by object type rather than unioning them and nulling what does not apply.**
+  `mhclo_path: null` on a skeleton reads as "we looked for its mhclo and failed", a different and
+  much more alarming claim than "a skeleton does not have one". The keys present say which question
+  was asked; their values say whether it could be answered.
+
+Two cautions belong in the docstring of any tool reporting these. Values *identified* from the
+object as it is now — which rig the bone names look like, which material the node tree looks like —
+can disagree with values *recorded* when something was loaded, because nothing rewrites a record
+when the object is later edited by hand; where they disagree, the identified value describes
+reality, and both are heuristics rather than authorities. And resolving a fragment is an `os.walk`
+of the asset roots, so it must happen only when there is a fragment to resolve.
 
 ## Response shape
 

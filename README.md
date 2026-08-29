@@ -6,9 +6,14 @@ MPFB-related code.
 
 ## Status
 
-Proof of concept. One tool is implemented: `mpfb_create_human`, which wraps
-MPFB's `HumanService.create_human()`. See [src/mpfbmcp](src/mpfbmcp) and
-[CLAUDE.md](CLAUDE.md) for how it works and how to run it.
+Proof of concept. Four tools are implemented:
+
+- `mpfb_create_human` — wraps MPFB's `HumanService.create_human()`.
+- `mpfb_get_status` — is MPFB present, initialized and correctly configured?
+- `mpfb_list_objects` — which MakeHuman objects are in the current scene?
+- `mpfb_get_object_info` — what is this object, what was it made from, and what belongs with it?
+
+See [src/mpfbmcp](src/mpfbmcp) and [CLAUDE.md](CLAUDE.md) for how they work and how to run them.
 
 ## Documentation
 
