@@ -30,6 +30,17 @@ initialized and how it is configured. See
 [specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's planned
 beyond them, and [feature-requests/](feature-requests/) for work in progress.
 
+## Version control
+
+**Commit directly to `master`.** Do not create a branch for a change, and do not open a pull
+request. The project is a single-developer proof of concept where every change so far has been a
+straight-line addition to `master`; branching and review would add ceremony without adding a
+reviewer. This overrides any general "branch before committing to the default branch" default.
+
+Revisit this once the project has grown enough to merit it — more than one person committing,
+a release that users depend on, or changes large enough that they need review before landing. Until
+then, a branch is only warranted if explicitly asked for.
+
 ## Commands
 
 ```bash
