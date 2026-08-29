@@ -17,16 +17,23 @@ confident the name refers to the right kind of object. This request supplies tha
 
 MPFB already carries the concept: every object it creates gets an `object_type` custom property
 (`Basemesh`, `Skeleton`, `Subrig`, `Clothes`, `Eyes`, ...), and `ObjectService` has the reading
-and relationship-walking logic built on it. Almost nothing needs to be invented here — the work
-is choosing what to expose, and handling the places where `ObjectService`'s conventions do not
-map cleanly onto a tool response.
+and relationship-walking logic built on it. It carries the asset provenance too — `asset_source`
+and `material_source` properties, and `AssetService` to turn those fragments back into paths.
+Almost nothing needs to be invented here — the work is choosing what to expose, and handling the
+places where MPFB's conventions do not map cleanly onto a tool response.
 
 ## Goals
 
 Primary: let a caller find MakeHuman objects in the current scene by type, determine what a given
 object is — named explicitly, or simply the one that is active — and discover what else belongs
-with it — enough to pick a subject for every later
-tool, without guessing from Blender names.
+with it — enough to pick a subject for every later tool, without guessing from Blender names.
+
+Also: say what each of those objects was *made from*. Knowing that `Human.004` is a `Clothes` item
+identifies its role, but a caller asking "which shirt is this" or "can I re-fit it" needs the asset
+behind it — the `.mhclo` it was imported from, the rig definition a skeleton was built to, the kind
+of skin material a basemesh carries. MPFB records enough to answer that, in object properties it
+sets at import time and in identification helpers that read the object itself, so the answer costs
+one more property read per object plus, at most, an asset-root lookup.
 
 Secondary: make the answer safe to act on. A name that does not resolve, a type filter that
 matches nothing, and a type filter that was misspelled must be three visibly different answers,
@@ -63,6 +70,11 @@ Argument: `object_type` (optional string). Omitted or `null` means every object 
   an empty scene.
 - `known_types`: MPFB's full type vocabulary, so a caller can correct itself from the same
   response rather than needing a second tool or a hardcoded list.
+
+Per-object output here stays at name and the two types: no `asset_info`. That field can cost an
+asset-root directory walk per object (see [Architecture](#architecture)), and paying it for every
+object in the scene to answer "what is in here" would make the cheap orienting tool the expensive
+one. A caller that wants the asset behind a listed object asks `mpfb_get_object_info` about it.
 
 Only the **current scene** is searched (`bpy.context.scene.objects`), so results match what the
 user is looking at. Objects that exist in the `.blend` but are not linked into the scene are not
@@ -101,13 +113,20 @@ throughout, so this matches how a user already thinks about the scene.
   string) when the object carries no MPFB type — it is a plain Blender object, not a MakeHuman one.
 - `is_makehuman_object`: whether `object_type` is set at all. The single question most callers are
   actually asking.
+- `asset_info`: what MPFB knows about the asset this object was made from. `null` for an object
+  with no MPFB `object_type` — a plain Blender cube was not made from a MakeHuman asset, and an
+  empty dict would suggest we looked and found nothing. Otherwise a dict **whose keys depend on the
+  object type**, described below.
 - `related_objects`: every MPFB-typed object among the object's nearest relatives — parents,
-  children, and siblings — each as a `{"name", "object_type", "blender_type"}` entry, **excluding
-  the object itself**. Deliberately a **flat list, not a tree**: the hierarchy a basemesh sits in
-  is real (a subrig can hang off a clothes item rather than off the character), but every consumer
-  of this field wants "what belongs with this character", and nesting would make the common case
-  pay for the rare one. A caller that needs the structure can walk it by calling this tool again
-  on a returned name.
+  children, and siblings — each as a `{"name", "object_type", "blender_type", "asset_info"}` entry,
+  **excluding the object itself**. Deliberately a **flat list, not a tree**: the hierarchy a
+  basemesh sits in is real (a subrig can hang off a clothes item rather than off the character),
+  but every consumer of this field wants "what belongs with this character", and nesting would make
+  the common case pay for the rare one. A caller that needs the structure can walk it by calling
+  this tool again on a returned name. Each entry's `asset_info` is the same structure as the
+  subject's, populated the same way: the common question is "what is this character wearing", and
+  answering it from one call rather than one call per child is the difference between an agent that
+  describes a character and one that walks a tree to do it.
 - `other_related_objects`: related objects in the same neighbourhood that carry *no* MPFB type,
   each additionally flagged with `rigify_role`: `"generated_rig"`, `"metarig"` or `null`. MPFB
   does not tag Rigify's generated rig with an `object_type`, so a character driven by Rigify would
@@ -117,18 +136,99 @@ throughout, so this matches how a user already thinks about the scene.
 - `message`: one human-readable sentence, as `mpfb_get_status` does — most valuable in the
   `found: false` and "exists but not in this scene" cases, where the next step is not obvious.
 
+`other_related_objects` entries get **no** `asset_info`: they carry no MPFB type, so by the rule
+above the value could only ever be `null`, and a key that is always `null` is noise. Their
+`rigify_role` is the analogous field for what little can be said about them.
+
+#### The shape of `asset_info`
+
+Three shapes, keyed off the object's type family. A union of all keys with the inapplicable ones
+set to `null` was considered and rejected: `mhclo_path: null` on a skeleton reads as "we could not
+find the mhclo", which is a different and much more alarming claim than "a skeleton does not have
+one". The keys present say which question was asked; their values say whether it could be answered.
+
+- **`Skeleton` / `Subrig`** — `{"rig_type": ..., "rig_definition_path": ...}`.
+  `rig_type` is what `RigService.identify_rig()` reports (`"default"`, `"default_no_toes"`,
+  `"game_engine"`, `"cmu_mb"`, `"mixamo"`, `"rigify.human_toes"`, `"rigify_generated.human"`,
+  `"custom.<name>"`, or `"unknown"`). Note this is *identified from the bones present*, not read
+  back from a property MPFB stored — MPFB does not record which rig was applied, so a
+  hand-edited armature can be identified as something it was not built from. `rig_definition_path`
+  is the absolute path of the `rig.<name>.json` the type corresponds to, or `null` when there is
+  none to point at (`unknown`, a Rigify-generated rig, or a file that is not on disk).
+- **Mesh assets** (`Clothes`, `Eyes`, `Eyebrows`, `Eyelashes`, `Hair`, `Teeth`, `Tongue`,
+  `Proxymeshes`) — `{"asset_source": ..., "mhclo_path": ..., "material_type": ...,
+  "material_source": ..., "mhmat_path": ...}`.
+  `asset_source` is the fragment MPFB stored on import (`"fedora/fedora.mhclo"`) or `null` if the
+  object carries none; `mhclo_path` is that fragment resolved to an absolute path, or `null` if it
+  could not be. `material_type` is `MaterialService.identify_material()` on the object's first
+  material slot (`"makeskin"`, `"gameengine"`, `"procedural_eyes"`, `"enhanced_skin"`,
+  `"layered_skin"`, `"empty"`, `"unknown"`). The key is `mhclo_path` for every type in this family,
+  proxymeshes included, since MPFB imports them all through the same mhclo format — but note the
+  file it points at may carry a `.proxy` extension rather than `.mhclo`, so a caller must not match
+  on the suffix to decide what it is holding.
+
+  `material_source` / `mhmat_path` are the same pair as on the basemesh and are reported here for
+  the same reason — "which mhmat is this object's material built from" is one question, and a
+  caller should not have to know which of two MPFB properties happens to answer it for a given type.
+  They do come from different properties, and the **meaning of `null` therefore differs by type**,
+  which the tool docstring must say plainly:
+  - For an ordinary mesh asset the value is the `alternative_material` fragment, set when a
+    material other than the asset's own was applied. `null` is the ordinary case and means the
+    object uses **the default material named inside its mhclo** — not that the material is unknown.
+    That default is deliberately *not* resolved here; see [Architecture](#filling-in-asset_info).
+  - `Proxymeshes` is the exception in this family: a body proxy wears the character's skin, so MPFB
+    writes the basemesh's `material_source` onto it as well. It is read there first, exactly as
+    `HumanService` reads it, and falls back to `alternative_material`.
+- **`Basemesh`** — `{"material_type": ..., "material_source": ..., "mhmat_path": ...}`.
+  `material_type` as above, and `material_source` / `mhmat_path` the same pair as for mesh assets,
+  here always the skin. **The used skin mhmat *is* deducible, in the cases where there is one**
+  — see [Architecture](#architecture): MPFB stores the mhmat as a fragment on the basemesh whenever
+  a skin was loaded from one, so `material_source` carries that fragment and `mhmat_path` its
+  resolved absolute path. A freshly created human that was never given a skin has neither, and
+  reports both as `null` — correctly, because there is no mhmat behind its procedural material.
+
+Two rules across all three shapes:
+
+- **Every `*_path` is absolute or `null`; a fragment is never presented as a path.** The two are
+  easy to confuse — `"fedora/fedora.mhclo"` looks path-shaped — and a caller that passes a fragment
+  to a file-opening tool gets a confusing failure far from here. Keeping the fragment in its own
+  field is what lets both be reported without either being mistaken for the other.
+- **Keeping the fragment alongside the path is also how the two failure modes stay
+  distinguishable**, without adding a flag for it. This holds for both pairs —
+  `asset_source`/`mhclo_path` and `material_source`/`mhmat_path`. A `null` fragment means the object
+  records no such asset at all: it was built rather than imported, it is using a default material,
+  or it predates the property. A non-null fragment with a `null` path means the asset *is* recorded
+  but is not installed under any asset root this Blender can see — the user moved or uninstalled the
+  pack. The first is normal; the second is something a caller may want to tell the user about, and
+  an undifferentiated `null` path would hide it.
+
 ## Non-functional requirements
 
-- **Read-only / side-effect-free.** Both tools only read custom properties and walk the object
-  hierarchy. `ObjectService` also carries destructive methods (`delete_object`,
-  `extract_vertex_group_to_new_object`) and selection-mutating ones (`activate_blender_object`,
-  `select_object`, `deselect_and_deactivate_all`) — the payloads must touch none of them. In
-  particular, resist any temptation to select or activate an object in order to inspect it; that
-  changes state the user can see.
-- **Cheap enough to call before anything else.** These are the tools an agent runs to orient
-  itself, so they should be a scene iteration and property reads — nothing that touches geometry,
-  loads files, or scans asset directories. This is why per-object output stays at name and the two
-  types.
+- **Read-only / side-effect-free.** Both tools only read custom properties, walk the object
+  hierarchy, inspect bone names and material node trees, and look up files on disk. `ObjectService`
+  also carries destructive methods (`delete_object`, `extract_vertex_group_to_new_object`) and
+  selection-mutating ones (`activate_blender_object`, `select_object`,
+  `deselect_and_deactivate_all`) — the payloads must touch none of them. In particular, resist any
+  temptation to select or activate an object in order to inspect it; that changes state the user
+  can see. The asset lookups are read-only in the same sense: they open no `.blend`, import
+  nothing, and must never fall back on an MPFB call that would *load* the asset in order to find
+  out where it is.
+- **Cheap enough to call before anything else.** `mpfb_list_objects` is a scene iteration and
+  property reads — nothing that touches geometry, loads files, or scans asset directories — and
+  that is why its per-object output stays at name and the two types.
+  `mpfb_get_object_info` is where `asset_info` relaxes this, deliberately and in a bounded way:
+  resolving a fragment to an absolute path is an `os.walk` of the configured asset roots
+  (`AssetService.find_asset_absolute_path()`), which on a large asset library is not free, and one
+  `mpfb_get_object_info` call can do it once per related object. The bound is that the walk happens
+  **only when there is a fragment to resolve** — a scene of hand-made Blender objects, or a
+  freshly created human with no assets and no skin, pays nothing — and that the tool is asked about
+  one object at a time. If live testing shows this is too slow with many asset roots, the fallback
+  is an opt-out argument on `mpfb_get_object_info`, not moving `asset_info` out of it; do not add
+  that argument pre-emptively.
+- **A field that says "the asset is missing" must not be confusable with one that says "there is no
+  asset".** The fragment/path pairing in [`asset_info`](#the-shape-of-asset_info) exists for this,
+  and it is the same quality attribute as the `type_recognized` and `found` cases below: an agent
+  reading a bare `null` will conclude, not investigate.
 - **An empty answer must never be ambiguous.** Covered functionally by `type_recognized` and
   `found` above, but it is the quality attribute driving both: an agent acting on a wrong empty
   answer does not retry, it concludes and moves on.
@@ -153,7 +253,9 @@ throughout, so this matches how a user already thinks about the scene.
   cannot answer anything meaningful without `ObjectService`, and its `RuntimeError` already points
   the caller at `mpfb_get_status`.
 - `ObjectService` is in the `SERVICES` dict, so it resolves through the standard bootstrap with no
-  special handling.
+  special handling. So are the four services `asset_info` needs — `AssetService`, `ClothesService`,
+  `MaterialService`, `RigService` — and `LocationService`. None of them needs the private-constant
+  trick; pull them out of `SERVICES` the same way.
 - **Pitfall — `object_is()` matches by substring, not equality.** `ObjectService.object_is()`
   lowercases both sides and tests `requested in actual`, so `"mesh"` matches both `Basemesh` and
   `Proxymeshes`, and `"rig"` matches `Subrig`. This is deliberate on MPFB's side — it absorbs
@@ -215,6 +317,106 @@ throughout, so this matches how a user already thinks about the scene.
   [References](#references) for a case where an MPFB getter returned a `pathlib.Path` despite its
   annotation and took a whole response down.
 
+### Filling in `asset_info`
+
+- **The properties are not services.** `asset_source`, `alternative_material` and
+  `material_source` live on the object as Blender custom properties managed by `BlenderConfigSet`
+  instances — the first two on `GeneralObjectProperties` (prefix `MPFB_GEN_`), the last on
+  `HumanObjectProperties` (prefix `MPFB_HUM_`) — which are *entities*, not members of `SERVICES`. Two ways in, in order of preference: reach them off the module of a
+  service that already imported them, `sys.modules[ObjectService.__module__].GeneralObjectProperties`
+  and `sys.modules[HumanService.__module__].HumanObjectProperties` (the same
+  `sys.modules[Service.__module__]` pattern the type vocabulary uses above), or read the raw
+  properties `blender_object["MPFB_GEN_asset_source"]` / `["MPFB_HUM_material_source"]`. Prefer the
+  first: the raw key hardcodes a prefix assembled in two places (`_PREFIX = "MPFB_"` in
+  `blenderconfigset.py` plus the per-set prefix in `objectproperties/__init__.py`) and skips the
+  config set's default handling. Whichever is used, guard it — these are private-ish entities and
+  an absent property must yield `null`, not an exception.
+- **Mesh assets already have a resolver: `ClothesService.find_clothes_absolute_path(obj)`.** It
+  reads `asset_source`, lowercases `object_type` to use as the asset subdir, and calls
+  `AssetService.find_asset_absolute_path()` — which is exactly the derivation `mhclo_path` needs,
+  for every mesh asset type and not only `Clothes` (the subdir convention is `Eyes` → `eyes`,
+  `Hair` → `hair`, and so on). Use it rather than reassembling the same three steps; if it turns
+  out to mishandle a type, fixing it in MPFB is better than forking it here. It returns `None` when
+  either input is missing, which maps straight onto `mhclo_path: null`.
+- **Skin mhmat: yes, it is deducible — when a skin was actually loaded from one.** This resolves
+  the open question in the request. `HumanService.set_skin()` writes the mhmat as a fragment into
+  `material_source` (`os.path.basename(dirname) + "/" + basename`) on the basemesh, and on the body
+  proxy too when there is one; `HumanService._populate_human_info_with_skin_info()` reads it back
+  as `human_info["skin_mhmat"]`, so this is MPFB's own answer to the same question. Resolve it with
+  `AssetService.find_asset_absolute_path(fragment, "skins")` — see the precedence rule below, which
+  is where a `Proxymeshes` object carrying this property as well is handled. The limits are worth
+  stating in the tool docstring: the property is only written when a skin came from an mhmat, so a
+  default procedural skin leaves it empty; nothing rewrites it if the material is later edited or
+  replaced by hand, so it records *what was loaded*, not necessarily what is on the mesh now. The
+  same caveat applies to `alternative_material`, and to `material_type`, which is the one field in
+  `asset_info` derived from the material actually present rather than from a record of what was
+  loaded — where the two disagree, `material_type` is the one describing reality.
+- **`material_source` comes from two different properties, and each resolves against a different
+  asset subdir.** This is the one place where a single response key is filled from more than one
+  source, so the rule needs to be explicit. In order:
+  1. `material_source` (`MPFB_HUM_material_source`), if set. Resolve it with
+     `AssetService.find_asset_absolute_path(fragment, "skins")`. Only a `Basemesh` or a
+     `Proxymeshes` object ever carries it — MPFB writes it in `HumanService.set_skin()` to the
+     basemesh and, when there is one, the body proxy, and nowhere else. Reading it first on a
+     proxy mirrors `HumanService._populate_human_info_with_skin_info()`, which prefers the proxy
+     over the basemesh precisely because the proxy is what the skin is on.
+  2. Otherwise `alternative_material` (`MPFB_GEN_alternative_material`), if set. Resolve it against
+     **the object type's own subdir**, not `"skins"` —
+     `AssetService.find_asset_absolute_path(fragment, object_type.lower())`, the same subdir
+     convention `find_clothes_absolute_path()` uses. Getting this wrong does not raise; it silently
+     returns `null` for an asset that is installed, which is the failure the fragment/path pairing
+     was meant to make visible and would instead make misleading.
+  3. Otherwise both keys are `null`.
+  The fragments are produced by `AssetService.path_to_fragment()` (or the same two-basename
+  expression inlined), so they are always `"<dirname>/<filename>.mhmat"` and never absolute.
+- **Do not resolve an asset's *default* material.** When `alternative_material` is unset, the mesh
+  asset is using the material named on the `material` line inside its mhclo, which is knowable —
+  `MPFB_OT_Load_Library_Material_Operator._find_default_material()` does it by locating the mhclo
+  and loading it with `Mhclo(...).load(path, only_metadata=True)`. That is a file parse per asset on
+  top of the asset-root walk, for a value the caller can derive itself from `mhclo_path`, and it
+  would make the ordinary case (no alternative material) the expensive one. Report `null` and let
+  the docstring say what `null` means here. If a later effort wants the default material, it
+  belongs behind an explicit argument, and `AssetService.alternative_materials_for_asset()` — which
+  already caches per asset — is the better starting point than the operator's private helper.
+- **`rig_type` is identified, not recorded.** There is no property holding it:
+  `RigService.identify_rig(armature_object)` matches bone names against a table and falls back to
+  `ObjectService.object_is_generated_rigify_rig()` / `object_is_rigify_metarig()`, to a `mixamo`
+  bone-name scan, and finally to `AssetService.get_custom_rigs()`. It always returns a string, never
+  `None` — `"unknown"` is the miss. Call it only on an `ARMATURE`: it dereferences
+  `armature_object.data.bones`, which a mesh does not have. The custom-rig fallback reads JSON files
+  off disk (cached in a module global), so this is another lookup that is cheap on a second call and
+  not on the first.
+- **Deriving `rig_definition_path` from `rig_type`.** MPFB builds the path in
+  `HumanService.add_builtin_rig()`: `LocationService.get_mpfb_data("rigs")`, then subdir `rigify` if
+  the type starts with `rigify.` else `standard`, then `rig.<name>.json` where `<name>` is the type
+  with any `rigify.` prefix stripped. Mirror that, `os.path.isfile()` it, and report `null` rather
+  than a path that does not exist. Three cases have no file to point at and must be `null`, not a
+  guess: `"unknown"`, anything starting with `rigify_generated.` (a generated rig was built by
+  Rigify from a metarig, not loaded from a definition — `RigService.infer_metarig_type_from_generated()`
+  can name the metarig it likely came from, but that is an inference about a *different* object and
+  does not belong in this field), and a rig whose file is simply absent. For a `"custom.<name>"`
+  type the path is not derived at all — take it from the matching entry's `path` key in
+  `AssetService.get_custom_rigs()`.
+- **`material_type` needs a material.** `MaterialService.get_material(obj, 0)` returns `None` for an
+  object with no slots, and `MaterialService.identify_material(None)` answers `"empty"`, so the pair
+  composes without a guard — but `identify_material()` walks the material's node tree, so it is not
+  a property read. It is still local to the object and touches no files, which is why it is in
+  `asset_info` for both mesh families. It is a heuristic, and its own comments say so ("This might
+  give a false positive if someone added a material with a principled node to a MH object"); the
+  tool docstring should not present its answer as authoritative. Only meshes have material slots —
+  do not call it on an armature.
+- **Dispatch on the type family, not on the type string.** Which of the three shapes to build
+  follows `_SKELETON_TYPES` / `_MESH_ASSET_TYPES` / `Basemesh` — reuse the vocabulary read described
+  above rather than writing a second list of type names in the payload. A type MPFB knows about but
+  this list does not (MPFB adds one) should fall through to an empty dict `{}` with the object still
+  reported normally: an unrecognized MakeHuman object is not an error, and `{}` says "no asset
+  questions apply to this type" without claiming any specific answer.
+- **Every value in `asset_info` must survive `strict_json`.** `find_asset_absolute_path()` returns
+  `str` (it goes through `os.path.abspath`), but `AssetService`'s `list_*_assets()` helpers return
+  `pathlib.Path`, and `LocationService`'s path getters have already been caught returning `Path`
+  despite a `-> str` annotation (commit `631989c`, below). Coerce every path with `str()` at the
+  point it enters the response dict rather than trusting an annotation.
+
 ## Affected specifications
 
 - [vision.md](../../specifications/vision.md#target-tool-catalog) — the "Introspection (read-only)"
@@ -229,9 +431,16 @@ throughout, so this matches how a user already thinks about the scene.
     distinct answer. Every later mutating tool will follow it, so it belongs in the standing spec
     rather than in one request.
   - **Reading private module-level constants from MPFB.** FR 001 did this once
-    (`LOWEST_FUNCTIONAL_BLENDER_VERSION`); this effort does it again for the type vocabulary. A
-    second instance makes it a pattern: allowed, via `sys.modules[Service.__module__]`, never via a
-    fresh import, and always with a fallback because the names are private.
+    (`LOWEST_FUNCTIONAL_BLENDER_VERSION`); this effort does it again for the type vocabulary, and a
+    third time for the property entities `asset_info` needs. That makes it a pattern: allowed, via
+    `sys.modules[Service.__module__]`, never via a fresh import, and always with a fallback because
+    the names are private — and it now covers reaching non-`SERVICES` *entities* through a service's
+    module, not only constants.
+  - **How tools report the asset behind an object.** The fragment-plus-absolute-path pairing, the
+    rule that a `*_path` field is absolute or `null`, and the type-varying rather than unioned
+    `asset_info` shape are conventions every later tool that mentions an asset should follow —
+    `mpfb_get_human_summary` and `mpfb_add_asset` most immediately. Worth writing down once the
+    shape has survived contact with a real scene.
 
 ## Tests
 
@@ -242,48 +451,78 @@ both payloads carry real branching:
 - Tool-level, with `send_code` mocked: argument validation (empty/whitespace/non-string `name`,
   empty `object_type`), that an *omitted* `name` is accepted while an *empty* one is rejected,
   that `strict_json=True` is passed, and that the blender_mcp envelope comes back unchanged.
-- Generated-code-level, `exec()`-ing the assembled source against a stubbed `bpy` and a stubbed
-  `ObjectService` injected into `sys.modules`. The stub scene should include, at minimum: a
-  basemesh with a skeleton and two clothes children; an untyped Rigify-looking armature in the
-  same hierarchy; a typed object present in `bpy.data.objects` but absent from the scene; and a
-  plain Blender cube. That covers self-exclusion from `related_objects`, the
-  `related`/`other_related` split, `in_current_scene`, and the untyped-object branch. The stub
-  `bpy.context.view_layer.objects.active` should be exercised both set and `None`, covering
-  `resolved_from: "active_object"` and the no-active-object branch — the latter is the one that
-  crashes on `None.name` if it is missed.
+- Generated-code-level, `exec()`-ing the assembled source against a stubbed `bpy` and stubbed
+  services injected into `sys.modules` — `ObjectService` for the relationship walk, plus
+  `AssetService`, `ClothesService`, `MaterialService`, `RigService` and `LocationService` for
+  `asset_info`. The stub scene should include, at minimum: a basemesh with a skeleton and two
+  clothes children; an untyped Rigify-looking armature in the same hierarchy; a typed object
+  present in `bpy.data.objects` but absent from the scene; and a plain Blender cube. That covers
+  self-exclusion from `related_objects`, the `related`/`other_related` split, `in_current_scene`,
+  and the untyped-object branch. The stub `bpy.context.view_layer.objects.active` should be
+  exercised both set and `None`, covering `resolved_from: "active_object"` and the
+  no-active-object branch — the latter is the one that crashes on `None.name` if it is missed.
 - A test that an unrecognized `object_type` yields `type_recognized: false` with an empty
   `objects` list, since that pairing is the requirement's whole point and is easy to regress into
   a bare empty list.
-
-**This request must not be marked `Done` before a manual verification pass against a running
-Blender.** FR 001 and FR 002 both landed with their verification outstanding, and the first live
-run of `mpfb_get_status` afterwards failed outright on a `pathlib.Path` that no unit test could
-have caught (see [References](#references)). The stubs above assert what we *believe* MPFB
-returns; only a live run shows what it does. At minimum:
-
-1. A scene with one MPFB human: `mpfb_list_objects()` unfiltered lists basemesh, skeleton and any
-   assets; `object_type="Basemesh"` narrows to one.
-2. `mpfb_get_object_info` on that basemesh: skeleton and clothes appear in `related_objects`, the
-   basemesh itself does not, and nothing appears twice.
-3. `mpfb_get_object_info` on a name that does not exist, and on an object outside the current
-   scene — confirming `found: false` versus `found: true, in_current_scene: false`.
-4. `mpfb_get_object_info` with no argument, having clicked the basemesh in the viewport: the same
-   answer as calling it by name, with `resolved_from: "active_object"` and the resolved `name`.
-   Then with everything deselected — `found: false`, `resolved_from: "active_object"`, and a
-   message saying so. This is the check the unit tests can least stand in for, since it depends on
-   whether the add-on's execution context sees the same active object the user does.
-5. A Rigify-rigged character, confirming the generated rig lands in `other_related_objects` with a
-   `rigify_role` rather than vanishing.
-6. An empty scene, and a scene with only non-MPFB objects — both should answer, not fail.
+- `asset_info` shape tests, driven off the same stub scene: that a skeleton gets the rig keys and
+  no mesh keys and vice versa, that an untyped object gets `null` and an
+  `other_related_objects` entry gets no such key at all, and that a type outside the three families
+  falls through to `{}` rather than raising.
+- `asset_info` resolution tests, which are the ones with real branching. For each of the three
+  shapes, exercise all three outcomes with the stub resolver: fragment present and resolving to a
+  path; fragment present and the resolver returning `None` (asset not installed) — asserting the
+  fragment survives in the response while the path is `null`, since that distinction is the reason
+  both fields exist; and no fragment at all.
+- `material_source` precedence and subdir tests, since that key is filled from two properties: a
+  clothes object with only `alternative_material` set, a basemesh with only `material_source` set,
+  and a `Proxymeshes` object carrying **both** — asserting the `MPFB_HUM_` one wins there. Have the
+  stub `find_asset_absolute_path` record the `asset_subdir` it was called with and assert on it:
+  `"skins"` for the `material_source` route and the lowercased object type for the
+  `alternative_material` route. A swap between those two is invisible in the response shape and
+  would only show up as an unresolvable path against a real asset library. Add one asserting a `pathlib.Path` returned by a stub
+  resolver comes out of the payload as a `str`, per commit `631989c`.
+- A test that no resolver is called at all when there is no fragment — a stub whose
+  `find_asset_absolute_path` raises if invoked. The bounded cost claimed in the non-functional
+  requirements is otherwise unverifiable from this side of the socket, and an accidental
+  unconditional walk would be invisible until someone with a large asset library complains.
+- **Live verification against a real Blender is required for this effort**, more than for the
+  relationship walk: every `asset_info` value comes from an MPFB property or helper whose real
+  return type and content the stubs assert nothing about. At minimum, on a character with a skin
+  loaded from an mhmat, at least one mhclo asset, and both a standard and a Rigify rig: check that
+  each path is absolute and exists on disk, that `rig_type` matches the rig actually applied, and
+  that the whole response survives `strict_json`.
 
 ## References
 
 - `../../../mpfb2/src/mpfb/services/objectservice.py` and
   `../../../mpfb2/docs/services/objectservice.md` — the source of every capability above.
   The docs' "Object Type Constants" table is the human-readable version of `_ALL_TYPES`.
-- `../../../mpfb2/src/mpfb/entities/objectproperties/` — where `object_type` actually lives, as a
-  `BlenderConfigSet` with the full prefix `MPFB_GEN_`. Not needed if everything goes through
-  `ObjectService`, but worth knowing when a value looks wrong.
+- `../../../mpfb2/src/mpfb/entities/objectproperties/` — where `object_type`, `asset_source` and
+  `uuid` actually live (`GeneralObjectProperties`, full prefix `MPFB_GEN_`), along with
+  `material_source` (`HumanObjectProperties`, prefix `MPFB_HUM_`). One JSON file per property, each
+  documenting what the property is for; `blenderconfigset.py` is where the `MPFB_` half of the
+  prefix is prepended.
+- `../../../mpfb2/src/mpfb/services/assetservice.py` — `find_asset_absolute_path()` (the
+  fragment → absolute path walk, and its multiple-match tie-breaking), `path_to_fragment()` for the
+  inverse, and `get_custom_rigs()` for `custom.<name>` rig paths.
+- `../../../mpfb2/src/mpfb/services/clothesservice.py` — `find_clothes_absolute_path()`, the
+  ready-made `asset_source` + `object_type` → mhclo path resolver, and `refit_to_basemesh()` for
+  the same derivation done inline.
+- `../../../mpfb2/src/mpfb/services/materialservice.py` — `get_material()` and
+  `identify_material()`, including the comments on where the heuristic can give a false positive.
+- `../../../mpfb2/src/mpfb/ui/apply_assets/assetlibrary/operators/loadlibrarymaterial.py` — the
+  only place `alternative_material` is written outside `HumanService`, and therefore the definition
+  of what that fragment means: `path_to_fragment()` of the chosen mhmat, cleared to `""` when the
+  asset's default material is restored. Its `_find_default_material()` is the mhclo-parsing lookup
+  this request deliberately does not do.
+- `../../../mpfb2/src/mpfb/services/rigservice.py` — `identify_rig()`'s bone-name table and
+  fallbacks, and `infer_metarig_type_from_generated()`.
+- `../../../mpfb2/src/mpfb/services/humanservice.py` — the reference implementation of the same
+  questions: `_populate_human_info_with_skin_info()` and `_populate_human_info_with_bodyparts_info()`
+  read exactly these properties to build a serialized human, `set_skin()` is where
+  `material_source` is written, and `add_builtin_rig()` is where the `rig.<name>.json` path is
+  assembled. Where this request and that code disagree about how a value is derived, that code is
+  right.
 - [FR 001](../done/001-mpfb-get-status/README.md) — the `sys.modules[Service.__module__]` constant
   read, the "absence is an answer, not an error" stance, and the `message` field convention all
   come from there.
