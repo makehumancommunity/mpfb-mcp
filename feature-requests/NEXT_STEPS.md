@@ -34,12 +34,32 @@ introspection tools, and both can now take their subject from FR 003's tools rat
 assuming one is known, but neither has been scoped into a feature request yet. None of the
 efforts below is currently scoped.
 
-## Observability
+## Finding available assets
 
-Logging should be added so that it is possible to see the exact python code sent to blender,
-and the reponses that came back.
+### Finding available rigs
 
-## Get available detail targets
+There should be a tool for retrieving a list of available rigs. The output should include
+rig name, absolute path and (if that is a separate thing) how it should be referred to 
+when requesting that a rig be added via HumanService. Functionality for actually adding
+rigs is out of scope here. The list should include custom rigs.
+
+### Finding and filtering lists of assets from asset subdirs
+
+There need to be tools for finding assets located in asset subdirs. Parts of this matches 
+what can be done via AssetService. It should be possible to:
+
+- Find all assets of a certain type residing in a certain subdir in all asset roots
+- Specify that the list should only match assets with a keyword in their name
+- Specify that the list should only match assets from a certain asset pack
+
+Each item in the returned list should include:
+
+- Asset name
+- Asset makehuman type (ie Hair, Clothes...)
+- Asset fragment (ie what would be suitable to use when adding the asset to the human)
+- Absolute path to the asset
+
+### Get available detail targets
 
 In order to model, the LLM needs to know which targets are available. These come from two
 distinct sources: `targets.json` in the system data directory and the targets installed 
@@ -53,4 +73,8 @@ A new tool should be added for getting information about available targets. It s
 Note that macrodetails/phenotype is a separate question, as that is handled via attributes
 on the basemesh rather than by loading target files specifically.
 
+## Observability
+
+Logging should be added so that it is possible to see the exact python code sent to blender,
+and the reponses that came back.
 
