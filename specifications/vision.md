@@ -140,6 +140,7 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
 
 There are two unrelated projects called "blender mcp": blender lab's implementation (the
 intended backend, at `../../blender_mcp`, which this project piggybacks on) and a separate,
-more feature-rich [community implementation](https://github.com/ahujasid/blender-mcp). Some
+more feature-rich [community implementation](https://github.com/ahujasid/blender-mcp), a local
+clone of which is available at `../../ahujasid-blender-mcp` for reference/comparison. Some
 users may have the latter installed instead of the former. Whether to support both as
 backends — and if so, how mpfb-mcp would detect which one it's talking to — is unresolved.
