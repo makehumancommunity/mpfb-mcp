@@ -258,9 +258,13 @@ duplication) rather than restate the code.
 - **[../makehuman-static-website](../makehuman-static-website)** — likely source for bundled MPFB
   documentation if a `mpfb_search_docs` tool is implemented.
 
-## Open design question
+## Backends
 
 There are two unrelated projects called "blender mcp"; mpfb-mcp piggybacks on blender lab's
-implementation, not the more feature-rich community one some users may have installed
-instead. See [specifications/vision.md](specifications/vision.md#open-design-question-which-blender-mcp)
-for details — whether to support both as backends is unresolved.
+implementation, not the more feature-rich community one some users may have installed instead.
+Supporting **both** is a goal, with blender lab's remaining the reference backend — see
+[specifications/vision.md](specifications/vision.md#resolved-which-blender-mcp-both) for the
+resolution and the shape the second backend would take (an adapter below `send_code()`, since
+the community add-on returns captured stdout rather than the exec namespace's `result` dict).
+Nothing of it is implemented yet; it is listed in
+[feature-requests/NEXT_STEPS.md](feature-requests/NEXT_STEPS.md#second-backend-the-community-blender-mcp).

@@ -136,11 +136,43 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
 - `mpfb_search_docs` — ranked search over bundled MPFB documentation, mirroring how blmcp
   exposes Blender's RST reference. Likely sourced from `../../makehuman-static-website`.
 
-## Open design question: which "blender mcp"?
+## Resolved: which "blender mcp"? Both
 
 There are two unrelated projects called "blender mcp": blender lab's implementation (the
-intended backend, at `../../blender_mcp`, which this project piggybacks on) and a separate,
+primary backend, at `../../blender_mcp`, which this project piggybacks on) and a separate,
 more feature-rich [community implementation](https://github.com/ahujasid/blender-mcp), a local
-clone of which is available at `../../ahujasid-blender-mcp` for reference/comparison. Some
-users may have the latter installed instead of the former. Whether to support both as
-backends — and if so, how mpfb-mcp would detect which one it's talking to — is unresolved.
+clone of which is available at `../../ahujasid-blender-mcp`. Some users have the latter
+installed instead of the former.
+
+**Supporting both as backends is a goal.** blender lab's stays the reference one — it is what
+the tools are written and live-verified against — but a user who already runs the community
+add-on should be able to point mpfb-mcp at it rather than install a second one.
+
+Comparing the two add-ons shows this to be a contained change. They differ in the request shape
+and framing (`{"type": "execute", ..., "strict_json": bool}` with NUL delimiters, against
+`{"type": "execute_code", "params": {...}}` framed by parsing until the JSON is complete), in
+the envelope they answer with, and — the difference that matters — in the *result channel*:
+blender lab's add-on serializes the `result` dict left in the exec namespace, while the
+community one discards the namespace and returns only what the code printed to stdout.
+
+The seam is therefore an adapter *below* `send_code()`, not a second connection module that
+each tool picks between. The adapter translates the transport and the result channel together:
+on the community backend it wraps the assembled program so that the payload's `result` is
+printed as JSON between sentinel markers, and parses it back out into blender lab's envelope
+shape. The markers are required rather than defensive, since MPFB's own `LogService` prints to
+stdout and would otherwise land inside the answer. Tools, payloads and `codegen/` stay
+unchanged, and the convention that a tool returns blender_mcp's envelope as-is holds on both.
+
+Backend selection is explicit configuration, not autodetection: both add-ons default to port
+9876, so the address distinguishes nothing, and no single probe distinguishes them either — a
+NUL-terminated ping leaves the community add-on's parser waiting for the rest of a message,
+while an unterminated one leaves blender lab's doing the same.
+
+Two things are known to be worse on the community backend, and are accepted rather than solved:
+`strict_json` becomes a client-side check inside the wrapper instead of an add-on one, and
+stderr is lost, since its `execute_code` redirects only stdout. Error text is recovered by the
+wrapper, which formats the traceback itself rather than accepting the bare `str(e)` the add-on
+would report.
+
+The work itself is not scoped into a feature request yet; see
+[NEXT_STEPS.md](../feature-requests/NEXT_STEPS.md#second-backend-the-community-blender-mcp).

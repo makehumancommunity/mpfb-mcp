@@ -66,3 +66,13 @@ loadable but invisible in MPFB's own modeling panels. `mpfb_list_targets` report
 Logging should be added so that it is possible to see the exact python code sent to blender,
 and the reponses that came back.
 
+## Second backend: the community "blender mcp"
+
+mpfb-mcp should also run against the community [blender-mcp](https://github.com/ahujasid/blender-mcp)
+add-on, not only blender lab's, so that a user who already has that one installed does not have
+to install a second. This is settled as a goal — see
+[vision.md](../specifications/vision.md#resolved-which-blender-mcp-both) for the resolution and
+for what comparing the two add-ons turned up: the substantive difference is the result channel
+(the exec namespace's `result` dict, against captured stdout), so the seam is a backend adapter
+below `send_code()` that translates transport and result channel together, leaving the tools,
+the payloads and `codegen/` untouched. Not yet scoped into a numbered request.
