@@ -557,50 +557,86 @@ both payloads carry real branching:
 
 ## Verification status
 
-Added when this request was marked `Done`. The implementation landed with its unit tests
-passing, but **the live verification described under [Tests](#tests) was deliberately left out
-of scope and has not been run**. Nothing here has been exercised against a real Blender + MPFB +
-blender_mcp instance, so every documented `asset_info` value rests on reading MPFB's source
-rather than on observation — which this request itself argued is the weakest part of the
-effort, since the stubs assert nothing about MPFB's real return types.
+**Live verification has now been run** (2026-08-29), against Blender 5.1.0 with MPFB 2.0.17
+(`FROM_SOURCE`, from `../mpfb2`) and 108 installed asset packs, driven through the real tool
+callables over the blender_mcp socket. The scene held two rigged, dressed characters
+(`klara-v2`, `lea_v2` — 20 MakeHuman objects between them) plus unrelated set dressing. It
+found one defect, fixed below.
 
-Covered locally instead: `tests/test_list_objects.py` and `tests/test_get_object_info.py`
-execute the generated source against the stubs in `tests/blender_stubs.py`, which reproduce the
-MPFB behaviors the payloads are written around — `""` rather than `None` for an untyped object,
-a non-bool `object_is_any_makehuman_object()`, a `find_related_objects()` that yields the
-subject itself, and a `get_list_of_children()` that walks the whole file. They cover subject
-resolution by name and by active object (including the no-active-object branch), the
-related/other-related split, `in_current_scene` on subject and relative, all three `asset_info`
-shapes and their fall-through, all three resolution outcomes per shape, the `material_source`
-precedence and both asset subdirs, `pathlib.Path` coercion, and that no asset-root walk happens
-without a fragment. That validates the branching, not MPFB's actual return values.
+Everything the original checklist asked for was exercised, and every scene mutation made for
+the test was reverted (object and datablock counts, and the active object, restored; the
+`.blend` was never saved).
 
-Still outstanding:
+### What the live run found
 
-- [ ] `mpfb_list_objects` with no filter, on a scene holding a rigged, dressed character —
-      every MakeHuman object listed, `known_types` populated from MPFB itself, and
-      `type_recognized` true.
-- [ ] `mpfb_list_objects` with `"rig"` — confirm MPFB's substring matching really does return
-      `Subrig` alongside `Skeleton`, since the tool docstring promises exactly that.
-- [ ] `mpfb_get_object_info` with no `name` while an object is selected — `resolved_from:
-      "active_object"` and the right subject. This confirms
-      `bpy.context.view_layer.objects.active` resolves inside the blender_mcp add-on's execution
-      context, which is the one assumption the unit tests cannot approximate at all.
-- [ ] The same with nothing selected — `found: false` with an explanatory `message`, not a
+**Defect: `rigify_role` was reported for an untyped *relative* but never for the *subject*.**
+An agent that found a Rigify rig in some character's `other_related_objects` and then asked
+about it by name got strictly less back than the entry that had pointed it there — plus a
+`message` calling it "a plain Blender object", when it was in fact the armature driving the
+character. Fixed by reporting `rigify_role` on the subject as well, and by giving that case its
+own `message`. Regression coverage is in `SubjectRigifyRoleTests`
+(`tests/test_get_object_info.py`), which fails without the payload change.
+
+**The stated rationale for `rigify_role` was factually wrong.** This request, the tool
+docstring and the stubs all asserted that "MPFB does not tag Rigify's generated rig". It does:
+`rigifyhelpers.py` sets `object_type` to `"Skeleton"` on the generated rig. Confirmed live — a
+generated rig comes back typed `Skeleton` with `rig_type: "rigify_generated.unknown"` and a null
+`rig_definition_path`. The field is still justified, for Rigify rigs built *outside* MPFB, but
+the reason was rewritten, and the fix deliberately does *not* gate `rigify_role` on an absent
+`object_type` — that would have dropped the field from the commonest generated rig there is.
+
+**One checklist item was itself wrong, not the code.** It expected `"rig"` to return `Subrig`
+*alongside* `Skeleton`. `ObjectService.object_is()` tests whether the *requested* name occurs
+within the *stored* one, so `"rig"` matches `Subrig` only — `"rig"` is not a substring of
+`"Skeleton"`. The tool docstring already described this correctly. Live: `"rig"` → 0 objects
+with `type_recognized: true` in a scene whose only rigs are `Skeleton`s; `"mesh"` → both
+basemeshes; `"Basemseh"` → 0 with `type_recognized: false`.
+
+### Checklist
+
+- [x] `mpfb_list_objects` with no filter — 20 objects across both characters, every type
+      (`Basemesh`, `Skeleton`, `Eyes`, `Eyelashes`, `Eyebrows`, `Tongue`, `Teeth`, `Hair`,
+      `Clothes`) correctly identified; `known_types` came back as MPFB's real `_ALL_TYPES`,
+      confirming the `getattr` reach into `objectservice.py` resolves rather than falling back.
+- [x] `mpfb_list_objects` with `"rig"` — behaves correctly; the *expectation* was wrong. See
+      above.
+- [x] `mpfb_get_object_info` with no `name` — `resolved_from: "active_object"` and the right
+      subject. `bpy.context.view_layer.objects.active` does resolve inside the add-on's
+      execution context, which was the one assumption no unit test could approximate.
+- [x] The same with nothing active — `found: false` with the explanatory `message`, no
       traceback.
-- [ ] `mpfb_get_object_info` on a basemesh whose skin was loaded from an mhmat — `material_source`
-      populated and `mhmat_path` an absolute path that exists on disk.
-- [ ] The same on at least one mhclo asset, and on a body proxy if one is fitted — `asset_source`
-      and `mhclo_path` likewise, noting whether the proxy's path really ends `.proxy`, and that a
-      proxy carrying both properties reports the skin rather than the alternative material.
-- [ ] A standard rig and a Rigify-generated rig on the same character — `rig_type` matches the rig
-      actually applied; the standard one resolves a `rig_definition_path` that exists on disk; the
-      generated one reports `null` for it and appears in `other_related_objects` with
-      `rigify_role: "generated_rig"`.
-- [ ] An object present in the `.blend` but not linked into the current scene —
-      `in_current_scene: false`, both as the subject and as somebody's relative.
-- [ ] Every response above survives `strict_json`: nothing MPFB returns leaks a `pathlib.Path`
-      or a Blender object into `result` (the failure mode of commit `631989c`).
-- [ ] A timing check on a large asset library: whether one `mpfb_get_object_info` call, resolving
-      a fragment per relative, is tolerably fast. If it is not, the fallback this request names is
-      an opt-out argument, not moving `asset_info` out of the tool.
+- [x] Basemesh skin — `material_source: "female_normal/female_normal.mhmat"` resolving to an
+      absolute `mhmat_path` that exists on disk.
+- [x] mhclo assets and a body proxy — every `mhclo_path` across both characters exists on disk.
+      A `Proxymeshes` object's path really does end `.proxy`, and a proxy carrying *both*
+      `material_source` and `alternative_material` reports the skin, resolved under `skins`.
+      The `alternative_material` branch was also confirmed against a real asset: `lea_v2.long01`
+      resolves `long01/joepal_long_01_blond.mhmat` under `hair`, matching the
+      `str(asset_type).lower()` subdir MPFB's own `alternativematerialpanel.py` uses.
+- [x] Rigs — a standard rig identified as `default` with a `rig_definition_path` under
+      `rigs/standard/` that exists; a generated Rigify rig reporting `rig_definition_path:
+      null`; and `rigify_role` of `generated_rig`/`metarig` on both. The `custom.` branch was
+      exercised too (`custom.meh` → `data/rigs/meh.json`), which the checklist had not asked
+      for — `AssetService.get_custom_rigs()` exists and returns entries shaped as the payload
+      expects.
+- [x] An object in the `.blend` but not linked into the scene — `in_current_scene: false` both
+      as the subject (with the explanatory clause in `message`) and inside somebody's
+      `related_objects`, and absent from `mpfb_list_objects`.
+- [x] `strict_json` — `mpfb_get_object_info` was run over *all 31* objects in the file with zero
+      failures, so nothing MPFB returns here leaks a `pathlib.Path` or a Blender object into
+      `result`. Note that the add-on additionally requires `result` to be a `dict`; every
+      payload already satisfies this.
+- [x] Timing on a large asset library — with 108 asset packs installed, `mpfb_list_objects`
+      takes ~0.5s and one `mpfb_get_object_info` resolving a fragment per relative takes ~1.3s
+      for a character with 9 relatives. Tolerable; the opt-out argument this request held in
+      reserve is **not** needed, and `asset_info` stays in the tool.
+
+### Still not covered
+
+The Rigify and not-in-scene cases were built by setting the same markers MPFB and Rigify set
+(`rig_id` on the armature data, `rigify_target_rig`, MPFB's `object_type` /
+`asset_source` / `material_source` properties) rather than by running
+`bpy.ops.pose.rigify_generate()` or importing a proxy through MPFB's UI. That exercises every
+branch of the payloads against real MPFB service calls and real asset roots, which is what was
+under test, but it does not prove MPFB writes exactly those markers in exactly those
+situations — only that the payloads read correctly whatever is there.

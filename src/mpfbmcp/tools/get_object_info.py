@@ -76,6 +76,12 @@ def register(mcp: FastMCP) -> None:
             list. False here is not a contradiction between the two tools.
           - `object_type` (MPFB's type, or null for a plain Blender object),
             `blender_type`, `is_makehuman_object`.
+          - `rigify_role`: "generated_rig", "metarig", or null for anything that
+            is neither. Reported whatever the object's type, because MPFB tags
+            the rig it generates through Rigify as a `Skeleton` - so a null
+            `object_type` is not what identifies one. Read alongside
+            `asset_info.rig_type`, which asks the same question of the bone
+            names rather than of Rigify's own marker.
           - `asset_info`: what the object was made from, or null when it has no
             MPFB type. **Its keys depend on the object type** - a skeleton has
             no mhclo, so it has no `mhclo_path` key rather than a null one:
@@ -91,9 +97,10 @@ def register(mcp: FastMCP) -> None:
             subject. A flat list, not a tree; call this tool again on a name to
             walk the structure.
           - `other_related_objects`: relatives carrying no MPFB type, each with
-            a `rigify_role` of "generated_rig", "metarig" or null. MPFB does not
-            tag Rigify's generated rig, so without this a Rigify-driven
-            character would report no rig while one is plainly attached.
+            a `rigify_role` of "generated_rig", "metarig" or null. This is where
+            a Rigify rig built outside MPFB shows up - it is attached to the
+            character and drives it, but carries none of MPFB's properties, so
+            it appears in no other list this server returns.
 
         Reading `asset_info` correctly:
 

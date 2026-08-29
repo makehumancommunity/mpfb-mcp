@@ -221,6 +221,13 @@ def related_entry(blender_object):
 def rigify_role(blender_object):
     # Neither helper returns a bool: the first hands back Rigify's rig_id
     # string, the second a real bool. Only their truthiness is meaningful.
+    #
+    # Asked of the subject as well as of untyped relatives, and deliberately
+    # also of typed ones: MPFB *does* tag the rig it generates through Rigify
+    # (rigifyhelpers.py sets object_type "Skeleton" on it), so restricting this
+    # to untyped objects would drop the field from the commonest generated rig
+    # there is. It complements rig_type rather than repeating it - rig_type is
+    # guessed from bone names, this reads Rigify's own rig_id property.
     if ObjectService.object_is_generated_rigify_rig(blender_object):
         return "generated_rig"
     if ObjectService.object_is_rigify_metarig(blender_object):
@@ -322,10 +329,21 @@ else:
     # file must contain no empty brace pair anywhere, since that is what a
     # substitution point looks like, and nothing is ever substituted into a
     # payload. tests/test_codegen.py enforces it.
+    subject_rigify_role = rigify_role(subject)
+
     message_parts = []
     if subject_type:
         message_parts.append(
             "'" + subject.name + "' is a MakeHuman " + subject_type + " object")
+    elif subject_rigify_role is not None:
+        # Untyped *and* a Rigify rig. Saying only "plain Blender object" here
+        # would be actively wrong: this is very often the armature that actually
+        # drives a MakeHuman character, and an agent told it was plain would
+        # conclude the character has no rig.
+        message_parts.append(
+            "'" + subject.name + "' carries no MPFB object type, but it is a Rigify "
+            + ("generated rig" if subject_rigify_role == "generated_rig" else "metarig")
+            + ", so it may still be what drives a MakeHuman character")
     else:
         message_parts.append(
             "'" + subject.name + "' carries no MPFB object type: it is a plain Blender object")
@@ -348,6 +366,14 @@ else:
         "object_type": subject_type,
         "blender_type": subject.type,
         "is_makehuman_object": bool(subject_type),
+        # Always present, unlike on a relative entry, where it is the untyped
+        # half's substitute for asset_info. The subject shape is a union rather
+        # than a split - object_type and asset_info are reported here whatever
+        # the object is - so omitting this was an asymmetry, not a contract: an
+        # agent that found a Rigify rig in some character's other_related_objects
+        # and then asked about it by name got strictly less back than the entry
+        # that sent it there, and a message calling it a plain Blender object.
+        "rigify_role": subject_rigify_role,
         "asset_info": asset_info_for(subject, subject_type),
         "related_objects": related_objects,
         "other_related_objects": other_related_objects,

@@ -115,8 +115,19 @@ two payload files, and two `register()` calls. The only shared edits were to `te
 which hardcodes the payload list twice. Unit tests grew from 32 to 82, over a shared
 `tests/blender_stubs.py` that reimplements the MPFB behaviors above rather than returning
 convenient values — the stubs are the reason those API corrections surfaced as test failures rather
-than as live surprises. **Landed without the live verification its own Tests section calls for**,
-which for this effort is a larger gap than for FR 001 or FR 002: every `asset_info` value comes
-from an MPFB property or helper whose real content the stubs assert nothing about. The outstanding
-checks are listed under "Verification status" in
+than as live surprises. Landed without the live verification its own Tests section calls for, which
+for this effort was a larger gap than for FR 001 or FR 002: every `asset_info` value comes from an
+MPFB property or helper whose real content the stubs assert nothing about.
+
+**That verification has since been run** against Blender 5.1.0 with MPFB 2.0.17 and 108 asset
+packs, on a scene holding two rigged, dressed characters. Every `asset_info` value the stubs could
+not vouch for checked out against real MPFB — every resolved path exists on disk, and all 31
+objects in the file survive `strict_json`. It found one defect: `rigify_role` was reported for an
+untyped *relative* but never for the *subject*, so an agent that followed a name out of
+`other_related_objects` got less back than the entry that sent it there, under a `message` calling
+a Rigify rig "a plain Blender object". Fixed, with regression coverage in `SubjectRigifyRoleTests`;
+unit tests grew to 89. The run also corrected a premise this request, the tool docstring and the
+stubs all shared — MPFB *does* tag the rig it generates through Rigify, as a `Skeleton` — which is
+why the fix reports `rigify_role` whatever the object's type. Details, including a checklist item
+that was itself wrong rather than the code, are under "Verification status" in
 [the request itself](done/003-object-finding/README.md#verification-status).

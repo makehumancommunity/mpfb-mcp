@@ -129,7 +129,9 @@ class _SceneTestCase(GeneratedCodeTestCase):
         self.shirt = StubObject(
             "Shirt", parent=self.basemesh, object_type="Clothes",
             asset_source="shirt/shirt.mhclo")
-        # Rigify's generated rig, which MPFB does not tag with an object_type.
+        # A Rigify rig built outside MPFB, so it carries no object_type. A rig
+        # MPFB generated itself would be tagged "Skeleton" (rigifyhelpers.py)
+        # and land in related_objects instead - see SubjectRigifyRoleTests.
         self.generated_rig = StubObject(
             "RIG-Human", blender_type="ARMATURE", parent=self.skeleton, rig_id="abc123")
         self.cube = StubObject("Cube")
@@ -205,6 +207,64 @@ class SubjectResolutionTests(_SceneTestCase):
         self.assertFalse(result["is_makehuman_object"])
         self.assertIsNone(result["asset_info"])
         self.assertEqual(result["related_objects"], [])
+
+
+class SubjectRigifyRoleTests(_SceneTestCase):
+    """
+    rigify_role is reported for the subject, not only for untyped relatives.
+
+    Verified against a live Blender: an agent that found a Rigify rig in some
+    character's other_related_objects and then asked about it by name used to
+    get strictly less back than the entry that pointed it there, plus a message
+    calling it a plain Blender object.
+    """
+
+    def test_an_untyped_rigify_rig_reports_its_role_as_the_subject(self) -> None:
+        result = self.info("RIG-Human")
+
+        self.assertEqual(result["rigify_role"], "generated_rig")
+        self.assertIsNone(result["object_type"])
+
+    def test_the_subject_says_what_a_relative_entry_says_about_it(self) -> None:
+        as_relative = self.info("Human")["other_related_objects"][0]
+        as_subject = self.info("RIG-Human")
+
+        self.assertEqual(as_relative["name"], as_subject["name"])
+        self.assertEqual(as_relative["rigify_role"], as_subject["rigify_role"])
+
+    def test_a_metarig_subject_is_classified_as_one(self) -> None:
+        self.generated_rig.rig_id = None
+        self.generated_rig.metarig = True
+
+        self.assertEqual(self.info("RIG-Human")["rigify_role"], "metarig")
+
+    def test_a_typed_rig_still_reports_the_role(self) -> None:
+        # The commonest generated rig there is: MPFB tags the rig it produces
+        # through Rigify as a Skeleton, so gating this on an absent object_type
+        # would drop the field exactly where it is most wanted.
+        self.skeleton.rig_id = "abc123"
+
+        result = self.info("Human.rig")
+
+        self.assertEqual(result["object_type"], "Skeleton")
+        self.assertEqual(result["rigify_role"], "generated_rig")
+
+    def test_ordinary_objects_report_no_role_rather_than_omitting_the_key(self) -> None:
+        for name in ("Human", "Human.rig", "Cube"):
+            with self.subTest(name=name):
+                result = self.info(name)
+
+                self.assertIn("rigify_role", result)
+                self.assertIsNone(result["rigify_role"])
+
+    def test_the_message_does_not_call_a_rigify_rig_a_plain_object(self) -> None:
+        message = self.info("RIG-Human")["message"]
+
+        self.assertIn("Rigify generated rig", message)
+        self.assertNotIn("plain Blender object", message)
+
+    def test_a_genuinely_plain_object_is_still_called_one(self) -> None:
+        self.assertIn("plain Blender object", self.info("Cube")["message"])
 
 
 class RelationshipTests(_SceneTestCase):

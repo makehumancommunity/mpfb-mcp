@@ -60,7 +60,11 @@ tool should get its own feature request when scoped.
   it? **Implemented.** Takes a Blender object name, or the active object when given none, and
   answers rather than fails when neither resolves. Reports the MPFB and Blender types, whether
   the object is linked into the current scene, the asset behind it (`asset_info`), and its
-  MakeHuman and non-MakeHuman relatives.
+  MakeHuman and non-MakeHuman relatives. Also reports a `rigify_role` on the subject and on
+  every untyped relative, since a Rigify rig can drive a character while carrying none of
+  MPFB's own properties. That field is *not* gated on the object lacking an MPFB type: MPFB
+  tags the rig it generates through Rigify as a `Skeleton`, so the commonest generated rig
+  there is would otherwise be the one case that never reported the field.
 - `mpfb_get_human_summary` — for a given/active human: macro details, equipped assets, rig,
   skin, active targets. Takes its subject from `mpfb_list_objects` / `mpfb_get_object_info`
   rather than assuming one is already known.
