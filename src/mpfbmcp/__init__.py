@@ -34,20 +34,22 @@ def main() -> int:
             "on a character this session did not create, find it with "
             "mpfb_list_objects and identify it with mpfb_get_object_info rather "
             "than guessing from Blender object names. To find an asset to apply "
-            "or a rig to add, use mpfb_list_assets or mpfb_list_rigs: both name "
-            "each entry the way the adding function will want it."
+            "or a rig to add, use mpfb_list_assets or mpfb_list_rigs, and "
+            "mpfb_list_targets for the modeling morphs: each names its entries "
+            "the way the acting function will want them."
         ),
     )
 
     from mpfbmcp.tools import (
         create_human, get_object_info, get_status, list_assets, list_objects,
-        list_rigs)
+        list_rigs, list_targets)
     create_human.register(mcp)
     get_object_info.register(mcp)
     get_status.register(mcp)
     list_assets.register(mcp)
     list_objects.register(mcp)
     list_rigs.register(mcp)
+    list_targets.register(mcp)
 
     mcp.run(transport="stdio")
     return 0

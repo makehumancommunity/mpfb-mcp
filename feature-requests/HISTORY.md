@@ -183,7 +183,7 @@ afford to read. So the answer is capped, paged and deterministically ordered, an
 `total_count` and an always-present `truncated` beside `counts_by_subdir`, which is what turns an
 over-broad call from merely truncated into a map of where to look next. That is now standing as
 [How tools bound a large answer](../specifications/architecture.md#how-tools-bound-a-large-answer),
-the convention [FR 006](006-list-targets/README.md) inherits.
+the convention [FR 006](done/006-list-targets/README.md) inherits.
 
 Each entry names the asset three ways, and the live pass sharpened what each is for: `path` is what
 `add_mhclo_asset()` and `set_character_skin()` actually take, `fragment` is the portable identifier
@@ -215,3 +215,55 @@ name to attribute by and must come back `pack: null`; `fragment` is not what the
 take; and `refresh` is far cheaper than feared — 0.015 s, since previews already loaded are not
 loaded again. Details are under "Verification status" in
 [the request itself](done/005-list-assets/README.md#verification-status).
+
+## [FR 006](done/006-list-targets/README.md) — `mpfb_list_targets`
+
+Landed the last of the three "finding available assets" efforts, and the catalogue a later
+`mpfb_set_target_value` has to be able to read: an agent asked to widen a nose had no way to find
+out what the morph is called, or whether the name it guessed exists.
+
+Two sources, answered differently, which is what makes this more than a directory listing. The
+bundled targets are indexed by a ~140 KB `target.json` that no response should carry, so the tool
+reports its *path* — the cheapest possible answer when the client shares a filesystem with Blender —
+and lets a caller page through one section's categories at a time, `opposites` table included. The
+user data directories have no index at all and are scanned per call.
+
+The field the whole tool exists for is `shapekey_name`. A target is addressed by the name of the
+shape key it becomes, derived from the filename by `TargetService.filename_to_shapekey_name()`, and
+that derivation is not the identity function: above 60 characters MPFB *encodes* the name to fit
+Blender's limit. The live pass pinned this end to end — a 76-character target loaded as
+`$yn-$fe-$av-$ca-$un-$pr-$wg-$hg-experiment`, that name read back the value that had been set, and
+the same target addressed by its **filename** read back `0.0`. Silently. That failure is why the
+identifier is its own field, and it sharpened
+[How tools name things that can be added](../specifications/architecture.md#how-tools-name-things-that-can-be-added)
+with a clause about identifiers that usually equal something the caller already has.
+
+The one thing the request had wrong was sections. It assumed a section is either a `target.json` one
+or a synthesized user one; on the verification install **8 of 27 are both**, and MPFB's own panel
+merges a user directory into the bundled section of the same name rather than keeping the two apart.
+So `source` took a third value, `"both"`, and asking for such a section returns its bundled
+categories *and* that directory's user targets.
+
+Two conventions were folded back, both new:
+[Reading MPFB's data files directly](../specifications/architecture.md#reading-mpfbs-data-files-directly)
+— locate through `LocationService`, guard the read, treat a missing file as an answer, and report
+where a large file is rather than what is in it — and
+[A tool may report a fact MPFB's own UI does not show](../specifications/architecture.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show),
+which this tool does twice over: it scans per call, so it sees a target installed since Blender
+started that MPFB's import-time snapshot cannot, and it reports a `*.target.gz` in a user targets
+directory that MPFB's `*.target`-only scan there does not match. Both are real, both were observed
+rather than inferred, and both are in the docstring, because the user will otherwise read the
+discrepancy as the tool being wrong.
+
+Three files added and four shared ones touched. Unit tests grew from 165 to 208, over a real
+temporary target tree — the payload's job is `os.walk()` and `os.listdir()`, so mocking the
+filesystem away would leave nothing under test — plus a new `StubTargetService` reproducing MPFB's
+name encoding rather than only its extension stripping.
+
+**Live verification was run as part of the effort**, against 221 user targets across 27 sections.
+Targets the tool reported were loaded onto a scratch basemesh and their values set and read back,
+and a gzipped target was briefly written into a user targets directory to observe the scan
+asymmetry rather than infer it from the code. Everything was then removed: all twelve datablock
+collections compare identical before and after, the active object was restored, and the `.blend` was
+never saved. No code changed as a result of the live pass. Details are under "Verification status"
+in [the request itself](done/006-list-targets/README.md#verification-status).

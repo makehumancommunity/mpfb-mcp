@@ -95,6 +95,21 @@ tool should get its own feature request when scoped.
   call for a subdir loads a Blender preview per thumbnailed asset, and MPFB's cache is keyed
   by label, so same-named assets in different directories collapse into one entry.
 
+- `mpfb_list_targets` — which modeling targets could be set, and under what name?
+  **Implemented.** Answers from two sources that are different in kind: the bundled targets are
+  indexed by a ~140 KB `target.json` that is far too large to return, so its *path* is reported and
+  its sections are browsable one at a time; the user data directories have no index and are scanned
+  per call. Each user target carries the `shapekey_name` a later `mpfb_set_target_value` must be
+  given — derived by MPFB from the filename, and **not** equal to it once a name passes 60
+  characters, where a caller using the filename addresses nothing at all. Capped and paged (see
+  [How tools bound a large answer](architecture.md#how-tools-bound-a-large-answer)). Reports what
+  the index leaves out (`unindexed_system_target_dirs`), which directories were scanned, and two
+  facts MPFB's own UI does not show: a target installed since Blender started, and a `*.target.gz`
+  in a user targets directory, which MPFB's scan there does not match (`listed_in_mpfb_ui`). A
+  section can be `"system"`, `"user"` or `"both"` — MPFB merges a user directory into a bundled
+  section of the same name rather than keeping the two apart. Macro details and phenotype are not
+  here: those are basemesh attributes rather than target files.
+
 **Creation and modification**
 
 Every tool below except `mpfb_create_human` acts on an object that already exists, and names it
@@ -104,7 +119,9 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   **Implemented**, as a proof of concept covering scale + the macro-detail dict only (not
   `mask_helpers`/`detailed_helpers`/`extra_vertex_groups`/`feet_on_ground`).
 - `mpfb_set_macro_details` — gender/age/weight/muscle/height/proportions via `TargetService`
-- `mpfb_set_target_value` — arbitrary named target
+- `mpfb_set_target_value` — arbitrary named target. Takes its name from `mpfb_list_targets`:
+  the `shapekey_name` of a user target, or a name out of a `target.json` category's `targets`
+  or `opposites`. Not a filename — the two differ for a long name.
 - `mpfb_add_asset` — clothes/proxy via `add_mhclo_asset()`. Takes its `path` (or a `fragment`
   to resolve) and its `asset_type` from `mpfb_list_assets`.
 - `mpfb_set_skin` — via `set_character_skin()`. Takes its `path` from `mpfb_list_assets`'

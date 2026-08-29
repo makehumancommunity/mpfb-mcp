@@ -1,6 +1,6 @@
 # Getting available detail targets
 
-**Status:** Proposed
+**Status:** Done
 
 Modeling a character in MPFB means setting *targets* — named morphs like `l-eye-bag-in` or
 `nose-scale-depth-incr` — and the catalog planned for `mpfb_set_target_value` presupposes that the
@@ -50,12 +50,12 @@ Arguments:
   user-target sections. Omitted means the overview.
 - `name_contains` (optional string) — case-insensitive substring filter on target names, applied to
   both the section listing and the user targets. Not asked for in
-  [NEXT_STEPS.md](../NEXT_STEPS.md), but suggested here as in scope: with over a thousand targets,
+  [NEXT_STEPS.md](../../NEXT_STEPS.md), but suggested here as in scope: with over a thousand targets,
   "find me something to widen the nose" is the actual question, and the alternative is the caller
   pulling whole sections to grep them.
 - `limit` (optional int, default `200`, max `1000`) and `offset` (optional int, default `0`) — the
-  paging convention [FR 005](../done/005-list-assets/README.md) established, now standing as
-  [How tools bound a large answer](../../specifications/architecture.md#how-tools-bound-a-large-answer).
+  paging convention [FR 005](../005-list-assets/README.md) established, now standing as
+  [How tools bound a large answer](../../../specifications/architecture.md#how-tools-bound-a-large-answer).
   Follow it rather than re-deciding it: `total_count` counted before the cap, `truncated` always
   present, `offset`/`limit` echoed, and the listing sorted before it is paged.
 
@@ -117,7 +117,7 @@ target file contents, which are vertex-offset data of no use to a caller.
 ## Non-functional requirements
 
 - **Read-only and side-effect-free.** Directory scans and one JSON read. Unlike
-  [FR 005](../done/005-list-assets/README.md), nothing here populates an MPFB cache or loads a Blender
+  [FR 005](../005-list-assets/README.md), nothing here populates an MPFB cache or loads a Blender
   preview, so this tool is genuinely side-effect-free and needs no `refresh` argument.
 - **Bounded response size.** ~140 KB of index, over a thousand bundled targets and an unbounded
   number of user ones. The overview is small by construction; everything else is capped and paged,
@@ -135,13 +135,13 @@ target file contents, which are vertex-offset data of no use to a caller.
 
 - One tool module `src/mpfbmcp/tools/list_targets.py`, one payload
   `src/mpfbmcp/codegen/payloads/list_targets.py`, one `register()` call in
-  [`__init__.py`](../../src/mpfbmcp/__init__.py).
+  [`__init__.py`](../../../src/mpfbmcp/__init__.py).
 - **Use the raising bootstrap** (`bootstrap="raising"`). `LocationService`, `AssetService` and
   `TargetService` are all in the `SERVICES` dict.
 - **Do not import `mpfb.ui.model._modelsubpanels`, even though it does exactly this scan.** Its
   scan runs at *module level*, so its results are a snapshot from when Blender started, and
   importing MPFB submodules is forbidden by
-  [architecture.md](../../specifications/architecture.md#never-import-mpfb-submodules-directly)
+  [architecture.md](../../../specifications/architecture.md#never-import-mpfb-submodules-directly)
   precisely because of import-time side effects like this one. Reimplement the scan in the payload.
   The module remains the reference for *what* to scan — read it, follow it, do not import it.
 - **The three user-target locations, and their asymmetry.** MPFB's panel builds its list from:
@@ -170,7 +170,7 @@ target file contents, which are vertex-offset data of no use to a caller.
   the same, guarded — report `target_json_exists: false` and an explanatory `message` rather than
   raising, so a broken or missing install is an answer.
 - **Pitfall — the file is `target.json`, singular.**
-  [NEXT_STEPS.md](../NEXT_STEPS.md) calls it `targets.json`; the file on disk and every reference in
+  [NEXT_STEPS.md](../../NEXT_STEPS.md) calls it `targets.json`; the file on disk and every reference in
   MPFB is `target.json`, inside the `targets/` directory. Easy to get wrong, and the failure mode is
   a tool that reports the index as missing on a perfectly good install.
 - **Pitfall — `target.json` is not a complete list of the bundled targets.** It has 22 sections;
@@ -190,7 +190,7 @@ target file contents, which are vertex-offset data of no use to a caller.
   asset items — so this is the most likely place in the three new tools for a `Path` to reach
   `strict_json` and take the response down.
 - Input validation, per
-  [Validate before crossing the socket](../../specifications/architecture.md#validate-before-crossing-the-socket):
+  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket):
   reject a non-string or empty/whitespace-only `section` or `name_contains`, and a `limit`/`offset`
   that is not a non-negative int. Do **not** validate `section` against a vocabulary held here —
   the sections are partly synthesized from the user's own directories and cannot be known on this
@@ -200,26 +200,26 @@ target file contents, which are vertex-offset data of no use to a caller.
 
 ## Affected specifications
 
-- [vision.md](../../specifications/vision.md#target-tool-catalog) — the "Introspection (read-only)"
+- [vision.md](../../../specifications/vision.md#target-tool-catalog) — the "Introspection (read-only)"
   list has no target-listing entry. Add `mpfb_list_targets` and mark it **Implemented** when this
   lands. The `mpfb_set_target_value` entry ("arbitrary named target") should be amended to say the
   name it takes is the `shapekey_name` this tool reports, not a filename.
-- [architecture.md](../../specifications/architecture.md) — one convention to *follow* and two
+- [architecture.md](../../../specifications/architecture.md) — one convention to *follow* and two
   candidate additions.
-  - **Already standing, since [FR 004](../done/004-list-rigs/README.md) landed:**
-    [How tools name things that can be added](../../specifications/architecture.md#how-tools-name-things-that-can-be-added).
+  - **Already standing, since [FR 004](../004-list-rigs/README.md) landed:**
+    [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added).
     `shapekey_name` is this tool's identifier under that convention, consumed by
     `mpfb_set_target_value`. Its last clause is the one to read closely here: a catalogue vocabulary
     and an identification vocabulary overlap without matching, which is exactly the relationship
     between a target's `shapekey_name` and its filename.
   - **The capped-and-paged response convention. Decided and already standing**, since
-    [FR 005](../done/005-list-assets/README.md) landed first:
-    [How tools bound a large answer](../../specifications/architecture.md#how-tools-bound-a-large-answer).
+    [FR 005](../005-list-assets/README.md) landed first:
+    [How tools bound a large answer](../../../specifications/architecture.md#how-tools-bound-a-large-answer).
     Follow it; nothing about it needs restating here. Note its "a filtered call still reports what
     it filtered out of" clause, which for this tool means the per-section counts rather than
     FR 005's `counts_by_subdir`.
   - **Also standing since FR 005:**
-    [How tools report a derived rather than recorded fact](../../specifications/architecture.md#how-tools-report-a-derived-rather-than-recorded-fact).
+    [How tools report a derived rather than recorded fact](../../../specifications/architecture.md#how-tools-report-a-derived-rather-than-recorded-fact).
     Worth reading against `shapekey_name`, which is derived from a filename by a convention rather
     than recorded anywhere, and against `listed_in_mpfb_ui`.
   - **Reading MPFB's data files directly.** This is the first tool to read a bundled *data* file
@@ -233,9 +233,9 @@ target file contents, which are vertex-offset data of no use to a caller.
 
 ## Tests
 
-Two-layer, as in [tests/test_get_status.py](../../tests/test_get_status.py) and FR 003's tests:
+Two-layer, as in [tests/test_get_status.py](../../../tests/test_get_status.py) and FR 003's tests:
 argument validation with `mpfbmcp.tools.list_targets.send_code` mocked, then the generated source
-`exec()`d against stubs in [tests/blender_stubs.py](../../tests/blender_stubs.py).
+`exec()`d against stubs in [tests/blender_stubs.py](../../../tests/blender_stubs.py).
 
 The stubs need a temp-directory tree rather than only fake services, since most of this payload is
 filesystem logic:
@@ -266,6 +266,104 @@ accepts on a real basemesh — the single most important check here, since the w
 own install operator; and that the `.target.gz` asymmetry is real rather than an artifact of
 reading the code. Record the outcome in a `## Verification status` section here, as FR 001–003 do.
 
+## Verification status
+
+**Implemented and live-verified** (2026-08-29), against the Blender instance running MPFB
+`FROM_SOURCE` out of `../mpfb2`, driven through the real tool callable over the blender_mcp socket.
+The install is a well-populated one for this purpose: 22 bundled sections plus 12 user target
+directories holding 212 `.target` files, and 9 more in the user `custom` directory — 221 user
+targets in all.
+
+Every scene mutation made for the test was reverted. A scratch basemesh was created, four targets
+loaded onto it and their values set, and then every datablock that had appeared was removed and the
+file purged of orphans, compared against a snapshot taken first. All twelve collections — objects,
+meshes, materials, images, node groups, armatures, actions, shape keys, collections, textures,
+brushes, worlds — compare **identical** before and after, the active object was restored,
+`bpy.data.is_dirty` was `false` throughout, and the `.blend` was never saved. Unlike
+[FR 005](../005-list-assets/README.md) there is nothing that *could not* be reverted: this tool
+populates no MPFB cache and loads no preview.
+
+### What changed against this request
+
+**A section can be both a system and a user section, and MPFB merges the two.** This request says
+`source` is `"system"` for a `target.json` section and `"user"` for a synthesized one. On this
+install **8 of 27 sections are both** — `arms`, `breast`, `cheek`, `chin`, `ears`, `hands`, `neck`,
+`nose` all exist as bundled sections *and* as user target directories — and `_modelsubpanels.py`
+appends the user categories into the existing section (`if dirn not in _sections`) rather than
+making a second one. Two same-named entries would also make `section` ambiguous as an argument.
+So the response reports **one entry per section name**, with `source` taking a third value
+`"both"`, and carries `category_count` and `target_count` side by side. Asking for such a section
+returns its bundled `categories` *and* the user targets in the directory of the same name, both
+filtered by `name_contains`.
+
+**`filename_to_shapekey_name()`'s `macrodetail` default is already `False`, not `None`.** This
+request says to pass it explicitly because "the default `None` triggers a path sniff". The path
+sniff exists, but only when `None` is passed deliberately; the declared default is `False`. Passing
+it explicitly is still right — it documents that macro details are out of scope — and the argument
+is **keyword-only**, which is the part that would actually break a payload passing it positionally.
+
+**`measure` has no directory, and `_images` has no targets.** Both are real, and both are handled by
+construction rather than by name: the unindexed diff counts target *files* under each directory, so
+`_images` drops out at zero, and a section is never assumed to have a directory. Confirmed live —
+`measure` comes back `source: "system"`, `category_count: 0`, and `_images` appears nowhere.
+
+**`target.json`'s section labels are just the section names.** The request specifies `label` per
+section, and it is reported, but on this install every bundled label is the lowercase section name
+(`"arms"`, not `"Arms"`). The field is kept because it is MPFB's own, not because it adds anything
+today. Category labels are likewise equal to category names.
+
+**Nothing else in the request needed changing**, and no code changed as a result of the live pass.
+
+### Checklist
+
+- [x] `target_json_path` resolves to `<mpfb data>/targets/target.json` — singular — parses, and
+      yields the section/category/`opposites` shape described. 22 bundled sections, of which
+      `measure` has zero categories.
+- [x] The section overview is 27 entries: 14 `"system"`, 5 `"user"` (`animal`, `cartoon`, `custom`,
+      `faceunits`, `visemes`) and 8 `"both"`. Present regardless of the `section` argument.
+- [x] `unindexed_system_target_dirs` is computed by diffing, and reports exactly `asym` (62) and
+      `expression` (102). `macrodetails` (348) is excluded as out of scope and `_images` falls out
+      on its zero count, neither by a hardcoded name.
+- [x] **`shapekey_name` is a name `TargetService` actually accepts.** Three user targets from three
+      different sections were loaded onto a scratch basemesh with `load_target()`: in each case the
+      shape key created was **string-equal** to the `shapekey_name` this tool had reported, and
+      `set_target_value()` / `get_target_value()` round-tripped `0.75` on it. A made-up name read
+      back `0.0`, so the check is not vacuous.
+- [x] **The >60-character encoding is real and `name` genuinely does not work.** A 76-character
+      target loaded as `$yn-$fe-$av-$ca-$un-$pr-$wg-$hg-experiment`; setting that name read back
+      `0.5`, while reading the same target by its *filename* read back `0.0` — silently, which is
+      the failure `shapekey_name` exists to prevent. The same string comes back from
+      `filename_to_shapekey_name()` given a path that does not exist, so the derivation needs no
+      file. The basemesh's own macro-detail keys (`$md-$ca-$fe-$yn`) are encoded the same way.
+- [x] Targets installed through MPFB's own install operator are found: all 9 files in
+      `<user data>/custom` are listed in the synthesized `custom` section, and one of them was among
+      the three loaded above.
+- [x] **The `.target.gz` asymmetry was observed, not inferred.** A gzipped target was written into
+      `<user data>/targets/animal/`; MPFB's own `*.target` scan of that tree did not see it (212
+      files, unchanged) while the `*.target.gz` scan did, and the tool listed it with
+      `listed_in_mpfb_ui: false`. It also loaded onto the basemesh and took a value, confirming the
+      flag means "invisible in MPFB's panels", not "unusable". The file was then deleted and the
+      directory listing compared identical.
+- [x] The same probe confirms the **scan is more current than MPFB's UI**: the file appeared in the
+      tool's answer without restarting Blender, which is precisely what MPFB's import-time snapshot
+      cannot do.
+- [x] A misspelled section (`armz` → `section_recognized: false`), an empty system section
+      (`measure` → recognized, `categories: []`), and a user-only section (`visemes` → recognized,
+      `categories: null`) are three distinguishable answers. `null` and `[]` are different claims and
+      stay so.
+- [x] Paging over the real 221-entry listing: three pages of 100 concatenate to exactly the unpaged
+      listing, in the same order. An offset past the end answers rather than fails. `truncated` is
+      true on a middle *and* a final page, matching FR 005's convention that it describes the
+      matched set rather than the remainder.
+- [x] Filters: `name_contains` case-insensitive over target names and `shapekey_name`, and over
+      category names *and the target names inside a category* — `"nose-scale-depth-incr"` finds the
+      category that sets it. Combines with `section` by AND, including across a merged section,
+      where it narrows the categories and the user targets together.
+- [x] Whole response survives `strict_json` with real data: 54 KB for all 221 entries, every `path`
+      a `str` despite `find_asset_files_matching_pattern()` handing back `pathlib.Path`.
+- [x] Cost: 4.2 s cold, 1.26 s warm, against FR 005's ~1.0 s socket round-trip baseline — so roughly
+      0.3 s of actual work, and no cache or preview side effect to pay for once.
+
 ## References
 
 - MPFB `services/targetservice.py` — `filename_to_shapekey_name()` and `encode_shapekey_name()`
@@ -280,6 +378,6 @@ reading the code. Record the outcome in a `## Verification status` section here,
   the import-time snapshot this tool deliberately does not inherit.
 - MPFB `data/targets/` — `target.json` and the sibling directories, including the unindexed `asym`
   and `expression` and the out-of-scope `macrodetails`.
-- [../../../extra-targets](../../../extra-targets) — generates viseme and ARKit face-unit target
+- [../../../../extra-targets](../../../../extra-targets) — generates viseme and ARKit face-unit target
   packs intended to be installed into the user data directory, and is therefore the most likely
   real-world source of the user targets this tool lists.

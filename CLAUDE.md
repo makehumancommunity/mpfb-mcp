@@ -24,14 +24,14 @@ efforts; `HISTORY.md` is the log of what has landed.
 
 ## Project status
 
-Proof of concept. Six tools are implemented: `mpfb_create_human`, wrapping MPFB's
+Proof of concept. Seven tools are implemented: `mpfb_create_human`, wrapping MPFB's
 `HumanService.create_human()`; `mpfb_get_status`, reporting whether MPFB is present, initialized
 and how it is configured; the object-finding pair `mpfb_list_objects` and
 `mpfb_get_object_info`, which is how every later tool is meant to name the object it acts on; and
-two catalogue tools, `mpfb_list_rigs` and `mpfb_list_assets` — what could be *added*, rather than
-what is already there, each entry named by the identifier the adding function will want.
-`mpfb_list_assets` is also the first tool whose answer does not fit, so it is filtered, capped and
-paged. See
+three catalogue tools, `mpfb_list_rigs`, `mpfb_list_assets` and `mpfb_list_targets` — what could be
+*added*, rather than what is already there, each entry named by the identifier the adding function
+will want. `mpfb_list_assets` is also the first tool whose answer does not fit, so it is filtered,
+capped and paged, a convention `mpfb_list_targets` inherits. See
 [specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's planned
 beyond them, and [feature-requests/](feature-requests/) for work in progress.
 
@@ -150,6 +150,15 @@ mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP
   cannot say — which pack an asset came from, derived from a directory-name convention and flagged
   when two packs claim it, and the difference between the `path` an adding function takes and the
   `fragment` MPFB records on the object it produces.
+  `tools/list_targets.py` is the same shape minus `refresh` — it is the one catalogue tool that is
+  genuinely side-effect-free, populating no MPFB cache and loading no preview — and it deliberately
+  does not validate `section` against a vocabulary, since half the sections are synthesized from the
+  user's own directories and could not be known here even in principle. Its payload holds the two
+  things the request exists for: `shapekey_name`, taken from
+  `TargetService.filename_to_shapekey_name()` rather than derived locally, because a name over 60
+  characters is encoded and a caller using the filename addresses nothing *silently*; and the
+  reimplementation (never the import) of `mpfb.ui.model._modelsubpanels`' user-target scan, which is
+  what lets the tool see a target installed since Blender started.
 - **[__init__.py](src/mpfbmcp/__init__.py)** — `main()`: builds the `FastMCP` server, calls each
   tool module's `register()`, runs over stdio. Together with a tool module and a payload file,
   this `register()` call is the *whole* of what adding a tool touches — no shared
@@ -203,6 +212,16 @@ this side of the socket:
   asymmetries a real MPFB install has — a rig with no weights file of its own, a weights file with
   no rig, a rig absent from the UI enum — because each one is a branch the payload exists to get
   right.
+- [tests/test_list_targets.py](tests/test_list_targets.py) — the same two layers, over a real
+  `tempfile` target tree for the same reason as `test_list_rigs.py`: this payload's job is
+  `os.walk()` and `os.listdir()`. The tree carries the cases the payload exists for — a section name
+  present in *both* the bundled index and a user directory (MPFB merges those), a section with no
+  categories, bundled directories with no section, a directory with no targets, a `.target.gz` where
+  MPFB's own scan matches only `*.target`, a target reachable by two scans at once, and a name long
+  enough to be encoded. The stub `TargetService.filename_to_shapekey_name()` reproduces MPFB's
+  encoding table and not only its extension stripping; reproducing the easy half alone would make
+  the test pass while hiding the bug it exists to catch. `find_asset_files_matching_pattern()` hands
+  back `pathlib.Path`, as the real one does, so the payload's `str()` coercion is under test.
 - [tests/test_list_assets.py](tests/test_list_assets.py) — the same two layers, and the opposite
   choice about the filesystem: this payload asks `AssetService` rather than walking the disk, so
   what needs reproducing is that service. `blender_stubs.py`'s `get_asset_list()` therefore builds

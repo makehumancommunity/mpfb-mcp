@@ -4,9 +4,10 @@
 Stand-ins for Blender and MPFB, for executing generated payloads locally.
 
 The payloads for ``mpfb_list_objects``, ``mpfb_get_object_info``,
-``mpfb_list_rigs`` and ``mpfb_list_assets`` carry real branching - type
-filtering, relationship walking, three asset_info shapes, a weights fallback
-walk, filtering and paging over an asset library - so they are worth running,
+``mpfb_list_rigs``, ``mpfb_list_assets`` and ``mpfb_list_targets`` carry real
+branching - type filtering, relationship walking, three asset_info shapes, a
+weights fallback walk, filtering and paging over an asset library, a two-source
+target scan - so they are worth running,
 and they can only be run against stubs: MPFB is reachable only from inside
 Blender (see specifications/architecture.md). This module is shared by those
 tools' test modules because they need the same stub scene and services; it holds
@@ -32,6 +33,13 @@ reason the payload is written the way it is:
   something JSON cannot encode.
 - ``get_asset_roots()`` reports fewer roots than ``get_available_data_roots()``,
   which is the difference the asset tool exists to report.
+- ``find_asset_files_matching_pattern()`` really walks the disk and hands back
+  ``pathlib.Path`` objects, which is what the target payload's ``str()``
+  coercion exists for.
+- ``filename_to_shapekey_name()`` strips the extensions *and* encodes a name
+  over 60 characters, so ``shapekey_name`` provably differs from the filename
+  for a long target. Reproducing only the stripping would make the test pass
+  while hiding the bug it exists to catch.
 
 What they cannot do is tell us anything about the values real MPFB returns;
 that remains a manual check against a running Blender.
@@ -45,10 +53,12 @@ __all__ = (
     "StubMaterial",
     "StubObject",
     "StubSystemService",
+    "StubTargetService",
 )
 
 import os
 import pathlib
+import re
 import sys
 import types
 import unittest
@@ -333,6 +343,22 @@ class StubAssetService:
         return asset_list
 
     @staticmethod
+    def find_asset_files_matching_pattern(asset_roots, pattern="*.mhclo"):
+        # A real rglob over real directories, and a list of pathlib.Path - both
+        # as MPFB does it. The Path return type is the point: the target payload
+        # handles these directly rather than through the cached asset items, so
+        # a forgotten str() fails strict_json for real only if the stub keeps
+        # the type.
+        found = []
+        for root in asset_roots:
+            if str(root) == "/":
+                raise IOError("Refusing to scan entire HD for assets")
+            for path in pathlib.Path(str(root)).rglob(pattern):
+                if os.path.isfile(path):
+                    found.append(path)
+        return found
+
+    @staticmethod
     def update_all_asset_lists():
         StubAssetService.update_all_calls += 1
 
@@ -444,6 +470,61 @@ class StubSystemService:
         return StubSystemService.rigify_available
 
 
+# MPFB's real _SHAPEKEY_ENCODING table, from targetservice.py. Only these
+# sixteen words are ever substituted, so a long name containing none of them
+# encodes to itself - which is why the test fixture's long target is named with
+# words that appear here.
+_SHAPEKEY_ENCODING = [
+    ["macrodetail", "$md"],
+    ["female", "$fe"],
+    ["male", "$ma"],
+    ["caucasian", "$ca"],
+    ["asian", "$as"],
+    ["african", "$af"],
+    ["average", "$av"],
+    ["weight", "$wg"],
+    ["height", "$hg"],
+    ["muscle", "$mu"],
+    ["proportions", "$pr"],
+    ["firmness", "$fi"],
+    ["ideal", "$id"],
+    ["uncommon", "$un"],
+    ["young", "$yn"],
+    ["child", "$ch"],
+]
+
+
+class StubTargetService:
+    """Reproduces filename_to_shapekey_name(), encoding half included."""
+
+    calls = []
+
+    @staticmethod
+    def encode_shapekey_name(original_name):
+        name = str(original_name)
+        for code in _SHAPEKEY_ENCODING:
+            name = name.replace(code[0], code[1])
+        return name
+
+    @staticmethod
+    def filename_to_shapekey_name(filename, *, macrodetail=False, encode_name=None):
+        # Keyword-only, exactly as MPFB declares it: a payload passing
+        # macrodetail positionally would fail here rather than in Blender.
+        StubTargetService.calls.append((str(filename), macrodetail, encode_name))
+        name = os.path.basename(str(filename))
+        name = re.sub(r"\.gz$", "", name, flags=re.IGNORECASE)
+        name = re.sub(r"\.p?target$", "", name, flags=re.IGNORECASE)
+        if macrodetail:
+            name = "macrodetail-" + name
+            if encode_name is None:
+                encode_name = True
+        if encode_name is None and len(name) > 60:
+            encode_name = True
+        if encode_name:
+            name = StubTargetService.encode_shapekey_name(name)
+        return name
+
+
 class StubHumanService:
     """Present only so HumanObjectProperties can be reached off its module."""
 
@@ -455,6 +536,7 @@ _SERVICES = {
     "MaterialService": StubMaterialService,
     "RigService": StubRigService,
     "LocationService": StubLocationService,
+    "TargetService": StubTargetService,
     "HumanService": StubHumanService,
     "SystemService": StubSystemService,
 }
@@ -512,6 +594,7 @@ class GeneratedCodeTestCase(unittest.TestCase):
         StubAssetService.asset_list_calls = []
         StubAssetService.update_all_calls = 0
         StubAssetService.packs = dict()
+        StubTargetService.calls = []
         StubLocationService.mpfb_data = "/nonexistent-mpfb-data"
         StubLocationService.mpfb_root = pathlib.Path("/nonexistent-mpfb-root")
         StubLocationService.user_data = "/nonexistent-user-data"

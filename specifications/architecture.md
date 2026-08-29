@@ -233,7 +233,11 @@ naming something that already exists. A *catalogue* tool — one listing what co
   or a filename the caller must transform. A rig is *called* `human` and *added* as
   `rigify.human`; a custom one is added as `custom.my_rig`. Any part of that string the caller has
   to assemble is a part they can assemble wrongly, and reassembling it is precisely the guesswork a
-  catalogue exists to remove.
+  catalogue exists to remove. The sharpest case is `mpfb_list_targets`' `shapekey_name`, which
+  equals the target's filename for most targets and, above 60 characters, does not — and addressing
+  a target by the wrong one of the two does not fail, it reads back `0.0`. Where an identifier
+  *usually* equals something the caller already has, report it anyway: the exceptions are exactly
+  where a caller would not think to look.
 - **An entry may need more than one identifier, and the portable one is not always the one the
   function takes.** `HumanService.add_mhclo_asset()` takes an absolute *path*, while the value MPFB
   records on the resulting object, and the one that survives a move to another machine, is the
@@ -311,6 +315,42 @@ the asset's containing directory name against the asset names in the installed p
   asset lying directly in an asset root has no directory of its own to key on, and pack metadata
   lives only under the user data root, so an asset under another root cannot be attributed even when
   it did come from a pack. Both are cases to detect and report as `null`, not cases to guess at.
+
+## Reading MPFB's data files directly
+
+Not everything a tool needs is behind a service. `mpfb_list_targets` reports `target.json`, the
+bundled index of modeling targets, which MPFB has no accessor for at all — its own consumers build
+the path and `json.load()` it. Where a tool has to read a bundled data file, three rules:
+
+- **Locate it through `LocationService`, never by assembling a path from a module's location.**
+  `get_mpfb_data("targets")` is the only thing that knows where an extension install put its data;
+  a path derived from `__file__` or from the package name is a guess that breaks on the next
+  install method.
+- **Guard the read, and treat a missing or unparsable file as an answer.** A broken install is one
+  of the things a tool is for reporting, so it comes back as `target_json_exists: false` plus an
+  explanatory message and whatever else the tool could still gather — not as a failed call. This is
+  the same rule as `mpfb_get_status`' three-state classification, applied to a file.
+- **Report where it is rather than what is in it, when it is large.** `target.json` is ~140 KB, far
+  more than a response should carry, and a client sharing a filesystem with Blender can parse it
+  itself. Reporting the path, an overview, and a way to page through the contents is strictly more
+  useful than truncating the file.
+
+## A tool may report a fact MPFB's own UI does not show
+
+Where a tool's answer can legitimately disagree with what the user sees in Blender, **the docstring
+must say so**, or the discrepancy will be read as the tool being wrong. Two of these turn up in
+`mpfb_list_targets`, and both are worth reporting rather than suppressing:
+
+- **The tool is more current than MPFB.** MPFB's modeling panels build their target list at *module
+  import time*, so they only ever show what existed when Blender started. A tool that scans per call
+  reports a target installed since — which is correct, and is a difference the user will notice.
+- **The tool is less selective than MPFB.** MPFB's scan of `<user data>/targets/` matches only
+  `*.target`, so a `*.target.gz` sitting there is on disk and loadable but absent from its panels.
+  Report it, with a field saying which ones MPFB will show. Silently matching MPFB's narrower
+  behavior would hide a real file; reporting it without the flag would look like a bug here.
+
+Prefer describing what is actually on disk, and label the part MPFB will not show — rather than
+either papering over the difference or quietly inheriting the limitation.
 
 ## Response shape
 
