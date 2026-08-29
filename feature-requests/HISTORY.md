@@ -167,3 +167,51 @@ sharper justification for `add_function` than the request had — `add_custom_ri
 characters from whatever it is given, so a built-in name comes back missing under a name that never
 existed. Details, and three smaller corrections to the request, are under "Verification status" in
 [the request itself](done/004-list-rigs/README.md#verification-status).
+
+## [FR 005](done/005-list-assets/README.md) — `mpfb_list_assets`
+
+Landed the second of the three "finding available assets" efforts, and the answer to the question
+FR 003 left inverted: not "what is this object made from" but "what could I put on this character".
+One tool listing the assets installed under every subdir in MPFB's own `ASSET_LIBRARY_SECTIONS` —
+proxymeshes, skins, ink layers, eyes, eyebrows, eyelashes, hair, teeth, tongue, clothes and poses —
+filtered by subdir, by a substring of the name or label, and by asset pack, with the filters
+combining and every argument optional.
+
+It is a *filtering* tool rather than a listing one because the library does not fit: the install it
+was verified against holds 730 assets, and an unfiltered listing is not something an agent can
+afford to read. So the answer is capped, paged and deterministically ordered, and reports
+`total_count` and an always-present `truncated` beside `counts_by_subdir`, which is what turns an
+over-broad call from merely truncated into a map of where to look next. That is now standing as
+[How tools bound a large answer](../specifications/architecture.md#how-tools-bound-a-large-answer),
+the convention [FR 006](006-list-targets/README.md) inherits.
+
+Each entry names the asset three ways, and the live pass sharpened what each is for: `path` is what
+`add_mhclo_asset()` and `set_character_skin()` actually take, `fragment` is the portable identifier
+MPFB writes onto the resulting object as `asset_source` — confirmed string-equal for every asset
+added — and `object_type` doubles as `add_mhclo_asset()`'s `asset_type` argument, which defaults to
+`"Clothes"` and so silently turns hair into clothes when omitted. FR 004's
+[naming convention](../specifications/architecture.md#how-tools-name-things-that-can-be-added) grew
+a clause for that.
+
+`pack` is the project's first *derived* field: MPFB records no link from an installed file back to
+the pack that installed it, so the attribution is a match of the asset's containing directory name
+against the installed packs' metadata. That earned the second new convention,
+[How tools report a derived rather than recorded fact](../specifications/architecture.md#how-tools-report-a-derived-rather-than-recorded-fact),
+and the live numbers are why: 9% of this install's assets are claimed by more than one pack, so
+`pack_ambiguous` is ordinary rather than rare, and the packs' own `type` metadata cannot break the
+tie.
+
+Three files added and four shared ones touched. Unit tests grew from 129 to 165, over stubs that
+now reproduce `get_asset_list()`'s item building quirk for quirk — keyed by label, with a `thumb`
+value JSON cannot encode — so the cache's under-reporting is pinned by a test rather than only
+described.
+
+**Live verification was run as part of the effort.** Assets the tool reported were applied to a
+scratch basemesh through both adding functions and then removed, with all nine datablock
+collections comparing identical before and after and the `.blend` never saved. It corrected four
+things the request had assumed: the pack filter had to match *any* claiming pack, or an installed
+asset in two packs is reported absent; an asset lying directly in an asset root has no directory
+name to attribute by and must come back `pack: null`; `fragment` is not what the adding functions
+take; and `refresh` is far cheaper than feared — 0.015 s, since previews already loaded are not
+loaded again. Details are under "Verification status" in
+[the request itself](done/005-list-assets/README.md#verification-status).

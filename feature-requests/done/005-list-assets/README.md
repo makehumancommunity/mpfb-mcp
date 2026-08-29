@@ -1,6 +1,6 @@
 # Finding and filtering assets in the asset subdirs
 
-**Status:** Proposed
+**Status:** Done
 
 FR 003 answered "what is this object made from" — given a `Clothes` mesh, `mpfb_get_object_info`
 reports the `.mhclo` it came from. The inverse question is still unanswerable: *what could I put on
@@ -66,7 +66,7 @@ Filters combine with AND.
   - `fragment` — `"<dirname>/<filename>"`, e.g. `"fedora/fedora.mhclo"`. **The value a later tool
     needs**, and the same form MPFB stores in an object's `asset_source` / `material_source` and
     accepts in `AssetService.find_asset_absolute_path()`. It is not a path; see the fragment rule in
-    [architecture.md](../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object).
+    [architecture.md](../../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object).
   - `path` — the absolute path. Absolute or `null`, never a fragment.
   - `object_type` — the MakeHuman type from MPFB's own table (`"Hair"`, `"Clothes"`,
     `"Proxymeshes"`, and note `"Material"` for skins and `"Pose"` for poses, which are *not* object
@@ -133,13 +133,13 @@ character, which is FR 003's and `mpfb_get_human_summary`'s question.
 
 - One tool module `src/mpfbmcp/tools/list_assets.py`, one payload
   `src/mpfbmcp/codegen/payloads/list_assets.py`, one `register()` call in
-  [`__init__.py`](../../src/mpfbmcp/__init__.py).
+  [`__init__.py`](../../../src/mpfbmcp/__init__.py).
 - **Use the raising bootstrap** (`bootstrap="raising"`). `AssetService` and `LocationService` are
   both in the `SERVICES` dict.
 - **The subdir vocabulary is `AssetService.ASSET_LIBRARY_SECTIONS`, read from MPFB.** It is a
   module-level list in `assetservice.py`, not a member of `AssetService` and not in `SERVICES`, so
   reach it via `sys.modules[AssetService.__module__]` — the pattern
-  [architecture.md](../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish)
+  [architecture.md](../../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish)
   already sanctions. Unlike the constants FR 001 and FR 003 read, this one is **not**
   underscore-private, so it is a slightly safer bet; still read it with `getattr(..., default)` and
   fall back to a literal table rather than raising. Each entry gives `asset_subdir`, `asset_type`
@@ -201,7 +201,7 @@ character, which is FR 003's and `mpfb_get_human_summary`'s question.
   `LocationService.get_mpfb_root()` has been caught returning one despite its annotation. Coerce
   every path with `str()` where it enters the response.
 - Input validation, per
-  [Validate before crossing the socket](../../specifications/architecture.md#validate-before-crossing-the-socket):
+  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket):
   reject a non-string or empty/whitespace-only `asset_subdir`, `name_contains` or `pack`; reject a
   `limit`/`offset` that is not a non-negative int, and a `limit` above the maximum. Do **not**
   validate `asset_subdir` or `pack` against a vocabulary held here — `subdir_recognized` and
@@ -210,15 +210,15 @@ character, which is FR 003's and `mpfb_get_human_summary`'s question.
 
 ## Affected specifications
 
-- [vision.md](../../specifications/vision.md#target-tool-catalog) — the catalog's `mpfb_list_assets`
+- [vision.md](../../../specifications/vision.md#target-tool-catalog) — the catalog's `mpfb_list_assets`
   entry currently reads "clothes / skins / proxies / poses, optionally filtered by pack". Replace it
   with what this actually is: every subdir in MPFB's own section table, filtered by subdir, name and
   pack, capped and paged, reporting the fragment later tools need. Mark it **Implemented** when this
   lands, and note that `mpfb_add_asset` / `mpfb_set_skin` take their `fragment` from it.
-- [architecture.md](../../specifications/architecture.md) — one convention to *follow* and two
+- [architecture.md](../../../specifications/architecture.md) — one convention to *follow* and two
   candidate additions.
-  - **Already standing, since [FR 004](../done/004-list-rigs/README.md) landed:**
-    [How tools name things that can be added](../../specifications/architecture.md#how-tools-name-things-that-can-be-added).
+  - **Already standing, since [FR 004](../004-list-rigs/README.md) landed:**
+    [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added).
     `fragment` is this tool's identifier under that convention, and `mpfb_add_asset` /
     `mpfb_set_skin` are the functions that consume it. Follow it rather than restate it; the only
     thing left to check is its "say which function consumes it when there is more than one" clause,
@@ -226,26 +226,26 @@ character, which is FR 003's and `mpfb_get_human_summary`'s question.
   - **How tools bound a large answer.** This is the first tool whose natural answer does not fit:
     the cap plus `total_count` plus a `truncated` flag that is always present, and the rule that a
     filtered call still reports the totals it filtered out of. `mpfb_list_targets`
-    ([FR 006](../006-list-targets/README.md)) needs the same convention, which is what makes it
+    ([FR 006](../../006-list-targets/README.md)) needs the same convention, which is what makes it
     spec material rather than a local choice.
   - **How tools report a derived rather than recorded fact.** `pack` is inferred from a naming
     convention. FR 003 already drew the line between *identified* and *recorded* values for
     `rig_type` and `material_type`; this adds a third category, and the same rule applies — say in
     the docstring which it is, and give the caller a way to see when the derivation is unsafe.
-- The [fragment/path convention](../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object)
+- The [fragment/path convention](../../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object)
   needs no change: this effort is its first use in the *forward* direction (naming an asset to be
   applied) rather than the backward one (naming what an object was made from), which is a
   confirmation of the convention rather than a modification.
 
 ## Tests
 
-Two-layer, as [tests/test_get_status.py](../../tests/test_get_status.py) and FR 003's tests:
+Two-layer, as [tests/test_get_status.py](../../../tests/test_get_status.py) and FR 003's tests:
 argument validation with `mpfbmcp.tools.list_assets.send_code` mocked, then the generated source
-`exec()`d against stubs in [tests/blender_stubs.py](../../tests/blender_stubs.py).
+`exec()`d against stubs in [tests/blender_stubs.py](../../../tests/blender_stubs.py).
 
 The stub `AssetService` must reproduce MPFB's real behavior, including the parts that are
 inconvenient — that discipline is why the existing stubs exist. One specific thing to check, from
-[FR 004](../done/004-list-rigs/README.md#verification-status): a scanned directory holds more than the
+[FR 004](../004-list-rigs/README.md#verification-status): a scanned directory holds more than the
 files a listing wants. FR 004's diff of "files MPFB refused" reported the `weights.*.json` companion
 of every custom rig until it excluded them, and that was only visible against a *real* install. Any
 listing here that enumerates a directory rather than asking a service should be checked against real
@@ -276,15 +276,125 @@ a cold `get_asset_list()` and a `refresh=true` take on a full library, and how b
 loading bites; and whether the label collision is common enough in practice to force the fallback.
 Record the outcome in a `## Verification status` section here, as FR 001–003 do.
 
+## Verification status
+
+**Implemented and live-verified** (2026-08-29), against Blender 5.1.0 with MPFB 2.0.17 running
+`FROM_SOURCE` out of `../mpfb2`, driven through the real tool callable over the blender_mcp
+socket. The install is a large, ordinary one: 108 asset packs and 734 asset files across the
+eleven subdirs, of which the tool reports 730 (see the label collision below). Its asset roots are
+MPFB's bundled data dir and `~/makehuman/mpfb/data`; there is no second root and no MakeHuman user
+data dir.
+
+Every scene mutation made for the test was reverted. Two round-trips created a scratch basemesh,
+added assets to it, and then removed exactly the datablocks that had appeared — objects, meshes,
+materials, images and node groups — comparing the symmetric difference against a snapshot taken
+first. All nine collections compare **identical** before and after, the active object was restored,
+`bpy.data.is_dirty` was `false` both times, and the `.blend` was never saved. What could not be
+reverted, and was not meant to be, is MPFB's asset cache: this session now holds all eleven asset
+lists and 718 loaded previews, which is the documented cost of the caching decision.
+
+### What changed against this request
+
+**`fragment` is not what the adding functions take — `path` is.** This request calls `fragment`
+"the value a later tool needs". `HumanService.add_mhclo_asset()` and `set_character_skin()` both
+take an **absolute path** as their first argument. The fragment is the *portable identifier*: it is
+what MPFB writes onto the resulting object as `asset_source`, and what
+`find_asset_absolute_path()` resolves back into a path. Both are reported and the docstring now says
+which is which, so a later `mpfb_add_asset` can accept a fragment and resolve it rather than
+requiring the caller to have kept a path. Confirmed in both directions: 25 sampled fragments,
+covering every subdir that has assets and both depth cases, resolve back to the exact path reported
+alongside them; and every asset added recorded an `asset_source` **string-equal** to the fragment
+the listing had reported for it.
+
+**`object_type` is an argument, not only a description.** For the subdirs `add_mhclo_asset()`
+handles, the `object_type` this tool reports is exactly the string that function's `asset_type`
+argument wants — and that argument defaults to `"Clothes"`, so hair added without it becomes
+clothes. That makes `object_type` a second identifier under
+[How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added),
+which this request did not anticipate, and it is now in the docstring. It does *not* generalise:
+`"Material"`, `"Pose"` and `"Other"` name what a skin, a pose and an ink layer are, and none of the
+three is added by `add_mhclo_asset()`.
+
+**The pack filter matches any claiming pack, not the one reported.** This request says to filter on
+the derived `pack` field. That silently loses assets: `pack` holds the first claimant
+alphabetically, so an asset in `various01` and `dress04` reports `dress04` and would not match a
+filter on `various01` — an installed asset reported as absent, which is the failure mode this whole
+request is written against. The payload keeps the full claimant list internally and filters on it
+while still reporting `pack` as specified. The intersection rule the request actually cares about
+is untouched: matching is against assets found on disk, never built from pack metadata, which is
+pinned by a test and confirmed live.
+
+**An asset can sit directly in an asset root, and must not be attributed.** `skins/default.mhmat`
+and all five installed ink layers have no directory of their own, so the containing directory's
+basename is the *subdir* name. The join as this request describes it would attribute them to
+whichever pack happened to ship an asset called `skins`. The payload compares the containing
+directory against that subdir's asset roots and reports `pack: null` instead. Their fragments
+(`"skins/default.mhmat"`) are still correct and still resolve.
+
+**`refresh` is far cheaper than this request assumes**, and the docstring says so rather than
+repeating the warning. `update_all_asset_lists()` measured **0.015 s** in-Blender across all eleven
+subdirs, because `update_asset_list()` skips a preview it has already loaded. The real cost is the
+*first* population of a subdir: a cold `skins` call (29 assets, thumbnails) took 3.8 s against a
+1.0 s warm baseline, where the baseline is almost entirely socket round-trip. A cold full-library
+figure was not measured — `clothes` was already warm when the session started, the user having
+opened MPFB's asset panels, which is exactly the situation the request predicted.
+
+**Added one field this request does not list: `section_table_from_mpfb`.** The fallback for
+`ASSET_LIBRARY_SECTIONS` is silent otherwise, and a stale literal table would misreport
+`known_subdirs` with nothing to show for it. On this install it is `true`.
+
+### Checklist
+
+- [x] All eleven subdirs listed from MPFB's own `ASSET_LIBRARY_SECTIONS`, in its order:
+      `proxymeshes` 12, `skins` 29, `ink_layers` 5, `eyes` 2, `eyebrows` 26, `eyelashes` 9,
+      `hair` 64, `teeth` 7, `tongue` 1, `clothes` 575, `poses` 0. Total 730.
+- [x] The item key set this request depends on (`full_path`, `basename`, `dirname`, `fragment`,
+      `name_without_ext`, `label`, `thumb_path`) is present for **every** subdir that has assets,
+      the non-mhclo ones included. `poses` is empty on this install — no `.bvh` anywhere, the
+      bundled poses being `t-pose.json` files — so the `bvh` row's item shape is the one thing
+      that could not be observed. `poses` did confirm the three-way distinction the response
+      exists to draw: `subdir_recognized: true`, an empty list, and two roots genuinely searched.
+- [x] The label collision is real, and is 4 assets on this install: MPFB's cache merges
+      `young_caucasian_female/young_caucasian_female2.mhmat` with
+      `young_caucasian_female2/young_caucasian_female2.mhmat` and three more of the same shape, so
+      33 `.mhmat` files become 29 entries. Note what is lost is not just a count — the two paths
+      differ, so which one survives decides the reported fragment. Pinned by a unit test and stated
+      in the docstring.
+- [x] Pack attribution against the real 108 packs: 692 of 730 attributed, 38 unattributed
+      (hand-installed, or the depth-1 assets above), and **64 `pack_ambiguous`**. Ambiguity is not
+      rare, as this request supposed — it is 9% here, which is why the flag earns its place. The
+      packs' own `type` metadata cannot disambiguate: all 91 multiply-claimed names carry the same
+      `type` in every pack claiming them, and its vocabulary does not match the subdir one anyway
+      (`skin` *and* `skins`, plus `material`, `target`, `pose`).
+- [x] Filters: `name_contains` case-insensitive over name and label; `pack` matching MPFB's
+      substring semantics, `"hair03"` and `"HAIR03"` both finding the 14 assets of `hair03_ccby`;
+      `asset_subdir` case-insensitive; all three combining with AND.
+- [x] A misspelled subdir, a misspelled pack, and a genuinely empty subdir are three distinguishable
+      answers rather than three empty lists.
+- [x] Paging over the real 575-entry `clothes` listing: three pages of 250 concatenate to exactly
+      the unpaged listing, in the same order, with `truncated` true on both a middle and a final
+      page. An offset past the end answers rather than fails.
+- [x] `asset_roots_searched` is per subdir and is narrower than the configured data roots: only
+      `poses` reports both roots, since the bundled MPFB data dir contains no other asset subdir.
+      That difference is the diagnostic the field exists for.
+- [x] **Assets reported here were actually applied.** A `clothes` entry through
+      `add_mhclo_asset()`, a `skins` entry through `set_character_skin()`, and a `proxymeshes` and a
+      `hair` entry through `add_mhclo_asset()` with the `object_type` this tool reported. All four
+      produced a correctly typed child object (or, for the skin, a material on the basemesh), and
+      each recorded the exact fragment reported. All were then removed, leaving nothing behind.
+- [x] Whole response survives `strict_json` with real data, at 730 entries: the cached items'
+      `thumb` preview object is dropped rather than reported, which is what would otherwise take
+      the entire answer down.
+
 ## References
 
 - MPFB `services/assetservice.py` — `ASSET_LIBRARY_SECTIONS` (the subdir/extension/type table),
   `get_asset_list()` / `update_asset_list()` (the cache, its item shape, its label keying and its
   preview loading), `get_asset_roots()`, `find_asset_absolute_path()` (what a fragment is resolved
   by), `get_pack_names()` / `get_asset_names_in_pack()` / `get_asset_names_in_pack_pattern()`.
-- [../../../asset_packs_staging](../../../asset_packs_staging) — `src/staging/assetpack.py` builds
+- [../../../../asset_packs_staging](../../../../asset_packs_staging) — `src/staging/assetpack.py` builds
   the pack metadata that lands in `<user_data>/packs/`, keyed by each asset's `final_name`, which is
   also the directory it is installed under. This is the source of the naming convention the pack
   attribution relies on, and the place to check if that attribution turns out to be wrong.
-- [FR 003](../done/003-object-finding/README.md) — `asset_info`, the fragment/path pairing, and the
+- [FR 003](../003-object-finding/README.md) — `asset_info`, the fragment/path pairing, and the
   warning against inferring an asset's kind from its file extension.

@@ -79,7 +79,21 @@ tool should get its own feature request when scoped.
 - `mpfb_get_human_summary` — for a given/active human: macro details, equipped assets, rig,
   skin, active targets. Takes its subject from `mpfb_list_objects` / `mpfb_get_object_info`
   rather than assuming one is already known.
-- `mpfb_list_assets` — clothes / skins / proxies / poses, optionally filtered by pack
+- `mpfb_list_assets` — what could be put on a character, and under what name?
+  **Implemented.** Lists the assets installed under every subdir in MPFB's own asset-library
+  table — proxymeshes, skins, ink layers, eyes, eyebrows, eyelashes, hair, teeth, tongue,
+  clothes and poses — filtered by subdir, by a substring of the name or label, and by asset
+  pack, then capped and paged (see
+  [How tools bound a large answer](architecture.md#how-tools-bound-a-large-answer)): the
+  library runs to hundreds of entries on an ordinary install, so the answer is a subset by
+  design and `truncated` says so. Each entry carries the absolute `path` the adding functions
+  take, the portable `fragment` MPFB records on the resulting object, and the `object_type`
+  that doubles as `add_mhclo_asset()`'s `asset_type` argument. `pack` is **derived from a
+  directory-name convention, not recorded** (see
+  [How tools report a derived rather than recorded fact](architecture.md#how-tools-report-a-derived-rather-than-recorded-fact)),
+  hence `pack_ambiguous` beside it. Two costs are documented rather than hidden: the first
+  call for a subdir loads a Blender preview per thumbnailed asset, and MPFB's cache is keyed
+  by label, so same-named assets in different directories collapse into one entry.
 
 **Creation and modification**
 
@@ -91,8 +105,11 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   `mask_helpers`/`detailed_helpers`/`extra_vertex_groups`/`feet_on_ground`).
 - `mpfb_set_macro_details` — gender/age/weight/muscle/height/proportions via `TargetService`
 - `mpfb_set_target_value` — arbitrary named target
-- `mpfb_add_asset` — clothes/proxy via `add_mhclo_asset()`
-- `mpfb_set_skin` — via `set_character_skin()`
+- `mpfb_add_asset` — clothes/proxy via `add_mhclo_asset()`. Takes its `path` (or a `fragment`
+  to resolve) and its `asset_type` from `mpfb_list_assets`.
+- `mpfb_set_skin` — via `set_character_skin()`. Takes its `path` from `mpfb_list_assets`'
+  `skins` subdir; a skin is a material rather than a mesh asset, so it is not
+  `mpfb_add_asset`'s job.
 - `mpfb_add_rig` — builtin or custom. Takes its `identifier` and the function to dispatch
   on from `mpfb_list_rigs`, the same way the tools above take their subject from
   `mpfb_list_objects` / `mpfb_get_object_info`.

@@ -54,7 +54,10 @@ Arguments:
   "find me something to widen the nose" is the actual question, and the alternative is the caller
   pulling whole sections to grep them.
 - `limit` (optional int, default `200`, max `1000`) and `offset` (optional int, default `0`) — the
-  same paging convention as [FR 005](../005-list-assets/README.md).
+  paging convention [FR 005](../done/005-list-assets/README.md) established, now standing as
+  [How tools bound a large answer](../../specifications/architecture.md#how-tools-bound-a-large-answer).
+  Follow it rather than re-deciding it: `total_count` counted before the cap, `truncated` always
+  present, `offset`/`limit` echoed, and the listing sorted before it is paged.
 
 `result` carries, always:
 
@@ -114,7 +117,7 @@ target file contents, which are vertex-offset data of no use to a caller.
 ## Non-functional requirements
 
 - **Read-only and side-effect-free.** Directory scans and one JSON read. Unlike
-  [FR 005](../005-list-assets/README.md), nothing here populates an MPFB cache or loads a Blender
+  [FR 005](../done/005-list-assets/README.md), nothing here populates an MPFB cache or loads a Blender
   preview, so this tool is genuinely side-effect-free and needs no `refresh` argument.
 - **Bounded response size.** ~140 KB of index, over a thousand bundled targets and an unbounded
   number of user ones. The overview is small by construction; everything else is capped and paged,
@@ -209,9 +212,16 @@ target file contents, which are vertex-offset data of no use to a caller.
     `mpfb_set_target_value`. Its last clause is the one to read closely here: a catalogue vocabulary
     and an identification vocabulary overlap without matching, which is exactly the relationship
     between a target's `shapekey_name` and its filename.
-  - **The capped-and-paged response convention**, shared with
-    [FR 005](../005-list-assets/README.md). Whichever of the two lands first should write it down;
-    the second should follow it rather than restate it.
+  - **The capped-and-paged response convention. Decided and already standing**, since
+    [FR 005](../done/005-list-assets/README.md) landed first:
+    [How tools bound a large answer](../../specifications/architecture.md#how-tools-bound-a-large-answer).
+    Follow it; nothing about it needs restating here. Note its "a filtered call still reports what
+    it filtered out of" clause, which for this tool means the per-section counts rather than
+    FR 005's `counts_by_subdir`.
+  - **Also standing since FR 005:**
+    [How tools report a derived rather than recorded fact](../../specifications/architecture.md#how-tools-report-a-derived-rather-than-recorded-fact).
+    Worth reading against `shapekey_name`, which is derived from a filename by a convention rather
+    than recorded anywhere, and against `listed_in_mpfb_ui`.
   - **Reading MPFB's data files directly.** This is the first tool to read a bundled *data* file
     (`target.json`) rather than call a service. The rule worth recording is the one this request
     follows: locate it through `LocationService`, never by assembling a path from the module

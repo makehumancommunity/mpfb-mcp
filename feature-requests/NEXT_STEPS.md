@@ -37,35 +37,24 @@ scoped into a feature request yet.
 
 All three subsections were scoped, as one feature request each: they share a theme but almost
 nothing else — different MPFB services, different sources on disk, and different response shapes —
-so splitting them keeps each request small enough to implement in one pass. The remaining two are
-independent of each other and can land in either order.
+so splitting them keeps each request small enough to implement in one pass. Two have landed; only
+the targets half remains.
 
-The rig half has landed, as `mpfb_list_rigs` — see [FR 004](done/004-list-rigs/README.md) and its
-[entry in HISTORY.md](HISTORY.md#fr-004--mpfb_list_rigs). Unlike FR 001-003, its live verification
-was run as part of the effort rather than left outstanding. With it landed the first of the two
-conventions the three requests share: reporting the exact identifier an acting tool will need
-rather than a display name, now standing as
-[How tools name things that can be added](../specifications/architecture.md#how-tools-name-things-that-can-be-added).
-The second — the capped-and-paged response, shared by FR 005 and FR 006 — is still unfolded, and
-whichever of those two lands first should fold it in.
+The rig half landed as `mpfb_list_rigs` — see [FR 004](done/004-list-rigs/README.md) and its
+[entry in HISTORY.md](HISTORY.md#fr-004--mpfb_list_rigs) — and the asset half as
+`mpfb_list_assets`, see [FR 005](done/005-list-assets/README.md) and its
+[entry in HISTORY.md](HISTORY.md#fr-005--mpfb_list_assets). Both had their live verification run as
+part of the effort rather than left outstanding, unlike FR 001-003.
 
-### Finding and filtering lists of assets from asset subdirs
-
-Scoped as [FR 005](005-list-assets/README.md) — `mpfb_list_assets`.
-
-There need to be tools for finding assets located in asset subdirs. Parts of this matches 
-what can be done via AssetService. It should be possible to:
-
-- Find all assets of a certain type residing in a certain subdir in all asset roots
-- Specify that the list should only match assets with a keyword in their name
-- Specify that the list should only match assets from a certain asset pack
-
-Each item in the returned list should include:
-
-- Asset name
-- Asset makehuman type (ie Hair, Clothes...)
-- Asset fragment (ie what would be suitable to use when adding the asset to the human)
-- Absolute path to the asset
+All three conventions those requests share now stand in
+[architecture.md](../specifications/architecture.md):
+[How tools name things that can be added](../specifications/architecture.md#how-tools-name-things-that-can-be-added)
+from FR 004, and from FR 005 both
+[How tools bound a large answer](../specifications/architecture.md#how-tools-bound-a-large-answer)
+and
+[How tools report a derived rather than recorded fact](../specifications/architecture.md#how-tools-report-a-derived-rather-than-recorded-fact).
+[FR 006](006-list-targets/README.md) inherits the capped-and-paged one and should follow it rather
+than restate it.
 
 ### Get available detail targets
 

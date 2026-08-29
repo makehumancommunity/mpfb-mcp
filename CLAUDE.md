@@ -24,12 +24,14 @@ efforts; `HISTORY.md` is the log of what has landed.
 
 ## Project status
 
-Proof of concept. Five tools are implemented: `mpfb_create_human`, wrapping MPFB's
+Proof of concept. Six tools are implemented: `mpfb_create_human`, wrapping MPFB's
 `HumanService.create_human()`; `mpfb_get_status`, reporting whether MPFB is present, initialized
 and how it is configured; the object-finding pair `mpfb_list_objects` and
 `mpfb_get_object_info`, which is how every later tool is meant to name the object it acts on; and
-`mpfb_list_rigs`, the first catalogue tool — what could be *added*, rather than what is already
-there, named by the identifier the adding function will want. See
+two catalogue tools, `mpfb_list_rigs` and `mpfb_list_assets` — what could be *added*, rather than
+what is already there, each entry named by the identifier the adding function will want.
+`mpfb_list_assets` is also the first tool whose answer does not fit, so it is filtered, capped and
+paged. See
 [specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's planned
 beyond them, and [feature-requests/](feature-requests/) for work in progress.
 
@@ -136,11 +138,18 @@ mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP
   *vocabulary* — a list of valid MPFB type names kept here would drift from MPFB's own, so the
   generated code answers that with `type_recognized` and `known_types` instead. Like
   `get_status.py`, they treat absence as an answer: an unresolvable object name comes back as
-  `found: false`, not as an error envelope. `tools/list_rigs.py` is the strictest of the four about
+  `found: false`, not as an error envelope. `tools/list_rigs.py` is the strictest of them about
   its one argument — `refresh` must be a real `bool`, not a truthy value, since `refresh="false"`
   would otherwise rescan the disk — and its payload does all the rest, including the two things
   that cannot be derived from a filename: which of `add_builtin_rig()` / `add_custom_rig()` takes
   a given identifier, and which rig's weights file would actually be loaded.
+  `tools/list_assets.py` is the widest, at six arguments, and still validates only shapes: the
+  string filters as above, `limit`/`offset` as non-negative ints that are not `bool`
+  (`isinstance(True, int)` is `True`, so `limit=True` would otherwise page one entry at a time),
+  and the same strict `refresh`. Its payload carries the rest, including the two things a filename
+  cannot say — which pack an asset came from, derived from a directory-name convention and flagged
+  when two packs claim it, and the difference between the `path` an adding function takes and the
+  `fragment` MPFB records on the object it produces.
 - **[__init__.py](src/mpfbmcp/__init__.py)** — `main()`: builds the `FastMCP` server, calls each
   tool module's `register()`, runs over stdio. Together with a tool module and a payload file,
   this `register()` call is the *whole* of what adding a tool touches — no shared
@@ -194,6 +203,18 @@ this side of the socket:
   asymmetries a real MPFB install has — a rig with no weights file of its own, a weights file with
   no rig, a rig absent from the UI enum — because each one is a branch the payload exists to get
   right.
+- [tests/test_list_assets.py](tests/test_list_assets.py) — the same two layers, and the opposite
+  choice about the filesystem: this payload asks `AssetService` rather than walking the disk, so
+  what needs reproducing is that service. `blender_stubs.py`'s `get_asset_list()` therefore builds
+  its items exactly as MPFB's `update_asset_list()` does, quirks first — keyed by *label*, so two
+  files whose names differ only in case or underscores really do collapse into one entry, and with
+  a `thumb` value JSON cannot encode, so a payload that leaked it would fail here rather than in
+  Blender. The stub library also carries an asset claimed by two packs, one claimed by none, a pack
+  listing an asset that is not installed, and an asset lying directly in an asset root rather than
+  in a directory of its own: each is a branch, and the last is the one that would otherwise
+  attribute a skin to whichever pack shipped an asset called "skins". Note this adds a *third*
+  stub service module — `ASSET_LIBRARY_SECTIONS` is module-level in `assetservice.py`, so
+  `StubAssetService.__module__` is reassigned the same way the object-service stub's is.
 
 Anything needing real MPFB is a manual integration check against a running Blender (see
 [Commands](#commands)), and feature requests are expected to say so explicitly.

@@ -3,9 +3,10 @@
 """
 Stand-ins for Blender and MPFB, for executing generated payloads locally.
 
-The payloads for ``mpfb_list_objects``, ``mpfb_get_object_info`` and
-``mpfb_list_rigs`` carry real branching - type filtering, relationship walking,
-three asset_info shapes, a weights fallback walk - so they are worth running,
+The payloads for ``mpfb_list_objects``, ``mpfb_get_object_info``,
+``mpfb_list_rigs`` and ``mpfb_list_assets`` carry real branching - type
+filtering, relationship walking, three asset_info shapes, a weights fallback
+walk, filtering and paging over an asset library - so they are worth running,
 and they can only be run against stubs: MPFB is reachable only from inside
 Blender (see specifications/architecture.md). This module is shared by those
 tools' test modules because they need the same stub scene and services; it holds
@@ -25,12 +26,19 @@ reason the payload is written the way it is:
 - ``get_second_root()`` really can be None.
 - ``get_rig_weight_fallbacks()`` carries MPFB's real table, so the two rigs that
   own no weights file of their own resolve to another rig's rather than to none.
+- ``get_asset_list()`` builds its items the way ``update_asset_list()`` does and
+  keys them by *label*, so two assets whose filenames differ only in case or
+  underscores really do collapse into one entry, and each item's ``thumb`` holds
+  something JSON cannot encode.
+- ``get_asset_roots()`` reports fewer roots than ``get_available_data_roots()``,
+  which is the difference the asset tool exists to report.
 
 What they cannot do is tell us anything about the values real MPFB returns;
 that remains a manual check against a running Blender.
 """
 
 __all__ = (
+    "ASSET_LIBRARY_SECTIONS",
     "GeneratedCodeTestCase",
     "StubAssetService",
     "StubLocationService",
@@ -39,6 +47,7 @@ __all__ = (
     "StubSystemService",
 )
 
+import os
 import pathlib
 import sys
 import types
@@ -51,6 +60,7 @@ from mpfbmcp import codegen
 # as an MPFB install of its own.
 _OBJECTSERVICE_MODULE = "mpfb_stub_services_objectservice"
 _HUMANSERVICE_MODULE = "mpfb_stub_services_humanservice"
+_ASSETSERVICE_MODULE = "mpfb_stub_services_assetservice"
 _PACKAGE = "bl_ext.test_repo.mpfb"
 
 _ALL_TYPES = ("Skeleton", "Subrig", "Basemesh", "Proxymeshes", "Clothes",
@@ -58,6 +68,53 @@ _ALL_TYPES = ("Skeleton", "Subrig", "Basemesh", "Proxymeshes", "Clothes",
 _MESH_ASSET_TYPES = ("Proxymeshes", "Clothes", "Eyes", "Eyelashes", "Eyebrows",
                      "Tongue", "Teeth", "Hair")
 _SKELETON_TYPES = ("Skeleton", "Subrig")
+
+# MPFB's ASSET_LIBRARY_SECTIONS, trimmed to the rows the tests need but with its
+# real shape - a list of dicts carrying more keys than any payload reads, and
+# including the three rows whose object_type is not a type an object in a scene
+# can carry: skins are "Material", poses are "Pose", ink layers are "Other".
+ASSET_LIBRARY_SECTIONS = [
+    {
+        "bl_label": "Topologies library",
+        "asset_subdir": "proxymeshes",
+        "asset_type": "proxy",
+        "object_type": "Proxymeshes",
+        "eye_overrides": False,
+        "skin_overrides": True,
+    },
+    {
+        "bl_label": "Skins library",
+        "asset_subdir": "skins",
+        "asset_type": "mhmat",
+        "object_type": "Material",
+        "eye_overrides": False,
+        "skin_overrides": True,
+    },
+    {
+        "bl_label": "Hair library",
+        "asset_subdir": "hair",
+        "asset_type": "mhclo",
+        "object_type": "Hair",
+        "eye_overrides": False,
+        "skin_overrides": False,
+    },
+    {
+        "bl_label": "Clothes library",
+        "asset_subdir": "clothes",
+        "asset_type": "mhclo",
+        "object_type": "Clothes",
+        "eye_overrides": False,
+        "skin_overrides": False,
+    },
+    {
+        "bl_label": "Poses library",
+        "asset_subdir": "poses",
+        "asset_type": "bvh",
+        "object_type": "Pose",
+        "eye_overrides": False,
+        "skin_overrides": False,
+    },
+]
 
 
 class StubMaterial:
@@ -214,6 +271,79 @@ class StubAssetService:
     @staticmethod
     def invalidate_custom_rig_cache():
         StubAssetService.invalidations += 1
+
+    # What mpfb_list_assets sees "on disk": asset subdir -> absolute paths, and
+    # asset subdir -> the roots that actually contain it. The two are kept
+    # separate on purpose, since get_asset_roots() returning fewer roots than
+    # get_available_data_roots() is the diagnostic the payload reports.
+    asset_files = dict()
+    asset_roots = dict()
+    # Paths whose .thumb companion exists, keyed by the .thumb path itself.
+    thumbs = ()
+    asset_list_calls = []
+    update_all_calls = 0
+    # Pack name -> the asset names its metadata lists. Those are directory
+    # names, which is the whole basis of the tool's pack attribution.
+    packs = dict()
+
+    @staticmethod
+    def get_available_data_roots():
+        # Deliberately wider than get_asset_roots(): a data root that holds no
+        # such subdir is a configured root that is nonetheless not searched.
+        roots = []
+        for subdir_roots in StubAssetService.asset_roots.values():
+            for root in subdir_roots:
+                parent = os.path.dirname(root)
+                if parent not in roots:
+                    roots.append(parent)
+        return roots
+
+    @staticmethod
+    def get_asset_roots(asset_subdir="clothes"):
+        return list(StubAssetService.asset_roots.get(asset_subdir, []))
+
+    @staticmethod
+    def get_asset_list(asset_subdir="clothes", asset_type="mhclo"):
+        # A reimplementation of update_asset_list()'s item building, quirks
+        # included, rather than a convenient dict: the item keys are exactly
+        # MPFB's, `thumb` holds something that is not JSON-safe (a Blender
+        # preview object in the real thing), and the list is keyed by *label*,
+        # so two files whose names differ only in case or underscores collapse
+        # into one entry. That collision is a limitation the tool documents, and
+        # it can only be pinned by a stub that actually reproduces it.
+        StubAssetService.asset_list_calls.append((asset_subdir, asset_type))
+        asset_list = dict()
+        for path in StubAssetService.asset_files.get(asset_subdir, []):
+            item = dict()
+            item["full_path"] = path
+            item["basename"] = os.path.basename(path)
+            item["dirname"] = os.path.dirname(path)
+            item["fragment"] = os.path.basename(item["dirname"]) + "/" + item["basename"]
+            item["name_without_ext"] = str(item["basename"]).replace("." + asset_type, "")
+            item["thumb"] = None
+            item["thumb_path"] = None
+            label = str(item["name_without_ext"]).lower().replace("_", " ")
+            item["label"] = label.capitalize()
+            thumb = os.path.join(item["dirname"], item["name_without_ext"] + ".thumb")
+            if thumb in StubAssetService.thumbs:
+                item["thumb_path"] = thumb
+                # Stands in for the bpy preview object, which json cannot encode.
+                item["thumb"] = object()
+            asset_list[item["label"]] = item
+        return asset_list
+
+    @staticmethod
+    def update_all_asset_lists():
+        StubAssetService.update_all_calls += 1
+
+    @staticmethod
+    def get_pack_names():
+        # Sorted, as MPFB sorts it.
+        return sorted(StubAssetService.packs)
+
+    @staticmethod
+    def get_asset_names_in_pack(pack_name):
+        return sorted(StubAssetService.packs.get(pack_name, []))
 
 
 class StubClothesService:
@@ -376,6 +506,12 @@ class GeneratedCodeTestCase(unittest.TestCase):
         StubAssetService.custom_rig_calls = []
         StubAssetService.invalidations = 0
         StubAssetService.reject_use_cache = False
+        StubAssetService.asset_files = dict()
+        StubAssetService.asset_roots = dict()
+        StubAssetService.thumbs = ()
+        StubAssetService.asset_list_calls = []
+        StubAssetService.update_all_calls = 0
+        StubAssetService.packs = dict()
         StubLocationService.mpfb_data = "/nonexistent-mpfb-data"
         StubLocationService.mpfb_root = pathlib.Path("/nonexistent-mpfb-root")
         StubLocationService.user_data = "/nonexistent-user-data"
@@ -396,6 +532,14 @@ class GeneratedCodeTestCase(unittest.TestCase):
         humanservice_module.HumanObjectProperties = HumanObjectProperties
         StubHumanService.__module__ = _HUMANSERVICE_MODULE
 
+        # ASSET_LIBRARY_SECTIONS is module-level in assetservice.py rather than
+        # a member of AssetService, so the payload reaches it the same way the
+        # others reach the type vocabulary - which means this stub class needs a
+        # module of its own too.
+        assetservice_module = types.ModuleType(_ASSETSERVICE_MODULE)
+        assetservice_module.ASSET_LIBRARY_SECTIONS = ASSET_LIBRARY_SECTIONS
+        StubAssetService.__module__ = _ASSETSERVICE_MODULE
+
         # Unlike the status payload, these run on the raising bootstrap, so an
         # initialized MPFB has to be there or the exec raises before the payload.
         mpfb_module = types.ModuleType(_PACKAGE)
@@ -404,6 +548,7 @@ class GeneratedCodeTestCase(unittest.TestCase):
         self._injected = {
             _OBJECTSERVICE_MODULE: objectservice_module,
             _HUMANSERVICE_MODULE: humanservice_module,
+            _ASSETSERVICE_MODULE: assetservice_module,
             _PACKAGE: mpfb_module,
         }
         sys.modules.update(self._injected)

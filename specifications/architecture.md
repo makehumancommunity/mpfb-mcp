@@ -234,6 +234,14 @@ naming something that already exists. A *catalogue* tool — one listing what co
   `rigify.human`; a custom one is added as `custom.my_rig`. Any part of that string the caller has
   to assemble is a part they can assemble wrongly, and reassembling it is precisely the guesswork a
   catalogue exists to remove.
+- **An entry may need more than one identifier, and the portable one is not always the one the
+  function takes.** `HumanService.add_mhclo_asset()` takes an absolute *path*, while the value MPFB
+  records on the resulting object, and the one that survives a move to another machine, is the
+  *fragment*. Report both, and say which is which: a catalogue whose identifier cannot be stored is
+  as awkward as one whose identifier cannot be passed. The same entry can also carry a second
+  identifier hiding as a description — that function's `asset_type` argument takes exactly the
+  `object_type` string the catalogue reports, and defaults to `"Clothes"`, so hair added without it
+  becomes clothes.
 - **Say which function consumes it, when there is more than one.** `HumanService` adds rigs through
   `add_builtin_rig()` and `add_custom_rig()`, and they are not interchangeable. Crossing them does
   not fail legibly: `add_builtin_rig("custom.my_rig")` looks for a file called
@@ -255,6 +263,54 @@ naming something that already exists. A *catalogue* tool — one listing what co
   overlap. `RigService.identify_rig()` reports `rigify_generated.*` and `unknown`, neither of which
   names anything addable. Where a tool's values overlap another tool's without matching them, the
   docstring must say so, or a caller will read a legitimate miss as a failure.
+
+## How tools bound a large answer
+
+Some answers do not fit. `mpfb_list_assets` reports an asset library that runs to hundreds or
+thousands of entries on an ordinary install, and an unfiltered listing is not something an agent can
+afford to read. Such a tool caps its answer, and the cap brings one obligation: **a capped or
+filtered response must never be readable as a complete one.**
+
+- **Always report the size of the matched set, not only the page.** A `total_count` counted before
+  the cap is applied, and a `truncated` flag that is **always present** — not omitted when false,
+  since a caller that has to infer the field's absence will not.
+- **Echo the paging back.** `offset` and `limit` in the response, so the next page can be asked for
+  without the caller tracking state it did not send.
+- **Order deterministically before paging.** The underlying listing usually comes from a directory
+  walk, whose order is filesystem-dependent. Sorting after paging, or not at all, makes two pages of
+  one query silently skip and repeat entries.
+- **A filtered call still reports what it filtered out of.** `counts_by_subdir` is what turns an
+  over-broad call from merely truncated into informative: it says where the entries are, so the
+  caller can pick a narrower filter for the next call rather than paging blindly through everything.
+- **Say in the docstring which field to check before concluding something is absent.** The failure
+  this whole convention guards against is an agent reporting that an asset is not installed because
+  it was not on page one.
+
+## How tools report a derived rather than recorded fact
+
+[How tools report the asset behind an object](#how-tools-report-the-asset-behind-an-object) draws a
+line between values *identified* from an object as it is now and values *recorded* when it was
+loaded. A third kind turns up in catalogue tools: a value **derived from a convention**, where
+neither MPFB nor the file records the fact at all. `mpfb_list_assets`' `pack` is one — MPFB stores
+no link from an installed file back to the pack that installed it, so the attribution is a match of
+the asset's containing directory name against the asset names in the installed packs' metadata.
+
+- **Say in the docstring that it is derived, and from what.** A field that looks recorded will be
+  quoted back to the user as fact.
+- **Give the caller a way to see when the derivation is unsafe**, rather than only documenting that
+  it might be. `pack_ambiguous` is that: when two packs claim a name, the reported one is a coin
+  toss, and without the flag a wrong attribution is indistinguishable from a right one. Measured on
+  a real install, 9% of assets are ambiguous — "rare" is not a safe assumption about a convention.
+- **Report the miss as ordinary.** A derivation that finds nothing (`pack: null` for a
+  hand-installed asset) is not a failure and must not be reported as one.
+- **Never let the derivation become the source of truth.** Filter and count the things actually
+  found, then derive; do not answer from the metadata the derivation reads. Pack metadata lists
+  assets a user may since have deleted, and building the response from it would report assets that
+  are not installed.
+- **Know where the convention does not hold.** The join above keys on a containing directory, so an
+  asset lying directly in an asset root has no directory of its own to key on, and pack metadata
+  lives only under the user data root, so an asset under another root cannot be attributed even when
+  it did come from a pack. Both are cases to detect and report as `null`, not cases to guess at.
 
 ## Response shape
 

@@ -33,15 +33,19 @@ def main() -> int:
             "whether MPFB is present, initialized and correctly configured. To act "
             "on a character this session did not create, find it with "
             "mpfb_list_objects and identify it with mpfb_get_object_info rather "
-            "than guessing from Blender object names."
+            "than guessing from Blender object names. To find an asset to apply "
+            "or a rig to add, use mpfb_list_assets or mpfb_list_rigs: both name "
+            "each entry the way the adding function will want it."
         ),
     )
 
     from mpfbmcp.tools import (
-        create_human, get_object_info, get_status, list_objects, list_rigs)
+        create_human, get_object_info, get_status, list_assets, list_objects,
+        list_rigs)
     create_human.register(mcp)
     get_object_info.register(mcp)
     get_status.register(mcp)
+    list_assets.register(mcp)
     list_objects.register(mcp)
     list_rigs.register(mcp)
 
