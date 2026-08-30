@@ -433,3 +433,76 @@ FR 007 left open, and the session that would settle one would settle both. The c
 ["Verification status" in the request](done/008-detail-targets/README.md#verification-status), and
 [NEXT_STEPS.md](NEXT_STEPS.md) now names that session as the largest piece of unfinished business
 in the file.
+
+## [FR 009](done/009-add-rig/README.md) — adding a rig, and the ordering constraint nothing enforces
+
+Two tools. `mpfb_add_rig` attaches any rig [FR 004](done/004-list-rigs/README.md)'s catalogue names,
+and `mpfb_generate_rigify_rig` turns a Rigify meta rig into a generated one. Before them mpfb-mcp
+could name every rig in the install and attach none of them, so every character it produced was a
+static mesh — the catalogue had been reporting an `identifier` and an `add_function` since FR 004
+with nothing on the other end of either.
+
+The interesting half is not the wrapping. MPFB's services have **implicit sequencing that produces
+no error when it is violated**: `add_mhclo_asset()` rigs a garment only if a rig exists at the
+moment the garment is attached, and nothing re-rigs it afterwards — `refit()` deliberately passes
+`set_parent=False`. Rigify makes that three steps rather than two, since `add_builtin_rig()` on a
+`rigify.*` identifier produces only a *meta rig* and generation has to run after the clothes. An
+agent that dresses a character and then rigs it gets clothes that do not follow the armature and
+finds out when someone moves a bone. No call can validate a sequence, so the standing rule recorded
+in
+[A tool reports an ordering constraint it cannot enforce](../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
+is that a tool which can *observe* the violation reports it, naming the objects — `mpfb_add_rig`
+rigs a dressed character without complaint and returns `mesh_assets_not_rigged`. Splitting
+generation out into its own tool rather than making it a flag is part of the same decision: the
+correct order cannot be written as one call.
+
+`codegen/` gained its second shared fragment, `rig_lookup.py`, and this time an existing payload was
+migrated onto it — [FR 006](done/006-list-targets/README.md)'s `list_targets.py` was deliberately
+left alone in the same situation, so the difference is worth stating. `mpfb_list_rigs` *predicts*,
+per rig, which weights file adding it would load; `mpfb_add_rig` then does it and reports the
+outcome. A caller who reads the catalogue and acts on it is entitled to get back what the catalogue
+promised, and MPFB resolves weights through a *fallback table* rather than by filename, so two
+implementations disagreeing would make an ordinary rig look broken in one tool and fine in the
+other. The overlap is about ten lines: too small to justify a fragment on size, and not justifiable
+as duplication on consequence. [Shared fragments](../specifications/architecture.md#shared-fragments)
+now records that sharper rule, and one test asserts it directly by running both payloads against the
+same rig tree and comparing their answers.
+
+Three conventions were extended rather than added.
+[How a mutating tool takes its subject](../specifications/architecture.md#how-a-mutating-tool-takes-its-subject)
+gained the case where the resolved object is *not* the basemesh — `mpfb_generate_rigify_rig`
+narrows to the character's `Skeleton` — and the case where the whole set is needed rather than the
+first match. [A mutating tool reports before and after](../specifications/architecture.md#a-mutating-tool-reports-before-and-after)'s
+"restore what was borrowed" gained its one honest exception: `generate_rigify_rig()`'s own final act
+is to select and activate its result, so there is no state to restore to and the response says what
+the selection now is.
+
+Reading MPFB's source turned up four things the request did not know. `weights_from` is always a
+**bare** name, so comparing it against the identifier reports `rigify.human_toes` as borrowing from
+itself. `bpy.context.mode` has to be checked as well as the basemesh's, because building the
+armature runs `bpy.ops` calls that poll on the context — an unrelated object in edit mode blocks a
+basemesh that looks fine. `RigService.identify_rig()` can return `None`, not merely `"unknown"`,
+which makes MPFB's own generate operator's `poll()` raise (a candidate mpfb2 issue). And after
+generation the meta rig is **not a relative of the character at all** —
+`adjust_children_for_rigify()` re-parents everything onto the generated rig — which is why "already
+generated" is a distinct answer from "that is not a meta rig", and why the payload classifies every
+skeleton relative rather than taking the first.
+
+Four files added — two tool modules, two payloads — plus one shared fragment and two test modules,
+with `list_rigs.py`, its tool module and its tests migrated onto the fragment. Unit tests grew from
+419 to 492, over stubs extended with the rig half of `HumanService` and the write half of
+`RigService`: adders that **raise** for an unknown rig with no operator, a missing weights file that
+is reported through an operator and otherwise silent, an armature registered in the file *before*
+the Rigify colour assertion so the stray it leaves behind is real, and a `generate_rigify_rig()`
+that renames, deselects and activates before the validity gate so that "a failed generation is not a
+no-op" is genuinely under test.
+
+**Live verification is outstanding**, as for [FR 007](done/007-macro-details/README.md) and
+[FR 008](done/008-detail-targets/README.md) — and this effort adds a new kind of debt to that
+session: refactoring `list_rigs.py` onto the shared fragment means **FR 004's live verification is
+stale**, since the program sent into Blender is a different program even though its behavior is
+unchanged as far as the unit tests can see. The claim nothing on this side of the socket can
+establish is the one the whole request is built on: that a rig added after the clothes really does
+leave them unrigged. The checklist is under
+["Verification status" in the request](done/009-add-rig/README.md#verification-status), and
+[NEXT_STEPS.md](NEXT_STEPS.md) folds it into the same outstanding session.

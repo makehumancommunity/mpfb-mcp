@@ -24,8 +24,6 @@ __all__ = ()
 
 import json
 import os
-import pathlib
-import tempfile
 import unittest
 from unittest import mock
 
@@ -35,32 +33,8 @@ from mpfbmcp import codegen
 from mpfbmcp.tools import list_rigs
 
 from tests.blender_stubs import (
-    GeneratedCodeTestCase, StubAssetService, StubLocationService, StubSystemService)
-
-# What MPFB actually ships, minus most of the standard rigs: enough to cover the
-# fallback table on both sides plus a rig the enum does not mention.
-_STANDARD_RIGS = ("default", "default_no_toes", "game_engine", "undocumented_rig")
-_STANDARD_WEIGHTS = ("default", "game_engine")
-_RIGIFY_RIGS = ("human", "human_toes")
-_RIGIFY_WEIGHTS = ("human_toes",)
-
-_STANDARD_ENUM = {
-    "type": "enum",
-    "name": "standard_rig",
-    "items": [
-        ["default", "Default", "The default makehuman rig", 0],
-        ["default_no_toes", "Default (no toes)", "The default rig without toe bones", 1],
-        ["game_engine", "Game engine", "The game engine rig", 2],
-    ],
-}
-_RIGIFY_ENUM = {
-    "type": "enum",
-    "name": "rigify_rig",
-    "items": [
-        ["human_toes", "Default", "The default makehuman rigify rig", 0],
-        ["human", "Default (no toes)", "The default rigify rig without toe bones", 1],
-    ],
-}
+    RigTestCase, StubAssetService, StubLocationService, StubSystemService,
+    write_json as _write_json)
 
 
 def _tool_callable():
@@ -118,64 +92,22 @@ class RefreshValidationTests(unittest.TestCase):
                 send_code.assert_not_called()
 
 
-class ListRigsGeneratedCodeTests(GeneratedCodeTestCase):
-    """The payload, run against a real rig directory tree and the stub services."""
+class ListRigsGeneratedCodeTests(RigTestCase):
+    """The payload, run against a real rig directory tree and the stub services.
 
-    def setUp(self):
-        super().setUp()
-        self._temporary = tempfile.TemporaryDirectory()
-        self.addCleanup(self._temporary.cleanup)
-        root = self._temporary.name
-
-        self.mpfb_data = os.path.join(root, "mpfb", "data")
-        self.standard_dir = os.path.join(self.mpfb_data, "rigs", "standard")
-        self.rigify_dir = os.path.join(self.mpfb_data, "rigs", "rigify")
-        os.makedirs(self.standard_dir)
-        os.makedirs(self.rigify_dir)
-        for name in _STANDARD_RIGS:
-            _write_json(os.path.join(self.standard_dir, "rig." + name + ".json"), {"bones": {}})
-        for name in _STANDARD_WEIGHTS:
-            _write_json(os.path.join(self.standard_dir, "weights." + name + ".json"), {})
-        for name in _RIGIFY_RIGS:
-            _write_json(os.path.join(self.rigify_dir, "rig." + name + ".json"), {"bones": {}})
-        for name in _RIGIFY_WEIGHTS:
-            _write_json(os.path.join(self.rigify_dir, "weights." + name + ".json"), {})
-        # A weights file whose rig does not exist: it must not be listed as a rig.
-        _write_json(os.path.join(self.standard_dir, "weights.orphan.json"), {})
-
-        self.mpfb_root = os.path.join(root, "mpfb")
-        self.standard_enum_path = os.path.join(
-            self.mpfb_root, "ui", "rigging", "standardrig", "properties")
-        self.rigify_enum_path = os.path.join(
-            self.mpfb_root, "ui", "rigging", "rigifyrig", "properties")
-        os.makedirs(self.standard_enum_path)
-        os.makedirs(self.rigify_enum_path)
-        _write_json(os.path.join(self.standard_enum_path, "standard_rig.json"), _STANDARD_ENUM)
-        _write_json(os.path.join(self.rigify_enum_path, "rigify_rig.json"), _RIGIFY_ENUM)
-
-        self.user_data = os.path.join(root, "user", "data")
-        self.user_rigs = os.path.join(self.user_data, "rigs")
-        os.makedirs(self.user_rigs)
-
-        StubLocationService.mpfb_data = self.mpfb_data
-        # A Path, as MPFB really returns for the no-sub-path form.
-        StubLocationService.mpfb_root = pathlib.Path(self.mpfb_root)
-        StubLocationService.user_data = self.user_data
-        StubAssetService.custom_rigs = ()
-
-    def install_custom_rig(self, name, *, weights=True, accepted=True):
-        """Put a custom rig on disk, and (unless rejected) in get_custom_rigs()."""
-        path = os.path.join(self.user_rigs, name + ".json")
-        _write_json(path, {"identifying_bones": ["root"], "bones": {}})
-        if weights:
-            _write_json(os.path.join(self.user_rigs, "weights." + name + ".json"), {})
-        if accepted:
-            StubAssetService.custom_rigs = tuple(StubAssetService.custom_rigs) + (
-                {"name": name, "path": path, "identifying_bones": ["root"]},)
-        return path
+    The tree, and ``install_custom_rig()``, live in
+    ``blender_stubs.RigTestCase``: ``mpfb_add_rig``'s tests need the same one,
+    and the whole point of the shared ``rig_lookup.py`` fragment is that what
+    this tool predicts and what that tool does can be compared.
+    """
 
     def run_list_rigs(self, refresh=False):
-        return self.run_payload("list_rigs.py", {"refresh": refresh})
+        # The fragment goes in exactly as tools/list_rigs.py names it, so what
+        # runs here is the program the tool would send rather than a payload in
+        # isolation - which matters, since the weights resolution now lives in
+        # the fragment.
+        return self.run_payload(
+            "list_rigs.py", {"refresh": refresh}, shared=["rig_lookup.py"])
 
     def entry(self, result, identifier):
         for rig in result["rigs"]:
@@ -361,14 +293,14 @@ class ListRigsGeneratedCodeTests(GeneratedCodeTestCase):
     def test_a_user_rigs_directory_that_does_not_exist_is_still_reported(self):
         # "We looked here and it was not there" is the answer a user missing
         # their custom rig actually needs.
-        StubLocationService.user_data = os.path.join(self._temporary.name, "absent")
+        StubLocationService.user_data = os.path.join(self._rig_tree.name, "absent")
         dirs = self.run_list_rigs()["rig_dirs"]
         custom = [entry for entry in dirs if entry["family"] == "custom"]
         self.assertEqual(len(custom), 1)
         self.assertFalse(custom[0]["exists"])
 
     def test_a_second_root_is_scanned_when_there_is_one(self):
-        second = os.path.join(self._temporary.name, "second")
+        second = os.path.join(self._rig_tree.name, "second")
         os.makedirs(os.path.join(second, "rigs"))
         StubLocationService.second_root = second
         dirs = [entry["path"] for entry in self.run_list_rigs()["rig_dirs"]]
@@ -445,12 +377,20 @@ class PayloadSourceTests(unittest.TestCase):
     def test_the_payload_never_imports_an_mpfb_submodule(self):
         source = codegen.read_payload("list_rigs.py")
         self.assertNotIn("import_module", source)
-        self.assertIn('_MPFB_SERVICES["LocationService"]', source)
+        self.assertIn('_MPFB_SERVICES["SystemService"]', source)
+        # LocationService and the rest are reached the same way, one file over:
+        # the fragment the tool names beside this payload.
+        fragment = codegen.read_shared("rig_lookup.py")
+        self.assertNotIn("import_module", fragment)
+        self.assertIn('_MPFB_SERVICES["LocationService"]', fragment)
 
     def test_the_payload_needs_no_bpy(self):
         # Nothing here touches the scene, and saying so in a test is what keeps
-        # a later edit from quietly making this tool scene-dependent.
+        # a later edit from quietly making this tool scene-dependent. The
+        # fragment is held to the same rule: mpfb_add_rig does touch the scene,
+        # but the shared half of it is pure path resolution.
         self.assertNotIn("import bpy", codegen.read_payload("list_rigs.py"))
+        self.assertNotIn("import bpy", codegen.read_shared("rig_lookup.py"))
 
 
 if __name__ == "__main__":

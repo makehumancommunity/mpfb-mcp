@@ -36,7 +36,13 @@ def main() -> int:
             "than guessing from Blender object names. To find an asset to apply "
             "or a rig to add, use mpfb_list_assets or mpfb_list_rigs, and "
             "mpfb_list_targets for the modeling morphs: each names its entries "
-            "the way the acting function will want them. To change an existing "
+            "the way the acting function will want them. Order matters when "
+            "building a character and MPFB reports no error when it is wrong: "
+            "add the rig with mpfb_add_rig BEFORE attaching any clothes, since "
+            "a garment is rigged only if a rig exists when it is attached and "
+            "nothing rigs it afterwards. A rigify.* rig is only a meta rig when "
+            "mpfb_add_rig returns; attach the clothes and then finish it with "
+            "mpfb_generate_rigify_rig, which is not undoable. To change an existing "
             "character rather than create one, read its phenotype with "
             "mpfb_get_macro_details first and change only what should differ "
             "with mpfb_set_macro_details, which leaves unnamed sliders alone. "
@@ -54,10 +60,13 @@ def main() -> int:
     )
 
     from mpfbmcp.tools import (
-        create_human, get_macro_details, get_object_info, get_status,
-        get_target_stack, list_assets, list_objects, list_rigs, list_targets,
-        refit_human, set_macro_details, set_targets, symmetrize_targets)
+        add_rig, create_human, generate_rigify_rig, get_macro_details,
+        get_object_info, get_status, get_target_stack, list_assets, list_objects,
+        list_rigs, list_targets, refit_human, set_macro_details, set_targets,
+        symmetrize_targets)
+    add_rig.register(mcp)
     create_human.register(mcp)
+    generate_rigify_rig.register(mcp)
     get_macro_details.register(mcp)
     get_object_info.register(mcp)
     get_status.register(mcp)

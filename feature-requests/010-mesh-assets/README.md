@@ -84,8 +84,9 @@ Arguments:
   MPFB's proxy path and it is not obvious from the argument name.
 - `rigged_to` — the rig the asset was set up against, or `null` with `parented_to` naming the basemesh
   instead. `add_mhclo_asset()` rigs only if a `Skeleton` relative exists *at this moment*; see
-  [FR 009](../009-add-rig/README.md) for the ordering constraint, which this response is the other
-  half of.
+  [FR 009](../done/009-add-rig/README.md) for the ordering constraint, which this response is the
+  other half of. `mpfb_add_rig` reports it from the rig's side, as `mesh_assets_not_rigged`; this
+  reports it from the asset's side, and the two have to agree about the same character.
 - `subrig_object_name` — a sub-rig imported from a `.mpfbskel` beside the MHCLO, when `import_subrig`
   found one.
 - `delete_group_name` and `delete_group_applied_to` — the `Delete.<basename>` vertex group and the
@@ -255,7 +256,11 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
     [A mutating tool reports before and after](../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
     and
     [Preconditions are answers](../../specifications/architecture.md#preconditions-are-answers) —
-    and [FR 009](../009-add-rig/README.md)'s ordering-constraint rule.
+    and — now that [FR 009](../done/009-add-rig/README.md) has landed it as a standing convention —
+    [A tool reports an ordering constraint it cannot enforce](../../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce),
+    which this request **follows** rather than proposes. Note what that convention already says about
+    this tool: report, do not refuse; name the objects rather than the rule; and observe *before*
+    acting, so the claim is about what was true when the asset was attached.
   - **New — an acting tool accepts every identifier its catalogue reports.** `mpfb_list_assets` gives
     a `path` and a `fragment` for a reason: one is passable and one is portable. A tool that took only
     the path would make a stored character description unusable, and one that took only the fragment
@@ -320,8 +325,13 @@ Specifically:
 - Removal end to end: the mask modifier is gone from the basemesh *and* from the body proxy, the
   sub-rig is gone, the vertex group remains, and the character looks as it did before the asset was
   added.
-- Interaction with [FR 009](../009-add-rig/README.md): equip, then rig, and confirm `rigged_to: null`
-  was telling the truth — the garment does not follow the armature.
+- Interaction with [FR 009](../done/009-add-rig/README.md): equip, then rig, and confirm
+  `rigged_to: null` was telling the truth — the garment does not follow the armature. FR 009 landed
+  without live verification, and this is the same check from the other end, so **whichever request
+  gets there first settles it for both**; see
+  [its Verification status](../done/009-add-rig/README.md#verification-status). The Rigify half is
+  the same story: equip after generating, and confirm the garment was not handled by
+  `adjust_children_for_rigify()`.
 - Interaction with [FR 007](../done/007-macro-details/README.md): change a macro detail after equipping and
   confirm `mpfb_refit_human` re-fits the garment. FR 007 landed without live verification of its
   own, so this doubles as the first live evidence that its refit does anything at all — see

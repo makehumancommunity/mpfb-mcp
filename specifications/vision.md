@@ -75,7 +75,12 @@ tool should get its own feature request when scoped.
   the directories scanned and the files MPFB silently refused, so an absent rig is explainable
   rather than merely absent. Its vocabulary overlaps `mpfb_get_object_info`'s `rig_type` without
   matching it: `rigify_generated.*` and `unknown` describe an existing armature and name nothing
-  that can be added.
+  that can be added. **Its `identifier` and `add_function` are consumed by `mpfb_add_rig`**, which
+  dispatches on the prefix so the caller never picks the function — the same pairing
+  `mpfb_list_targets` has with `mpfb_set_targets`. The weights prediction here and the weights
+  outcome there are one implementation (see
+  [Shared fragments](architecture.md#shared-fragments)), so the catalogue cannot promise what the
+  adder does not deliver.
 - `mpfb_get_macro_details` — what is this character's phenotype? **Implemented.** Reads the
   eleven macro sliders off a character named by *any* object in its family (see
   [How a mutating tool takes its subject](architecture.md#how-a-mutating-tool-takes-its-subject),
@@ -208,9 +213,33 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
 - `mpfb_set_skin` — via `set_character_skin()`. Takes its `path` from `mpfb_list_assets`'
   `skins` subdir; a skin is a material rather than a mesh asset, so it is not
   `mpfb_add_asset`'s job.
-- `mpfb_add_rig` — builtin or custom. Takes its `identifier` and the function to dispatch
-  on from `mpfb_list_rigs`, the same way the tools above take their subject from
-  `mpfb_list_objects` / `mpfb_get_object_info`.
+- `mpfb_add_rig` — builtin or custom. **Implemented.** Takes its `identifier` from
+  `mpfb_list_rigs`, the same way the tools above take their subject from `mpfb_list_objects` /
+  `mpfb_get_object_info`, and **dispatches on the `custom.` prefix itself** rather than letting the
+  caller name the function: `add_builtin_rig()` and `add_custom_rig()` are not interchangeable and
+  crossing them does not fail legibly. Calls MPFB's own functions and reimplements none of the
+  naming, parenting, weight-fallback or Rigify bookkeeping, so the result matches what MPFB's three
+  "Add ... rig" buttons produce. Reports what the caller could not otherwise see: which weights
+  file was actually used and whose it was, whether an armature modifier was added, and that both
+  adding functions **move the basemesh to the origin** and hand the armature its old location. Its
+  five refusals are answers rather than exceptions (see
+  [Preconditions are answers](architecture.md#preconditions-are-answers)) — most importantly a
+  character that already has a rig, since MPFB has no way to swap one and adding a second silently
+  orphans the first. And it is the first consumer of
+  [A tool reports an ordering constraint it cannot enforce](architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce):
+  it rigs a dressed character without complaint but names, in `mesh_assets_not_rigged`, every asset
+  it has just failed to rig.
+- `mpfb_generate_rigify_rig` — turn a Rigify meta rig into a generated rig. **Implemented.** A tool
+  of its own rather than a flag on `mpfb_add_rig`, because that is the only way the correct order —
+  meta rig, then clothes, then generate — can be expressed at all. Unlike every other character
+  tool it resolves its subject to the **meta rig** rather than the basemesh, and it distinguishes
+  "already generated" from "not a Rigify rig" by classifying every `Skeleton` relative, since
+  generation re-parents the character onto its result and leaves the meta rig outside the family.
+  Two things it reports that MPFB cannot: that a **rejected** generation is not a no-op — the meta
+  rig has already been renamed, everything deselected and Rigify's face upgrade possibly run before
+  the validity gate — and that `meta_rig_action: "delete"` permanently forecloses refitting, which
+  `mpfb_refit_human` can otherwise only discover afterwards. It is also the one tool here that
+  cannot restore the caller's selection, and says so.
 
 **Documentation**
 

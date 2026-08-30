@@ -155,14 +155,25 @@ above, a **parameter prelude**, and a per-tool **payload** — plus, optionally,
 A **fragment** is a fourth, optional part: an ordinary `.py` file under
 `src/mpfbmcp/codegen/shared/`, named by a tool module in `assemble(..., shared=[...])` and
 concatenated between the prelude and the payload. It exists for a *concept* two or more payloads
-model identically — `target_categories.py` rebuilds MPFB's `target.json` category table, which
-`mpfb_get_target_stack`, `mpfb_set_targets` and `mpfb_symmetrize_targets` all need in the same
-shape and none of them can import.
+model identically. There are two: `target_categories.py` rebuilds MPFB's `target.json` category
+table, which `mpfb_get_target_stack`, `mpfb_set_targets` and `mpfb_symmetrize_targets` all need in
+the same shape and none of them can import; and `rig_lookup.py` answers "which rig file would MPFB
+load for this identifier, and whose weights would come with it", which `mpfb_list_rigs` and
+`mpfb_add_rig` need to answer *identically*.
 
 - **A fragment is warranted by duplication that must not drift, not by size.** Three copies of a
   hundred-line scan of the user's target directories are three chances for two tools to disagree
   about what is installed, and that disagreement is worse than either behavior on its own. Two
   payloads sharing a five-line helper are not a reason to reach for this.
+- **Where a catalogue tool predicts what an acting tool will do, the prediction and the action are
+  one implementation.** This is the sharper form of the rule above, and `rig_lookup.py` is the
+  case: `mpfb_list_rigs` reports, per rig, which weights file adding it would load, and
+  `mpfb_add_rig` then reports which one it did load. A caller who reads the catalogue and acts on
+  it is entitled to get back what the catalogue promised. The overlap is about ten lines — small
+  enough that duplication would be defensible on size alone, and not defensible at all on
+  consequence: MPFB resolves weights through a *fallback table*, so `default_no_toes` legitimately
+  loads `default`'s weights, and two implementations that disagree about that would make an
+  ordinary rig look broken in one tool and fine in the other.
 - **Opting in is the payload's business, not the assembler's.** `assemble()` takes the list; there
   is no table here mapping payloads to fragments. So the rule above still holds unchanged: adding
   an ordinary tool is still a tool module, a payload and a `register()` call, and a tool that wants
@@ -435,6 +446,18 @@ Requiring the caller to know that would make every mutating tool need a lookup s
 - **The walk is MPFB's, not a reimplementation.** It descends through children, ascends through
   parents, and takes each parent's other branches on the way — which is what finds a garment from
   the basemesh on a rigged character, since MPFB parents garments to the *rig*.
+- **The object resolved to is not always the basemesh.** It is for every phenotype and modeling
+  tool, and for `mpfb_add_rig`, because that is what carries what they change. It is not for
+  `mpfb_generate_rigify_rig`, which narrows to the character's `Skeleton` and then asks
+  `RigService.identify_rig()` which kind it found — the meta rig is the thing being operated on.
+  Resolve to whatever owns the change, name it in the response (`metarig_name` rather than
+  `basemesh_name` there), and take the subject from anywhere in the family either way.
+- **A narrowing step can need the whole set rather than the first match.**
+  `find_object_of_type_amongst_nearest_relatives()` returns one object; where two objects of the
+  same MPFB type mean different things, take them all and classify. After Rigify generation a
+  character's `Skeleton` relative is the *generated* rig, since `adjust_children_for_rigify()`
+  re-parents the character onto it — so "already generated" and "that is not a meta rig" are
+  different answers that a single lookup could not tell apart.
 - **Failing to resolve is an answer**, `found: false` with a sentence, exactly as for the read-only
   tools.
 
@@ -461,7 +484,10 @@ by omission.
   full macro rebuild costs seconds.
 - **Restore what was borrowed.** Where the payload has to activate or select an object to do its
   work — MPFB's own slider callback does — put the previous active object and selection back, in a
-  `finally`, so a failure part-way through does not leave the user's scene rearranged.
+  `finally`, so a failure part-way through does not leave the user's scene rearranged. Where it
+  genuinely *cannot* — `RigService.generate_rigify_rig()`'s own final act is to select and activate
+  the rig it produced, so there is no state left to restore to — say what the selection now is
+  (`active_object_after`) rather than quietly leaving the caller to assume nothing moved.
 
 ## Preconditions are answers
 
@@ -483,6 +509,42 @@ problem, rather than letting MPFB's own guard surface as a traceback in an error
 Report which precondition blocked (`ready: false` plus a `blocked_by` naming it) rather than only a
 sentence, so a caller can branch on it; and make sure the tool changed nothing on the way to
 finding out.
+
+## A tool reports an ordering constraint it cannot enforce
+
+MPFB's services have **implicit sequencing**, and violating it produces no error anywhere. The rig
+has to be added before the mesh assets, because `HumanService.add_mhclo_asset()` rigs a garment only
+if a `Skeleton` relative exists at the moment the garment is attached and nothing re-rigs it
+afterwards — `HumanService.refit()` deliberately passes `set_parent=False`. Rigify generation has to
+come after the mesh assets, because `RigifyHelpers.adjust_children_for_rigify()` handles exactly
+what is on the character when it runs. MPFB's own character builder documents both in comments, and
+its randomizer follows them; nothing enforces them. An agent that dresses a character and then rigs
+it gets clothes that do not follow the armature, and finds out when someone moves a bone.
+
+No single call can validate a sequence. But a tool can often *observe* that the caller is about to
+break one, and where it can, **it reports the observation in its response, naming the objects
+affected** — rather than either failing or staying silent.
+
+- **Report, do not refuse.** Rigging an already-dressed character is a legitimate thing to do when
+  the clothes are decorative. `mpfb_add_rig` adds the rig and returns `mesh_assets_not_rigged`
+  listing what it has just failed to rig; it does not second-guess the caller.
+- **Name the objects, not the rule.** "Some assets may not be rigged" is advice; `["Shirt",
+  "Shoes"]` is something an agent can act on. This is the sequencing counterpart of
+  [an empty answer must never be ambiguous](#how-tools-report-the-asset-behind-an-object).
+- **Observe before acting, so the claim is precise.** The assets are enumerated *before* the rig is
+  added. Afterwards they are still reachable, but the answer would then be "assets on this
+  character" rather than "assets that were attached while there was no rig".
+- **A half-finished sequence must look half-finished.** `mpfb_add_rig` on a `rigify.*` identifier
+  produces only a meta rig, so it returns `is_metarig: true` and a `next_step` naming
+  `mpfb_generate_rigify_rig` and saying that assets come first. "The rig was added" must not read as
+  "the character is rigged".
+- **Where a step forecloses a later one, say so at the point of decision.**
+  `mpfb_generate_rigify_rig`'s `meta_rig_action: "delete"` leaves a character that can never be
+  refitted again, which `mpfb_refit_human` can only report after the fact. `refit_will_be_possible`
+  is that same fact, knowable in advance.
+- **Splitting a tool can be what makes the order expressible.** Rigify generation is a tool of its
+  own rather than a flag on `mpfb_add_rig` precisely because the correct order — meta rig, then
+  clothes, then generate — cannot be written as a single call.
 
 ## A batched mutating tool resolves before it writes
 

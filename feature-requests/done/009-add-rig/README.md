@@ -1,8 +1,8 @@
 # Adding a rig to a character
 
-**Status:** Proposed
+**Status:** Done
 
-[FR 004](../done/004-list-rigs/README.md) built the catalogue of rigs that could be added, and gave
+[FR 004](../004-list-rigs/README.md) built the catalogue of rigs that could be added, and gave
 each entry the two things an acting tool would need: the `identifier` an adding function takes, and
 the `add_function` that takes it. That acting tool does not exist. mpfb-mcp can name every rig in
 the install and attach none of them, so every character it produces is a static mesh.
@@ -31,7 +31,7 @@ Secondary: make the ordering constraint visible. A rig added to an already-dress
 mistake the tool can *see* being made, and reporting it is cheaper than the user discovering it when
 they move a bone.
 
-Also: close the loop [FR 004](../done/004-list-rigs/README.md) left open — every `identifier` that
+Also: close the loop [FR 004](../004-list-rigs/README.md) left open — every `identifier` that
 catalogue reports must be one this tool accepts, and dispatching on `add_function` must be this
 tool's job rather than the caller's.
 
@@ -44,7 +44,7 @@ Two tools.
 Mutating. Arguments:
 
 - `name` (optional string) — a Blender object name, resolved to the character's basemesh as in
-  [FR 007](../done/007-macro-details/README.md). Omitted means the active object.
+  [FR 007](../007-macro-details/README.md). Omitted means the active object.
 - `identifier` (required string) — exactly as `mpfb_list_rigs` reports it: a bare name for a standard
   rig, `rigify.<name>` for a Rigify one, `custom.<name>` for a user one. Not a filename, and not the
   `name` field beside it.
@@ -85,7 +85,7 @@ Preconditions come back as answers with `added: false`, never as tracebacks:
 - `identifier` names no rig. With `operator=None` — which is what generated code has — MPFB raises
   `IOError` for a missing built-in rig file and `ValueError` for an unknown custom rig. Check first,
   and answer with `known_identifiers` for the family that was addressed, per
-  [Validate before crossing the socket](../../specifications/architecture.md#validate-before-crossing-the-socket).
+  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket).
 - `identifier` starts with `rigify.` and Rigify is not enabled. `add_builtin_rig()` raises
   `NotImplementedError` rather than degrading; `SystemService.check_for_rigify()` is the same check
   `mpfb_list_rigs` already reports as `rigify_available`.
@@ -110,7 +110,7 @@ Mutating. Wraps `RigService.generate_rigify_rig()`. Arguments:
   everything** — a partial effect that must be reported rather than presented as "nothing happened".
 - `metarig_disposition` — what became of the meta rig (`kept`, `hidden`, `deleted`).
 - `refit_will_be_possible` (bool) plus an explanatory `message` when it is false. This is the same
-  failure [FR 007](../done/007-macro-details/README.md) documents from the other end: with no meta rig in
+  failure [FR 007](../007-macro-details/README.md) documents from the other end: with no meta rig in
   the scene, `HumanService.refit()` logs a warning, tries to report through an operator it does not
   have, and **returns having refitted the mesh assets but not the rig** (FR 007 corrected its own
   "refitted nothing" while implementing — the asset loop runs before the rig block). Implemented,
@@ -131,10 +131,10 @@ not in OBJECT mode.
 it correctly means removing the armature modifier from the basemesh and from every fitted asset,
 re-parenting them, and dealing with sub-rigs; that is its own request, and until it exists the
 "already has a rig" refusal above is the honest answer. Also out: pose loading from the `poses`
-library and any other BVH work (see [NEXT_STEPS.md](../NEXT_STEPS.md)); bone-level manipulation, rig
+library and any other BVH work (see [NEXT_STEPS.md](../../NEXT_STEPS.md)); bone-level manipulation, rig
 helpers and IK/FK cycles; `RigService.refit_existing_armature()` on its own, which
-[FR 007](../done/007-macro-details/README.md)'s `mpfb_refit_human` already covers; and sub-rigs shipped
-with clothing, which are [FR 010](../010-mesh-assets/README.md)'s `import_subrig`.
+[FR 007](../007-macro-details/README.md)'s `mpfb_refit_human` already covers; and sub-rigs shipped
+with clothing, which are [FR 010](../../010-mesh-assets/README.md)'s `import_subrig`.
 
 ## Non-functional requirements
 
@@ -156,26 +156,26 @@ with clothing, which are [FR 010](../010-mesh-assets/README.md)'s `import_subrig
 
 ## Architecture
 
-- Two tool modules under [`src/mpfbmcp/tools/`](../../src/mpfbmcp/tools), two payloads under
-  [`src/mpfbmcp/codegen/payloads/`](../../src/mpfbmcp/codegen/payloads), two `register()` calls, per
-  [the code-generation layout](../../specifications/architecture.md#code-generation-layout).
+- Two tool modules under [`src/mpfbmcp/tools/`](../../../src/mpfbmcp/tools), two payloads under
+  [`src/mpfbmcp/codegen/payloads/`](../../../src/mpfbmcp/codegen/payloads), two `register()` calls, per
+  [the code-generation layout](../../../specifications/architecture.md#code-generation-layout).
   **Raising bootstrap** for both; `HumanService`, `ObjectService`, `RigService` and `SystemService`
   are all in the `SERVICES` dict.
 - **Dispatch on the prefix, never let the caller choose the function.** `identifier.startswith("custom.")`
   selects `add_custom_rig()`; everything else goes to `add_builtin_rig()`, which handles the
   `rigify.` prefix itself. Crossing the two does not fail legibly, and
-  [How tools name things that can be added](../../specifications/architecture.md#how-tools-name-things-that-can-be-added)
+  [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added)
   records why: `add_builtin_rig("custom.my_rig")` looks for `rig.custom.my_rig.json`, and
   `add_custom_rig()` strips the first seven characters of whatever it is given.
 - **Pre-check existence the way the two functions resolve it**, so a bad identifier is an answer and
   not an exception. A built-in rig is `<mpfb data>/rigs/{standard,rigify}/rig.<bare name>.json`; a
   custom one is a `name` in `AssetService.get_custom_rigs()`. Both are the checks
-  [`payloads/list_rigs.py`](../../src/mpfbmcp/codegen/payloads/list_rigs.py) already performs, and the
-  two payloads must not drift. [FR 008](../done/008-detail-targets/README.md) faced the same problem
+  [`payloads/list_rigs.py`](../../../src/mpfbmcp/codegen/payloads/list_rigs.py) already performs, and the
+  two payloads must not drift. [FR 008](../008-detail-targets/README.md) faced the same problem
   at a larger scale and answered it by *factoring* rather than duplicating: `codegen.assemble()` now
   takes an optional `shared=[...]` naming fragment files concatenated ahead of the payload, and the
   convention is recorded under
-  [Shared fragments](../../specifications/architecture.md#shared-fragments). Duplicating a few lines
+  [Shared fragments](../../../specifications/architecture.md#shared-fragments). Duplicating a few lines
   and saying so in both docstrings is still the right answer for a small overlap; a rig-existence
   check shared by two payloads is a judgement call to make when the code is in front of you. What is
   no longer acceptable is silent duplication.
@@ -211,26 +211,26 @@ with clothing, which are [FR 010](../010-mesh-assets/README.md)'s `import_subrig
 
 ## Affected specifications
 
-- [vision.md](../../specifications/vision.md#target-tool-catalog) — the `mpfb_add_rig` entry under
+- [vision.md](../../../specifications/vision.md#target-tool-catalog) — the `mpfb_add_rig` entry under
   "Creation and modification" exists and should be marked **Implemented** and described.
   `mpfb_generate_rigify_rig` is a **new entry**. The `mpfb_list_rigs` entry should gain a line saying
   that its `identifier` and `add_function` are consumed here, the same pairing
-  [FR 008](../done/008-detail-targets/README.md) draws between `mpfb_list_targets` and its setter.
-- [architecture.md](../../specifications/architecture.md) — conventions to follow, and one candidate
+  [FR 008](../008-detail-targets/README.md) draws between `mpfb_list_targets` and its setter.
+- [architecture.md](../../../specifications/architecture.md) — conventions to follow, and one candidate
   addition.
   - **To follow:**
-    [How tools name things that can be added](../../specifications/architecture.md#how-tools-name-things-that-can-be-added),
+    [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added),
     which this tool is the first consumer of, and
-    [How generated code addresses objects](../../specifications/architecture.md#how-generated-code-addresses-objects).
-  - **Plus the three conventions [FR 007](../done/007-macro-details/README.md) landed**, which this
+    [How generated code addresses objects](../../../specifications/architecture.md#how-generated-code-addresses-objects).
+  - **Plus the three conventions [FR 007](../007-macro-details/README.md) landed**, which this
     request now *follows* rather than proposes:
-    [How a mutating tool takes its subject](../../specifications/architecture.md#how-a-mutating-tool-takes-its-subject),
-    [A mutating tool reports before and after](../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
+    [How a mutating tool takes its subject](../../../specifications/architecture.md#how-a-mutating-tool-takes-its-subject),
+    [A mutating tool reports before and after](../../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
     and
-    [Preconditions are answers](../../specifications/architecture.md#preconditions-are-answers).
+    [Preconditions are answers](../../../specifications/architecture.md#preconditions-are-answers).
   - **New — a tool reports an ordering constraint it cannot enforce.** MPFB's services have implicit
     sequencing (rig before assets, assets before Rigify generation, and see
-    [FR 010](../010-mesh-assets/README.md) for the same problem with proxies and clothes) which no
+    [FR 010](../../010-mesh-assets/README.md) for the same problem with proxies and clothes) which no
     single call can validate and which produces no error when violated. The rule worth recording:
     where a tool can *observe* that the caller is about to violate one, it reports the observation in
     the response — naming the objects affected — rather than either failing or staying silent. This
@@ -239,7 +239,7 @@ with clothing, which are [FR 010](../010-mesh-assets/README.md)'s `import_subrig
 ## Tests
 
 Two layers, as established: argument validation with each tool module's `send_code` mocked, then the
-generated source `exec()`d against stubs in [tests/blender_stubs.py](../../tests/blender_stubs.py).
+generated source `exec()`d against stubs in [tests/blender_stubs.py](../../../tests/blender_stubs.py).
 
 The stubs need a `StubHumanService` with the rig half of the real one and a `StubRigService`,
 reproducing behavior rather than convenience:
@@ -262,7 +262,7 @@ basemesh's; `import_weights: false` reports no armature modifier; `mpfb_generate
 a meta rig from the basemesh; `meta_rig_action: "delete"` reports `refit_will_be_possible: false`; and
 an invalid meta rig reports `generated: false` with the rename that did happen.
 
-**Live verification against a running Blender is required**, with the [FR 004](../done/004-list-rigs/README.md)–006
+**Live verification against a running Blender is required**, with the [FR 004](../004-list-rigs/README.md)–006
 revert discipline (snapshot every datablock collection, compare after, never save the `.blend`) —
 and here the mutations are large, so a fresh file per case is the practical form of it. Specifically:
 
@@ -277,11 +277,11 @@ and here the mutations are large, so a fresh file per case is the practical form
 - The full Rigify sequence: add meta rig, attach a garment, generate, and confirm the garment is
   handled by `adjust_children_for_rigify()`. Then the wrong order, to see what it costs.
 - `meta_rig_action` in all three values, and that `"delete"` really does leave
-  [FR 007](../done/007-macro-details/README.md)'s `mpfb_refit_human` unable to refit the rig —
+  [FR 007](../007-macro-details/README.md)'s `mpfb_refit_human` unable to refit the rig —
   which it should report as `refit_performed: false` rather than silently. FR 007 landed without
   live verification, so this is also the first live check of that branch.
 - The `rigify_colors` assertion path, if it can be provoked at all; if it cannot, say so.
-- Cost against [FR 005](../done/005-list-assets/README.md)'s ~1.0 s socket round-trip baseline: how
+- Cost against [FR 005](../005-list-assets/README.md)'s ~1.0 s socket round-trip baseline: how
   long adding a weighted rig takes, and how long Rigify generation takes on a dressed character.
   Generation is expected to be much the slowest operation mpfb-mcp performs.
 
@@ -299,5 +299,99 @@ Record the outcome in a `## Verification status` section here.
   panels' `draw()` methods, which are where "a rig already exists" becomes a hidden button.
 - MPFB `ui/new_human/randomize/characterbuilder.py` — the ordering comments this request is built
   around: the rig before the body parts, Rigify generation after the clothes.
-- [FR 004](../done/004-list-rigs/README.md) — the catalogue whose `identifier`, `add_function` and
+- [FR 004](../004-list-rigs/README.md) — the catalogue whose `identifier`, `add_function` and
   weights prediction this request consumes, and its Verification status section.
+
+## Verification status
+
+**Implemented and unit-tested; live verification is outstanding.** Both tools, their payloads, the
+shared code-generation fragment, the migration of `mpfb_list_rigs` onto it and the tests landed
+together, and the whole suite passes — 492 tests, up from 419. As with
+[FR 007](../007-macro-details/README.md) and [FR 008](../008-detail-targets/README.md), and unlike
+[FR 001](../001-mpfb-get-status/README.md) through [FR 006](../006-list-targets/README.md), this
+request was **not** checked against a running Blender before being marked Done.
+
+That debt is now compound in a new way. This effort refactored
+[`payloads/list_rigs.py`](../../../src/mpfbmcp/codegen/payloads/list_rigs.py) onto the shared
+fragment, so **[FR 004](../004-list-rigs/README.md)'s live verification is stale**: the payload's
+behavior is unchanged as far as the unit tests can tell — they run the same 40 assertions against
+the same temporary rig tree — but the program sent into Blender is a different program. Re-running
+FR 004's live check is now part of the same outstanding session as FR 007's and FR 008's.
+
+### What the unit tests do establish
+
+The stubs reproduce MPFB's real behavior rather than a convenient version, and each quirk is there
+because leaving it out would make a test pass vacuously:
+
+- `add_builtin_rig()` and `add_custom_rig()` **raise** for an unknown rig when given no operator —
+  `IOError` and `ValueError` respectively — which is what generated code always gets. A stub
+  returning `None` would make the pre-checks look like belt and braces.
+- `add_builtin_rig()` reports a missing *weights* file through the operator only, so with none it
+  adds an unweighted rig in silence. That is the path `weights_loaded` exists for, and the fixture's
+  `undocumented_rig` walks it.
+- The Rigify colour assertion fires **after** the armature has been created and registered and
+  **before** it is parented, so the stray-object report has something real to report.
+- `get_rig_weight_fallbacks()` is MPFB's table verbatim, so `weights_from` is asserted against
+  MPFB's resolution rather than against a filename — and one test runs `list_rigs.py` and
+  `add_rig.py` against the same tree and compares their answers directly, which is the whole point
+  of the shared fragment.
+- `generate_rigify_rig()` renames the meta rig, deselects everything and activates the meta rig
+  **before** the validity gate, then returns `None`. Without that ordering, "a failed generation is
+  not a no-op" could not be tested at all.
+- Generation re-parents the character onto the generated rig and sets Rigify's `rigify_target_rig`
+  back-link, which is what makes `already_generated` a reachable state rather than a hypothetical.
+
+Covered: `custom.` dispatches to `add_custom_rig` and nothing else does; an unknown identifier is
+refused with `known_identifiers` for the family addressed and nothing else; a `rigify.` identifier
+with Rigify off is refused before MPFB is touched; an existing `Skeleton` refuses with the rig's
+name; the subject resolves from a garment; `import_weights: false` reports no armature modifier; a
+rig borrowing another's weights says whose, and a rigify rig is not reported as borrowing from
+itself; a character not at the origin reports the move; the previous active object and selection are
+restored; `mesh_assets_not_rigged` and `subrigs_not_rigged` are non-empty exactly when they should
+be; the meta rig resolves from the basemesh, from itself and from a garment; `meta_rig_action` in
+all three values, with `"delete"` reporting `refit_will_be_possible: false`; an invalid meta rig
+reporting `generated: false` together with the rename that did happen; and an armature
+`identify_rig()` cannot place being refused rather than crashing.
+
+### What the unit tests cannot establish
+
+Everything the request is actually about. The live checklist under [Tests](#tests) stands unchanged;
+in particular:
+
+- That a rig added through this tool is indistinguishable from one added through MPFB's panel —
+  same bone count, weights, parenting and object names.
+- **The ordering constraint, observed rather than inferred.** Dress a character, then rig it, and
+  confirm the clothes do not follow the armature; then the other way round. Nothing on this side of
+  the socket establishes the claim the whole request is built on.
+- The full Rigify sequence in both orders, and whether the `rigify_colors` assertion can be provoked
+  at all.
+- That `meta_rig_action: "delete"` really does leave [FR 007](../007-macro-details/README.md)'s
+  `mpfb_refit_human` reporting `refit_performed: false` — which is also the first live check of that
+  branch, since FR 007 landed without one.
+- Cost against [FR 005](../005-list-assets/README.md)'s ~1.0 s round-trip baseline, for adding a
+  weighted rig and for generating on a dressed character.
+
+### What reading MPFB's source turned up
+
+Four things the request did not know, all now reflected in the code:
+
+- **`weights_from` is always a bare name**, so comparing it against the identifier to decide whether
+  a fallback was used reports `rigify.human_toes` as borrowing from itself. The payload compares
+  against the rig's own bare name instead.
+- **`bpy.context.mode` has to be checked as well as `basemesh.mode`.** Building the armature runs
+  `bpy.ops.object.armature_add()` and `mode_set()` through `Rig.create_armature_and_fit_to_basemesh()`,
+  and those poll on the *context* mode — so an unrelated object left in edit mode fails the operator
+  on a basemesh that looks perfectly fine. The request's precondition list named only the basemesh.
+- **`RigService.identify_rig()` can return `None`**, not just `"unknown"`: it starts from
+  `guessed_rig = None` and matches on bone names. MPFB's own `MPFB_OT_GenerateRigifyRigOperator.poll()`
+  would raise `AttributeError` on that. `mpfb_generate_rigify_rig` treats it as `not_a_metarig`.
+- **After generation the meta rig is not a relative of the character at all.**
+  `adjust_children_for_rigify()` re-parents the basemesh and every garment onto the generated rig,
+  and `rigify_object.parent = meta_rig.parent`. So resolving "the character's Skeleton" after a
+  generation finds the generated rig, which is why the payload classifies every skeleton relative
+  rather than taking the first — and why `already_generated` is a distinct answer.
+
+**Candidate mpfb2 improvement**, noted rather than acted on here: `identify_rig()` returning `None`
+makes `MPFB_OT_GenerateRigifyRigOperator.poll()` raise rather than return `False`, which disables
+the Rigify sub-panel's Generate button with a traceback in the console when an unrecognised armature
+is selected.

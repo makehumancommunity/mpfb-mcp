@@ -244,13 +244,37 @@ class StubShapeKeys:
 
 
 class StubMesh:
-    """A mesh datablock. `shape_keys` is None until the first one is added."""
+    """A mesh or armature datablock. `shape_keys` is None until one is added.
 
-    def __init__(self, shapekeys=None):
+    One datablock class for both object types, as the payloads only ever reach
+    for a handful of fields. The Rigify ones are here rather than on the object
+    because that is where MPFB reads them: ``armature_object.data.rigify_colors``
+    and ``.rigify_rig_basename``.
+    """
+
+    def __init__(self, shapekeys=None, rigify_colors=1):
+        # MPFB assigns `armature_object.name = armature_object.data.name = ...`,
+        # so the datablock needs a settable name of its own.
+        self.name = ""
+        # add_builtin_rig() asserts len(...) > 0 for a rigify rig, with no
+        # message. Zero is the Blender-where-Rigify-did-not-initialise case,
+        # which is a branch rather than a hypothetical.
+        self.rigify_colors = [object()] * rigify_colors
+        self.rigify_rig_basename = ""
         self.shape_keys = None
         if shapekeys:
             self.shape_keys = StubShapeKeys(
                 StubShapeKey(name, value) for name, value in shapekeys)
+
+
+class StubModifier:
+    """An object modifier. Only `type` and `object` are ever read."""
+
+    def __init__(self, name, modifier_type, target=None):
+        self.name = name
+        self.type = modifier_type
+        self.object = target
+        self.vertex_group = ""
 
 
 class StubObject:
@@ -260,18 +284,30 @@ class StubObject:
                  asset_source="", alternative_material="", material_source="",
                  material=None, rig_id=None, metarig=False, rig_type="unknown",
                  macro_details=None, is_human_project=False, shapekeys=None,
-                 mode="OBJECT", selected=False, rigify_target_rig=None):
+                 mode="OBJECT", selected=False, rigify_target_rig=None,
+                 location=(0.0, 0.0, 0.0), modifiers=None, rigify_colors=1):
         self.name = name
         self.type = blender_type
         self.parent = parent
         self.material = material
+        # A list rather than a Vector, but iterable of floats and wholly
+        # replaceable, which is all the adding functions need: they assign the
+        # armature the basemesh's location and then move the basemesh to the
+        # origin.
+        self.location = list(location)
+        self.modifiers = list(modifiers or [])
+        # Rigify's meta_rig_action "hide" sets both of these rather than
+        # removing anything, which is what keeps a refit possible afterwards.
+        self.hide_viewport = False
+        self.hide_render = False
         # Rigify's link from a metarig to the rig it generated, which is how
         # MPFB finds one from the other - not a shared id.
         self.rigify_target_rig = rigify_target_rig
         # Settable, because the edit-mode precondition is a branch the mutating
         # payloads exist to get right rather than a state to assume away.
         self.mode = mode
-        self.data = StubMesh(shapekeys)
+        self.data = StubMesh(shapekeys, rigify_colors=rigify_colors)
+        self.data.name = name
         self._selected = selected
         # Rigify's own markers, which MPFB reads off the armature data rather
         # than through any property of its own.
@@ -466,6 +502,27 @@ class StubObjectService:
         return None
 
     @staticmethod
+    def register_object(new_object):
+        """Put a newly created object into the file, both views of it.
+
+        ``all_objects`` stands in for ``bpy.data.objects`` for the relationship
+        walk while the stub ``bpy`` holds the collection the payloads read. They
+        are separate, so anything that creates an object has to update both or
+        the new rig would be invisible to exactly one of them.
+        """
+        StubObjectService.all_objects = tuple(StubObjectService.all_objects) + (new_object,)
+        StubObjectService.bpy.data.objects.append(new_object)
+        return new_object
+
+    @staticmethod
+    def unregister_object(dead_object):
+        StubObjectService.all_objects = tuple(
+            candidate for candidate in StubObjectService.all_objects
+            if candidate is not dead_object)
+        objects = StubObjectService.bpy.data.objects
+        objects.remove(objects[dead_object.name], do_unlink=True)
+
+    @staticmethod
     def activate_blender_object(object_to_make_active, context=None, deselect_all=False):
         # Selects *and* activates. The payloads restore both afterwards, so the
         # stub has to actually do both or there would be nothing to restore.
@@ -637,6 +694,15 @@ class StubRigService:
         "rigify.human_toes": ["rigify.human"],
     }
 
+    # Every (armature name, basemesh name, weights file) load_weights() saw.
+    weights_loaded = []
+    # Every generate_rigify_rig() call, as a dict of its arguments.
+    generate_calls = []
+    # What Rigify's own is_valid_metarig() would say. False is the branch that
+    # matters: generate_rigify_rig() returns None from it, *after* having
+    # renamed the meta rig and deselected everything.
+    metarig_valid = True
+
     @staticmethod
     def identify_rig(armature_object):
         # Never None: "unknown" is the miss.
@@ -645,6 +711,96 @@ class StubRigService:
     @staticmethod
     def get_rig_weight_fallbacks(rig_type):
         return [rig_type, *StubRigService.WEIGHT_FALLBACKS.get(rig_type, [])]
+
+    @staticmethod
+    def load_weights(armature_object, basemesh, weights_file):
+        StubRigService.weights_loaded.append(
+            (armature_object.name, basemesh.name, weights_file))
+
+    @staticmethod
+    def ensure_armature_modifier(obj, armature_object, *, move_to_top=True, subrig=None):
+        # The one observable half of a much longer function: the mesh ends up
+        # with an ARMATURE modifier pointing at the armature. That is what tells
+        # a parented mesh from a deformed one, and it exists only when weights
+        # were imported.
+        for modifier in obj.modifiers:
+            if modifier.type == "ARMATURE" and modifier.vertex_group != "mhmask-subrig":
+                modifier.object = armature_object
+                return modifier
+        modifier = StubModifier("Armature", "ARMATURE", armature_object)
+        obj.modifiers.insert(0, modifier)
+        return modifier
+
+    @staticmethod
+    def normalize_rotation_mode(armature_object):
+        pass
+
+    @staticmethod
+    def generate_rigify_rig(meta_rig, *, name="", meta_rig_action="hide"):
+        """The observable half of RigService.generate_rigify_rig().
+
+        Written in MPFB's order rather than a convenient one, because the order
+        is the point: the rename, the deselection and the activation all happen
+        *before* the validity gate, so a rejected meta rig leaves the scene
+        changed. A stub that checked validity first would make "a failed
+        generation is not a no-op" untestable.
+        """
+        StubRigService.generate_calls.append(
+            {"meta_rig": meta_rig.name, "name": name, "meta_rig_action": meta_rig_action})
+
+        explicit_name = str(name).strip()
+
+        if meta_rig.name.endswith(".rig"):
+            meta_rig.name = meta_rig.data.name = meta_rig.name.replace(".rig", ".metarig")
+
+        if explicit_name:
+            meta_rig.data.rigify_rig_basename = explicit_name
+
+        bpy = StubObjectService.bpy
+        for candidate in StubObjectService.all_objects:
+            candidate.select_set(False)
+        meta_rig.select_set(True)
+        bpy.context.view_layer.objects.active = meta_rig
+
+        if not StubRigService.metarig_valid:
+            # Returns None having done everything above. Nothing is undone.
+            return None
+
+        basename = meta_rig.data.rigify_rig_basename or meta_rig.name.replace("metarig", "rig")
+        rigify_object = StubObject(
+            basename,
+            blender_type="ARMATURE",
+            parent=meta_rig.parent,
+            object_type=StubObjectService.get_object_type(meta_rig),
+            rig_id="stub-rig-id",
+            rig_type="rigify_generated.human",
+        )
+        StubObjectService.register_object(rigify_object)
+
+        # adjust_children_for_rigify(): the character moves onto the generated
+        # rig, which is why the meta rig stops being one of its relatives.
+        for child in list(StubObjectService.get_list_of_children(meta_rig)):
+            if child is rigify_object:
+                continue
+            child.parent = rigify_object
+            for modifier in child.modifiers:
+                if modifier.type == "ARMATURE" and modifier.object is meta_rig:
+                    modifier.object = rigify_object
+
+        # Rigify's own back-link, which is how MPFB finds a meta rig from a
+        # generated rig once the parenting no longer connects them.
+        meta_rig.rigify_target_rig = rigify_object
+
+        action = (meta_rig_action or "hide").lower()
+        if action == "delete":
+            StubObjectService.unregister_object(meta_rig)
+        elif action != "keep":
+            meta_rig.hide_viewport = True
+            meta_rig.hide_render = True
+
+        rigify_object.select_set(True)
+        bpy.context.view_layer.objects.active = rigify_object
+        return rigify_object
 
 
 class StubLocationService:
@@ -1130,9 +1286,26 @@ class StubTargetService:
 
 
 class StubHumanService:
-    """refit(), plus the module HumanObjectProperties is reached off."""
+    """refit() and the two rig adders, plus the module HumanObjectProperties is
+    reached off.
+
+    The adders reproduce MPFB's behavior with ``operator=None`` - which is what
+    generated code always has - rather than a convenient version of it. That
+    means they **raise** for a rig they cannot find, because a stub that
+    returned None instead would make ``mpfb_add_rig``'s pre-checks look like
+    belt and braces rather than the only thing standing between an agent and a
+    traceback. It also means a missing *weights* file is silent: the real
+    function reports it through the operator and otherwise carries on, adding an
+    unweighted rig and saying nothing at all.
+    """
 
     refit_calls = []
+    # One dict per add_builtin_rig()/add_custom_rig() call.
+    add_rig_calls = []
+    # How many Rigify colour sets a newly built armature comes out with. Zero is
+    # the Blender-where-Rigify-did-not-initialise case, and the only way to
+    # reach add_builtin_rig()'s message-less AssertionError.
+    rigify_colors = 1
     # Set by a test that wants refit() itself to blow up, to check that the
     # payload still restores the active object and the selection.
     refit_raises = None
@@ -1153,6 +1326,116 @@ class StubHumanService:
         # refitted the assets and not the rig. Nothing is reported to a caller
         # that is not an operator, and there is no operator here.
 
+    @staticmethod
+    def _attach(basemesh, armature_object, import_weights, weights_file):
+        """The half both adders share, in their order.
+
+        Parent, then hand the armature the basemesh's location and move the
+        basemesh to the origin - which visibly moves a character standing
+        anywhere else, and is the reason mpfb_add_rig reports it. The armature
+        is already in the file by this point; both adders register it as they
+        build it.
+        """
+        basemesh.parent = armature_object
+        armature_object.location = list(basemesh.location)
+        basemesh.location = [0.0, 0.0, 0.0]
+        if import_weights:
+            if weights_file is not None:
+                StubRigService.load_weights(armature_object, basemesh, weights_file)
+            # ...and when there is none, nothing is said. With an operator MPFB
+            # would report it; there is never one here.
+            StubRigService.ensure_armature_modifier(basemesh, armature_object)
+        return armature_object
+
+    @staticmethod
+    def add_builtin_rig(basemesh, rig_name, *, import_weights=True, operator=None):
+        StubHumanService.add_rig_calls.append(
+            {"function": "add_builtin_rig", "basemesh": basemesh.name,
+             "rig_name": rig_name, "import_weights": import_weights})
+
+        is_rigify = rig_name.startswith("rigify.")
+        if is_rigify and not StubSystemService.check_for_rigify():
+            raise NotImplementedError(
+                "Rigify is not available, please enable it to use rigify rigs")
+        rig_name_base = rig_name[7:] if is_rigify else rig_name
+
+        rigs_subdir = os.path.join(
+            StubLocationService.get_mpfb_data("rigs"), "rigify" if is_rigify else "standard")
+        rig_file = os.path.join(rigs_subdir, "rig." + rig_name_base + ".json")
+        if not os.path.isfile(rig_file):
+            if operator is not None:
+                return None
+            raise IOError("Could not find the rig file: " + rig_file)
+
+        armature_object = StubObject(
+            basemesh.name + (".metarig" if is_rigify else ".rig"),
+            blender_type="ARMATURE",
+            object_type="Skeleton",
+            rig_type=rig_name,
+            rigify_colors=StubHumanService.rigify_colors,
+        )
+
+        # Registered before the assert below, exactly as the real one creates
+        # the armature through bpy.ops before it checks: a failed assertion
+        # leaves a stray, unparented armature in the file.
+        StubObjectService.register_object(armature_object)
+
+        if is_rigify:
+            # MPFB's own bare assert, with no message, downstream of the
+            # check_for_rigify() guard and so not pre-checkable.
+            assert len(armature_object.data.rigify_colors) > 0
+
+        weights_file = None
+        for try_rig in StubRigService.get_rig_weight_fallbacks(rig_name):
+            if try_rig.startswith("rigify."):
+                try_rig = try_rig[7:]
+            candidate = os.path.join(rigs_subdir, "weights." + try_rig + ".json")
+            if os.path.isfile(candidate):
+                weights_file = candidate
+                break
+
+        return StubHumanService._attach(
+            basemesh, armature_object, import_weights, weights_file)
+
+    @staticmethod
+    def add_custom_rig(basemesh, rig_name, *, import_weights=True, operator=None):
+        StubHumanService.add_rig_calls.append(
+            {"function": "add_custom_rig", "basemesh": basemesh.name,
+             "rig_name": rig_name, "import_weights": import_weights})
+
+        short_name = rig_name[7:]  # strip "custom.", by length, as MPFB does
+        custom_rigs = dict(
+            (record["name"], record) for record in StubAssetService.get_custom_rigs())
+        if short_name not in custom_rigs:
+            msg = ("Custom rig '" + short_name
+                   + "' not found in user data. Cannot load character.")
+            if operator:
+                return None
+            raise ValueError(msg)
+
+        rig_file = custom_rigs[short_name]["path"]
+        armature_object = StubObject(
+            basemesh.name + ".rig",
+            blender_type="ARMATURE",
+            object_type="Skeleton",
+            # Custom rigs are not in identify_rig()'s bone table, so this is the
+            # ordinary answer for one rather than an unusual one.
+            rig_type="unknown",
+        )
+        StubObjectService.register_object(armature_object)
+        StubRigService.normalize_rotation_mode(armature_object)
+
+        # No fallback table at all: only weights.<short name>.json beside the
+        # rig file, which is the whole reason the fragment keeps the two
+        # resolutions apart.
+        weights_file = os.path.join(
+            os.path.dirname(rig_file), "weights." + short_name + ".json")
+        if not os.path.isfile(weights_file):
+            weights_file = None
+
+        return StubHumanService._attach(
+            basemesh, armature_object, import_weights, weights_file)
+
 
 _SERVICES = {
     "ObjectService": StubObjectService,
@@ -1168,7 +1451,12 @@ _SERVICES = {
 
 
 class _StubCollection:
-    """A bpy_prop_collection: iterable, and `in` tests the *name*, not the object."""
+    """A bpy_prop_collection: iterable, and `in` tests the *name*, not the object.
+
+    Mutable, because two of the things under test create and destroy objects:
+    adding a rig makes an armature, and Rigify generation makes another and then
+    may remove the meta rig.
+    """
 
     def __init__(self, objects):
         self._objects = list(objects)
@@ -1179,20 +1467,38 @@ class _StubCollection:
     def __contains__(self, key):
         return any(candidate.name == key for candidate in self._objects)
 
+    def __getitem__(self, key):
+        # MPFB deletes a meta rig as `objs.remove(objs[meta_rig.name], ...)`, so
+        # the by-name subscript is part of the API being exercised.
+        found = self.get(key)
+        if found is None:
+            raise KeyError(key)
+        return found
+
     def get(self, key, default=None):
         for candidate in self._objects:
             if candidate.name == key:
                 return candidate
         return default
 
+    def append(self, blender_object):
+        self._objects.append(blender_object)
 
-def _make_bpy(scene_objects, all_objects, active):
+    def remove(self, blender_object, do_unlink=False):
+        self._objects.remove(blender_object)
+
+
+def _make_bpy(scene_objects, all_objects, active, context_mode="OBJECT"):
     bpy = types.ModuleType("bpy")
     bpy.data = types.SimpleNamespace(objects=_StubCollection(all_objects))
     bpy.context = types.SimpleNamespace(
         scene=types.SimpleNamespace(objects=_StubCollection(scene_objects)),
         view_layer=types.SimpleNamespace(
             objects=types.SimpleNamespace(active=active)),
+        # Blender's own mode, which is not the same thing as an object's: every
+        # bpy.ops call polls on this one, so an unrelated object left in edit
+        # mode blocks an operator on a basemesh that looks perfectly fine.
+        mode=context_mode,
     )
     return bpy
 
@@ -1227,6 +1533,11 @@ class GeneratedCodeTestCase(unittest.TestCase):
         StubObjectService.activations = []
         StubHumanService.refit_calls = []
         StubHumanService.refit_raises = None
+        StubHumanService.add_rig_calls = []
+        StubHumanService.rigify_colors = 1
+        StubRigService.weights_loaded = []
+        StubRigService.generate_calls = []
+        StubRigService.metarig_valid = True
         StubLocationService.mpfb_data = "/nonexistent-mpfb-data"
         StubLocationService.mpfb_root = pathlib.Path("/nonexistent-mpfb-root")
         StubLocationService.user_data = "/nonexistent-user-data"
@@ -1273,11 +1584,13 @@ class GeneratedCodeTestCase(unittest.TestCase):
             sys.modules.pop(name, None)
 
     def run_payload(self, payload, params, scene_objects=(), all_objects=None, active=None,
-                    shared=None):
+                    shared=None, context_mode="OBJECT"):
         """Assemble and execute one payload, returning the ``result`` it bound.
 
         ``shared`` names the fragments the payload's own tool module passes, so
         what is executed here is the same program the tool would send.
+        ``context_mode`` is Blender's own mode rather than any object's, which
+        is what every bpy.ops call polls on.
         """
         if all_objects is None:
             all_objects = scene_objects
@@ -1285,7 +1598,7 @@ class GeneratedCodeTestCase(unittest.TestCase):
         code = codegen.assemble(
             payload, bootstrap="raising", params=params, shared=shared)
         namespace = {}
-        bpy = _make_bpy(scene_objects, all_objects, active)
+        bpy = _make_bpy(scene_objects, all_objects, active, context_mode=context_mode)
         # activate_blender_object() changes the active object for real, so the
         # stub service needs the same bpy the payload is about to run against -
         # and a test needs it afterwards, to see what the payload left behind.
@@ -1513,3 +1826,149 @@ class DetailTargetTestCase(GeneratedCodeTestCase):
         if keys is None:
             return dict()
         return dict((str(block.name), block.value) for block in keys.key_blocks)
+
+
+# What MPFB actually ships, minus most of the standard rigs: enough to cover the
+# fallback table on both sides plus a rig the UI enum does not mention. Each
+# asymmetry below is a branch the rig payloads exist to get right.
+STANDARD_RIGS = ("default", "default_no_toes", "game_engine", "undocumented_rig")
+STANDARD_WEIGHTS = ("default", "game_engine")
+RIGIFY_RIGS = ("human", "human_toes")
+RIGIFY_WEIGHTS = ("human_toes",)
+
+STANDARD_RIG_ENUM = {
+    "type": "enum",
+    "name": "standard_rig",
+    "items": [
+        ["default", "Default", "The default makehuman rig", 0],
+        ["default_no_toes", "Default (no toes)", "The default rig without toe bones", 1],
+        ["game_engine", "Game engine", "The game engine rig", 2],
+    ],
+}
+RIGIFY_RIG_ENUM = {
+    "type": "enum",
+    "name": "rigify_rig",
+    "items": [
+        ["human_toes", "Default", "The default makehuman rigify rig", 0],
+        ["human", "Default (no toes)", "The default rigify rig without toe bones", 1],
+    ],
+}
+
+
+def write_json(path, data):
+    """Create a real JSON file, and the directories above it."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(data, handle)
+    return path
+
+
+class RigTestCase(GeneratedCodeTestCase):
+    """A real MPFB rig directory tree, shared by the three rig payloads.
+
+    A ``tempfile`` tree rather than a mocked filesystem, for the same reason
+    ``DetailTargetTestCase`` uses one: what is under test here *is*
+    ``os.listdir()`` and ``os.path.isfile()``, and mocking those away would
+    leave nothing behind. ``mpfb_list_rigs`` and ``mpfb_add_rig`` run against
+    the same tree on purpose - the point of the shared ``rig_lookup.py``
+    fragment is that the catalogue's prediction and the adder's outcome agree,
+    and they can only be compared if they are looking at the same disk.
+
+    The asymmetries are the fixture: ``default_no_toes`` has no weights file of
+    its own and borrows ``default``'s, ``rigify.human`` borrows
+    ``rigify.human_toes``', ``undocumented_rig`` is absent from the UI enum but
+    still addable, and ``weights.orphan.json`` is a weights file with no rig.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self._rig_tree = tempfile.TemporaryDirectory()
+        self.addCleanup(self._rig_tree.cleanup)
+        root = self._rig_tree.name
+
+        self.mpfb_data = os.path.join(root, "mpfb", "data")
+        self.standard_dir = os.path.join(self.mpfb_data, "rigs", "standard")
+        self.rigify_dir = os.path.join(self.mpfb_data, "rigs", "rigify")
+        os.makedirs(self.standard_dir)
+        os.makedirs(self.rigify_dir)
+        for name in STANDARD_RIGS:
+            write_json(os.path.join(self.standard_dir, "rig." + name + ".json"), {"bones": {}})
+        for name in STANDARD_WEIGHTS:
+            write_json(os.path.join(self.standard_dir, "weights." + name + ".json"), {})
+        for name in RIGIFY_RIGS:
+            write_json(os.path.join(self.rigify_dir, "rig." + name + ".json"), {"bones": {}})
+        for name in RIGIFY_WEIGHTS:
+            write_json(os.path.join(self.rigify_dir, "weights." + name + ".json"), {})
+        # A weights file whose rig does not exist: it must not be listed as a
+        # rig, and it must not be addable.
+        write_json(os.path.join(self.standard_dir, "weights.orphan.json"), {})
+
+        self.mpfb_root = os.path.join(root, "mpfb")
+        self.standard_enum_path = os.path.join(
+            self.mpfb_root, "ui", "rigging", "standardrig", "properties")
+        self.rigify_enum_path = os.path.join(
+            self.mpfb_root, "ui", "rigging", "rigifyrig", "properties")
+        os.makedirs(self.standard_enum_path)
+        os.makedirs(self.rigify_enum_path)
+        write_json(os.path.join(self.standard_enum_path, "standard_rig.json"), STANDARD_RIG_ENUM)
+        write_json(os.path.join(self.rigify_enum_path, "rigify_rig.json"), RIGIFY_RIG_ENUM)
+
+        self.user_data = os.path.join(root, "user", "data")
+        self.user_rigs = os.path.join(self.user_data, "rigs")
+        os.makedirs(self.user_rigs)
+
+        StubLocationService.mpfb_data = self.mpfb_data
+        # A Path, as MPFB really returns for the no-sub-path form.
+        StubLocationService.mpfb_root = pathlib.Path(self.mpfb_root)
+        StubLocationService.user_data = self.user_data
+        StubAssetService.custom_rigs = ()
+
+    def install_custom_rig(self, name, *, weights=True, accepted=True):
+        """Put a custom rig on disk, and (unless rejected) in get_custom_rigs().
+
+        ``accepted=False`` is the file MPFB's own scan silently refused - a name
+        outside ``[A-Za-z0-9_]``, or no ``identifying_bones`` key - which is on
+        disk but is not addable.
+        """
+        path = os.path.join(self.user_rigs, name + ".json")
+        write_json(path, {"identifying_bones": ["root"], "bones": {}})
+        if weights:
+            write_json(os.path.join(self.user_rigs, "weights." + name + ".json"), {})
+        if accepted:
+            StubAssetService.custom_rigs = tuple(StubAssetService.custom_rigs) + (
+                {"name": name, "path": path, "identifying_bones": ["root"]},)
+        return path
+
+    def build_character(self, rig=False, dressed=False, subrig=False,
+                        rig_name="Human.rig", rig_type="default", rig_id=None,
+                        **basemesh_kwargs):
+        """A character to rig: a basemesh, optionally already rigged or dressed.
+
+        The dressed-but-unrigged case is the one this whole request is about -
+        garments attached while no rig existed, which nothing will ever rig.
+        ``rig_type`` is what ``identify_rig()`` would deduce from the armature's
+        bones, so ``"rigify.human"`` builds a meta rig and
+        ``"rigify_generated.human"`` with a ``rig_id`` builds a character that
+        has already been through generation - which is a distinct answer from
+        one that was never a Rigify character at all.
+        """
+        self.rig = None
+        if rig:
+            self.rig = StubObject(
+                rig_name, blender_type="ARMATURE", object_type="Skeleton",
+                rig_type=rig_type, rig_id=rig_id)
+        self.basemesh = StubObject(
+            "Human", parent=self.rig, object_type="Basemesh", **basemesh_kwargs)
+        self.objects = [obj for obj in (self.rig, self.basemesh) if obj]
+        self.shirt = None
+        if dressed:
+            self.shirt = StubObject(
+                "Shirt", parent=self.rig or self.basemesh, object_type="Clothes")
+            self.objects.append(self.shirt)
+        self.subrig = None
+        if subrig:
+            self.subrig = StubObject(
+                "Shirt.subrig", blender_type="ARMATURE",
+                parent=self.rig or self.basemesh, object_type="Subrig")
+            self.objects.append(self.subrig)
+        return self.objects

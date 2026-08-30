@@ -13,10 +13,23 @@ records what has already landed and why. When an effort below is finished, move 
 Most of the things in this section is done via TargetService. Macrodetails and phenotype landed as
 [FR 007](done/007-macro-details/README.md) and detail targets as
 [FR 008](done/008-detail-targets/README.md); see their entries in [HISTORY.md](HISTORY.md).
-**Both landed without live verification**, and the outstanding checks overlap heavily — they need
-the same dressed, rigged character and both compare against MPFB's own panel — so they are one
-session's work rather than two. That session is the largest single piece of unfinished business in
-this file.
+**Neither landed with live verification**, and neither did [FR 009](done/009-add-rig/README.md)'s
+two rig tools. The outstanding checks overlap heavily — they all need the same dressed, rigged
+character and all compare against MPFB's own panel — so they are **one session's work rather than
+three**, and that session is the largest single piece of unfinished business in this file. It has
+four parts:
+
+- [FR 007](done/007-macro-details/README.md#verification-status) — phenotype sliders, refit, and the
+  generated-Rigify-with-no-meta-rig branch of `mpfb_refit_human`.
+- [FR 008](done/008-detail-targets/README.md#verification-status) — that a modifier set through
+  `mpfb_set_targets` reads back on MPFB's own slider.
+- [FR 009](done/009-add-rig/README.md#verification-status) — that rigging after dressing really does
+  leave the clothes unrigged, and the full Rigify sequence in both orders.
+- **A re-check of [FR 004](done/004-list-rigs/README.md)**, whose live verification FR 009 made
+  stale: `payloads/list_rigs.py` was migrated onto the shared `rig_lookup.py` fragment, so the
+  program sent into Blender is a different program even though the unit tests see no behavior
+  change. Cheap to redo — it is a read-only call — and it belongs in the same session because
+  FR 009's own weights checks compare against its output.
 
 What remains unscoped in this area:
 
@@ -42,7 +55,8 @@ The next logical step would be the ability to add assets to a character. All thr
 are now scoped into numbered requests, one per domain; the bullets are kept as the original
 statement of what was wanted.
 
-- Add rig, including a custom rig — [FR 009](009-add-rig/README.md)
+- ~~Add rig, including a custom rig~~ — landed as [FR 009](done/009-add-rig/README.md); see its
+  [entry in HISTORY.md](HISTORY.md)
 - Add an MHCLO asset: needs to take asset type and material type as parameters —
   [FR 010](010-mesh-assets/README.md)
 - Set skin: needs to take material type as parameter — [FR 011](011-skin-and-materials/README.md)
@@ -55,15 +69,18 @@ to objects that already exist. Three decisions taken across them are worth knowi
 takes off the delete-group mask modifier and the garment's sub-rig, neither of which a plain object
 deletion through generic blender_mcp would touch — so without it an agent that equips the wrong
 garment has no correct way to take it off. Removing a *rig* is deliberately not in scope: MPFB has
-no unload counterpart for it, and [FR 009](009-add-rig/README.md) refuses to add a second rig rather
-than pretend otherwise.
+no unload counterpart for it, and [FR 009](done/009-add-rig/README.md) refuses to add a second rig
+rather than pretend otherwise. That refusal is now implemented, so an agent that rigs a character
+wrongly has to delete the armature through generic blender_mcp and start again — worth revisiting if
+it turns out to bite.
 
 **Ordering between the three is a real constraint that produces no error.**
 `add_mhclo_asset()` rigs a garment only if a rig exists at that moment, and nothing re-rigs it
 afterwards; Rigify generation has to come after the garments. MPFB's own character builder documents
 this in comments. None of the tools can enforce it, so each reports when it can see the caller
-violating it — a convention [FR 009](009-add-rig/README.md) proposes recording in
-[architecture.md](../specifications/architecture.md).
+violating it. [FR 009](done/009-add-rig/README.md) landed that as a standing convention —
+[A tool reports an ordering constraint it cannot enforce](../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
+— so FR 010 and FR 011 follow it rather than restate it.
 
 **Adding is one asset per call**, not batched like
 [FR 008](done/008-detail-targets/README.md)'s target setting: loading an MHCLO is seconds of mesh import and vertex fitting, so the ~1 s socket round trip

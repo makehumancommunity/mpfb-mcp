@@ -24,7 +24,7 @@ efforts; `HISTORY.md` is the log of what has landed.
 
 ## Project status
 
-Proof of concept. Thirteen tools are implemented: `mpfb_create_human`, wrapping MPFB's
+Proof of concept. Fifteen tools are implemented: `mpfb_create_human`, wrapping MPFB's
 `HumanService.create_human()`; `mpfb_get_status`, reporting whether MPFB is present, initialized
 and how it is configured; the object-finding pair `mpfb_list_objects` and
 `mpfb_get_object_info`, which is how every later tool is meant to name the object it acts on; and
@@ -40,10 +40,19 @@ the phenotype level, three more that reach the individual morphs: `mpfb_get_targ
 `mpfb_set_targets` and `mpfb_symmetrize_targets`. Those are where two further conventions come
 from — a *batched* mutating tool that resolves every entry before writing any of them, and what to
 do when mpfb-mcp has to model a concept (a modeling *modifier*) that lives in MPFB's UI rather than
-in any of its services. **The six character-modifying tools are the part of the code that has never
-been run against a real Blender** (see
-[FR 007's](feature-requests/done/007-macro-details/README.md#verification-status) and
-[FR 008's verification status](feature-requests/done/008-detail-targets/README.md#verification-status)).
+in any of its services. And two that put a *rig* on a character: `mpfb_add_rig`, the first consumer
+of a catalogue tool's identifiers — it dispatches on the `custom.` prefix itself rather than letting
+the caller pick between MPFB's two non-interchangeable adding functions — and
+`mpfb_generate_rigify_rig`, which finishes the Rigify meta rig the first one produces. Those are
+where the last convention comes from: **a tool reports an ordering constraint it cannot enforce**.
+MPFB rigs a garment only if a rig exists when the garment is attached and never afterwards, so
+`mpfb_add_rig` on a dressed character names every asset it has just failed to rig rather than
+either refusing or staying silent; and generation is a separate tool precisely because "meta rig,
+then clothes, then generate" cannot be written as one call. **The eight character-modifying tools
+are the part of the code that has never been run against a real Blender** (see
+[FR 007's](feature-requests/done/007-macro-details/README.md#verification-status),
+[FR 008's](feature-requests/done/008-detail-targets/README.md#verification-status) and
+[FR 009's verification status](feature-requests/done/009-add-rig/README.md#verification-status)).
 See [specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's planned
 beyond them, and [feature-requests/](feature-requests/) for work in progress.
 
@@ -148,6 +157,15 @@ mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP
     import (`mpfb/ui/model/_modelsubpanels.py` builds it at *module import time*, so it is a
     snapshot from when Blender started). It exists because three copies of that scan would be three
     chances for two mpfb-mcp tools to disagree about what is installed, not because it is long.
+    `rig_lookup.py` is the second, and it is there for the sharper version of the same reason:
+    `mpfb_list_rigs` *predicts*, per rig, which file would be loaded and whose weights would come
+    with it, and `mpfb_add_rig` then does it and reports the outcome. The overlap is about ten
+    lines — too small to warrant a fragment on size, and not defensible as duplication on
+    consequence, since MPFB resolves weights through a *fallback table* and two implementations
+    disagreeing would make an ordinary rig look broken in one tool and fine in the other. Note this
+    one was retrofitted: `payloads/list_rigs.py` was migrated onto it, which is the opposite call
+    from the one made for `list_targets.py` (still listed in `NEXT_STEPS.md`) and which invalidated
+    FR 004's live verification.
     Note the packaging detail: a package-data glob does not descend, so this is a *sibling* of
     `payloads/` with a glob of its own rather than a subdirectory of it. FR 002's rule is
     unchanged — adding an ordinary tool still touches only a tool module, a payload and a
@@ -228,6 +246,32 @@ mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP
   writers do not, so each write first resolves *which* name a target is stored under; and the
   decision to read `key_blocks` directly in the read tool, since `TargetService` cannot see a shape
   key whose name contains "basis".
+  `tools/add_rig.py` and `tools/generate_rigify_rig.py` are the first tools that *consume* a
+  catalogue: `add_rig.py` takes `mpfb_list_rigs`' `identifier` verbatim and **dispatches on the
+  `custom.` prefix itself** — the caller never names the function, because
+  `add_builtin_rig("custom.my_rig")` would look for `rig.custom.my_rig.json` and `add_custom_rig()`
+  strips the first seven characters of whatever it is given, and neither miss reads as the mistake
+  it is. Its payload shares `rig_lookup.py` with `payloads/list_rigs.py` so the catalogue's weights
+  prediction and this tool's weights outcome are one implementation. `generate_rigify_rig.py` is
+  the odd one in two ways worth knowing: it is the only tool here that validates a **vocabulary**
+  locally (`meta_rig_action` is a closed enum of MPFB's own, and `generate_rigify_rig()` silently
+  falls back to `"hide"` for anything else, which would make a typo indistinguishable from a choice
+  on the one argument whose wrong value cannot be undone), and it is the only mutating tool that
+  **cannot restore the caller's selection** — the operator's own final act is to select and
+  activate its result, so the response reports `active_object_after` instead. Six things live in
+  those two payloads that could not live here: the prefix dispatch itself; the pre-checks that turn
+  `add_builtin_rig()`'s `IOError`, `add_custom_rig()`'s `ValueError` and the `NotImplementedError`
+  for a Rigify rig with Rigify disabled into sentences, which matter because `operator=None` — what
+  generated code always has — is exactly what makes those functions raise instead of report; the
+  translation of `add_builtin_rig()`'s bare, message-less `assert len(...rigify_colors) > 0`, which
+  fires after the armature exists and before it is parented and so leaves a stray object to name;
+  the enumeration of mesh assets and sub-rigs *before* the rig is added, which is what makes
+  "attached while there was no rig" a precise claim rather than a guess; the check on
+  `bpy.context.mode` as well as the object's, since building an armature runs `bpy.ops` calls that
+  poll on the context; and the classification of *every* `Skeleton` relative rather than the first,
+  because after generation the character's skeleton relative is the generated rig — Rigify
+  generation re-parents the character onto its result — so "already generated" and "that is not a
+  meta rig" are answers a single lookup could not tell apart.
 - **[__init__.py](src/mpfbmcp/__init__.py)** — `main()`: builds the `FastMCP` server, calls each
   tool module's `register()`, runs over stdio. Together with a tool module and a payload file,
   this `register()` call is the *whole* of what adding a tool touches — no shared
@@ -341,14 +385,39 @@ this side of the socket:
   clamps a real one — which is the whole reason the category level exists, and which makes a
   payload that tried to store a negative modifier value fail in the suite rather than in Blender.
 
+- [tests/test_add_rig.py](tests/test_add_rig.py) and
+  [tests/test_generate_rigify_rig.py](tests/test_generate_rigify_rig.py) — the same two layers, over
+  `blender_stubs.py`'s `RigTestCase`, which holds the real `tempfile` rig tree that used to live in
+  `test_list_rigs.py`. It is shared rather than copied for the same reason `rig_lookup.py` is: one
+  test runs `list_rigs.py` and `add_rig.py` against the same tree and asserts their weights answers
+  are equal, which only means anything if it is the same disk. The tree keeps FR 004's asymmetries
+  (`default_no_toes` with no weights of its own, `weights.orphan.json` with no rig,
+  `undocumented_rig` absent from the UI enum) because each is a branch. `StubHumanService` grew the
+  rig half and `StubRigService` the write half, and as elsewhere every part reproduces a quirk
+  rather than a convenience: the adders **raise** for an unknown rig when given no operator (a stub
+  returning `None` would make the pre-checks look like belt and braces); a missing *weights* file is
+  reported through an operator and otherwise **silent**, which is the path `weights_loaded` exists
+  for; the armature is registered in the file *before* the Rigify colour assertion, so the stray
+  object the failure leaves behind is a real one; and `generate_rigify_rig()` renames the meta rig,
+  deselects everything and activates it **before** the validity gate, without which "a failed
+  generation is not a no-op" could not be tested at all. Note also what these tests cannot say: that
+  a rig added here matches one added through MPFB's panel, or that rigging after dressing really
+  does leave the clothes unrigged — the claim the whole effort is built on.
+
 Anything needing real MPFB is a manual integration check against a running Blender (see
 [Commands](#commands)), and feature requests are expected to say so explicitly. FR 001 through
-FR 006 each had that check run before being marked Done; **FR 007 and FR 008 did not**, so all six
-character-modifying tools are unverified against real MPFB. Their verification-status sections
+FR 006 each had that check run before being marked Done; **FR 007, FR 008 and FR 009 did not**, so
+all eight character-modifying tools are unverified against real MPFB. Their verification-status
+sections
 ([FR 007](feature-requests/done/007-macro-details/README.md#verification-status),
-[FR 008](feature-requests/done/008-detail-targets/README.md#verification-status)) say exactly what
-is outstanding, and the two checklists want the same dressed, rigged character — so they are one
-session's work rather than two. Treat that as work owed rather than as a new precedent.
+[FR 008](feature-requests/done/008-detail-targets/README.md#verification-status),
+[FR 009](feature-requests/done/009-add-rig/README.md#verification-status)) say exactly what is
+outstanding, and all three checklists want the same dressed, rigged character — so they are one
+session's work rather than three. **FR 004's live verification is stale on top of that**: FR 009
+migrated `payloads/list_rigs.py` onto a shared fragment, so the program sent into Blender is a
+different program even though the unit tests see no behavior change. Re-running it is cheap (a
+read-only call) and belongs in the same session, since FR 009's weights checks compare against its
+output. Treat all of this as work owed rather than as a new precedent.
 
 ### Code conventions in this repo
 

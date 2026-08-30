@@ -113,5 +113,10 @@ def register(mcp: FastMCP) -> None:
             "list_rigs.py",
             bootstrap="raising",
             params={"refresh": _validated_refresh(refresh)},
+            # Shared with mpfb_add_rig's payload: this tool predicts which rig
+            # file would be loaded and whose weights would come with it, and
+            # that tool then does it. One implementation, so the prediction and
+            # the action cannot drift apart.
+            shared=["rig_lookup.py"],
         )
         return send_code(code, strict_json=True)

@@ -10,6 +10,15 @@ because the assembler binds them ahead of this file:
 - ``_MPFB_SERVICES`` - MPFB's SERVICES dict, from the raising bootstrap.
 - ``sys`` - already imported by that bootstrap (unused here, but bound).
 
+...and a further set as undefined because they come from the shared fragment
+``rig_lookup.py``, which the tool module names in its ``assemble()`` call and
+which is concatenated ahead of this file: ``as_path()``, ``BUILTIN_FAMILIES``,
+``FAMILIES``, ``rigs_directory()``, ``builtin_weights()``,
+``custom_rig_records()`` and ``custom_weights()``. That fragment exists because
+this payload *predicts* what ``mpfb_add_rig`` will do - which rig file gets
+loaded, and whose weights - and a prediction that can drift from the action it
+predicts is worse than no prediction at all.
+
 The whole point of this payload is the ``identifier`` field. A rig's bare name
 is not always what an adding function takes: a Rigify rig is added as
 ``rigify.human`` and a custom one as ``custom.my_rig``, and the two are consumed
@@ -28,19 +37,8 @@ for on every call.
 import json
 import os
 
-LocationService = _MPFB_SERVICES["LocationService"]
-AssetService = _MPFB_SERVICES["AssetService"]
-RigService = _MPFB_SERVICES["RigService"]
+# LocationService, AssetService and RigService are bound by the shared fragment.
 SystemService = _MPFB_SERVICES["SystemService"]
-
-# One tuple per built-in family: the family name, its subdirectory under
-# <mpfb data>/rigs, and the prefix HumanService.add_builtin_rig() expects in
-# front of the bare name. Both come from that function's own path assembly, so
-# a name found here is a name it can load.
-BUILTIN_FAMILIES = (
-    ("standard", "standard", ""),
-    ("rigify", "rigify", "rigify."),
-)
 
 # MPFB's own rig enums, as UI resource files rather than as an API. They are
 # read for their labels only, and never imported: MPFB UI modules run scans at
@@ -52,23 +50,11 @@ LABEL_SOURCES = {
     "rigify": "ui/rigging/rigifyrig/properties/rigify_rig.json",
 }
 
-FAMILIES = ("standard", "rigify", "custom")
-
 RIGIFY_MISSING_REASON = (
     "Rigify is not enabled in this Blender. HumanService.add_builtin_rig() raises "
     "NotImplementedError for a rigify rig rather than degrading, so this rig cannot be added "
     "until the Rigify add-on is enabled."
 )
-
-
-def as_path(path):
-    # Coerce at the point a path enters the response. MPFB's path getters are
-    # annotated as returning str, but LocationService.get_mpfb_root() hands back
-    # a pathlib.Path when called with no sub-path, which fails strict_json and
-    # takes the entire response down with it (commit 631989c).
-    if not path:
-        return None
-    return str(path)
 
 
 def read_label_table(relative_path):
@@ -89,28 +75,14 @@ def read_label_table(relative_path):
         return dict()
 
 
-def builtin_weights(identifier, subdir_path):
-    # Mirrors add_builtin_rig()'s weights loop exactly: walk the fallback list,
-    # strip a rigify. prefix from each candidate, take the first weights file
-    # that exists in the same subdir. Testing weights.<name>.json alone would
-    # report default_no_toes and rigify.human as unweighted, which is wrong -
-    # they borrow from default and rigify.human_toes respectively.
-    for candidate in RigService.get_rig_weight_fallbacks(identifier):
-        bare = candidate[len("rigify."):] if candidate.startswith("rigify.") else candidate
-        weights_file = os.path.join(subdir_path, "weights." + bare + ".json")
-        if os.path.isfile(weights_file):
-            return (True, weights_file, bare)
-    return (False, None, None)
-
-
 def builtin_entries():
     entries = []
     scanned = []
-    rigs_directory = as_path(LocationService.get_mpfb_data("rigs"))
-    if rigs_directory is None:
+    rigs_dir = rigs_directory()
+    if rigs_dir is None:
         return (entries, scanned)
     for family, subdir, prefix in BUILTIN_FAMILIES:
-        subdir_path = os.path.join(rigs_directory, subdir)
+        subdir_path = os.path.join(rigs_dir, subdir)
         scanned.append({
             "path": subdir_path,
             "family": family,
@@ -144,23 +116,6 @@ def builtin_entries():
                 "add_function": "add_builtin_rig",
             })
     return (entries, scanned)
-
-
-def custom_rig_records():
-    # get_custom_rigs() caches in a module global that survives until it is
-    # invalidated, so a rig installed after Blender started is invisible by
-    # default. use_cache=False rescans and repopulates in one call, where
-    # invalidate_custom_rig_cache() would leave the global at None for the
-    # custom-rig UI panel that reads the same one. The fallback covers the
-    # keyword going away; a TypeError from deeper inside would be misread here,
-    # which is the price of not inspecting the signature.
-    if not PARAMS["refresh"]:
-        return AssetService.get_custom_rigs()
-    try:
-        return AssetService.get_custom_rigs(use_cache=False)
-    except TypeError:
-        AssetService.invalidate_custom_rig_cache()
-        return AssetService.get_custom_rigs()
 
 
 def custom_rig_dirs():
@@ -200,9 +155,9 @@ def custom_entries(records):
             continue
         # add_custom_rig() does not use the fallback table at all: it looks only
         # for weights.<short name>.json beside the rig file. Reporting a
-        # fallback here would promise weights that would never be loaded.
-        weights_path = os.path.join(os.path.dirname(rig_path), "weights." + name + ".json")
-        has_weights = os.path.isfile(weights_path)
+        # fallback here would promise weights that would never be loaded, which
+        # is why the fragment keeps the two resolutions apart.
+        has_weights, weights_path, weights_from = custom_weights(rig_path, name)
         entries.append({
             "name": name,
             "identifier": "custom." + name,
@@ -213,8 +168,8 @@ def custom_entries(records):
             "label": None,
             "description": None,
             "has_weights": has_weights,
-            "weights_path": weights_path if has_weights else None,
-            "weights_from": name if has_weights else None,
+            "weights_path": weights_path,
+            "weights_from": weights_from,
             # identifying_bones is deliberately dropped: it is a bone-name table
             # MPFB matches against, not something a caller acts on.
             "add_function": "add_custom_rig",
@@ -251,7 +206,7 @@ def unrecognized_custom_files(dirs, records):
 rigify_available = bool(SystemService.check_for_rigify())
 
 rigs, builtin_dirs = builtin_entries()
-custom_records = custom_rig_records()
+custom_records = custom_rig_records(PARAMS["refresh"])
 # Kept apart until the response is assembled: the diff below must run over the
 # user rigs directories only. Run it over the bundled ones as well and it would
 # report every rig.*.json MPFB ships as an unrecognized custom rig.
