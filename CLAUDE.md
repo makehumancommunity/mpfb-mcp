@@ -24,7 +24,7 @@ efforts; `HISTORY.md` is the log of what has landed.
 
 ## Project status
 
-Proof of concept. Fifteen tools are implemented: `mpfb_create_human`, wrapping MPFB's
+Proof of concept. Seventeen tools are implemented: `mpfb_create_human`, wrapping MPFB's
 `HumanService.create_human()`; `mpfb_get_status`, reporting whether MPFB is present, initialized
 and how it is configured; the object-finding pair `mpfb_list_objects` and
 `mpfb_get_object_info`, which is how every later tool is meant to name the object it acts on; and
@@ -44,15 +44,24 @@ in any of its services. And two that put a *rig* on a character: `mpfb_add_rig`,
 of a catalogue tool's identifiers — it dispatches on the `custom.` prefix itself rather than letting
 the caller pick between MPFB's two non-interchangeable adding functions — and
 `mpfb_generate_rigify_rig`, which finishes the Rigify meta rig the first one produces. Those are
-where the last convention comes from: **a tool reports an ordering constraint it cannot enforce**.
-MPFB rigs a garment only if a rig exists when the garment is attached and never afterwards, so
-`mpfb_add_rig` on a dressed character names every asset it has just failed to rig rather than
-either refusing or staying silent; and generation is a separate tool precisely because "meta rig,
-then clothes, then generate" cannot be written as one call. **The eight character-modifying tools
-are the part of the code that has never been run against a real Blender** (see
+where the second-to-last convention comes from: **a tool reports an ordering constraint it cannot
+enforce**. MPFB rigs a garment only if a rig exists when the garment is attached and never
+afterwards, so `mpfb_add_rig` on a dressed character names every asset it has just failed to rig
+rather than either refusing or staying silent; and generation is a separate tool precisely because
+"meta rig, then clothes, then generate" cannot be written as one call. Finally, the two that put a
+*garment* on a character and take it off again: `mpfb_add_asset`, the first tool to consume the
+asset catalogue and the source of the convention that **an acting tool accepts every identifier its
+catalogue reports** — it takes `mpfb_list_assets`' `path` *or* its `fragment`, requires exactly one,
+and always reports which file it landed on, since resolving a fragment matches on basename; and
+`mpfb_remove_asset`, which exists because deleting the object leaves the body's mask modifier and the
+garment's sub-rig behind. Between them they also carry the last convention: **where MPFB's own code
+paths disagree, mpfb-mcp picks one and names it** (adding a proxy has three implementations in MPFB;
+this follows the service-layer one and says so). **The ten character-modifying tools are the part of
+the code that has never been run against a real Blender** (see
 [FR 007's](feature-requests/done/007-macro-details/README.md#verification-status),
-[FR 008's](feature-requests/done/008-detail-targets/README.md#verification-status) and
-[FR 009's verification status](feature-requests/done/009-add-rig/README.md#verification-status)).
+[FR 008's](feature-requests/done/008-detail-targets/README.md#verification-status),
+[FR 009's](feature-requests/done/009-add-rig/README.md#verification-status) and
+[FR 010's verification status](feature-requests/done/010-mesh-assets/README.md#verification-status)).
 See [specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's planned
 beyond them, and [feature-requests/](feature-requests/) for work in progress.
 
@@ -272,6 +281,28 @@ mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP
   because after generation the character's skeleton relative is the generated rig — Rigify
   generation re-parents the character onto its result — so "already generated" and "that is not a
   meta rig" are answers a single lookup could not tell apart.
+  `tools/add_asset.py` and `tools/remove_asset.py` are the two that finally consume
+  `mpfb_list_assets`. `add_asset.py` is the widest mutating tool at ten arguments and still validates
+  only shapes, plus the one thing shape can settle: **exactly one** of `path` and `fragment`. Both
+  are accepted because they are not interchangeable — one is passable, one is portable — and neither
+  vocabulary (`asset_type`, `material_type`) is checked here, since both are MPFB's own tables. Two
+  of its arguments diverge deliberately from `add_mhclo_asset()`'s signature and the docstring says
+  so: `asset_type` is **required**, because MPFB's default of `"Clothes"` is wrong for six of the
+  eight types and mislabels a body part permanently and silently; and `material_type` defaults **per
+  asset type** rather than globally, echoing the choice back because it was usually not the caller's.
+  `remove_asset.py` is the only tool here whose `name` is required with no active-object fallback —
+  it deletes an object. Six things live in those payloads that could not live here: the observation
+  of the rig, the body proxy and the existing modifiers *before* the asset is attached, which is what
+  makes `rigged_to: null` and the delete-group diff precise claims; the one-line reproduction of
+  `Mhclo.load()`'s `material` parse, which is the only way to tell "the MHCLO names no material" (a
+  thing MPFB only logs) from "the material failed to build"; the proxy path, which follows
+  `HumanService._check_add_proxy()` rather than `add_mhclo_asset()` alone or the library operator,
+  reaching `_proxy_corrective` through `getattr` and degrading; the fact that a delete group is **not
+  guaranteed**, since `update_delete_group()` returns before creating anything when the MHCLO
+  declares no delete vertices; the refusal of a `Basemesh` or `Skeleton` by type, since
+  `unload_mhclo_asset()` checks nothing and would delete either; and the detection of an empty
+  `asset_source`, from which that function derives the name `Delete.`, matches no modifier, and
+  deletes the object anyway — leaving the body masked under an asset that is no longer there.
 - **[__init__.py](src/mpfbmcp/__init__.py)** — `main()`: builds the `FastMCP` server, calls each
   tool module's `register()`, runs over stdio. Together with a tool module and a payload file,
   this `register()` call is the *whole* of what adding a tool touches — no shared
@@ -403,21 +434,45 @@ this side of the socket:
   generation is not a no-op" could not be tested at all. Note also what these tests cannot say: that
   a rig added here matches one added through MPFB's panel, or that rigging after dressing really
   does leave the clothes unrigged — the claim the whole effort is built on.
+- [tests/test_add_asset.py](tests/test_add_asset.py) and
+  [tests/test_remove_asset.py](tests/test_remove_asset.py) — the same two layers, over
+  `blender_stubs.py`'s `MeshAssetTestCase`: a real `tempfile` asset library on disk *and* a stub
+  character, because these payloads read the MHCLO to see whether it names a material, list the
+  directory beside it for `.mhw` weights, and resolve a fragment by walking the asset roots. Two
+  roots hold the same `fedora.mhclo`, so the basename ambiguity `resolved_path` exists to expose is
+  genuinely under test, and `StubAssetService.find_asset_absolute_path()` reproduces MPFB's
+  resolution (prefer the directory-matching candidate, otherwise the *first* hit) rather than looking
+  up a dict. `StubHumanService` grew `add_mhclo_asset()` and `unload_mhclo_asset()`, and as elsewhere
+  every part is a quirk rather than a convenience: the material block is **skipped entirely** when
+  the MHCLO names none, `update_delete_group()` builds **nothing** when it declares no delete
+  vertices, the body-proxy interpolation is keyed on the **raw** `asset_type` (so a garment labelled
+  `Hair` does not get it), the name is uniquified to `.001` the way Blender uniquifies one,
+  `ensure_armature_modifier()` adds the *second* armature modifier a sub-rig needs — without which
+  `find_deformed_child_meshes()` would not see the garment as deformed by it and the sub-rig would
+  never be removed — and the unload matches its modifier by **name** and removes the modifiers but
+  not the vertex groups. The removal tests equip through `add_asset.py`'s own payload rather than
+  hand-building the object, since what removal has to undo is exactly what adding did. Note what
+  these cannot say: that a garment equipped here matches one equipped through MPFB's asset library
+  panel, or that MPFB's three proxy code paths really do differ — the claim the Architecture section
+  rests on.
 
 Anything needing real MPFB is a manual integration check against a running Blender (see
 [Commands](#commands)), and feature requests are expected to say so explicitly. FR 001 through
-FR 006 each had that check run before being marked Done; **FR 007, FR 008 and FR 009 did not**, so
-all eight character-modifying tools are unverified against real MPFB. Their verification-status
-sections
+FR 006 each had that check run before being marked Done; **FR 007, FR 008, FR 009 and FR 010 did
+not**, so all ten character-modifying tools are unverified against real MPFB. Their
+verification-status sections
 ([FR 007](feature-requests/done/007-macro-details/README.md#verification-status),
 [FR 008](feature-requests/done/008-detail-targets/README.md#verification-status),
-[FR 009](feature-requests/done/009-add-rig/README.md#verification-status)) say exactly what is
-outstanding, and all three checklists want the same dressed, rigged character — so they are one
-session's work rather than three. **FR 004's live verification is stale on top of that**: FR 009
-migrated `payloads/list_rigs.py` onto a shared fragment, so the program sent into Blender is a
-different program even though the unit tests see no behavior change. Re-running it is cheap (a
-read-only call) and belongs in the same session, since FR 009's weights checks compare against its
-output. Treat all of this as work owed rather than as a new precedent.
+[FR 009](feature-requests/done/009-add-rig/README.md#verification-status),
+[FR 010](feature-requests/done/010-mesh-assets/README.md#verification-status)) say exactly what is
+outstanding, and all four checklists want the same dressed, rigged character — so they are one
+session's work rather than four. **Two catalogue verifications are stale on top of that**: FR 009
+migrated `payloads/list_rigs.py` onto `rig_lookup.py` and FR 010 migrated `payloads/list_assets.py`
+onto `asset_sections.py`, so in each case the program sent into Blender is a different program even
+though the unit tests see no behavior change. Re-running FR 004's and FR 005's checks is cheap (both
+are read-only calls) and belongs in the same session, since FR 009's weights checks and FR 010's
+`resolved_path` compare against their output. Treat all of this as work owed rather than as a new
+precedent.
 
 ### Code conventions in this repo
 

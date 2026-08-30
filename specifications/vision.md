@@ -112,7 +112,11 @@ tool should get its own feature request when scoped.
   [How tools report a derived rather than recorded fact](architecture.md#how-tools-report-a-derived-rather-than-recorded-fact)),
   hence `pack_ambiguous` beside it. Two costs are documented rather than hidden: the first
   call for a subdir loads a Blender preview per thumbnailed asset, and MPFB's cache is keyed
-  by label, so same-named assets in different directories collapse into one entry.
+  by label, so same-named assets in different directories collapse into one entry. Its three
+  identifiers each feed a specific argument elsewhere: `path` **or** `fragment` becomes
+  `mpfb_add_asset`'s (exactly one of the two), and `object_type` becomes its **required**
+  `asset_type` — which also decides the subdir a `fragment` is resolved against, so the two travel
+  together.
 
 - `mpfb_list_targets` — which modeling targets could be set, and under what name?
   **Implemented.** Answers from two sources that are different in kind: the bundled targets are
@@ -208,8 +212,39 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   shape key names, so the left/right pairing comes from `target.json`'s `opposites` table and never
   from an `l-`/`r-` prefix match. A category whose target file cannot be found is skipped and
   reported rather than abandoning the rest of the body.
-- `mpfb_add_asset` — clothes/proxy via `add_mhclo_asset()`. Takes its `path` (or a `fragment`
-  to resolve) and its `asset_type` from `mpfb_list_assets`.
+- `mpfb_add_asset` — equip one MHCLO asset via `add_mhclo_asset()`. **Implemented**, and for all
+  eight of the types that function accepts rather than only clothes and proxies: `Clothes`,
+  `Proxymeshes`, `Eyes`, `Eyebrows`, `Eyelashes`, `Hair`, `Teeth` and `Tongue`. Takes its `path`
+  **or** its `fragment` from `mpfb_list_assets` — exactly one, both accepted, and `resolved_path`
+  always reported, because resolving a fragment matches on basename and is lossy (see
+  [An acting tool accepts every identifier its catalogue reports](architecture.md#an-acting-tool-accepts-every-identifier-its-catalogue-reports)).
+  Its `asset_type` is **required**, taken from that catalogue's `object_type`: MPFB's own default of
+  `"Clothes"` is wrong for six of the eight and mislabels a body part permanently and silently, and
+  a defaulted argument that changes what the character *is* must not be defaulted. `material_type`
+  is defaulted **per asset type** instead — `NONE` for `Proxymeshes`, `MAKESKIN` otherwise, matching
+  MPFB's settings panel rather than the function signature — and the choice is echoed back. **One
+  asset per call**, because loading an MHCLO is seconds of mesh import and vertex fitting and the
+  batching argument behind `mpfb_set_targets` does not carry over. Reports what the caller could not
+  otherwise see: the object's actual name (Blender uniquifies a second copy to `…hat.001`, and that
+  name is what `mpfb_remove_asset` needs), the delete group and which objects got a mask for it,
+  whether a material was built at all, the sub-rig, and a `warnings` list for the four things MPFB
+  only logs. It is the other end of
+  [A tool reports an ordering constraint it cannot enforce](architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
+  from `mpfb_add_rig`: `rigged_to` is `null` with `parented_to` beside it when the character had no
+  rig at the moment of attachment. For a `Proxymeshes` asset it follows `_check_add_proxy()` — the
+  `.mhm` loading path — rather than the proxy library operator, reporting the four extras in
+  `proxy_extras` and naming the divergence (see
+  [Where MPFB's own code paths disagree, mpfb-mcp picks one and names it](architecture.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)).
+- `mpfb_remove_asset` — take one MHCLO asset off a character via `unload_mhclo_asset()`.
+  **Implemented**, and in scope alongside adding for one reason: without it an agent that equips the
+  wrong garment has no correct way to take it off, since deleting the object leaves the body's mask
+  modifier and the garment's sub-rig behind. `name` is **required** — no active-object fallback,
+  because this deletes an object. Refuses a `Basemesh` or a `Skeleton` outright, since the
+  underlying function checks nothing and would delete either, and refuses an asset whose
+  `asset_source` is empty, since the delete group's name is derived from it and removal would
+  otherwise be silently partial. Distinguishes four fates rather than claiming one clean outcome:
+  the mask modifiers removed, the sub-rig, the `Delete.*` vertex groups MPFB leaves behind, and the
+  orphaned mesh datablock.
 - `mpfb_set_skin` — via `set_character_skin()`. Takes its `path` from `mpfb_list_assets`'
   `skins` subdir; a skin is a material rather than a mesh asset, so it is not
   `mpfb_add_asset`'s job.

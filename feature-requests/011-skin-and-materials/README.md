@@ -7,7 +7,7 @@ A character with no skin is grey. `mpfb_create_human` builds a basemesh with wha
 looks like clay. [FR 005](../done/005-list-assets/README.md) already lists the `skins` subdir — the
 catalogue names the skins and nothing applies them.
 
-A skin is not an asset in the sense [FR 010](../010-mesh-assets/README.md) uses the word. It is a
+A skin is not an asset in the sense [FR 010](../done/010-mesh-assets/README.md) uses the word. It is a
 **material**, applied to objects that already exist rather than imported as one, and MPFB reaches it
 through `HumanService.set_character_skin()` rather than `add_mhclo_asset()`. It also has a parameter
 that changes the result more than the file does: `skin_type` picks between five entirely different
@@ -47,9 +47,15 @@ Mutating. Wraps `HumanService.set_character_skin()`. Arguments:
 - `name` (optional string) — a Blender object name, resolved to the character's basemesh as in
   [FR 007](../done/007-macro-details/README.md). Omitted means the active object.
 - `path` (optional string) / `fragment` (optional string) — the MHMAT, addressed either way, exactly
-  as in [FR 010](../010-mesh-assets/README.md); resolved against the `skins` subdir. Exactly one, and
+  as in [FR 010](../done/010-mesh-assets/README.md); resolved against the `skins` subdir. This is now
+  the standing rule
+  [An acting tool accepts every identifier its catalogue reports](../../specifications/architecture.md#an-acting-tool-accepts-every-identifier-its-catalogue-reports),
+  so follow it rather than restate it — including its third clause: always report `resolved_path`,
+  since `find_asset_absolute_path()` matches on basename and a skin resolved from a fragment can
+  land on a different file than the caller meant. Exactly one, and
   **both may be omitted only when `skin_type` is `LAYERED`**, which is the one type that builds a
-  material from nothing.
+  material from nothing. `codegen/shared/asset_sections.py` already exists and already knows that
+  `Material` maps to the `skins` subdir, so the lookup is a call rather than a table.
 - `skin_type` (optional string, default `"MAKESKIN"`) — `MAKESKIN`, `GAMEENGINE`, `ENHANCED`,
   `ENHANCED_SSS` or `LAYERED`. The default follows MPFB's **settings panel**, not the function
   signature's `ENHANCED_SSS`; the divergence is named in the docstring, since a caller comparing
@@ -94,7 +100,7 @@ Mutating. Replaces the material on an equipped MHCLO asset with an alternative M
 asset's own back. Arguments:
 
 - `name` (required string) — the Blender object name of the **asset**, as `mpfb_list_objects` and
-  [FR 010](../010-mesh-assets/README.md)'s `mpfb_add_asset` report it. Required, not defaulted to the
+  [FR 010](../done/010-mesh-assets/README.md)'s `mpfb_add_asset` report it. Required, not defaulted to the
   active object, for the same reason removal's is: this destroys the object's current material.
 - `path` / `fragment` (optional strings) — the MHMAT to apply, as reported by
   `mpfb_list_asset_materials` below.
@@ -235,8 +241,13 @@ uuid-keyed dict `add_mhclo_asset()` accepts.
     [A mutating tool reports before and after](../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
     and
     [Preconditions are answers](../../specifications/architecture.md#preconditions-are-answers) —
-    and [FR 010](../010-mesh-assets/README.md)'s "an acting tool accepts every identifier its
-    catalogue reports".
+    and — now that [FR 010](../done/010-mesh-assets/README.md) has landed it as a standing convention —
+    [An acting tool accepts every identifier its catalogue reports](../../specifications/architecture.md#an-acting-tool-accepts-every-identifier-its-catalogue-reports),
+    which this request **follows** rather than proposes. Note also
+    [Where MPFB's own code paths disagree, mpfb-mcp picks one and names it](../../specifications/architecture.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it),
+    which FR 010 landed for the proxy case and which the alternative-material half of this request
+    is a candidate for: that mechanism lives entirely in a UI operator and has no service function
+    at all.
   - **New — where MPFB's UI coerces or re-defaults a service argument, mpfb-mcp coerces the same way
     and reports both values.** A service signature's default is not always the product's default; the
     `skin_type` and `material_instances` cases here are the first two, and silently passing the
@@ -246,8 +257,12 @@ uuid-keyed dict `add_mhclo_asset()` accepts.
 
 ## Tests
 
-Two layers, as established. The stubs need a `StubMaterialService` and the material half of
-`StubHumanService`, reproducing behavior rather than convenience:
+Two layers, as established. [FR 010](../done/010-mesh-assets/README.md) has since grown
+[tests/blender_stubs.py](../../tests/blender_stubs.py) part of the way there — `StubMaterialService`
+now has `has_materials()`, `delete_all_materials()` and `create_empty_material()`, objects carry real
+modifier and vertex-group collections, and `MeshAssetTestCase` provides a real asset library on disk
+with a character to put it on. Extend those rather than adding a second fixture. What is still
+missing is the skin half, reproducing behavior rather than convenience:
 
 - `set_character_skin()` that **deletes every material on both objects first**, records
   `material_source` only when given a file, and creates a different stub material per `skin_type` —

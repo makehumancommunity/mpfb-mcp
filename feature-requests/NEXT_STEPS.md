@@ -14,10 +14,10 @@ Most of the things in this section is done via TargetService. Macrodetails and p
 [FR 007](done/007-macro-details/README.md) and detail targets as
 [FR 008](done/008-detail-targets/README.md); see their entries in [HISTORY.md](HISTORY.md).
 **Neither landed with live verification**, and neither did [FR 009](done/009-add-rig/README.md)'s
-two rig tools. The outstanding checks overlap heavily — they all need the same dressed, rigged
-character and all compare against MPFB's own panel — so they are **one session's work rather than
-three**, and that session is the largest single piece of unfinished business in this file. It has
-four parts:
+two rig tools or [FR 010](done/010-mesh-assets/README.md)'s two asset tools. The outstanding checks
+overlap heavily — they all need the same dressed, rigged character and all compare against MPFB's
+own panel — so they are **one session's work rather than five**, and that session is by far the
+largest single piece of unfinished business in this file. It has six parts:
 
 - [FR 007](done/007-macro-details/README.md#verification-status) — phenotype sliders, refit, and the
   generated-Rigify-with-no-meta-rig branch of `mpfb_refit_human`.
@@ -25,11 +25,22 @@ four parts:
   `mpfb_set_targets` reads back on MPFB's own slider.
 - [FR 009](done/009-add-rig/README.md#verification-status) — that rigging after dressing really does
   leave the clothes unrigged, and the full Rigify sequence in both orders.
+- [FR 010](done/010-mesh-assets/README.md#verification-status) — the largest of the five, and the
+  one where the stubs establish least: that a garment equipped through `mpfb_add_asset` is
+  indistinguishable from one equipped through MPFB's asset library panel, each of the eight
+  `asset_type` values at least once, the **proxy divergence measured rather than read from source**,
+  and removal end to end. It also settles FR 009's ordering claim from the other end, and doubles as
+  the first live evidence that FR 007's refit does anything at all — so **whichever of the two gets
+  there first settles it for both**.
 - **A re-check of [FR 004](done/004-list-rigs/README.md)**, whose live verification FR 009 made
   stale: `payloads/list_rigs.py` was migrated onto the shared `rig_lookup.py` fragment, so the
   program sent into Blender is a different program even though the unit tests see no behavior
   change. Cheap to redo — it is a read-only call — and it belongs in the same session because
   FR 009's own weights checks compare against its output.
+- **A re-check of [FR 005](done/005-list-assets/README.md)**, stale for exactly the same reason:
+  FR 010 migrated `payloads/list_assets.py` onto the shared `asset_sections.py` fragment. Also a
+  read-only call, and also in the same session, since FR 010's `resolved_path` is compared against
+  its output.
 
 What remains unscoped in this area:
 
@@ -48,17 +59,23 @@ What remains unscoped in this area:
   `listed_in_mpfb_ui`, with no synthesized categories at all. The two now walk the same directories
   by different routes, which is a drift risk rather than a bug. Worth doing when something else
   needs to touch that payload anyway, and worth doing *with* a live re-verification.
+  Note that this is now the **only** payload left unmigrated: [FR 009](done/009-add-rig/README.md)
+  migrated `list_rigs.py` onto `rig_lookup.py` and [FR 010](done/010-mesh-assets/README.md) migrated
+  `list_assets.py` onto `asset_sections.py`, both at the price of a stale live verification. The
+  same price applies here, and the difference remains that this payload's overlap is a *shape*
+  difference rather than a vocabulary two tools have to agree on.
 
 ## Loading / applying assets
 
 The next logical step would be the ability to add assets to a character. All three bullets below
 are now scoped into numbered requests, one per domain; the bullets are kept as the original
-statement of what was wanted.
+statement of what was wanted. Two of the three have landed.
 
 - ~~Add rig, including a custom rig~~ — landed as [FR 009](done/009-add-rig/README.md); see its
   [entry in HISTORY.md](HISTORY.md)
-- Add an MHCLO asset: needs to take asset type and material type as parameters —
-  [FR 010](010-mesh-assets/README.md)
+- ~~Add an MHCLO asset: needs to take asset type and material type as parameters~~ — landed as
+  [FR 010](done/010-mesh-assets/README.md), which also covers *removing* one; see its
+  [entry in HISTORY.md](HISTORY.md)
 - Set skin: needs to take material type as parameter — [FR 011](011-skin-and-materials/README.md)
 
 The split is by domain rather than by size: rigs go through a different, non-interchangeable pair
@@ -80,11 +97,15 @@ afterwards; Rigify generation has to come after the garments. MPFB's own charact
 this in comments. None of the tools can enforce it, so each reports when it can see the caller
 violating it. [FR 009](done/009-add-rig/README.md) landed that as a standing convention —
 [A tool reports an ordering constraint it cannot enforce](../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
-— so FR 010 and FR 011 follow it rather than restate it.
+— and [FR 010](done/010-mesh-assets/README.md) followed it from the other end, reporting
+`rigged_to: null` beside `parented_to` for a garment attached to a character that had no rig at that
+moment. FR 011 follows it rather than restating it.
 
 **Adding is one asset per call**, not batched like
 [FR 008](done/008-detail-targets/README.md)'s target setting: loading an MHCLO is seconds of mesh import and vertex fitting, so the ~1 s socket round trip
-does not dominate and the argument that made batching mandatory there does not carry over.
+does not dominate and the argument that made batching mandatory there does not carry over. That
+decision is implemented but not yet *measured*; the cost check is part of FR 010's outstanding live
+verification above.
 
 ### Still unscoped in this area
 

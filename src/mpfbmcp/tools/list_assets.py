@@ -214,5 +214,11 @@ def register(mcp: FastMCP) -> None:
                 "offset": _validated_count(offset, "offset", None),
                 "refresh": _validated_refresh(refresh),
             },
+            # Shared with mpfb_add_asset's payload, which is handed the
+            # object_type and fragment reported here and has to map them back to
+            # an asset subdir to find the file. One implementation of MPFB's
+            # section table, so the catalogue and the action cannot disagree
+            # about what an entry means.
+            shared=["asset_sections.py"],
         )
         return send_code(code, strict_json=True)

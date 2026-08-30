@@ -154,6 +154,14 @@ ASSET_LIBRARY_SECTIONS = [
         "skin_overrides": False,
     },
     {
+        "bl_label": "Eyes library",
+        "asset_subdir": "eyes",
+        "asset_type": "mhclo",
+        "object_type": "Eyes",
+        "eye_overrides": True,
+        "skin_overrides": False,
+    },
+    {
         "bl_label": "Clothes library",
         "asset_subdir": "clothes",
         "asset_type": "mhclo",
@@ -172,11 +180,27 @@ ASSET_LIBRARY_SECTIONS = [
 ]
 
 
-class StubMaterial:
-    """A material slot's content, plus what identify_material() makes of it."""
+# MPFB's proxy vertex-group table, trimmed to one entry. _check_add_proxy()
+# creates these groups on a proxy whose uuid is in it and silently creates
+# nothing for one that is not - both are branches mpfb_add_asset reports.
+ALL_EXTRA_GROUPS = {
+    "proxy-with-extras-uuid": {
+        "HelperGeometry": [0, 1, 2],
+        "Left eye": [3, 4],
+    },
+}
 
-    def __init__(self, identified="makeskin"):
+
+class StubMaterial:
+    """A material slot's content, plus what identify_material() makes of it.
+
+    ``name`` is here because ``mpfb_add_asset`` reports the material MPFB built,
+    and ``MaterialService.create_empty_material()`` names it after the object.
+    """
+
+    def __init__(self, identified="makeskin", name="Material"):
         self.identified = identified
+        self.name = name
 
 
 class StubShapeKey:
@@ -275,6 +299,78 @@ class StubModifier:
         self.type = modifier_type
         self.object = target
         self.vertex_group = ""
+        self.invert_vertex_group = False
+        self.levels = 0
+        self.render_levels = 0
+
+
+class _StubModifiers(list):
+    """``object.modifiers``: a sequence that can also make and drop modifiers.
+
+    A list rather than a collection class of its own, because every payload
+    before this one only ever iterated it. ``new()`` takes its two arguments
+    positionally *and* by keyword, since MPFB calls it both ways in the same
+    function - ``modifiers.new("Hide base mesh", 'MASK')`` beside
+    ``modifiers.new(name=delete_name, type="MASK")``.
+    """
+
+    def new(self, name=None, type=None):  # pylint: disable=redefined-builtin
+        modifier = StubModifier(name, type)
+        self.append(modifier)
+        return modifier
+
+    def remove(self, modifier):
+        for index, candidate in enumerate(self):
+            if candidate is modifier:
+                del self[index]
+                return
+        raise ValueError("modifier is not on this object")
+
+
+class _StubVertexGroup:
+    """One vertex group, and the indices something added to it."""
+
+    def __init__(self, name):
+        self.name = name
+        self.indices = []
+
+    def add(self, indices, weight, mode):
+        self.indices.extend(int(index) for index in indices)
+        self.weight = weight
+        self.mode = mode
+
+
+class _StubVertexGroups(list):
+    """``object.vertex_groups``: `in` tests the *name*, as Blender's does.
+
+    The delete group is the mechanism that makes the body disappear under a
+    garment, and the fact that MPFB removes the *modifier* and leaves the
+    *group* is a claim ``mpfb_remove_asset`` makes in its response - so the
+    groups have to be real enough to still be there afterwards.
+    """
+
+    def new(self, name=""):
+        group = _StubVertexGroup(name)
+        self.append(group)
+        return group
+
+    def get(self, name, default=None):
+        for group in self:
+            if group.name == name:
+                return group
+        return default
+
+    def remove(self, group):
+        for index, candidate in enumerate(self):
+            if candidate is group:
+                del self[index]
+                return
+        raise ValueError("vertex group is not on this object")
+
+    def __contains__(self, key):
+        if isinstance(key, str):
+            return any(group.name == key for group in self)
+        return any(group is key for group in self)
 
 
 class StubObject:
@@ -285,7 +381,8 @@ class StubObject:
                  material=None, rig_id=None, metarig=False, rig_type="unknown",
                  macro_details=None, is_human_project=False, shapekeys=None,
                  mode="OBJECT", selected=False, rigify_target_rig=None,
-                 location=(0.0, 0.0, 0.0), modifiers=None, rigify_colors=1):
+                 location=(0.0, 0.0, 0.0), modifiers=None, rigify_colors=1,
+                 vertex_groups=()):
         self.name = name
         self.type = blender_type
         self.parent = parent
@@ -295,7 +392,12 @@ class StubObject:
         # armature the basemesh's location and then move the basemesh to the
         # origin.
         self.location = list(location)
-        self.modifiers = list(modifiers or [])
+        self.modifiers = _StubModifiers(modifiers or [])
+        # Real enough to survive the removal of the modifiers that reference
+        # them, which is what vertex_groups_left_behind reports.
+        self.vertex_groups = _StubVertexGroups()
+        for group_name in vertex_groups:
+            self.vertex_groups.new(name=group_name)
         # Rigify's meta_rig_action "hide" sets both of these rather than
         # removing anything, which is what keeps a refit possible afterwards.
         self.hide_viewport = False
@@ -489,6 +591,22 @@ class StubObjectService:
             blender_object, _ALL_TYPES, **kwargs)
 
     @staticmethod
+    def find_deformed_child_meshes(armature_object):
+        # Parenting is not enough: a mesh counts as deformed only when it also
+        # carries an ARMATURE modifier pointing back. unload_mhclo_asset()
+        # decides whether to take a sub-rig away on exactly this, so a stub that
+        # answered from the parent link alone would remove one it should keep.
+        if not armature_object:
+            return
+        assert armature_object.type == "ARMATURE"
+        for child in StubObjectService.get_list_of_children(armature_object):
+            if child.type != "MESH":
+                continue
+            for modifier in child.modifiers:
+                if modifier.type == "ARMATURE" and modifier.object is armature_object:
+                    yield child
+
+    @staticmethod
     def find_rigify_metarig_by_rig(blender_object):
         # Guarded exactly as MPFB's is: asked about a rig that is not a
         # generated Rigify rig, it answers None rather than searching. The link
@@ -544,12 +662,39 @@ class StubAssetService:
     """Records what it was asked to resolve, so the asset subdir is assertable."""
 
     calls = []
+    # An explicit answer per fragment, for the tests that only care *that* a
+    # lookup happened and under which subdir. When it holds no entry for the
+    # fragment, the walk below runs instead.
     resolutions = {}
 
     @staticmethod
     def find_asset_absolute_path(asset_path_fragment, asset_subdir="clothes"):
+        """MPFB's resolution, quirks first: it matches on **basename**.
+
+        The fragment's directory half is used only to break a tie, and when it
+        breaks nothing the *first* match wins - so two packs shipping
+        ``hat.mhclo`` really do resolve to a coin toss. That is the ambiguity
+        ``mpfb_add_asset``'s ``resolved_path`` exists to expose, and a stub that
+        matched the whole fragment would make the field look redundant.
+        """
         StubAssetService.calls.append((asset_path_fragment, asset_subdir))
-        return StubAssetService.resolutions.get(asset_path_fragment)
+        if asset_path_fragment in StubAssetService.resolutions:
+            return StubAssetService.resolutions[asset_path_fragment]
+        filename = os.path.basename(str(asset_path_fragment))
+        matches = []
+        for root in StubAssetService.get_asset_roots(asset_subdir):
+            for dirpath, _subdirs, files in os.walk(str(root)):
+                if filename in files:
+                    matches.append(os.path.join(dirpath, filename))
+        if not matches:
+            return None
+        if len(matches) < 2:
+            return os.path.abspath(matches[0])
+        for match in matches:
+            last_part = os.path.basename(os.path.dirname(match)) + "/" + os.path.basename(match)
+            if last_part == asset_path_fragment:
+                return os.path.abspath(match)
+        return os.path.abspath(matches[0])
 
     # What get_custom_rigs() should answer, and how it was asked. Set by a test
     # that wants a particular set of custom rigs on disk.
@@ -673,9 +818,31 @@ class StubClothesService:
 
 
 class StubMaterialService:
+    """One material per object, which is all any payload here reads.
+
+    ``material_slots`` is not modelled: MPFB's own ``has_materials()`` asks that
+    collection, but every payload reaching for it goes through this service, so
+    a second representation would be a second thing to keep in step.
+    """
+
     @staticmethod
     def get_material(blender_object, slot=0):
         return blender_object.material
+
+    @staticmethod
+    def has_materials(blender_object):
+        return bool(getattr(blender_object, "material", None))
+
+    @staticmethod
+    def delete_all_materials(blender_object, also_destroy_groups=False):
+        blender_object.material = None
+
+    @staticmethod
+    def create_empty_material(name, blender_object=None):
+        material = StubMaterial(name=name)
+        if blender_object is not None:
+            blender_object.material = material
+        return material
 
     @staticmethod
     def identify_material(material):
@@ -719,17 +886,37 @@ class StubRigService:
 
     @staticmethod
     def ensure_armature_modifier(obj, armature_object, *, move_to_top=True, subrig=None):
-        # The one observable half of a much longer function: the mesh ends up
-        # with an ARMATURE modifier pointing at the armature. That is what tells
-        # a parented mesh from a deformed one, and it exists only when weights
+        # The observable half of a much longer function: the mesh ends up with
+        # an ARMATURE modifier pointing at the armature. That is what tells a
+        # parented mesh from a deformed one, and it exists only when weights
         # were imported.
+        existing = None
+        has_subrig_modifier = False
         for modifier in obj.modifiers:
-            if modifier.type == "ARMATURE" and modifier.vertex_group != "mhmask-subrig":
+            if modifier.type != "ARMATURE":
+                continue
+            if modifier.vertex_group == "mhmask-subrig":
+                has_subrig_modifier = True
+                if subrig is not None:
+                    modifier.object = subrig
+            else:
                 modifier.object = armature_object
-                return modifier
-        modifier = StubModifier("Armature", "ARMATURE", armature_object)
-        obj.modifiers.insert(0, modifier)
-        return modifier
+                existing = modifier
+        if existing is None:
+            existing = StubModifier("Armature", "ARMATURE", armature_object)
+            obj.modifiers.insert(0, existing)
+        # A garment with a sub-rig gets a *second* armature modifier, masked to
+        # its own vertex group and pointing at the sub-rig. That modifier is the
+        # only reason find_deformed_child_meshes() sees the garment as deformed
+        # by the sub-rig, and therefore the only reason unload_mhclo_asset()
+        # takes the sub-rig away with it.
+        if subrig is not None and not has_subrig_modifier:
+            if "mhmask-subrig" not in obj.vertex_groups:
+                obj.vertex_groups.new(name="mhmask-subrig")
+            subrig_modifier = obj.modifiers.new("Armature Subrig", "ARMATURE")
+            subrig_modifier.object = subrig
+            subrig_modifier.vertex_group = "mhmask-subrig"
+        return existing
 
     @staticmethod
     def normalize_rotation_mode(armature_object):
@@ -1436,6 +1623,208 @@ class StubHumanService:
         return StubHumanService._attach(
             basemesh, armature_object, import_weights, weights_file)
 
+    # One dict per add_mhclo_asset()/unload_mhclo_asset() call, and every object
+    # _proxy_corrective() was run on.
+    add_asset_calls = []
+    unload_calls = []
+    corrective_calls = []
+    # Set by a test that wants the mesh import itself to fail, which is the one
+    # thing add_mhclo_asset() raises on.
+    add_asset_raises = None
+
+    @staticmethod
+    def _read_mhclo(mhclo_file):
+        """The three lines of an MHCLO the observable result depends on.
+
+        ``material`` (whether a material is built at all), ``uuid`` (whether the
+        proxy extra vertex groups apply) and ``delete`` (whether there is a
+        delete group to build). Everything else in the file is geometry, which
+        this stub does not pretend to do.
+        """
+        material = None
+        uuid = None
+        has_delete = False
+        try:
+            handle = open(mhclo_file, "r", encoding="utf8")
+        except OSError:
+            # Mhclo.load() catches the open failure, logs it and returns - so a
+            # file MPFB cannot read produces an asset with no material and no
+            # delete group rather than an exception.
+            return (material, uuid, has_delete)
+        with handle:
+            for line in handle:
+                words = line.split()
+                if len(words) > 1 and words[0] == "material":
+                    material = os.path.join(os.path.dirname(mhclo_file), words[1])
+                if len(words) > 1 and words[0] == "uuid":
+                    uuid = words[1]
+                if words and words[0] == "delete":
+                    has_delete = True
+        return (material, uuid, has_delete)
+
+    @staticmethod
+    def _delete_group_name(mhclo_file):
+        name = str(os.path.basename(mhclo_file))
+        name = name.replace(".mhclo", "").replace(".MHCLO", "").replace(" ", "_")
+        return "Delete." + name
+
+    @staticmethod
+    def add_mhclo_asset(mhclo_file, basemesh, asset_type="Clothes", subdiv_levels=1,
+                        material_type="MAKESKIN", alternative_materials=None,
+                        color_adjustments=None, set_up_rigging=True, interpolate_weights=True,
+                        import_subrig=True, import_weights=True):
+        """The observable results of MPFB's asset loading, not the work.
+
+        No mesh is imported and nothing is fitted - neither is anything a payload
+        can see. What is reproduced is every branch one *can*: the object's name
+        and MPFB's uniquifying of it, the **capitalised** object_type, the
+        material skipped entirely when the MHCLO names none, the delete group
+        that is not built when the MHCLO declares no delete vertices, the
+        proxy-only interpolation keyed on the **raw** asset_type argument, the
+        rig set up only when a Skeleton relative is already there, and the
+        subdivision modifier only above zero levels.
+        """
+        StubHumanService.add_asset_calls.append(
+            {"mhclo_file": mhclo_file, "basemesh": basemesh.name, "asset_type": asset_type,
+             "subdiv_levels": subdiv_levels, "material_type": material_type,
+             "set_up_rigging": set_up_rigging, "interpolate_weights": interpolate_weights,
+             "import_subrig": import_subrig, "import_weights": import_weights})
+
+        if StubHumanService.add_asset_raises is not None:
+            raise StubHumanService.add_asset_raises
+
+        material, uuid, has_delete = StubHumanService._read_mhclo(mhclo_file)
+
+        stem = str(os.path.basename(mhclo_file)).replace(".mhclo", "").replace(".proxy", "")
+        prefix = str(basemesh.name).split(".")[0]
+        wanted = prefix + "." + stem
+        # Blender uniquifies a name already in use, which is why equipping two
+        # copies of one garment gives '...hat' and '...hat.001' - and why the
+        # response reports the name rather than predicting it.
+        name = wanted
+        suffix = 0
+        existing = set(obj.name for obj in StubObjectService.all_objects)
+        while name in existing:
+            suffix += 1
+            name = wanted + "." + str(suffix).zfill(3)
+
+        atype = str(asset_type).lower().capitalize()
+        asset = StubObject(
+            name,
+            object_type=atype,
+            asset_source=(os.path.basename(os.path.dirname(os.path.abspath(mhclo_file)))
+                          + "/" + os.path.basename(mhclo_file)),
+        )
+        StubObjectService.register_object(asset)
+        if uuid:
+            GeneralObjectProperties.set_value("uuid", uuid, entity_reference=asset)
+
+        # The material block is guarded by `if mhclo.material is not None`, so an
+        # MHCLO with no material line produces an object with no material and no
+        # complaint. A stub that always built one would hide the warning that
+        # exists for exactly this.
+        if material is not None and material_type in ("MAKESKIN", "GAMEENGINE"):
+            StubMaterialService.delete_all_materials(asset)
+            StubMaterialService.create_empty_material(name, asset)
+        elif material is not None and material_type == "NONE":
+            StubMaterialService.delete_all_materials(asset)
+        if material_type == "PROCEDURAL_EYES":
+            # Outside the guard in MPFB's own code: procedural eyes are built
+            # from MPFB's node tree rather than from the MHCLO's material.
+            StubMaterialService.delete_all_materials(asset)
+            StubMaterialService.create_empty_material(name, asset)
+
+        # update_delete_group() returns before creating anything when the MHCLO
+        # declares no delete vertices, so neither the group nor the modifier
+        # appears - which is a branch mpfb_add_asset reports on.
+        delete_name = StubHumanService._delete_group_name(mhclo_file)
+        if has_delete:
+            if delete_name not in basemesh.vertex_groups:
+                basemesh.vertex_groups.new(name=delete_name)
+            modifier = basemesh.modifiers.new(name=delete_name, type="MASK")
+            modifier.vertex_group = delete_name
+            modifier.invert_vertex_group = True
+            # Keyed on the *raw* argument, as MPFB keys it: a garment labelled
+            # Hair does not get the body proxy masked under it.
+            if str(asset_type).lower() == "clothes":
+                proxymesh = StubObjectService.find_object_of_type_amongst_nearest_relatives(
+                    basemesh, "Proxymeshes")
+                if proxymesh:
+                    proxymesh.vertex_groups.new(name=delete_name)
+                    proxy_modifier = proxymesh.modifiers.new(name=delete_name, type="MASK")
+                    proxy_modifier.vertex_group = delete_name
+                    proxy_modifier.invert_vertex_group = True
+
+        rig = StubObjectService.find_object_of_type_amongst_nearest_relatives(
+            basemesh, "Skeleton")
+        if rig and set_up_rigging:
+            subrig = None
+            if import_subrig and os.path.isfile(os.path.splitext(mhclo_file)[0] + ".mpfbskel"):
+                subrig = StubObject(
+                    name + ".rig", blender_type="ARMATURE", object_type="Subrig", parent=rig)
+                StubObjectService.register_object(subrig)
+            if subrig:
+                asset.parent = subrig
+            else:
+                asset.parent = rig
+            StubRigService.ensure_armature_modifier(asset, rig, subrig=subrig)
+        else:
+            asset.parent = basemesh
+
+        if subdiv_levels > 0:
+            modifier = asset.modifiers.new("Subdivision", "SUBSURF")
+            modifier.levels = 0
+            modifier.render_levels = subdiv_levels
+
+        return asset
+
+    @staticmethod
+    def unload_mhclo_asset(basemesh, asset):
+        """Removes the modifiers and the object, and **leaves the groups**.
+
+        That asymmetry is the claim ``vertex_groups_left_behind`` makes, so a
+        tidier stub would make the field look like an invention. Note also that
+        the modifier is matched by *name* rather than by vertex group, as MPFB
+        matches it, and that the delete name is derived from ``asset_source`` -
+        an object whose property was never set therefore matches nothing.
+        """
+        StubHumanService.unload_calls.append(
+            (None if basemesh is None else basemesh.name, asset.name))
+        if not asset:
+            return
+
+        source = GeneralObjectProperties.get_value("asset_source", entity_reference=asset)
+
+        objs_with_delete = []
+        proxy = StubObjectService.find_object_of_type_amongst_nearest_relatives(
+            asset, "Proxymeshes")
+        if basemesh:
+            objs_with_delete.append(basemesh)
+        if proxy:
+            objs_with_delete.append(proxy)
+
+        delete_name = "Delete." + str(os.path.basename(str(source or ""))).replace(
+            ".mhclo", "").replace(".MHCLO", "").replace(" ", "_")
+
+        for obj in objs_with_delete:
+            for modifier in list(obj.modifiers):
+                if modifier.type == "MASK" and modifier.name == delete_name:
+                    obj.modifiers.remove(modifier)
+
+        subrig = StubObjectService.find_object_of_type_amongst_nearest_relatives(
+            asset, "Subrig", only_parents=True)
+        if subrig and asset in list(StubObjectService.find_deformed_child_meshes(subrig)):
+            StubObjectService.unregister_object(subrig)
+
+        StubObjectService.unregister_object(asset)
+
+    @staticmethod
+    def _proxy_corrective(proxymesh):
+        # Private, and read off the service with getattr() by the payload that
+        # wants it - so it is here under its real name rather than a public
+        # alias, or the degradation path would never be the one under test.
+        StubHumanService.corrective_calls.append(proxymesh.name)
+
 
 _SERVICES = {
     "ObjectService": StubObjectService,
@@ -1535,6 +1924,10 @@ class GeneratedCodeTestCase(unittest.TestCase):
         StubHumanService.refit_raises = None
         StubHumanService.add_rig_calls = []
         StubHumanService.rigify_colors = 1
+        StubHumanService.add_asset_calls = []
+        StubHumanService.unload_calls = []
+        StubHumanService.corrective_calls = []
+        StubHumanService.add_asset_raises = None
         StubRigService.weights_loaded = []
         StubRigService.generate_calls = []
         StubRigService.metarig_valid = True
@@ -1556,6 +1949,11 @@ class GeneratedCodeTestCase(unittest.TestCase):
 
         humanservice_module = types.ModuleType(_HUMANSERVICE_MODULE)
         humanservice_module.HumanObjectProperties = HumanObjectProperties
+        # ALL_EXTRA_GROUPS is a table from entities/socketobject that
+        # humanservice.py imports, so it is read off this module the same way
+        # the property sets are. Keyed by proxy uuid, and empty for every uuid
+        # but one, which is the ordinary case rather than the interesting one.
+        humanservice_module.ALL_EXTRA_GROUPS = ALL_EXTRA_GROUPS
         StubHumanService.__module__ = _HUMANSERVICE_MODULE
 
         # ASSET_LIBRARY_SECTIONS is module-level in assetservice.py rather than
@@ -1971,4 +2369,148 @@ class RigTestCase(GeneratedCodeTestCase):
                 "Shirt.subrig", blender_type="ARMATURE",
                 parent=self.rig or self.basemesh, object_type="Subrig")
             self.objects.append(self.subrig)
+        return self.objects
+
+
+def write_mhclo(path, *, material=True, uuid=None, delete=True,
+                mpfbskel=False, weights=False):
+    """A real MHCLO file, carrying only the lines the stubs read back.
+
+    The geometry is left out because no payload can see it, but the four
+    metadata lines are real: ``material`` decides whether a material is built at
+    all, ``uuid`` decides whether a proxy gets its extra vertex groups,
+    ``delete`` decides whether there is a delete group to mask the body with,
+    and the companion files decide whether a sub-rig is imported and whether
+    weights exist to load.
+    """
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    base = os.path.splitext(path)[0]
+    lines = ["# MakeHuman clothes file", "name " + os.path.basename(base)]
+    if material:
+        material_name = os.path.basename(base) + ".mhmat"
+        lines.append("material " + material_name)
+        with open(os.path.join(os.path.dirname(path), material_name), "w",
+                  encoding="utf-8") as handle:
+            handle.write("name " + os.path.basename(base) + "\n")
+    if uuid:
+        lines.append("uuid " + uuid)
+    if delete:
+        lines.append("delete")
+        lines.append("1 2 3")
+    lines.append("verts 0")
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write("\n".join(lines) + "\n")
+    if mpfbskel:
+        with open(base + ".mpfbskel", "w", encoding="utf-8") as handle:
+            handle.write("{}\n")
+    if weights:
+        with open(base + ".mhw", "w", encoding="utf-8") as handle:
+            handle.write("{}\n")
+    return path
+
+
+class MeshAssetTestCase(GeneratedCodeTestCase):
+    """A real asset library on disk, plus a character to put it on.
+
+    A ``tempfile`` tree rather than a mocked filesystem, for the same reason
+    ``RigTestCase`` uses one: these payloads read the MHCLO to see whether it
+    names a material, list the directory beside it to see whether weights ship
+    with it, and resolve a fragment by walking the asset roots - so mocking the
+    filesystem away would leave nothing under test.
+
+    Every asset in the tree is a branch. ``fedora`` is the ordinary one: a
+    material, a delete group and a uuid. ``plain`` has **no material line and no
+    delete group**, which is the pair of things MPFB only logs. ``rigged``
+    carries a ``.mpfbskel`` and a ``.mhw`` beside it, so the sub-rig and the
+    weights are real rather than assumed. ``proxy721`` carries the uuid that is
+    in ``ALL_EXTRA_GROUPS``, and ``proxy_plain`` one that is not. And a *second*
+    clothes root holds another ``fedora.mhclo``, because
+    ``find_asset_absolute_path()`` matches on basename and the coin toss that
+    produces is what ``resolved_path`` exists to expose.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self._asset_tree = tempfile.TemporaryDirectory()
+        self.addCleanup(self._asset_tree.cleanup)
+        root = self._asset_tree.name
+
+        self.system_root = os.path.join(root, "system", "assets")
+        self.user_root = os.path.join(root, "user", "assets")
+
+        self.fedora = write_mhclo(
+            os.path.join(self.system_root, "clothes", "fedora", "fedora.mhclo"),
+            uuid="fedora-uuid")
+        self.plain = write_mhclo(
+            os.path.join(self.system_root, "clothes", "plain", "plain.mhclo"),
+            material=False, delete=False)
+        self.rigged = write_mhclo(
+            os.path.join(self.system_root, "clothes", "rigged", "rigged.mhclo"),
+            mpfbskel=True, weights=True)
+        # The same basename under a second root: two packs shipping hat.mhclo.
+        self.other_fedora = write_mhclo(
+            os.path.join(self.user_root, "clothes", "fedora", "fedora.mhclo"))
+        self.ponytail = write_mhclo(
+            os.path.join(self.system_root, "hair", "ponytail", "ponytail.mhclo"))
+        self.lowpoly_eyes = write_mhclo(
+            os.path.join(self.system_root, "eyes", "lowpoly", "lowpoly.mhclo"))
+        self.proxy = write_mhclo(
+            os.path.join(self.system_root, "proxymeshes", "proxy721", "proxy721.mhclo"),
+            material=False, uuid="proxy-with-extras-uuid")
+        self.proxy_plain = write_mhclo(
+            os.path.join(self.system_root, "proxymeshes", "plainproxy", "plainproxy.mhclo"),
+            material=False, uuid="a-uuid-with-no-extra-groups")
+
+        StubAssetService.asset_roots = {
+            "clothes": [os.path.join(self.system_root, "clothes"),
+                        os.path.join(self.user_root, "clothes")],
+            "hair": [os.path.join(self.system_root, "hair")],
+            "eyes": [os.path.join(self.system_root, "eyes")],
+            "proxymeshes": [os.path.join(self.system_root, "proxymeshes")],
+        }
+        # What mpfb_list_assets would report from the same tree, so that the two
+        # tools can be compared against one library rather than two fixtures.
+        StubAssetService.asset_files = {
+            "clothes": [self.fedora, self.plain, self.rigged, self.other_fedora],
+            "hair": [self.ponytail],
+            "eyes": [self.lowpoly_eyes],
+            "proxymeshes": [self.proxy, self.proxy_plain],
+        }
+
+    def build_character(self, rig=False, proxy=False, dressed=False,
+                        rig_type="default", rig_id=None, **basemesh_kwargs):
+        """A character to dress: a basemesh, optionally rigged, proxied, dressed.
+
+        Parented the way MPFB parents one - a garment on a rigged character
+        hangs off the *rig* - so the relationship walk does real work rather
+        than finding everything as a direct child of the basemesh.
+        """
+        self.rig = None
+        if rig:
+            self.rig = StubObject(
+                "Human.rig", blender_type="ARMATURE", object_type="Skeleton",
+                rig_type=rig_type, rig_id=rig_id)
+        self.basemesh = StubObject(
+            "Human", parent=self.rig, object_type="Basemesh", **basemesh_kwargs)
+        self.objects = [obj for obj in (self.rig, self.basemesh) if obj]
+        self.body_proxy = None
+        if proxy:
+            self.body_proxy = StubObject(
+                "Human.proxy721", parent=self.rig or self.basemesh,
+                object_type="Proxymeshes", asset_source="proxy721/proxy721.mhclo")
+            self.objects.append(self.body_proxy)
+        self.shirt = None
+        if dressed:
+            self.shirt = StubObject(
+                "Human.fedora", parent=self.rig or self.basemesh, object_type="Clothes",
+                asset_source="fedora/fedora.mhclo",
+                vertex_groups=(),
+                modifiers=[])
+            # The state MPFB leaves behind: the garment's delete group and the
+            # mask modifier on the body that references it.
+            self.basemesh.vertex_groups.new(name="Delete.fedora")
+            mask = self.basemesh.modifiers.new(name="Delete.fedora", type="MASK")
+            mask.vertex_group = "Delete.fedora"
+            mask.invert_vertex_group = True
+            self.objects.append(self.shirt)
         return self.objects

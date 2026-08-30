@@ -155,11 +155,13 @@ above, a **parameter prelude**, and a per-tool **payload** — plus, optionally,
 A **fragment** is a fourth, optional part: an ordinary `.py` file under
 `src/mpfbmcp/codegen/shared/`, named by a tool module in `assemble(..., shared=[...])` and
 concatenated between the prelude and the payload. It exists for a *concept* two or more payloads
-model identically. There are two: `target_categories.py` rebuilds MPFB's `target.json` category
+model identically. There are three: `target_categories.py` rebuilds MPFB's `target.json` category
 table, which `mpfb_get_target_stack`, `mpfb_set_targets` and `mpfb_symmetrize_targets` all need in
-the same shape and none of them can import; and `rig_lookup.py` answers "which rig file would MPFB
+the same shape and none of them can import; `rig_lookup.py` answers "which rig file would MPFB
 load for this identifier, and whose weights would come with it", which `mpfb_list_rigs` and
-`mpfb_add_rig` need to answer *identically*.
+`mpfb_add_rig` need to answer *identically*; and `asset_sections.py` holds MPFB's
+`ASSET_LIBRARY_SECTIONS` table and what it maps between, which `mpfb_list_assets` reports *from* and
+`mpfb_add_asset` resolves *with*.
 
 - **A fragment is warranted by duplication that must not drift, not by size.** Three copies of a
   hundred-line scan of the user's target directories are three chances for two tools to disagree
@@ -174,6 +176,13 @@ load for this identifier, and whose weights would come with it", which `mpfb_lis
   consequence: MPFB resolves weights through a *fallback table*, so `default_no_toes` legitimately
   loads `default`'s weights, and two implementations that disagree about that would make an
   ordinary rig look broken in one tool and fine in the other.
+- **The same rule covers a catalogue's *vocabulary*, not only its predictions.**
+  `asset_sections.py` is that case, and the consequence is sharper still: `mpfb_list_assets` reports
+  an asset's `object_type` and its portable `fragment`, and `mpfb_add_asset` has to map the first
+  back to an asset subdir before it can resolve the second, because
+  `AssetService.find_asset_absolute_path()` takes a subdir rather than a type. Two copies of that
+  table disagreeing would not produce a wrong answer — it would produce "not installed" for an asset
+  the catalogue had just listed, which is the one failure a caller cannot diagnose.
 - **Opting in is the payload's business, not the assembler's.** `assemble()` takes the list; there
   is no table here mapping payloads to fragments. So the rule above still holds unchanged: adding
   an ordinary tool is still a tool module, a payload and a `register()` call, and a tool that wants
@@ -334,6 +343,61 @@ naming something that already exists. A *catalogue* tool — one listing what co
   overlap. `RigService.identify_rig()` reports `rigify_generated.*` and `unknown`, neither of which
   names anything addable. Where a tool's values overlap another tool's without matching them, the
   docstring must say so, or a caller will read a legitimate miss as a failure.
+
+## An acting tool accepts every identifier its catalogue reports
+
+[How tools name things that can be added](#how-tools-name-things-that-can-be-added) requires a
+catalogue to report more than one identifier per entry, because the passable one and the portable
+one are not the same string. The obligation on the *acting* tool is the other half of that: **it
+takes them all, requires exactly one, and reports which one resolved and to what.**
+
+- **Taking only one of them makes the other half of every catalogue entry decorative.**
+  `mpfb_add_asset` accepts the absolute `path` and the `fragment` alike. A tool that took only the
+  path would make a stored character description — which is what a fragment is *for*, since it
+  survives a move to another machine — unusable without a lookup step the caller has to invent. One
+  that took only the fragment would pay an `os.walk` of the asset roots on every call, including the
+  calls where the caller already had the file.
+- **Exactly one, never both, and never neither.** They can name different files. Silently preferring
+  one would attach an asset the caller did not ask for, and there is no reading of "both" that is
+  more likely to be right than refusing.
+- **Report the resolution, because it is lossy.** `find_asset_absolute_path()` matches on the
+  fragment's *basename*, prefers a candidate whose parent directory also matches, and otherwise
+  returns the first hit — so two packs shipping `hat.mhclo` resolve to a coin toss. `resolved_path`
+  is always in the response, beside a `resolved_by` saying which identifier was used. This is the
+  acting-tool counterpart of `mpfb_list_assets`' `pack_ambiguous`: the derivation is unsafe in a
+  minority of cases, and the caller cannot tell which case they are in unless the tool says.
+- **An identifier hiding as a description is still an identifier.** `add_mhclo_asset()`'s
+  `asset_type` takes exactly the `object_type` the catalogue reports, and defaults to `"Clothes"` —
+  so hair added without it *becomes* clothes, permanently and silently. Where a defaulted argument
+  changes what the character *is*, the tool requires it rather than inheriting the default, and says
+  in its docstring that it diverges from MPFB's own signature for that reason.
+
+## Where MPFB's own code paths disagree, mpfb-mcp picks one and names it
+
+Sometimes there is no single MPFB implementation to wrap. Adding a topology proxy has three:
+`HumanService.add_mhclo_asset()` imports and fits it and stops there;
+`HumanService._check_add_proxy()` calls that and then hides the basemesh, copies the scale factor,
+creates the proxy's extra vertex groups and runs a corrective pass; and the asset library's proxy
+operator does not call `add_mhclo_asset()` at all and carries a third variant gated on its own scene
+settings. Nothing documents which is canonical, and the three produce visibly different characters.
+
+This is the sharper, more general form of
+[When mpfb-mcp models a concept MPFB's UI has but its services do not](#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not),
+whose last clause — document the divergence rather than normalizing it away — extends here from "UI
+versus services" to *any* two MPFB code paths.
+
+- **Follow the service-layer path.** It is what `deserialize_from_mhm()` uses, so it is what a
+  caller comparing against a loaded `.mhm` will expect, and it is what other services are written
+  against. A UI operator's variant is the behavior of one panel, not of MPFB.
+- **Say which one in the docstring, and name the one you did not take.** "This matches `.mhm`
+  loading rather than the proxy library panel" is something a caller can check; silence is not.
+- **Report the parts that differ, individually.** `proxy_extras` names each of the four things
+  `_check_add_proxy()` does beyond the plain add, so a caller who sees a difference against MPFB's
+  panel can see exactly where it comes from.
+- **Record the divergence as a candidate mpfb2 issue.** Three implementations of one operation is a
+  problem in MPFB that mpfb-mcp is working around, not a fact about mpfb-mcp.
+- **Do not merge them.** Picking one and naming it is the rule; synthesizing a fourth behavior that
+  matches none of MPFB's own would make the result unreproducible from inside Blender.
 
 ## How tools bound a large answer
 
@@ -592,6 +656,9 @@ address individual shape keys but could not express anything MPFB's own sliders 
   otherwise read it as a bug here.
 - **The goal is that the value reads back on MPFB's own slider.** Where reproducing a quirk and
   tidying it up would give different answers in MPFB's panel, reproduce the quirk.
+
+The general case — two MPFB *code paths* that disagree, rather than a UI concept the services lack —
+is [Where MPFB's own code paths disagree, mpfb-mcp picks one and names it](#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it).
 
 ## Response shape
 

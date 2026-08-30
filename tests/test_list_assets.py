@@ -62,6 +62,9 @@ class ArgumentValidationTests(unittest.TestCase):
             self.tool(**kwargs)
         source = send_code.call_args[0][0]
         self.assertIn("# --- payload: list_assets.py ---", source)
+        # The section table this payload reports from is the one mpfb_add_asset
+        # resolves a fragment with, so it has to be the same table.
+        self.assertIn("# --- shared: asset_sections.py ---", source)
         # Just the prelude's one binding, executed on its own: the rest of the
         # generated source is the raising bootstrap, which has no MPFB to find
         # out here. Asserting on values rather than on source text is the point
@@ -224,7 +227,10 @@ class ListAssetsGeneratedCodeTests(GeneratedCodeTestCase):
             "refresh": False,
         }
         arguments.update(params)
-        return self.run_payload("list_assets.py", arguments)
+        # The same fragment the tool module names, so what runs here is the same
+        # program mpfb_list_assets sends.
+        return self.run_payload(
+            "list_assets.py", arguments, shared=["asset_sections.py"])
 
     def names_in(self, result):
         return [entry["name"] for entry in result["assets"]]
@@ -253,7 +259,7 @@ class ListAssetsGeneratedCodeTests(GeneratedCodeTestCase):
 
         self.assertIs(result["section_table_from_mpfb"], True)
         self.assertEqual(result["known_subdirs"],
-                         ["proxymeshes", "skins", "hair", "clothes", "poses"])
+                         ["proxymeshes", "skins", "hair", "eyes", "clothes", "poses"])
 
     def test_the_section_table_falls_back_rather_than_raising(self):
         # These are MPFB's own module-level names, read with a fallback because
@@ -418,7 +424,8 @@ class ListAssetsGeneratedCodeTests(GeneratedCodeTestCase):
 
         self.assertEqual(result["total_count"], 1)
         self.assertEqual(result["counts_by_subdir"],
-                         {"proxymeshes": 1, "skins": 3, "hair": 1, "clothes": 4, "poses": 0})
+                         {"proxymeshes": 1, "skins": 3, "hair": 1, "eyes": 0, "clothes": 4,
+                      "poses": 0})
 
     def test_paging_neither_skips_nor_repeats(self):
         whole = self.names_in(self.run_list_assets())
@@ -468,7 +475,7 @@ class ListAssetsGeneratedCodeTests(GeneratedCodeTestCase):
         self.assertEqual(StubAssetService.update_all_calls, 0)
         self.assertEqual(
             [call[0] for call in StubAssetService.asset_list_calls],
-            ["proxymeshes", "skins", "hair", "clothes", "poses"])
+            ["proxymeshes", "skins", "hair", "eyes", "clothes", "poses"])
 
     def test_refresh_rescans_the_whole_library_exactly_once(self):
         self.run_list_assets(asset_subdir="clothes", refresh=True)

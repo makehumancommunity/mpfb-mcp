@@ -1,8 +1,8 @@
 # Equipping and removing mesh assets
 
-**Status:** Proposed
+**Status:** Done
 
-[FR 005](../done/005-list-assets/README.md) built the asset catalogue and closed with the field it
+[FR 005](../005-list-assets/README.md) built the asset catalogue and closed with the field it
 exists for: the `path` an adding function takes, the portable `fragment` MPFB records, and the
 `object_type` that doubles as `add_mhclo_asset()`'s `asset_type` argument. Nothing consumes any of
 them. mpfb-mcp can list every garment, proxy, eye, hair and tooth on the machine and put none of them
@@ -42,11 +42,11 @@ Two tools.
 
 Mutating, **one asset per call**. Loading an MHCLO is seconds of mesh import and vertex fitting, so
 the ~1.0 s round trip does not dominate the way it does for
-[FR 008](../done/008-detail-targets/README.md)'s target setting, and per-asset failures stay legible.
+[FR 008](../008-detail-targets/README.md)'s target setting, and per-asset failures stay legible.
 Arguments:
 
 - `name` (optional string) — a Blender object name, resolved to the character's basemesh as in
-  [FR 007](../done/007-macro-details/README.md). Omitted means the active object.
+  [FR 007](../007-macro-details/README.md). Omitted means the active object.
 - `path` (optional string) — the absolute `path` `mpfb_list_assets` reports.
 - `fragment` (optional string) — the `fragment` it reports instead, e.g. `"fedora/fedora.mhclo"`,
   resolved through `AssetService.find_asset_absolute_path(fragment, asset_subdir)`. Exactly one of
@@ -74,7 +74,7 @@ Arguments:
   it is the address `mpfb_remove_asset` and every later tool will need.
 - `resolved_path` and `asset_source` — the absolute path that was loaded and the fragment MPFB
   recorded on the object, per
-  [How tools report the asset behind an object](../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object).
+  [How tools report the asset behind an object](../../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object).
   When the caller passed a `fragment`, `resolved_by: "fragment"` and the path it resolved to, because
   `find_asset_absolute_path()` matches on **basename only** and falls back to the first match when
   several files share a name — a real ambiguity the response must expose rather than absorb.
@@ -84,7 +84,7 @@ Arguments:
   MPFB's proxy path and it is not obvious from the argument name.
 - `rigged_to` — the rig the asset was set up against, or `null` with `parented_to` naming the basemesh
   instead. `add_mhclo_asset()` rigs only if a `Skeleton` relative exists *at this moment*; see
-  [FR 009](../done/009-add-rig/README.md) for the ordering constraint, which this response is the
+  [FR 009](../009-add-rig/README.md) for the ordering constraint, which this response is the
   other half of. `mpfb_add_rig` reports it from the rig's side, as `mesh_assets_not_rigged`; this
   reports it from the asset's side, and the two have to agree about the same character.
 - `subrig_object_name` — a sub-rig imported from a `.mpfbskel` beside the MHCLO, when `import_subrig`
@@ -135,16 +135,19 @@ Mutating. Wraps `HumanService.unload_mhclo_asset()`. Arguments:
 Preconditions as answers: the name resolves to nothing; it resolves to something that is not a mesh
 asset (a `Basemesh` or a `Skeleton` must be refused outright, since `unload_mhclo_asset()` would
 happily delete either); no basemesh relative can be found, which matters because the mask cleanup
-needs it.
+needs it. **A fourth was added during implementation**: not being in OBJECT mode.
+`unload_mhclo_asset()` runs no `bpy.ops` and so does not strictly need it, but deleting the object
+the user is currently editing is not something to do quietly, and every other mutating tool here
+already answers that case rather than performing it.
 
 **Not in scope.** Skins and alternative materials, which are
-[FR 011](../011-skin-and-materials/README.md) — a skin is a material rather than an object and does
+[FR 011](../../011-skin-and-materials/README.md) — a skin is a material rather than an object and does
 not go through this function at all. Ink layers and poses, which are in `mpfb_list_assets`' answer
-but are neither MHCLO nor mesh (see [NEXT_STEPS.md](../NEXT_STEPS.md)). Installing asset packs
+but are neither MHCLO nor mesh (see [NEXT_STEPS.md](../../NEXT_STEPS.md)). Installing asset packs
 (`mpfb.load_pack`) or targets (`mpfb.install_target`). Batch equipping — see the note above.
 `color_adjustments` and `alternative_materials`, both of which `add_mhclo_asset()` accepts as
 uuid-keyed dicts; the alternative-material half is reachable after the fact through
-[FR 011](../011-skin-and-materials/README.md)'s `mpfb_set_asset_material`, which is a better shape
+[FR 011](../../011-skin-and-materials/README.md)'s `mpfb_set_asset_material`, which is a better shape
 for a tool argument than a dict keyed by a uuid the caller has no way to know.
 
 ## Non-functional requirements
@@ -158,13 +161,13 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
 - **Removal must be complete, or must say what it left.** The mask modifiers, the sub-rig, the vertex
   groups and the orphaned mesh data are four different fates and the response distinguishes them.
 - **Destructive operations announce themselves**, as
-  [FR 008](../done/008-detail-targets/README.md) established: `mpfb_remove_asset` deletes objects,
+  [FR 008](../008-detail-targets/README.md) established: `mpfb_remove_asset` deletes objects,
   and `mpfb_add_asset` with `material_type: "NONE"` deletes materials. Note that FR 008's
   all-or-nothing rule is now standing as
-  [A batched mutating tool resolves before it writes](../../specifications/architecture.md#a-batched-mutating-tool-resolves-before-it-writes),
+  [A batched mutating tool resolves before it writes](../../../specifications/architecture.md#a-batched-mutating-tool-resolves-before-it-writes),
   and that its last bullet names this request as the case where the batching argument does *not*
   carry over.
-- **Preconditions are answers**, per [FR 007](../done/007-macro-details/README.md).
+- **Preconditions are answers**, per [FR 007](../007-macro-details/README.md).
 - **Restore what was borrowed.** `add_mhclo_asset()` calls `bpy.ops.object.shade_smooth()` and the
   fitting code changes the active object; the payload restores the previous active object and
   selection before returning.
@@ -172,16 +175,16 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
 ## Architecture
 
 - Two tool modules, two payloads, two `register()` calls, per
-  [the code-generation layout](../../specifications/architecture.md#code-generation-layout).
+  [the code-generation layout](../../../specifications/architecture.md#code-generation-layout).
   **Raising bootstrap** for both.
 - **`GeneralObjectProperties` is not a service.** It lives on `ObjectService`'s module and is read
   the way
-  [Reading module-level names MPFB does not publish](../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish)
+  [Reading module-level names MPFB does not publish](../../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish)
   prescribes — already done in
-  [`payloads/get_object_info.py`](../../src/mpfbmcp/codegen/payloads/get_object_info.py). It is needed
+  [`payloads/get_object_info.py`](../../../src/mpfbmcp/codegen/payloads/get_object_info.py). It is needed
   for reading back `asset_source`, `object_type` and `uuid`.
 - **`ASSET_LIBRARY_SECTIONS` is the vocabulary**, read off `AssetService`'s module with the same
-  fallback table [`payloads/list_assets.py`](../../src/mpfbmcp/codegen/payloads/list_assets.py)
+  fallback table [`payloads/list_assets.py`](../../../src/mpfbmcp/codegen/payloads/list_assets.py)
   carries. It maps `asset_subdir` ↔ `object_type`, which is what turns a `fragment` into a resolvable
   path: `find_asset_absolute_path()` needs the subdir, and the caller supplied the object type.
 - **Pitfall — `asset_type` is normalised, and the normalisation hides a mismatch.**
@@ -207,7 +210,7 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
   library panel.
 - **Reaching `_proxy_corrective()` is reaching a private name**, which is the one place this request
   bends
-  [the rule about module-level names](../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish).
+  [the rule about module-level names](../../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish).
   It is a member of a service resolved from `SERVICES`, not a fresh import, so it costs nothing at
   import time; read it with `getattr(HumanService, "_proxy_corrective", None)` and degrade to
   reporting `corrective_applied: false` if it has been renamed. Reimplementing it here would mean
@@ -231,7 +234,7 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
   whose `asset_source` property was never set, or was edited, leaves its mask modifier behind. Detect
   the empty-property case up front and report it instead of silently half-removing.
 - Input validation per
-  [Validate before crossing the socket](../../specifications/architecture.md#validate-before-crossing-the-socket):
+  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket):
   shape only — strings non-empty, `subdiv_levels` a non-`bool` int ≥ 0, the four flags real bools,
   exactly one of `path`/`fragment`. The `asset_type` and `material_type` **vocabularies** are checked
   inside Blender against MPFB's own table, not against a list kept here.
@@ -239,25 +242,25 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
 
 ## Affected specifications
 
-- [vision.md](../../specifications/vision.md#target-tool-catalog) — the `mpfb_add_asset` entry under
+- [vision.md](../../../specifications/vision.md#target-tool-catalog) — the `mpfb_add_asset` entry under
   "Creation and modification" should be marked **Implemented** and rewritten: the planned entry says
   "clothes/proxy", and what is proposed covers all eight MHCLO types with a required `asset_type` and
   a per-type `material_type` default. `mpfb_remove_asset` is a **new entry**. The `mpfb_list_assets`
   entry should gain a line naming which of its three identifiers feeds which argument here.
-- [architecture.md](../../specifications/architecture.md) — conventions to follow, and two candidates.
+- [architecture.md](../../../specifications/architecture.md) — conventions to follow, and two candidates.
   - **To follow:**
-    [How tools name things that can be added](../../specifications/architecture.md#how-tools-name-things-that-can-be-added)
+    [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added)
     and
-    [How tools report the asset behind an object](../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object),
+    [How tools report the asset behind an object](../../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object),
     which this tool both consumes and produces — it is handed a `path`/`fragment` pair and records the
     fragment that a later `mpfb_get_object_info` reads back.
-  - **Plus the three conventions [FR 007](../done/007-macro-details/README.md) landed** —
-    [How a mutating tool takes its subject](../../specifications/architecture.md#how-a-mutating-tool-takes-its-subject),
-    [A mutating tool reports before and after](../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
+  - **Plus the three conventions [FR 007](../007-macro-details/README.md) landed** —
+    [How a mutating tool takes its subject](../../../specifications/architecture.md#how-a-mutating-tool-takes-its-subject),
+    [A mutating tool reports before and after](../../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
     and
-    [Preconditions are answers](../../specifications/architecture.md#preconditions-are-answers) —
-    and — now that [FR 009](../done/009-add-rig/README.md) has landed it as a standing convention —
-    [A tool reports an ordering constraint it cannot enforce](../../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce),
+    [Preconditions are answers](../../../specifications/architecture.md#preconditions-are-answers) —
+    and — now that [FR 009](../009-add-rig/README.md) has landed it as a standing convention —
+    [A tool reports an ordering constraint it cannot enforce](../../../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce),
     which this request **follows** rather than proposes. Note what that convention already says about
     this tool: report, do not refuse; name the objects rather than the rule; and observe *before*
     acting, so the claim is about what was true when the asset was attached.
@@ -271,16 +274,16 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
     *service-layer* path (it is what `.mhm` loading uses and what other services expect), to say so in
     the docstring, and to record the divergence as a candidate mpfb2 issue rather than silently
     inheriting whichever was read first. Related to, but sharper than, the convention
-    [FR 008](../done/008-detail-targets/README.md) landed as
-    [When mpfb-mcp models a concept MPFB's UI has but its services do not](../../specifications/architecture.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not),
+    [FR 008](../008-detail-targets/README.md) landed as
+    [When mpfb-mcp models a concept MPFB's UI has but its services do not](../../../specifications/architecture.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not),
     whose last clause — document the divergence rather than normalizing it away — this would
     generalize from "UI versus services" to "any two MPFB code paths".
 
 ## Tests
 
 Two layers, as established, with the stubs in
-[tests/blender_stubs.py](../../tests/blender_stubs.py) extended rather than duplicated —
-`StubAssetService` already exists from [FR 005](../done/005-list-assets/README.md) and needs
+[tests/blender_stubs.py](../../../tests/blender_stubs.py) extended rather than duplicated —
+`StubAssetService` already exists from [FR 005](../005-list-assets/README.md) and needs
 `find_asset_absolute_path()` added, reproducing behavior rather than convenience:
 
 - `find_asset_absolute_path()` that matches on **basename**, prefers the directory-matching candidate
@@ -307,7 +310,7 @@ mask modifier it could not identify.
 
 **Live verification against a running Blender is required** — more than for any earlier request, since
 almost everything here is MPFB doing real geometry work that no stub reproduces. Full
-[FR 004](../done/004-list-rigs/README.md)–006 revert discipline, and a fresh file per case.
+[FR 004](../004-list-rigs/README.md)–006 revert discipline, and a fresh file per case.
 Specifically:
 
 - That a garment equipped through the tool is indistinguishable from the same garment equipped through
@@ -325,18 +328,18 @@ Specifically:
 - Removal end to end: the mask modifier is gone from the basemesh *and* from the body proxy, the
   sub-rig is gone, the vertex group remains, and the character looks as it did before the asset was
   added.
-- Interaction with [FR 009](../done/009-add-rig/README.md): equip, then rig, and confirm
+- Interaction with [FR 009](../009-add-rig/README.md): equip, then rig, and confirm
   `rigged_to: null` was telling the truth — the garment does not follow the armature. FR 009 landed
   without live verification, and this is the same check from the other end, so **whichever request
   gets there first settles it for both**; see
-  [its Verification status](../done/009-add-rig/README.md#verification-status). The Rigify half is
+  [its Verification status](../009-add-rig/README.md#verification-status). The Rigify half is
   the same story: equip after generating, and confirm the garment was not handled by
   `adjust_children_for_rigify()`.
-- Interaction with [FR 007](../done/007-macro-details/README.md): change a macro detail after equipping and
+- Interaction with [FR 007](../007-macro-details/README.md): change a macro detail after equipping and
   confirm `mpfb_refit_human` re-fits the garment. FR 007 landed without live verification of its
   own, so this doubles as the first live evidence that its refit does anything at all — see
-  [its Verification status](../done/007-macro-details/README.md#verification-status).
-- Cost against [FR 005](../done/005-list-assets/README.md)'s ~1.0 s baseline: how long equipping a
+  [its Verification status](../007-macro-details/README.md#verification-status).
+- Cost against [FR 005](../005-list-assets/README.md)'s ~1.0 s baseline: how long equipping a
   garment actually takes, split between mesh import and fitting. This is the number the
   one-asset-per-call decision rests on, and it should be recorded rather than assumed.
 
@@ -360,5 +363,106 @@ Record the outcome in a `## Verification status` section here.
 - MPFB `services/assetservice.py` — `find_asset_absolute_path()` with its basename matching,
   `path_to_fragment()`, and `ASSET_LIBRARY_SECTIONS`.
 - MPFB `entities/socketobject.py` — `ALL_EXTRA_GROUPS`, the proxy vertex-group table.
-- [FR 005](../done/005-list-assets/README.md) — the catalogue whose `path`, `fragment` and
+- [FR 005](../005-list-assets/README.md) — the catalogue whose `path`, `fragment` and
   `object_type` this request consumes, and its Verification status section.
+
+## Verification status
+
+**Implemented and unit-tested; live verification is outstanding.** Both tools, their payloads, the
+shared `asset_sections.py` fragment, the migration of `mpfb_list_assets` onto it and the tests
+landed together, and the whole suite passes — 559 tests, up from 492. As with
+[FR 007](../007-macro-details/README.md), [FR 008](../008-detail-targets/README.md) and
+[FR 009](../009-add-rig/README.md), this request was **not** checked against a running Blender
+before being marked Done — and it is the request where that matters most, since almost everything
+here is MPFB doing real geometry work that no stub reproduces.
+
+The debt compounds the same way FR 009's did. This effort refactored
+[`payloads/list_assets.py`](../../../src/mpfbmcp/codegen/payloads/list_assets.py) onto the shared
+fragment, so **[FR 005](../005-list-assets/README.md)'s live verification is stale**: its
+behavior is unchanged as far as the unit tests can tell — the same assertions against the same stub
+library — but the program sent into Blender is a different program. Re-running FR 005's live check
+now belongs to the same outstanding session as FR 004's, FR 007's, FR 008's and FR 009's.
+
+### What the unit tests do establish
+
+The stubs reproduce MPFB's real behavior rather than a convenient version, and each quirk is there
+because leaving it out would make a test pass vacuously:
+
+- `add_mhclo_asset()` **skips the material block entirely** when the MHCLO names none, so the first
+  entry in `warnings` is asserted against an object that really has no material. A stub that always
+  built one would hide it.
+- `update_delete_group()` returns before creating anything when the MHCLO declares no delete
+  vertices, so "no delete group" is a branch rather than a hypothetical — the fixture's `plain`
+  asset walks it.
+- The body-proxy interpolation is keyed on the **raw** `asset_type` argument, so a garment labelled
+  `Hair` does not get it. Reproduced, and asserted from both sides.
+- The name is uniquified the way Blender uniquifies one, so equipping two copies really does give
+  `Human.fedora` and `Human.fedora.001` — and one test removes the second and checks the first
+  survives.
+- `find_asset_absolute_path()` matches on **basename**, and the fixture has two asset roots holding
+  `fedora.mhclo`, so the ambiguity `resolved_path` exists to expose is genuinely under test.
+- `ensure_armature_modifier()` adds a *second* armature modifier for a sub-rig, masked to
+  `mhmask-subrig`. That modifier is the only reason `find_deformed_child_meshes()` sees the garment
+  as deformed by the sub-rig, and therefore the only reason `unload_mhclo_asset()` takes the sub-rig
+  away with it.
+- `unload_mhclo_asset()` matches the mask modifier by **name** and removes the modifiers but not the
+  vertex groups, which is what `vertex_groups_left_behind` and `mask_modifiers_left_behind` claim.
+
+Covered: `asset_type` omitted is rejected in the tool module before any code is generated; `path`
+and `fragment` both given, and neither given, are both rejected; an ambiguous fragment still reports
+the path it chose; `mpfb_list_assets` and `mpfb_add_asset` resolve one fragment to the same file
+over the same library; the three catalogue rows that are not mesh assets (`Material`, `Pose`,
+`Other`) are refused; `asset_type` is normalised to MPFB's capitalised form; `material_type`
+defaults to `NONE` for `Proxymeshes` and `MAKESKIN` for `Hair`; `PROCEDURAL_EYES` is accepted for
+`Eyes` and refused for `Hair`; `NONE` on an asset that names a material warns that materials were
+deleted; `subdiv_levels: 0` adds no modifier; an unrigged character reports `rigged_to: null` with
+`parented_to`; a generated Rigify rig is warned about; a `Clothes` asset masks the body proxy and a
+`Hair` asset does not; all four proxy extras are performed and reported, including the degradation
+when `_proxy_corrective` is absent; the previous active object and selection are restored, including
+after a failed import; and removal refuses a `Basemesh`, a `Skeleton`, a non-MakeHuman object, an
+asset with no basemesh relative, an empty `asset_source` and edit mode — performing nothing in every
+case.
+
+### What the unit tests cannot establish
+
+Everything the request is actually about. The live checklist under [Tests](#tests) stands unchanged;
+in particular:
+
+- That a garment equipped through this tool is indistinguishable from the same garment equipped
+  through MPFB's asset library panel — same fit, same delete group, same material, same modifiers.
+  No stub imports a mesh or fits a vertex.
+- **The proxy divergence, measured rather than read from source.** The Architecture section's whole
+  case for following `_check_add_proxy()` rests on three code paths differing; that is currently a
+  reading, not an observation.
+- That removal really does leave the character looking as it did before the asset was added.
+- The interaction checks with [FR 009](../009-add-rig/README.md) and
+  [FR 007](../007-macro-details/README.md), which are the first live evidence for parts of
+  those requests too.
+- Cost against [FR 005](../005-list-assets/README.md)'s ~1.0 s round-trip baseline, which is
+  the number the one-asset-per-call decision rests on.
+
+### What reading MPFB's source turned up
+
+Four things the request did not know, all now reflected in the code:
+
+- **A delete group is not guaranteed.** `ClothesService.update_delete_group()` defaults to
+  `skip_if_empty_delete_group=True` and returns before creating either the vertex group or the mask
+  modifier when the MHCLO declares no delete vertices. The request wrote `delete_group_name` and
+  `delete_group_applied_to` as though both always existed; they are observed from the objects
+  instead, and `null` is an ordinary answer.
+- **`bpy.context.mode` has to be checked as well as the basemesh's**, the same lesson
+  [FR 009](../009-add-rig/README.md) learned: `add_mhclo_asset()` calls
+  `bpy.ops.object.shade_smooth()` and the fitting code activates objects, and `bpy.ops` polls on the
+  *context* mode.
+- **A sub-rig is removed only when the asset is genuinely deformed by it.**
+  `unload_mhclo_asset()` gates on `find_deformed_child_meshes()`, which requires an armature modifier
+  pointing at the sub-rig and not merely a parent link. That modifier is added by
+  `RigService.ensure_armature_modifier()`'s fourth block, masked to `mhmask-subrig`.
+- **`unload_mhclo_asset()` matches the mask modifier by its `name`, not by its `vertex_group`.** A
+  modifier renamed by hand therefore survives the unload with its group intact, hiding part of the
+  body under an asset that is gone. Reported as `mask_modifiers_left_behind` rather than left to be
+  discovered.
+
+**Candidate mpfb2 improvements**, noted rather than acted on here: the three disagreeing proxy code
+paths (see Architecture), and `unload_mhclo_asset()` deleting whatever object it is handed without
+checking that it is a mesh asset at all.

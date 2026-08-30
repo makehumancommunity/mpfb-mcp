@@ -27,17 +27,19 @@ class PayloadFileTests(unittest.TestCase):
     def test_there_is_a_payload_for_each_implemented_tool(self) -> None:
         self.assertEqual(
             codegen.payload_names(),
-            ["add_rig.py", "create_human.py", "generate_rigify_rig.py", "get_macro_details.py",
-             "get_object_info.py", "get_status.py", "get_target_stack.py", "list_assets.py",
-             "list_objects.py", "list_rigs.py", "list_targets.py", "refit_human.py",
-             "set_macro_details.py", "set_targets.py", "symmetrize_targets.py"])
+            ["add_asset.py", "add_rig.py", "create_human.py", "generate_rigify_rig.py",
+             "get_macro_details.py", "get_object_info.py", "get_status.py",
+             "get_target_stack.py", "list_assets.py", "list_objects.py", "list_rigs.py",
+             "list_targets.py", "refit_human.py", "remove_asset.py", "set_macro_details.py",
+             "set_targets.py", "symmetrize_targets.py"])
 
     def test_shared_fragments_are_the_ones_expected(self) -> None:
         # A short list on purpose: a fragment exists only where two or more
         # payloads model the same concept, and a growing list is a sign the
         # seam is being used for ordinary tool code.
         self.assertEqual(
-            codegen.shared_names(), ["rig_lookup.py", "target_categories.py"])
+            codegen.shared_names(),
+            ["asset_sections.py", "rig_lookup.py", "target_categories.py"])
 
     def test_every_payload_compiles_on_its_own(self) -> None:
         for name in codegen.payload_names():

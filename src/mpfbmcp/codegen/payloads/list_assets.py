@@ -9,8 +9,16 @@ because the assembler binds them ahead of this file:
 - ``PARAMS`` - the tool's arguments as plain JSON data: ``asset_subdir``,
   ``name_contains``, ``pack``, ``limit``, ``offset``, ``refresh``.
 - ``_MPFB_SERVICES`` - MPFB's SERVICES dict, from the raising bootstrap.
-- ``sys`` - already imported by that bootstrap, and used here to reach
-  ``ASSET_LIBRARY_SECTIONS`` off AssetService's module.
+- ``sys`` - already imported by that bootstrap.
+
+...and a further set because they come from the shared fragment
+``asset_sections.py``, concatenated ahead of this file: ``AssetService``,
+``as_path()`` and ``read_sections()``. Those are shared with ``add_asset.py``
+on purpose: this payload reports, per asset, the ``object_type`` and the
+``fragment`` that tool is then handed, and turning that pair back into a file
+needs the very table this one reported it from. Two implementations of it could
+disagree, and an asset this tool had just listed would come back from the other
+as though it were not installed.
 
 The field this exists for is ``fragment``: the exact string an asset-adding
 function takes, so that finding an asset and using it are one step apart rather
@@ -28,64 +36,6 @@ around it would mean reimplementing ``update_asset_list()`` here.
 """
 
 import os
-
-AssetService = _MPFB_SERVICES["AssetService"]
-LocationService = _MPFB_SERVICES["LocationService"]
-
-# MPFB's ASSET_LIBRARY_SECTIONS, as a literal, used only when it cannot be read
-# off AssetService's module. Each row is (asset_subdir, asset_type,
-# object_type), which is three of the fields reported per asset - the reason no
-# mapping table of our own is written here. Note the three rows whose
-# object_type is not a type any object in a scene carries: skins are "Material",
-# poses are "Pose" and ink layers are "Other".
-FALLBACK_SECTIONS = (
-    ("proxymeshes", "proxy", "Proxymeshes"),
-    ("skins", "mhmat", "Material"),
-    ("ink_layers", "json", "Other"),
-    ("eyes", "mhclo", "Eyes"),
-    ("eyebrows", "mhclo", "Eyebrows"),
-    ("eyelashes", "mhclo", "Eyelashes"),
-    ("hair", "mhclo", "Hair"),
-    ("teeth", "mhclo", "Teeth"),
-    ("tongue", "mhclo", "Tongue"),
-    ("clothes", "mhclo", "Clothes"),
-    ("poses", "bvh", "Pose"),
-)
-
-
-def as_path(path):
-    # Coerce at the point a path enters the response. The cached items' paths
-    # are str, but several AssetService helpers hand back pathlib.Path, and one
-    # of those in the response fails strict_json and takes the whole answer
-    # down with it.
-    if not path:
-        return None
-    return str(path)
-
-
-def read_sections():
-    # ASSET_LIBRARY_SECTIONS is a module-level name in assetservice.py: not a
-    # member of AssetService and not in the SERVICES dict, so it is reached
-    # through the module a resolved service already came from (see
-    # specifications/architecture.md). Unlike the underscore-private constants
-    # other payloads read it is public, but the rule is the same - read it with
-    # a fallback and degrade, since a stale local table is a better answer than
-    # a failed call.
-    module = sys.modules.get(AssetService.__module__)
-    table = getattr(module, "ASSET_LIBRARY_SECTIONS", None)
-    rows = []
-    try:
-        for section in table or []:
-            rows.append((
-                str(section["asset_subdir"]),
-                str(section["asset_type"]),
-                str(section["object_type"]),
-            ))
-    except Exception:  # pylint: disable=broad-except
-        rows = []
-    if rows:
-        return (rows, True)
-    return (list(FALLBACK_SECTIONS), False)
 
 
 def read_pack_index():
