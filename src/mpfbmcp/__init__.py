@@ -40,6 +40,13 @@ def main() -> int:
             "character rather than create one, read its phenotype with "
             "mpfb_get_macro_details first and change only what should differ "
             "with mpfb_set_macro_details, which leaves unnamed sliders alone. "
+            "For the individual morphs below the phenotype level, read "
+            "mpfb_get_target_stack and write mpfb_set_targets - which is "
+            "batched, so send a whole series of modeling changes as one call "
+            "rather than one call each, and which applies nothing at all if any "
+            "entry fails to resolve. mpfb_symmetrize_targets repairs a "
+            "left/right asymmetry that MPFB itself has no way to undo; run it "
+            "with dry_run first. "
             "Changing a body's shape moves it out from under everything fitted "
             "to it, so finish a series of modeling changes with one call to "
             "mpfb_refit_human."
@@ -47,18 +54,22 @@ def main() -> int:
     )
 
     from mpfbmcp.tools import (
-        create_human, get_macro_details, get_object_info, get_status, list_assets,
-        list_objects, list_rigs, list_targets, refit_human, set_macro_details)
+        create_human, get_macro_details, get_object_info, get_status,
+        get_target_stack, list_assets, list_objects, list_rigs, list_targets,
+        refit_human, set_macro_details, set_targets, symmetrize_targets)
     create_human.register(mcp)
     get_macro_details.register(mcp)
     get_object_info.register(mcp)
     get_status.register(mcp)
+    get_target_stack.register(mcp)
     list_assets.register(mcp)
     list_objects.register(mcp)
     list_rigs.register(mcp)
     list_targets.register(mcp)
     refit_human.register(mcp)
     set_macro_details.register(mcp)
+    set_targets.register(mcp)
+    symmetrize_targets.register(mcp)
 
     mcp.run(transport="stdio")
     return 0

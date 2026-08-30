@@ -122,11 +122,11 @@ false` with a `refit_incomplete_reason` naming the rig, rather than refusing to 
 
 Suggested as in scope rather than requested in [NEXT_STEPS.md](../../NEXT_STEPS.md). The justification is
 that `refit` defaults to `false` on both mutating tools in this request and on
-[FR 008](../../008-detail-targets/README.md)'s: without a standalone refit, that default leaves an agent
+[FR 008](../008-detail-targets/README.md)'s: without a standalone refit, that default leaves an agent
 able to deform a dressed character and no way to fix it. The alternative — defaulting `refit` to
 true — pays a full asset refit on every one of the twenty slider changes a modeling session makes.
 
-**Not in scope.** Detail targets, which are [FR 008](../../008-detail-targets/README.md);
+**Not in scope.** Detail targets, which are [FR 008](../008-detail-targets/README.md);
 `mpfb_get_human_summary`, which is a wider read spanning assets, skin and rig and which should
 *call into* the same macro read rather than duplicate it; expressions and visemes (`!ex-` shape
 keys), which are neither macro nor modeling targets; randomization, which MPFB now has a whole

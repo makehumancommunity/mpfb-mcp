@@ -28,20 +28,37 @@ class PayloadFileTests(unittest.TestCase):
         self.assertEqual(
             codegen.payload_names(),
             ["create_human.py", "get_macro_details.py", "get_object_info.py", "get_status.py",
-             "list_assets.py", "list_objects.py", "list_rigs.py", "list_targets.py",
-             "refit_human.py", "set_macro_details.py"])
+             "get_target_stack.py", "list_assets.py", "list_objects.py", "list_rigs.py",
+             "list_targets.py", "refit_human.py", "set_macro_details.py", "set_targets.py",
+             "symmetrize_targets.py"])
+
+    def test_shared_fragments_are_the_ones_expected(self) -> None:
+        # A short list on purpose: a fragment exists only where two or more
+        # payloads model the same concept, and a growing list is a sign the
+        # seam is being used for ordinary tool code.
+        self.assertEqual(codegen.shared_names(), ["target_categories.py"])
 
     def test_every_payload_compiles_on_its_own(self) -> None:
         for name in codegen.payload_names():
             with self.subTest(payload=name):
                 compile(codegen.read_payload(name), name, "exec")
 
+    def test_every_shared_fragment_compiles_on_its_own(self) -> None:
+        # Nothing imports these either, so a syntax error would otherwise
+        # surface only inside Blender - and in three tools at once.
+        for name in codegen.shared_names():
+            with self.subTest(shared=name):
+                compile(codegen.read_shared(name), name, "exec")
+
     def test_no_payload_contains_substitution_points(self) -> None:
         # Parameters arrive as data, so a payload never has anything formatted
         # into it - and therefore never needs escaped newlines or doubled braces.
-        for name in codegen.payload_names():
-            with self.subTest(payload=name):
-                source = codegen.read_payload(name)
+        for name in codegen.payload_names() + codegen.shared_names():
+            with self.subTest(source_file=name):
+                if name in codegen.payload_names():
+                    source = codegen.read_payload(name)
+                else:
+                    source = codegen.read_shared(name)
                 self.assertNotIn("{}", source)
                 self.assertNotIn("{{", source)
                 self.assertNotIn("\\n", source)
@@ -68,20 +85,25 @@ class AssembleTests(unittest.TestCase):
 
     def test_assembled_source_compiles(self) -> None:
         payloads = (
-            ("create_human.py", "raising"),
-            ("get_object_info.py", "raising"),
-            ("get_status.py", "non_raising"),
-            ("list_assets.py", "raising"),
-            ("list_objects.py", "raising"),
-            ("list_rigs.py", "raising"),
-            ("list_targets.py", "raising"),
-            ("get_macro_details.py", "raising"),
-            ("set_macro_details.py", "raising"),
-            ("refit_human.py", "raising"),
+            ("create_human.py", "raising", ()),
+            ("get_object_info.py", "raising", ()),
+            ("get_status.py", "non_raising", ()),
+            ("list_assets.py", "raising", ()),
+            ("list_objects.py", "raising", ()),
+            ("list_rigs.py", "raising", ()),
+            ("list_targets.py", "raising", ()),
+            ("get_macro_details.py", "raising", ()),
+            ("set_macro_details.py", "raising", ()),
+            ("refit_human.py", "raising", ()),
+            ("get_target_stack.py", "raising", ("target_categories.py",)),
+            ("set_targets.py", "raising", ("target_categories.py",)),
+            ("symmetrize_targets.py", "raising", ("target_categories.py",)),
         )
-        for name, bootstrap in payloads:
+        for name, bootstrap, shared in payloads:
             with self.subTest(payload=name):
-                compile(codegen.assemble(name, bootstrap=bootstrap), "<generated>", "exec")
+                compile(
+                    codegen.assemble(name, bootstrap=bootstrap, shared=list(shared)),
+                    "<generated>", "exec")
 
     def test_seam_comment_names_the_payload_file(self) -> None:
         # What makes a line number reported from inside Blender traceable back
@@ -92,6 +114,38 @@ class AssembleTests(unittest.TestCase):
         marker, _sep, after = source.partition("# --- payload: get_status.py ---\n")
         self.assertTrue(marker)
         self.assertEqual(after, codegen.read_payload("get_status.py"))
+
+    def test_shared_fragment_is_placed_between_the_prelude_and_the_payload(self) -> None:
+        # The order is what lets a payload simply call a fragment's functions,
+        # and what lets a fragment read PARAMS if it ever needs to.
+        source = codegen.assemble(
+            "set_targets.py", shared=["target_categories.py"], params={"name": "Human"})
+
+        prelude_at = source.index("PARAMS = json.loads")
+        shared_at = source.index("# --- shared: target_categories.py ---")
+        payload_at = source.index("# --- payload: set_targets.py ---")
+        self.assertLess(prelude_at, shared_at)
+        self.assertLess(shared_at, payload_at)
+
+        between = source[shared_at:payload_at]
+        _marker, _sep, fragment = between.partition(
+            "# --- shared: target_categories.py ---\n")
+        self.assertEqual(fragment, codegen.read_shared("target_categories.py") + "\n")
+
+    def test_fragments_are_concatenated_in_the_order_given(self) -> None:
+        source = codegen.assemble(
+            "set_targets.py",
+            shared=["target_categories.py", "target_categories.py"])
+
+        self.assertEqual(source.count("# --- shared: target_categories.py ---"), 2)
+
+    def test_a_payload_with_no_fragments_is_assembled_exactly_as_before(self) -> None:
+        # The seam machinery must not change what an existing tool sends.
+        self.assertEqual(
+            codegen.assemble("get_status.py", bootstrap="non_raising"),
+            codegen.assemble("get_status.py", bootstrap="non_raising", shared=[]))
+        self.assertNotIn(
+            "# --- shared:", codegen.assemble("get_status.py", bootstrap="non_raising"))
 
 
 class ParameterPreludeTests(unittest.TestCase):

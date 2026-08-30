@@ -1,8 +1,8 @@
 # Detail targets
 
-**Status:** Proposed
+**Status:** Done
 
-[FR 006](../done/006-list-targets/README.md) built the catalogue an agent needs in order to find a
+[FR 006](../006-list-targets/README.md) built the catalogue an agent needs in order to find a
 modeling target, and closed with the reason it exists: `mpfb_set_target_value` has to be able to
 read it. That tool still does not exist. mpfb-mcp can today create a character, describe it, and
 list the thousand-odd morphs that could be applied to it — and then apply none of them. Everything
@@ -33,7 +33,7 @@ Secondary: make left/right symmetry a first-class operation, both as a property 
 both sides") and as a repair of a stack that has drifted asymmetric.
 
 Also: keep the catalogue and the setter honest with each other. Every identifier this tool accepts
-must be one [`mpfb_list_targets`](../done/006-list-targets/README.md) reports, and vice versa.
+must be one [`mpfb_list_targets`](../006-list-targets/README.md) reports, and vice versa.
 
 ## Functional requirements
 
@@ -44,16 +44,16 @@ Three tools.
 Read-only, always answers. Arguments:
 
 - `name` (optional string) — subject, resolved to a basemesh as in
-  [FR 007](../done/007-macro-details/README.md).
+  [FR 007](../007-macro-details/README.md).
 - `include_macro` (optional bool, default `false`) — whether to include the `$md-` macro shape keys.
-  Off by default because they are [FR 007](../done/007-macro-details/README.md)'s subject and there are
+  Off by default because they are [FR 007](../007-macro-details/README.md)'s subject and there are
   typically a dozen of them cluttering the answer; available because "why is this character shaped
   like that" sometimes has a macro answer.
 - `include_expressions` (optional bool, default `false`) — the `!ex-` prefixed expression shape keys.
   Same reasoning; they are neither macro nor modeling targets and belong to a future expressions
   effort.
 - `name_contains`, `limit`, `offset` — the filter-and-page convention from
-  [How tools bound a large answer](../../specifications/architecture.md#how-tools-bound-a-large-answer).
+  [How tools bound a large answer](../../../specifications/architecture.md#how-tools-bound-a-large-answer).
 
 `result` carries `basemesh_name`, `subject_resolved_by`, `found`, `message`, the paging fields, and:
 
@@ -102,7 +102,7 @@ Mutating, batched. Arguments:
   default.
 - `prune` (optional bool, default `true`) — delete a target's shape key when its value reaches
   zero, as `delete_target_on_zero`. MPFB's default.
-- `refit` (optional bool, default `false`) — as in [FR 007](../done/007-macro-details/README.md); the
+- `refit` (optional bool, default `false`) — as in [FR 007](../007-macro-details/README.md); the
   standalone `mpfb_refit_human` from that request is implemented, which is what makes this default
   workable.
 
@@ -123,7 +123,7 @@ saying so rather than doing anything.
   requirements).
 - `known_sections` / `known_categories_in_section` when a name was not recognized — the
   self-correction machinery from
-  [Validate before crossing the socket](../../specifications/architecture.md#validate-before-crossing-the-socket),
+  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket),
   scoped to what the caller got wrong rather than dumping the whole vocabulary.
 - `refit_performed`, `assets_possibly_stale` — as in FR 007.
 
@@ -149,7 +149,7 @@ MPFB has no equivalent of this operation — its `symmetry` setting only affects
 is on, and explicitly does not touch previously set values. This is therefore a deliberate addition
 rather than a wrapper, which the docstring must say.
 
-**Not in scope.** Macro details, which are [FR 007](../done/007-macro-details/README.md);
+**Not in scope.** Macro details, which are [FR 007](../007-macro-details/README.md);
 `TargetService.symmetrize_shape_key()`, which mirrors vertex *coordinates* inside one custom shape
 key using `hm08.mirror` and belongs to MakeTarget/asset authoring rather than modeling; expressions
 and visemes (`!ex-`), which need their own request; saving or loading `.mhm` files; randomization,
@@ -158,7 +158,7 @@ be rebuilt here; and creating new target *files*.
 
 ## Non-functional requirements
 
-- **The same result MPFB's own sliders produce**, as in [FR 007](../done/007-macro-details/README.md) —
+- **The same result MPFB's own sliders produce**, as in [FR 007](../007-macro-details/README.md) —
   and here the bar is higher, because the category mechanics (clearing the opposite, choosing
   `.target.gz` versus `.target`, the `l-`/`r-` prefixes) are things a reimplementation gets subtly
   wrong in ways that only show up as a slider reading the wrong value back in the UI.
@@ -168,7 +168,7 @@ be rebuilt here; and creating new target *files*.
   can describe, and the agent cannot tell from the response which half to retry. Once resolution
   succeeds, application proceeds and per-entry results are reported.
 - **Batched by default because latency dominates.** A round trip is roughly a second
-  ([FR 005](../done/005-list-assets/README.md)); the work inside is milliseconds unless a target has
+  ([FR 005](../005-list-assets/README.md)); the work inside is milliseconds unless a target has
   to be read off disk. Thirty separate calls to a single-value tool would be half a minute of
   waiting for a fraction of a second of work.
 - **Destructive operations announce themselves.** `prune` deletes shape keys; `symmetrize`
@@ -180,23 +180,38 @@ be rebuilt here; and creating new target *files*.
 ## Architecture
 
 - Three tool modules, three payloads, three `register()` calls, per
-  [the code-generation layout](../../specifications/architecture.md#code-generation-layout).
+  [the code-generation layout](../../../specifications/architecture.md#code-generation-layout).
   **Raising bootstrap** for all three.
 - **The category table has to be built in the payload, not imported.** The setter needs
   `target.json` plus the synthesized user sections — the same data
-  [`payloads/list_targets.py`](../../src/mpfbmcp/codegen/payloads/list_targets.py) already assembles.
+  [`payloads/list_targets.py`](../../../src/mpfbmcp/codegen/payloads/list_targets.py) already assembles.
   `mpfb/ui/model/_modelsubpanels.py` builds exactly this at module level and **must not be
   imported**, for the reason
-  [FR 006](../done/006-list-targets/README.md) records and
-  [architecture.md](../../specifications/architecture.md#never-import-mpfb-submodules-directly)
+  [FR 006](../006-list-targets/README.md) records and
+  [architecture.md](../../../specifications/architecture.md#never-import-mpfb-submodules-directly)
   requires: its scan is a snapshot from when Blender started, so a target the user installed since
   would be invisible to the setter while being visible to `mpfb_list_targets`. That inconsistency
   between two mpfb-mcp tools would be worse than either behavior on its own. Reimplement, as FR 006
   did, and consider whether the shared part of the two payloads is worth factoring — noting that
   payloads are resources rather than modules, so "shared" means a second resource file the
   assembler concatenates, and that is a change to `codegen/` which
-  [FR 002](../done/002-codegen-structure/README.md) deliberately kept tools out of. Duplicating the
+  [FR 002](../002-codegen-structure/README.md) deliberately kept tools out of. Duplicating the
   scan is the safer first move; if it is duplicated, say so in both payload docstrings.
+
+  **Corrected during implementation: it was factored, not duplicated.** The paragraph above was
+  written when this request looked like *two* payloads needing the table — `list_targets.py` and a
+  setter. It is three: `mpfb_get_target_stack` needs it to place a shape key back into its category
+  and to roll the stack up into modifier values, `mpfb_set_targets` needs it to resolve a change,
+  and `mpfb_symmetrize_targets` needs it to walk the sided categories. Three copies of a
+  hundred-line directory scan are three chances for two mpfb-mcp tools to disagree about what is
+  installed — which is the very inconsistency the paragraph above rejects, arriving by another
+  route. So `codegen.assemble()` grew an optional `shared=[...]` and the table lives in
+  `codegen/shared/target_categories.py`. FR 002's objective test is unaffected and was kept as the
+  test of the design: adding an ordinary tool is still a tool module, a payload and a `register()`
+  call, and a tool that wants a fragment names it in the `assemble()` call it was already making.
+  `list_targets.py` was deliberately **not** migrated onto the fragment — it is live-verified, and
+  its scan has a genuinely different shape (a flat user-target listing with `listed_in_mpfb_ui`,
+  and no synthesized categories at all). That migration is noted in `NEXT_STEPS.md` instead.
 - **`_set_opposed_modifier_value()` is the reference implementation** for a category change, and it
   is worth following statement for statement. Its order matters: zero the opposing target *first*
   (both opposites when the value is near zero), then set or load the selected one. Doing it the
@@ -212,6 +227,9 @@ be rebuilt here; and creating new target *files*.
   it never bites in practice, but a payload that copies the opposed function verbatim inherits a
   latent crash. Try both extensions in both paths, and resolve the path during the *resolution*
   phase so a missing file is a `resolution_errors` entry rather than a half-applied batch.
+  Confirmed while implementing: all **1258** bundled target files are `.target.gz`, so the crash is
+  genuinely latent rather than merely rare. Both extensions are tried in both paths anyway, and the
+  test fixture ships one bundled target as a plain `.target` so the fallback is exercised.
 - **Pitfall — `set_target_value()` on an absent target is a silent no-op.** It iterates the key
   blocks looking for a name match and does nothing if there is none. It does *not* load the target
   and does *not* raise. So every set must be preceded by `TargetService.has_target()` and, when
@@ -234,7 +252,7 @@ be rebuilt here; and creating new target *files*.
   encoding, but `set_target_value()` and `get_target_value()` match the raw name only. Accept the
   `shapekey_name` FR 006 reports — which is already the encoded one — and do not re-encode it.
 - **Pitfall — do not call `reapply_all_details()` to "refresh" the stack.** Same reasoning as
-  [FR 007](../done/007-macro-details/README.md): it resolves every stack entry back to a file through
+  [FR 007](../007-macro-details/README.md): it resolves every stack entry back to a file through
   `target_full_path()`, which cannot resolve an encoded name and which falls back to a *prefix*
   match — so it can silently drop a target or load a differently-named one. Nothing in this request
   needs it.
@@ -242,8 +260,11 @@ be rebuilt here; and creating new target *files*.
   basename match and falls back to any file whose name merely *starts with* the requested string, so
   `nose-scale-depth` resolves to `nose-scale-depth-decr`. Build paths explicitly from the category
   data, as MPFB's panel does, and use `target_full_path()` only where there is nothing else — and
-  when used, report the path that was resolved so a wrong match is visible.
-- **Activation, mode and restoration** as in [FR 007](../done/007-macro-details/README.md):
+  when used, report the path that was resolved so a wrong match is visible. As implemented, the
+  category table's own index covers every bundled and every user target, so the fallback is reached
+  only for a target in an unindexed bundled directory such as `asym`, addressed raw. `resolved_by`
+  says which of the three routes found the path in every case.
+- **Activation, mode and restoration** as in [FR 007](../007-macro-details/README.md):
   `_set_modifier_value()` activates the basemesh before doing anything, `create_shape_key()`
   asserts OBJECT mode, and the payload restores the previous active object and selection.
 - **Symmetrize is built on the category table, not on names.** Pairing `l-foo` with `r-foo` by
@@ -251,7 +272,7 @@ be rebuilt here; and creating new target *files*.
   category explicitly, and a category with `has_left_and_right: false` has no partner at all. Walk
   the categories, not the shape keys.
 - Input validation per
-  [Validate before crossing the socket](../../specifications/architecture.md#validate-before-crossing-the-socket):
+  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket):
   validate the *shape* of every list entry locally — that it is a dict, that its keys are known,
   that `value` is a real number in the right range, that `side` is one of three strings, that
   `direction` is one of two — and **not** the vocabulary of sections, categories or shape key names,
@@ -260,36 +281,36 @@ be rebuilt here; and creating new target *files*.
 
 ## Affected specifications
 
-- [vision.md](../../specifications/vision.md#target-tool-catalog) — the `mpfb_set_target_value`
+- [vision.md](../../../specifications/vision.md#target-tool-catalog) — the `mpfb_set_target_value`
   entry under "Creation and modification" is superseded by `mpfb_set_targets` and should be rewritten
   rather than merely marked implemented: the planned tool was a single named target, and what is
   proposed here is a batched, two-level tool. `mpfb_get_target_stack` and `mpfb_symmetrize_targets`
   are new entries. The `mpfb_list_targets` entry should gain a line saying which of its reported
   identifiers feeds which of the two levels, since that pairing is the whole contract between the
   two requests.
-- [architecture.md](../../specifications/architecture.md) — conventions to follow, and two
+- [architecture.md](../../../specifications/architecture.md) — conventions to follow, and two
   candidates.
   - **To follow:**
-    [How tools name things that can be added](../../specifications/architecture.md#how-tools-name-things-that-can-be-added)
+    [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added)
     (this is the tool that consumes FR 006's identifiers, and is where that convention is finally
     tested),
-    [How tools bound a large answer](../../specifications/architecture.md#how-tools-bound-a-large-answer)
+    [How tools bound a large answer](../../../specifications/architecture.md#how-tools-bound-a-large-answer)
     for the stack listing, and
-    [A tool may report a fact MPFB's own UI does not show](../../specifications/architecture.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)
+    [A tool may report a fact MPFB's own UI does not show](../../../specifications/architecture.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)
     for `asymmetries` and for the `"basis"` blind spot.
-  - **Plus the three conventions [FR 007](../done/007-macro-details/README.md) landed**, which this
+  - **Plus the three conventions [FR 007](../007-macro-details/README.md) landed**, which this
     request now *follows* rather than proposes, since that one went first:
-    [How a mutating tool takes its subject](../../specifications/architecture.md#how-a-mutating-tool-takes-its-subject),
-    [A mutating tool reports before and after](../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
+    [How a mutating tool takes its subject](../../../specifications/architecture.md#how-a-mutating-tool-takes-its-subject),
+    [A mutating tool reports before and after](../../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
     and
-    [Preconditions are answers](../../specifications/architecture.md#preconditions-are-answers).
+    [Preconditions are answers](../../../specifications/architecture.md#preconditions-are-answers).
     Note that FR 007's `refit` reporting has a shape worth copying exactly rather than reinventing:
     `refit_performed`, `refit_incomplete_reason` and `assets_possibly_stale`.
   - **New — a batched mutating tool resolves everything before it writes anything.** The
     all-or-nothing rule above, stated generally: an agent's typo in entry 17 must not leave a
     half-modified character, and a partial success is not something the response format can usefully
     describe. It applies to any later *batch* tool — but note that
-    [FR 010](../010-mesh-assets/README.md) deliberately does not make `mpfb_add_asset` one, because
+    [FR 010](../../010-mesh-assets/README.md) deliberately does not make `mpfb_add_asset` one, because
     loading an MHCLO costs seconds of real work rather than milliseconds, so the latency argument
     that forces batching here does not carry over.
   - **New, smaller — when mpfb-mcp models a concept MPFB's UI has but its services do not.** A
@@ -350,7 +371,7 @@ discipline (snapshot every datablock collection, compare after, never save). Spe
 - `symmetrize` on a character made deliberately asymmetric, in both directions, with `dry_run` first.
 - Batch cost against FR 005's ~1.0 s baseline: thirty modifier changes in one call versus thirty
   calls, and how much of the difference is target files being read off disk.
-- Interaction with [FR 007](../done/007-macro-details/README.md): a macro change after detail targets are
+- Interaction with [FR 007](../007-macro-details/README.md): a macro change after detail targets are
   set must leave the detail stack intact — `reapply_macro_details()` should touch only `$md-` keys.
   If it does not, one of the two requests is wrong and this is where it surfaces. Note that FR 007
   landed **without** its own live verification, so this check is now carrying weight for both
@@ -358,7 +379,7 @@ discipline (snapshot every datablock collection, compare after, never save). Spe
   claims.
 - The `mpfb_set_macro_details` checklist that FR 007 left outstanding, if it has not been run by
   then — see
-  [its Verification status](../done/007-macro-details/README.md#verification-status). Doing the two
+  [its Verification status](../007-macro-details/README.md#verification-status). Doing the two
   together is cheaper than twice, since both need a dressed, rigged character and both compare
   against MPFB's own panel.
 
@@ -386,6 +407,118 @@ Record the outcome in a `## Verification status` section here.
 - MPFB `data/targets/target.json` — the category shapes: `has_left_and_right`, the six-key
   `opposites` table (`positive-`/`negative-` × `left`/`right`/`unsided`, with the unused half empty
   strings), and the `targets` list.
-- [FR 006](../done/006-list-targets/README.md) — the catalogue whose identifiers this request
+- [FR 006](../006-list-targets/README.md) — the catalogue whose identifiers this request
   consumes, and its Verification status section, which is where the encoded-name failure mode was
   observed rather than inferred.
+
+## Verification status
+
+**Implemented and unit-tested; live verification is outstanding.** The three tools, their
+payloads, the shared code-generation fragment and their tests landed together, and the whole suite
+passes — 419 tests, up from 278. As with [FR 007](../007-macro-details/README.md), and unlike
+[FR 001](../001-mpfb-get-status/README.md) through
+[FR 006](../006-list-targets/README.md), this request was **not** checked against a running
+Blender before being marked Done. That is the second consecutive mutating effort to land that way,
+and the debt is now compound rather than isolated: this request's first non-functional requirement
+— that a modifier set through `mpfb_set_targets` produces the same result MPFB's own slider does —
+is precisely the claim nothing on this side of the socket can establish, and the check that would
+establish it is the same session that would clear FR 007's.
+
+What the unit tests *do* establish is everything around that claim. The stubs reproduce MPFB's real
+behavior rather than a convenient version of it, and each quirk is there because leaving it out
+would make a test pass vacuously:
+
+- `set_target_value()` is a **silent no-op** for a name that is not on the mesh, and raises only
+  when the mesh has no shape keys at all; `get_target_value()` returns `0.0` for an absent name.
+  A stub that raised instead would make the `has_target()`-then-`load_target()` logic look
+  unnecessary.
+- `has_target()` matches the **encoded** name as well as the raw one, while `set_target_value()`
+  matches the raw name only — which is why the payloads resolve *which* name a target is stored
+  under before writing, rather than only asking whether it is there.
+- `get_target_stack()` excludes anything **containing** `"basis"`, and the fixture carries a target
+  named to exercise it.
+- A shape key value is **clamped to 0.0-1.0 on assignment**, as Blender clamps a real one, so a
+  payload that tried to store a negative modifier value directly fails in the suite rather than in
+  Blender.
+- `load_target()` raises `IOError` for a missing path, so the `.target.gz`/`.target` fallback and
+  the resolve-before-write ordering are genuinely exercised; `target_full_path()` reproduces the
+  exact-stem-preferred, prefix-fallback search.
+
+The tree those run against is a real `tempfile` one, with the four category shapes the request asks
+for plus a bundled target that ships uncompressed, a sided category whose right-hand files are
+missing, an over-60-character user target, a target whose name contains `"basis"`, and a gzipped
+custom target. Covered: a positive value loads the positive target and zeroes the negative and the
+reverse; a value at zero clears both; `symmetry` on a sided category touches all four targets and
+on an unsided one touches one; `side` omitted on a sided category and given on an unsided one are
+both resolution errors; a batch with one bad entry writes **nothing**; `prune` removes a zeroed
+shape key and `prune: false` keeps it at zero; the modifier round trip through
+`mpfb_get_target_stack`; and `symmetrize` with `dry_run` writing nothing while reporting the same
+changes the real run makes.
+
+### What reading MPFB's source turned up
+
+Four things the request did not know, all now reflected above or in the code:
+
+- **A gzipped custom target is named two different ways, and this is a real inconsistency.**
+  `_modelsubpanels` builds a synthesized category's name as
+  `os.path.basename(target).replace(".target", "")` — a *substring* replace that does not strip
+  `.gz` — so `vwide.target.gz` becomes a category called `vwide.gz`, and that is the name MPFB
+  loads the shape key under. `TargetService.filename_to_shapekey_name()`, which is what
+  `mpfb_list_targets` reports, strips `.gz` first and yields `vwide`. The two therefore address
+  *different shape keys for the same file*. `mpfb_set_targets` writes MPFB's name at the category
+  level, because the point of that level is that the value reads back on MPFB's own slider, and
+  reports `name_diverges_from_catalogue` with the catalogue name beside it. **Candidate mpfb2
+  issue.**
+- **Every bundled category without `opposites` is unsided, and every sided category has all four
+  `l-`/`r-` entries.** 203 categories across 22 sections: 66 sided, 8 without opposites, no overlap.
+  So `_set_simple_modifier_value()`'s `l-`/`r-` prefixing is dead code on stock data, and MPFB's
+  decision to consult its `symmetry` setting *only* inside `_set_opposed_modifier_value()` has no
+  observable consequence. The payload mirrors any sided category rather than reproducing a
+  distinction with no cases, and says so in a comment.
+- **`measure` is a section with zero categories**, in the real `target.json` as well as the
+  fixture. A degenerate section a lookup must not crash on.
+- **A simple category at value zero still loads its file** when the target is not already on the
+  mesh — `_set_simple_modifier_value()` branches on presence, not on value. Reproduced rather than
+  optimised away, for the same round-trip reason.
+
+Two smaller decisions the request left open were settled in the code. `listed_in_target_json` is
+false for a synthesized user category, which is a modifier MPFB's panel shows and `target.json` has
+never heard of — so `category` can be non-null while that flag is false. And a category whose
+target file cannot be found is **fatal for `mpfb_set_targets` and skipped for
+`mpfb_symmetrize_targets`**: the first is asked to apply a specific list, where all-or-nothing
+applies, while the second is asked to make a character symmetric, where one unreachable target is a
+fact about that category rather than a reason to leave the rest of the body asymmetric.
+
+### Still to be done, against a running Blender
+
+- **The slider round trip, which is the whole point.** Set a modifier through the tool, then open
+  MPFB's model panel and confirm the corresponding slider reads the value that was set — including
+  a negative one, a sided one, and one at exactly zero. Then move the slider in the UI and confirm
+  `mpfb_get_target_stack` reports the same value back.
+- That a target not previously on the mesh is loaded on demand from the right file, and that the
+  shape key created is named as `mpfb_list_targets` said it would be.
+- That a **user** target addressed by its `shapekey_name` through the raw `targets` list applies and
+  reads back — including a name long enough to be encoded, which FR 006 proved fails silently when
+  addressed by filename.
+- **The gzipped-custom-target naming divergence, observed rather than derived from the source.**
+  Install a `.target.gz` under `<user data>/custom/`, set it through `modifiers` and through
+  `targets`, and confirm they produce two differently-named shape keys — then decide whether to
+  file it against mpfb2.
+- The Blender 0.0-1.0 clamp on shape key values, observed rather than assumed.
+- The `"basis"`-substring exclusion, observed by installing a user target whose name contains it,
+  and confirming MPFB's own panel cannot see or change it while `mpfb_get_target_stack` can.
+- `symmetrize` on a character made deliberately asymmetric, in both directions, with `dry_run`
+  first, and with a `section` filter.
+- Batch cost against [FR 005](../005-list-assets/README.md)'s ~1.0 s baseline: thirty modifier
+  changes in one call versus thirty calls, and how much of the difference is target files being
+  read off disk.
+- Interaction with [FR 007](../007-macro-details/README.md): a macro change after detail
+  targets are set must leave the detail stack intact — `reapply_macro_details()` should touch only
+  `$md-` keys. If it does not, one of the two requests is wrong and this is where it surfaces.
+- **The `mpfb_set_macro_details` checklist FR 007 left outstanding**, in the same session — see
+  [its Verification status](../007-macro-details/README.md#verification-status). Both need a
+  dressed, rigged character and both compare against MPFB's own panel, so doing them together is
+  much cheaper than twice.
+
+Run with the FR 004-006 revert discipline: snapshot every datablock collection, compare after,
+never save.

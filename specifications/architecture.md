@@ -123,7 +123,8 @@ read. These are reachable, under three rules:
 ## Code-generation layout
 
 A generated program is assembled from three parts, in a fixed order: the shared **bootstrap**
-above, a **parameter prelude**, and a per-tool **payload**.
+above, a **parameter prelude**, and a per-tool **payload** — plus, optionally, one or more
+**shared fragments** between the last two (see [Shared fragments](#shared-fragments)).
 
 - **One payload file per tool**, `src/mpfbmcp/codegen/payloads/<tool>.py`, written as ordinary
   Python containing no placeholders and no escaping. This is what makes the requirement in
@@ -146,8 +147,33 @@ above, a **parameter prelude**, and a per-tool **payload**.
   tool module, a new payload file, and one `register()` call. This is the objective test of the
   layout: if a change to shared code is needed to add an ordinary tool, the layout has drifted.
 - **Assembly keeps failures traceable.** A traceback from inside Blender reports a line in the
-  assembled string, not in a payload file, so the order of the three parts is fixed and the seam
-  is marked with a comment naming the payload.
+  assembled string, not in a payload file, so the order of the three parts is fixed and every seam
+  is marked with a comment naming the file below it.
+
+### Shared fragments
+
+A **fragment** is a fourth, optional part: an ordinary `.py` file under
+`src/mpfbmcp/codegen/shared/`, named by a tool module in `assemble(..., shared=[...])` and
+concatenated between the prelude and the payload. It exists for a *concept* two or more payloads
+model identically — `target_categories.py` rebuilds MPFB's `target.json` category table, which
+`mpfb_get_target_stack`, `mpfb_set_targets` and `mpfb_symmetrize_targets` all need in the same
+shape and none of them can import.
+
+- **A fragment is warranted by duplication that must not drift, not by size.** Three copies of a
+  hundred-line scan of the user's target directories are three chances for two tools to disagree
+  about what is installed, and that disagreement is worse than either behavior on its own. Two
+  payloads sharing a five-line helper are not a reason to reach for this.
+- **Opting in is the payload's business, not the assembler's.** `assemble()` takes the list; there
+  is no table here mapping payloads to fragments. So the rule above still holds unchanged: adding
+  an ordinary tool is still a tool module, a payload and a `register()` call, and a tool that wants
+  a fragment names it in the same `assemble()` call it was already making.
+- **Fragments come after the prelude**, so a fragment may read `PARAMS`, and before the payload, so
+  the payload can simply call the fragment's functions.
+- **Each fragment gets its own labelled seam**, `# --- shared: <name> ---`, for the same reason the
+  payload does.
+- **Packaging has to be told about the directory separately.** A package-data glob does not
+  descend, so `payloads/*.py` ships nothing from a subdirectory of `payloads/` — which is why
+  fragments live in a sibling directory with a glob of their own rather than under `payloads/`.
 
 ## One module per tool
 
@@ -185,6 +211,21 @@ Round-tripping is preserved on the **output** side instead: a tool returns the n
 MPFB's own shape, so a caller can read a character, hand the dict elsewhere, and map it back onto
 flat arguments mechanically. Assemble MPFB's structure in the tool function, from the flat
 arguments, immediately before generating code.
+
+**The one exception is a batch, which is irreducibly a list.** `mpfb_set_targets` takes
+`modifiers` and `targets` as lists of dicts, because the alternative to a batch is thirty round
+trips (see [A batched mutating tool resolves before it writes](#a-batched-mutating-tool-resolves-before-it-writes)),
+and a list of one repeated shape is not the dict-of-dicts the clause above rules out. What the
+clause is really protecting against — a shape no schema checks — still applies, so a batch carries
+two compensations:
+
+- **Validate every entry's shape here, entry by entry, and name the position that failed.** That an
+  entry is an object, that its keys are all known — a misspelled key is the commonest way a caller
+  gets a dict-shaped argument wrong, and it is silent unless checked — that a value is a real number
+  in range, that an enumerated string is one of its values. `modifiers[1] has unknown key(s)
+  catagory` is a message a caller can act on; a silently ignored key is not.
+- **Give the response a per-entry error channel**, so the half of the validation that can only
+  happen inside Blender comes back the same way: which entry, why, and what the valid values were.
 
 ## How generated code addresses objects
 
@@ -364,8 +405,20 @@ must say so**, or the discrepancy will be read as the tool being wrong. Two of t
   Report it, with a field saying which ones MPFB will show. Silently matching MPFB's narrower
   behavior would hide a real file; reporting it without the flag would look like a bug here.
 
+A third turns up in `mpfb_get_target_stack`, and it is the sharpest of them:
+
+- **The tool can see something MPFB cannot address at all.** `TargetService.get_target_stack()`
+  excludes any shape key whose lowercased name *contains* `"basis"`, not merely equals it, so a
+  user target called `basis-nose-widen` is on the mesh, is deforming it, and is invisible to
+  `has_target()`, `get_target_value()` and every write MPFB can perform. The read tool goes to
+  `key_blocks` directly rather than inheriting the blind spot, and flags what it found with
+  `visible_to_targetservice: false`. Every **write** still goes through `TargetService`, or the
+  read and write halves of the same tool would disagree about what exists.
+
 Prefer describing what is actually on disk, and label the part MPFB will not show — rather than
-either papering over the difference or quietly inheriting the limitation.
+either papering over the difference or quietly inheriting the limitation. Where the difference is
+a limitation of MPFB rather than of the tool, that is worth recording as a candidate mpfb2 issue
+as well as reporting.
 
 ## How a mutating tool takes its subject
 
@@ -430,6 +483,53 @@ problem, rather than letting MPFB's own guard surface as a traceback in an error
 Report which precondition blocked (`ready: false` plus a `blocked_by` naming it) rather than only a
 sentence, so a caller can branch on it; and make sure the tool changed nothing on the way to
 finding out.
+
+## A batched mutating tool resolves before it writes
+
+Where a tool changes many things at once, **every entry is resolved and validated before anything
+is written, and if any entry fails, none of them are applied.**
+
+- **A half-applied batch is a state nothing can describe.** Thirty changes with one typo in them
+  must apply zero, not twenty-nine: the character is then in a condition neither the agent nor the
+  user can name, and the response format cannot usefully say which half landed or which half to
+  retry. Failing the whole batch leaves the caller with one action — fix the entry and resend.
+- **Resolve the expensive, failure-prone part up front.** For `mpfb_set_targets` that means
+  locating the file each change *might* have to load, during resolution, so a missing target is a
+  `resolution_errors` entry rather than an `IOError` raised half way through the writes.
+- **Report per entry once application starts**, in request order, including what changed as a
+  consequence — one sided change with `symmetry` on touches up to four shape keys, and the response
+  has to be able to say so.
+- **Batch because latency dominates, not on principle.** A socket round trip costs about a second
+  while setting a modeling target costs milliseconds, so thirty calls would be half a minute of
+  waiting for a fraction of a second of work. Where the work inside the call is itself expensive —
+  loading an MHCLO asset is seconds of mesh import and vertex fitting — the argument does not carry
+  over, and one-per-call is the better shape.
+
+## When mpfb-mcp models a concept MPFB's UI has but its services do not
+
+Not every concept a tool needs is a service concept. A modeling *modifier* — a slider from -1.0 to
++1.0, built from a pair of opposing targets, optionally with left and right variants — is not a
+`TargetService` idea at all: it lives in `target.json` and in `mpfb/ui/model/_modelsubpanels.py`.
+`mpfb_set_targets` lifts it out of the UI into the tool layer, because without it a caller could
+address individual shape keys but could not express anything MPFB's own sliders express.
+
+- **Reproduce the mechanics from MPFB's UI code rather than reinventing them**, statement for
+  statement where the order matters. `_set_opposed_modifier_value()` zeroes the opposing target
+  *first* and only then sets or loads the selected one; doing it the other way leaves both halves
+  of a pair briefly non-zero and, with pruning on, deletes the wrong one.
+- **Still never import the UI module**, for the reason in
+  [Never import MPFB submodules directly](#never-import-mpfb-submodules-directly) — and here for a
+  second reason: `_modelsubpanels` builds its table at *module import time*, so it is a snapshot
+  from when Blender started, and a tool built on it would be blind to a target that
+  `mpfb_list_targets` — which scans per call — can see.
+- **Document the divergences rather than silently normalizing them.** MPFB's two setter functions
+  disagree about the file extension, one trying `.target.gz` then `.target` and the other only the
+  first; and MPFB's category name for a gzipped custom target does not strip `.gz`, so its shape key
+  is not called what `mpfb_list_targets` reports. Both are reproduced or repaired deliberately, and
+  said out loud in the payload docstring and in the response, because a caller who meets one will
+  otherwise read it as a bug here.
+- **The goal is that the value reads back on MPFB's own slider.** Where reproducing a quirk and
+  tidying it up would give different answers in MPFB's panel, reproduce the quirk.
 
 ## Response shape
 

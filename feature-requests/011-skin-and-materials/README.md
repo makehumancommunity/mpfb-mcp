@@ -167,7 +167,7 @@ uuid-keyed dict `add_mhclo_asset()` accepts.
   `_apply_mhmat()` and `_find_default_material()`. Importing an MPFB submodule is forbidden
   ([architecture.md](../../specifications/architecture.md#never-import-mpfb-submodules-directly)), and
   a UI operator module is the worst case of it. Reimplement both from services, as
-  [FR 006](../done/006-list-targets/README.md) and [FR 008](../008-detail-targets/README.md) do for
+  [FR 006](../done/006-list-targets/README.md) and [FR 008](../done/008-detail-targets/README.md) do for
   the modeling panels, and say so in the payload docstring. The pieces are all service-level:
   `MaterialService.has_materials()`, `create_empty_material()`, `get_diffuse_colors()`,
   `AssetService.find_asset_absolute_path()`, `path_to_fragment()`, and `MakeSkinMaterial`, which is an

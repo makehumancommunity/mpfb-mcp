@@ -42,7 +42,7 @@ Two tools.
 
 Mutating, **one asset per call**. Loading an MHCLO is seconds of mesh import and vertex fitting, so
 the ~1.0 s round trip does not dominate the way it does for
-[FR 008](../008-detail-targets/README.md)'s target setting, and per-asset failures stay legible.
+[FR 008](../done/008-detail-targets/README.md)'s target setting, and per-asset failures stay legible.
 Arguments:
 
 - `name` (optional string) — a Blender object name, resolved to the character's basemesh as in
@@ -157,8 +157,12 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
 - **Removal must be complete, or must say what it left.** The mask modifiers, the sub-rig, the vertex
   groups and the orphaned mesh data are four different fates and the response distinguishes them.
 - **Destructive operations announce themselves**, as
-  [FR 008](../008-detail-targets/README.md) requires: `mpfb_remove_asset` deletes objects, and
-  `mpfb_add_asset` with `material_type: "NONE"` deletes materials.
+  [FR 008](../done/008-detail-targets/README.md) established: `mpfb_remove_asset` deletes objects,
+  and `mpfb_add_asset` with `material_type: "NONE"` deletes materials. Note that FR 008's
+  all-or-nothing rule is now standing as
+  [A batched mutating tool resolves before it writes](../../specifications/architecture.md#a-batched-mutating-tool-resolves-before-it-writes),
+  and that its last bullet names this request as the case where the batching argument does *not*
+  carry over.
 - **Preconditions are answers**, per [FR 007](../done/007-macro-details/README.md).
 - **Restore what was borrowed.** `add_mhclo_asset()` calls `bpy.ops.object.shade_smooth()` and the
   fitting code changes the active object; the payload restores the previous active object and
@@ -261,9 +265,11 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
     above: three implementations, no documentation of which is canonical. The rule is to follow the
     *service-layer* path (it is what `.mhm` loading uses and what other services expect), to say so in
     the docstring, and to record the divergence as a candidate mpfb2 issue rather than silently
-    inheriting whichever was read first. Related to, but sharper than,
-    [FR 008](../008-detail-targets/README.md)'s "when mpfb-mcp models a concept MPFB's UI has but its
-    services do not".
+    inheriting whichever was read first. Related to, but sharper than, the convention
+    [FR 008](../done/008-detail-targets/README.md) landed as
+    [When mpfb-mcp models a concept MPFB's UI has but its services do not](../../specifications/architecture.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not),
+    whose last clause — document the divergence rather than normalizing it away — this would
+    generalize from "UI versus services" to "any two MPFB code paths".
 
 ## Tests
 

@@ -82,10 +82,12 @@ __all__ = (
     "StubTargetService",
 )
 
+import json
 import os
 import pathlib
 import re
 import sys
+import tempfile
 import types
 import unittest
 from unittest import mock
@@ -178,11 +180,28 @@ class StubMaterial:
 
 
 class StubShapeKey:
-    """One entry in key_blocks: a name and the weight the payloads read."""
+    """One entry in key_blocks: a name and the weight the payloads read.
+
+    The weight is **clamped to 0.0-1.0 on assignment**, as Blender clamps a real
+    shape key: MPFB never touches slider_min/slider_max, so the default range
+    applies and assigning -0.4 stores 0.0. That clamp is the whole reason the
+    modifier level exists - a negative modifier value has no shape key
+    representation at all and must be expressed as the opposing target at a
+    positive weight - so a payload that tried to store one directly has to fail
+    here rather than in Blender.
+    """
 
     def __init__(self, name, value=0.0):
         self.name = name
         self.value = value
+
+    @property
+    def value(self):
+        return self._value
+
+    @value.setter
+    def value(self, new_value):
+        self._value = min(1.0, max(0.0, float(new_value)))
 
 
 class _StubKeyBlocks:
@@ -683,6 +702,13 @@ class StubSystemService:
         return StubSystemService.rigify_available
 
 
+# MPFB's real _OPPOSITES table, from targetservice.py: the eight opposing
+# suffix pairs shapekey_is_target() recognises a modeling target by.
+_OPPOSITES = [
+    "decr-incr", "down-up", "in-out", "backward-forward",
+    "concave-convex", "compress-uncompress", "square-round", "pointed-triangle",
+]
+
 # MPFB's real _SHAPEKEY_ENCODING table, from targetservice.py. Only these
 # sixteen words are ever substituted, so a long name containing none of them
 # encodes to itself - which is why the test fixture's long target is named with
@@ -718,6 +744,12 @@ class StubTargetService:
 
     calls = []
     reapply_calls = []
+    load_calls = []
+    set_calls = []
+    # MPFB's module-level _ODD_TARGET_NAMES, which load_target() appends to and
+    # shapekey_is_target() falls back on. Reset between tests, as the real one
+    # is not - which is itself why the fallback is a "last resort".
+    odd_target_names = []
 
     @staticmethod
     def encode_shapekey_name(original_name):
@@ -863,6 +895,195 @@ class StubTargetService:
                     targets.append(name)
         return targets
 
+    # ---- The write half, and the reads the writes depend on. -------------
+    #
+    # Each of these reproduces a quirk of the real one that a payload exists to
+    # work around; a helpful stub would make the workaround look unnecessary.
+
+    @staticmethod
+    def get_target_stack(blender_object, exclude_starts_with=None, exclude_ends_with=None):
+        # Note the exclusion: any name *containing* "basis", not equal to it.
+        # A user target called "basis-nose-widen" is therefore invisible to
+        # has_target(), get_target_value() and every write MPFB can perform.
+        if blender_object is None or blender_object.type != "MESH":
+            raise ValueError("Must provide a valid mesh object")
+        keys = blender_object.data.shape_keys
+        if keys is None or keys.key_blocks is None or len(keys.key_blocks) < 1:
+            return []
+
+        if exclude_starts_with is None:
+            starts_with_prefixes = ()
+        elif isinstance(exclude_starts_with, str):
+            starts_with_prefixes = (exclude_starts_with.lower(),)
+        else:
+            starts_with_prefixes = tuple(str(p).lower() for p in exclude_starts_with)
+
+        if exclude_ends_with is None:
+            ends_with_suffixes = ()
+        elif isinstance(exclude_ends_with, str):
+            ends_with_suffixes = (exclude_ends_with.lower(),)
+        else:
+            ends_with_suffixes = tuple(str(s).lower() for s in exclude_ends_with)
+
+        stack = []
+        for shape_key in keys.key_blocks:
+            sk_name = str(shape_key.name).lower()
+            exclude = "basis" in sk_name
+            if starts_with_prefixes and any(sk_name.startswith(p) for p in starts_with_prefixes):
+                exclude = True
+            if ends_with_suffixes and any(sk_name.endswith(s) for s in ends_with_suffixes):
+                exclude = True
+            if not exclude:
+                stack.append({"target": shape_key.name, "value": shape_key.value})
+        return stack
+
+    @staticmethod
+    def has_target(blender_object, target_name, also_check_for_encoded=True):
+        # Checks the encoded name as well as the given one - which
+        # set_target_value() and get_target_value() below do *not*.
+        if blender_object is None or target_name is None or not target_name:
+            return False
+        encoded_name = StubTargetService.encode_shapekey_name(target_name)
+        for target in StubTargetService.get_target_stack(blender_object):
+            if target["target"] == target_name:
+                return True
+            if also_check_for_encoded and target["target"] == encoded_name:
+                return True
+        return False
+
+    @staticmethod
+    def get_target_value(blender_object, target_name):
+        # 0.0 for a name that does not exist, indistinguishable from a target
+        # that exists at zero. That ambiguity is why the payloads report
+        # existence separately from value.
+        if blender_object is None or target_name is None or not target_name:
+            return 0.0
+        for target in StubTargetService.get_target_stack(blender_object):
+            if target["target"] == target_name:
+                return target["value"]
+        return 0.0
+
+    @staticmethod
+    def set_target_value(blender_object, target_name, value, delete_target_on_zero=False):
+        # A **silent no-op** for a name that is not among the key blocks: it
+        # neither loads the target nor raises. A stub that raised instead would
+        # make the has_target()-then-load_target() logic look unnecessary and
+        # let the bug it prevents through. It does raise when the mesh has no
+        # shape keys at all, which is a different situation.
+        if blender_object is None or target_name is None or not target_name:
+            raise ValueError("Empty object or target")
+        keys = blender_object.data.shape_keys
+        if keys is None or keys.key_blocks is None or len(keys.key_blocks) < 1:
+            raise ValueError("Empty object or target")
+        StubTargetService.set_calls.append((blender_object.name, str(target_name), value,
+                                            delete_target_on_zero))
+        for shape_key in list(keys.key_blocks):
+            if shape_key.name == target_name:
+                shape_key.value = value
+                if value < 0.0001 and delete_target_on_zero:
+                    blender_object.shape_key_remove(shape_key)
+
+    @staticmethod
+    def load_target(blender_object, full_path, *, weight=0.0, name=None):
+        # IOError for a path that is not there, which is what makes the
+        # .target.gz/.target fallback and the resolve-before-write ordering
+        # genuinely exercised rather than merely described.
+        if blender_object is None:
+            raise ValueError("Can only load targets onto specified mesh objects")
+        if full_path is None or not full_path:
+            raise ValueError("Must specify a valid path - null or none was given")
+        if not os.path.exists(str(full_path)):
+            raise IOError(str(full_path) + " does not exist")
+        if name is None:
+            name = StubTargetService.filename_to_shapekey_name(full_path)
+        StubTargetService.load_calls.append((blender_object.name, str(full_path), weight,
+                                             str(name)))
+        # Through create_shape_key(), as the real one does via
+        # target_string_to_shape_key() - which is where the OBJECT-mode assert
+        # is reached.
+        shape_key = StubTargetService.create_shape_key(blender_object, str(name))
+        shape_key.value = weight
+        if not StubTargetService.shapekey_is_target(shape_key.name):
+            if shape_key.name not in StubTargetService.odd_target_names:
+                StubTargetService.odd_target_names.append(shape_key.name)
+        return shape_key
+
+    @staticmethod
+    def shapekey_is_target(shapekey_name):
+        if not shapekey_name:
+            return False
+        if shapekey_name.lower() == "basis":
+            return False
+        if shapekey_name.startswith("$md"):
+            return True
+        for opposite in _OPPOSITES:
+            if opposite in shapekey_name:
+                return True
+            low, high = opposite.split("-")
+            if "-" + low in shapekey_name or "-" + high in shapekey_name:
+                return True
+        # Populated by load_target() at run time, exactly as MPFB's own
+        # module-level list is - so it is empty for a target that was never
+        # loaded in this session.
+        return shapekey_name in StubTargetService.odd_target_names
+
+    @staticmethod
+    def prune_shapekeys(blender_object, cutoff=0.0001):
+        keys = blender_object.data.shape_keys
+        if keys is None or keys.key_blocks is None or len(keys.key_blocks) < 1:
+            return
+        skip = True  # The first shape key is assumed to be Basis, by position.
+        for shape_key in list(keys.key_blocks):
+            if not skip and shape_key.value < cutoff:
+                if StubTargetService.shapekey_is_target(shape_key.name):
+                    blender_object.shape_key_remove(shape_key)
+            skip = False
+
+    @staticmethod
+    def target_full_path(target_name):
+        """MPFB's tiered search, exact stem preferred and prefix as a fallback.
+
+        The prefix fallback is reproduced because it is the reason the payloads
+        build paths from the category data instead, and report the path when
+        they do fall back here: "nose-scale-depth" resolving to
+        "nose-scale-depth-decr" is a wrong answer that looks like a right one.
+        """
+        lowered = str(target_name).lower()
+
+        def match_in(paths):
+            prefix_match = None
+            for path in paths:
+                basename = str(os.path.basename(str(path))).lower()
+                if basename.endswith(".target.gz"):
+                    stem = basename[:-len(".target.gz")]
+                else:
+                    stem = basename[:-len(".target")]
+                if stem == lowered:
+                    return str(path)
+                if prefix_match is None and basename.startswith(lowered):
+                    prefix_match = str(path)
+            return prefix_match
+
+        targets_dir = StubLocationService.get_mpfb_data("targets")
+        found = match_in(pathlib.Path(str(targets_dir)).rglob("*.target.gz"))
+        if found:
+            return found
+
+        custom_roots = StubAssetService.get_asset_roots("custom")
+        custom_roots.extend(StubAssetService.get_asset_roots("targets/custom"))
+        custom = StubAssetService.find_asset_files_matching_pattern(custom_roots, "*.target")
+        custom.extend(
+            StubAssetService.find_asset_files_matching_pattern(custom_roots, "*.target.gz"))
+        found = match_in(custom)
+        if found:
+            return found
+
+        target_roots = StubAssetService.get_asset_roots("targets")
+        targets = StubAssetService.find_asset_files_matching_pattern(target_roots, "*.target")
+        targets.extend(
+            StubAssetService.find_asset_files_matching_pattern(target_roots, "*.target.gz"))
+        return match_in(targets)
+
     @staticmethod
     def create_shape_key(blender_object, shape_key_name, also_create_basis=True,
                          create_from_mix=False):
@@ -1000,6 +1221,9 @@ class GeneratedCodeTestCase(unittest.TestCase):
         StubAssetService.packs = dict()
         StubTargetService.calls = []
         StubTargetService.reapply_calls = []
+        StubTargetService.load_calls = []
+        StubTargetService.set_calls = []
+        StubTargetService.odd_target_names = []
         StubObjectService.activations = []
         StubHumanService.refit_calls = []
         StubHumanService.refit_raises = None
@@ -1048,12 +1272,18 @@ class GeneratedCodeTestCase(unittest.TestCase):
         for name in self._injected:
             sys.modules.pop(name, None)
 
-    def run_payload(self, payload, params, scene_objects=(), all_objects=None, active=None):
-        """Assemble and execute one payload, returning the ``result`` it bound."""
+    def run_payload(self, payload, params, scene_objects=(), all_objects=None, active=None,
+                    shared=None):
+        """Assemble and execute one payload, returning the ``result`` it bound.
+
+        ``shared`` names the fragments the payload's own tool module passes, so
+        what is executed here is the same program the tool would send.
+        """
         if all_objects is None:
             all_objects = scene_objects
         StubObjectService.all_objects = tuple(all_objects)
-        code = codegen.assemble(payload, bootstrap="raising", params=params)
+        code = codegen.assemble(
+            payload, bootstrap="raising", params=params, shared=shared)
         namespace = {}
         bpy = _make_bpy(scene_objects, all_objects, active)
         # activate_blender_object() changes the active object for real, so the
@@ -1064,3 +1294,222 @@ class GeneratedCodeTestCase(unittest.TestCase):
         with mock.patch.dict(sys.modules, {"bpy": bpy}):
             exec(code, namespace)  # noqa: S102
         return namespace["result"]
+
+
+# The trimmed target.json the three detail-target payloads run against. Its
+# shape is the real one's, and every category in it is there because it is a
+# branch: an unsided pair of opposites, a sided pair with all four l-/r- entries,
+# a category with no opposites at all, a sided pair whose right-hand files are
+# missing from disk, and the real index's genuinely empty "measure" section.
+DETAIL_TARGET_JSON = {
+    "arms": {
+        "include_per_default": True,
+        "label": "Arms",
+        "unsorted": [],
+        "categories": [
+            {
+                "has_left_and_right": True,
+                "label": "lowerarm-scale-depth-decr-incr",
+                "name": "lowerarm-scale-depth-decr-incr",
+                "opposites": {
+                    "negative-left": "l-lowerarm-scale-depth-decr",
+                    "negative-right": "r-lowerarm-scale-depth-decr",
+                    "negative-unsided": "",
+                    "positive-left": "l-lowerarm-scale-depth-incr",
+                    "positive-right": "r-lowerarm-scale-depth-incr",
+                    "positive-unsided": "",
+                },
+                "targets": [
+                    "l-lowerarm-scale-depth-decr", "r-lowerarm-scale-depth-incr",
+                    "r-lowerarm-scale-depth-decr", "l-lowerarm-scale-depth-incr",
+                ],
+            },
+            {
+                "has_left_and_right": False,
+                "label": "upperarm-fat-decr-incr",
+                "name": "upperarm-fat-decr-incr",
+                "opposites": {
+                    "negative-left": "", "negative-right": "",
+                    "negative-unsided": "upperarm-fat-decr",
+                    "positive-left": "", "positive-right": "",
+                    "positive-unsided": "upperarm-fat-incr",
+                },
+                "targets": ["upperarm-fat-decr", "upperarm-fat-incr"],
+            },
+        ],
+    },
+    "nose": {
+        "include_per_default": True,
+        "label": "Nose",
+        "unsorted": [],
+        "categories": [
+            {
+                "has_left_and_right": False,
+                "label": "nose-scale-depth-decr-incr",
+                "name": "nose-scale-depth-decr-incr",
+                "opposites": {
+                    "negative-left": "", "negative-right": "",
+                    "negative-unsided": "nose-scale-depth-decr",
+                    "positive-left": "", "positive-right": "",
+                    "positive-unsided": "nose-scale-depth-incr",
+                },
+                "targets": ["nose-scale-depth-decr", "nose-scale-depth-incr"],
+            },
+        ],
+    },
+    "chin": {
+        "include_per_default": True,
+        "label": "Chin",
+        "unsorted": [],
+        "categories": [
+            # No "opposites" key at all: a 0.0-1.0 modifier with one target.
+            {
+                "has_left_and_right": False,
+                "label": "chin-triangle",
+                "name": "chin-triangle",
+                "targets": ["chin-triangle"],
+            },
+        ],
+    },
+    "ears": {
+        "include_per_default": True,
+        "label": "Ears",
+        "unsorted": [],
+        "categories": [
+            # Sided, but only the left-hand files are on disk - so a change to
+            # the right side, or a symmetrize onto it, cannot be loaded.
+            {
+                "has_left_and_right": True,
+                "label": "ear-lobe-decr-incr",
+                "name": "ear-lobe-decr-incr",
+                "opposites": {
+                    "negative-left": "l-ear-lobe-decr",
+                    "negative-right": "r-ear-lobe-decr",
+                    "negative-unsided": "",
+                    "positive-left": "l-ear-lobe-incr",
+                    "positive-right": "r-ear-lobe-incr",
+                    "positive-unsided": "",
+                },
+                "targets": [
+                    "l-ear-lobe-decr", "l-ear-lobe-incr",
+                    "r-ear-lobe-decr", "r-ear-lobe-incr",
+                ],
+            },
+        ],
+    },
+    "measure": {
+        "include_per_default": False,
+        "label": "measure",
+        "unsorted": [],
+        "categories": [],
+    },
+}
+
+# Over 60 characters once the extension is stripped, and built from words in
+# MPFB's encoding table, so its shape key name provably differs from its
+# filename. FR 006's live pass showed that addressing it by filename fails
+# silently, which is why it is in this fixture too.
+LONG_USER_TARGET = (
+    "young-female-average-caucasian-uncommon-proportions-weight-height-experiment")
+
+
+def touch(path, content="dummy target data"):
+    """Create a real file, and the directories above it."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(content)
+    return path
+
+
+class DetailTargetTestCase(GeneratedCodeTestCase):
+    """A real target tree plus a dressed, rigged character.
+
+    Shared by the three detail-target payloads because they need the same two
+    things and for the same reason. The tree is a real ``tempfile`` one rather
+    than a mocked filesystem: path resolution and on-demand loading are most of
+    what these payloads do, and mocking ``os.path.exists()`` away would leave
+    the part that matters untested.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self._temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temporary.cleanup)
+        root = self._temporary.name
+
+        self.mpfb_data = os.path.join(root, "mpfb", "data")
+        self.system_targets = os.path.join(self.mpfb_data, "targets")
+        self.target_json_path = os.path.join(self.system_targets, "target.json")
+        os.makedirs(self.system_targets)
+        self.write_target_json(DETAIL_TARGET_JSON)
+
+        # Gzipped, as every bundled target on a real install is.
+        for name in ("l-lowerarm-scale-depth-decr", "l-lowerarm-scale-depth-incr",
+                     "r-lowerarm-scale-depth-decr", "r-lowerarm-scale-depth-incr",
+                     "upperarm-fat-decr"):
+            touch(os.path.join(self.system_targets, "arms", name + ".target.gz"))
+        # The one bundled target that is *not* gzipped, which is the case
+        # _set_opposed_modifier_value() would hand a non-existent path.
+        touch(os.path.join(self.system_targets, "arms", "upperarm-fat-incr.target"))
+        for name in ("nose-scale-depth-decr", "nose-scale-depth-incr"):
+            touch(os.path.join(self.system_targets, "nose", name + ".target.gz"))
+        touch(os.path.join(self.system_targets, "chin", "chin-triangle.target.gz"))
+        # Left only: the right-hand files of this category are deliberately absent.
+        for name in ("l-ear-lobe-decr", "l-ear-lobe-incr"):
+            touch(os.path.join(self.system_targets, "ears", name + ".target.gz"))
+
+        self.user_data = os.path.join(root, "user", "data")
+        self.user_targets = os.path.join(self.user_data, "targets")
+        self.user_custom = os.path.join(self.user_data, "custom")
+
+        # A user directory sharing its name with a bundled section: MPFB appends
+        # these into that section rather than making a second one.
+        touch(os.path.join(self.user_targets, "arms", "elvs_arm_bulk.target"))
+        # A section that exists only as a user directory.
+        touch(os.path.join(self.user_targets, "animal", "cat_ears.target"))
+        touch(os.path.join(self.user_targets, "animal", LONG_USER_TARGET + ".target"))
+        # Contains "basis", so MPFB's own get_target_stack() cannot see the
+        # shape key this produces - and neither can any MPFB read or write.
+        touch(os.path.join(self.user_targets, "animal", "basis-nose-widen.target"))
+        # The custom section proper. The gzipped one is where MPFB's category
+        # name ("vwide.gz") and the catalogue's shapekey_name ("vwide") diverge.
+        touch(os.path.join(self.user_custom, "closed_eyes.target"))
+        touch(os.path.join(self.user_custom, "vwide.target.gz"))
+
+        StubLocationService.mpfb_data = self.mpfb_data
+        StubLocationService.user_data = self.user_data
+        StubAssetService.asset_roots = {
+            "custom": [self.user_custom],
+            "targets/custom": [os.path.join(self.user_targets, "custom")],
+            "targets": [self.user_targets],
+        }
+
+    def write_target_json(self, data):
+        with open(self.target_json_path, "w", encoding="utf-8") as handle:
+            json.dump(data, handle)
+
+    def build_character(self, shapekeys=(("Basis", 0.0),), rig=True, **basemesh_kwargs):
+        """A dressed - and by default rigged - character to read or modify.
+
+        Parented the way MPFB parents one: a garment on a rigged character hangs
+        off the *rig* rather than off the basemesh, so the mesh assets are found
+        by walking up to the rig and back down its other branches.
+        """
+        self.rig = None
+        if rig:
+            self.rig = StubObject(
+                "Human.rig", blender_type="ARMATURE", object_type="Skeleton")
+        self.basemesh = StubObject(
+            "Human", parent=self.rig, object_type="Basemesh",
+            shapekeys=list(shapekeys) if shapekeys else None, **basemesh_kwargs)
+        self.shirt = StubObject(
+            "Shirt", parent=self.rig or self.basemesh, object_type="Clothes")
+        self.objects = [obj for obj in (self.rig, self.basemesh, self.shirt) if obj]
+        return self.objects
+
+    def shapekey_values(self):
+        """Every shape key on the basemesh, as a name -> value dict."""
+        keys = self.basemesh.data.shape_keys
+        if keys is None:
+            return dict()
+        return dict((str(block.name), block.value) for block in keys.key_blocks)

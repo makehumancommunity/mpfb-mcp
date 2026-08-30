@@ -335,3 +335,101 @@ module), a `reapply_macro_details()` that really adds and removes shape keys inc
 sub-0.0001 prune, and a `create_shape_key()` carrying MPFB's own OBJECT-mode assert. The one
 deliberate departure is the macro interpolation itself, which is a stand-in table rather than
 MPFB's corner cases: no payload depends on which targets come out, only on the shape of the answer.
+
+## [FR 008](done/008-detail-targets/README.md) — detail targets, and the batched mutating tool
+
+Three tools: `mpfb_get_target_stack` reads the modeling morphs on a character,
+`mpfb_set_targets` changes them in batches, and `mpfb_symmetrize_targets` repairs a stack that has
+drifted asymmetric. Before them mpfb-mcp could create a character, describe it, and list the
+thousand-odd morphs that could be applied to it — and apply none of them. Everything below the
+phenotype level, which is where a character stops being a mannequin, was unreachable.
+
+The shape of the setter is the interesting part, and it is dictated by what a modeling slider
+actually is. It is not "set shape key X to value Y": a slider corresponds to a `target.json`
+**category**, a modifier running from -1.0 to +1.0 built from a *pair* of opposing targets, where
+the sign selects which of the two is loaded and the other is driven to zero — and 66 of the 203
+bundled categories additionally have separate `l-` and `r-` variants, giving four target files
+behind one conceptual control. Shape keys cannot express that, because Blender clamps a shape key
+value to 0.0-1.0, so "flaring -0.4" has no representation except "flaring-decr at 0.4, flaring-incr
+at 0.0". A tool built the naive way would produce characters MPFB's own UI cannot represent. So the
+tools work at **two levels**: the category level, which is what an agent should normally use, and
+the raw shape-key level, which is the only way to reach a user-installed target and which takes the
+`shapekey_name` [FR 006](done/006-list-targets/README.md) exists to report. That pairing —
+which reported identifier feeds which level — is the whole contract between the catalogue and the
+setter, and it is now written down in both.
+
+Two conventions were folded into
+[architecture.md](../specifications/architecture.md#a-batched-mutating-tool-resolves-before-it-writes),
+both new.
+[A batched mutating tool resolves before it writes](../specifications/architecture.md#a-batched-mutating-tool-resolves-before-it-writes):
+a batch of thirty changes with one typo in it applies **zero** of them, because a half-applied batch
+leaves a character in a state neither the agent nor the user can describe and the response format
+cannot usefully say which half landed. Batching itself is not a preference — a socket round trip
+costs about a second while setting a target costs milliseconds — and the convention names
+[FR 010](010-mesh-assets/README.md) as the case where that argument does *not* carry over, since
+loading an MHCLO is seconds of real work.
+[When mpfb-mcp models a concept MPFB's UI has but its services do not](../specifications/architecture.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not):
+a modifier is not a `TargetService` idea at all, it lives in `target.json` and in a UI module, and
+when a tool lifts one out of the UI the mechanics are reproduced statement for statement rather than
+reinvented — `_set_opposed_modifier_value()` zeroes the opposing target *first*, and doing it the
+other way deletes the wrong half of a pair when pruning is on.
+
+Two existing conventions were amended.
+[Validate before crossing the socket](../specifications/architecture.md#validate-before-crossing-the-socket)
+gained the one exception to its "flat scalars, not a nested dict" clause: a batch is irreducibly a
+list, and what compensates for a shape no schema checks is per-entry validation in the tool module —
+including rejecting an unknown key, which is the commonest way a caller gets a dict-shaped argument
+wrong and is otherwise silent — plus a per-entry `resolution_errors` channel in the response.
+[A tool may report a fact MPFB's own UI does not show](../specifications/architecture.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)
+gained a third and sharper case: `TargetService.get_target_stack()` excludes any shape key whose
+name *contains* `"basis"`, not merely equals it, so a user target called `basis-nose-widen` is on
+the mesh, is deforming it, and is invisible to every read and write MPFB can perform.
+`mpfb_get_target_stack` reads `key_blocks` directly rather than inheriting the blind spot, and
+flags what it finds; every *write* still goes through `TargetService`, or the two halves of the same
+tool would disagree about what exists.
+
+The effort also changed `codegen/` for the first time since
+[FR 002](done/002-codegen-structure/README.md) — deliberately, and against the request's own
+recommendation. FR 008 was written expecting *two* payloads to need MPFB's category table and
+concluded that duplicating the scan was the safer first move. It is three, and three copies of a
+hundred-line scan of the user's target directories are three chances for two mpfb-mcp tools to
+disagree about what is installed, which is the very inconsistency the request rejects elsewhere. So
+`assemble()` grew an optional `shared=[...]`, the table lives in
+`codegen/shared/target_categories.py`, and
+[Shared fragments](../specifications/architecture.md#shared-fragments) records when one is
+warranted. FR 002's objective test still holds and was kept as the test of the design: adding an
+ordinary tool is still a tool module, a payload and a `register()` call, and a tool that wants a
+fragment names it in the `assemble()` call it was already making. `mpfb_list_targets` was
+deliberately not migrated onto it — it is live-verified and its scan has a different shape — and
+that migration is listed in [NEXT_STEPS.md](NEXT_STEPS.md).
+
+Reading MPFB's source closely turned up four things the request did not know. A **gzipped custom
+target is named two different ways**: MPFB's category name is a substring replace that does not
+strip `.gz`, so `vwide.target.gz` becomes `vwide.gz`, while the catalogue reports `vwide` — the two
+address different shape keys for the same file. The tools write MPFB's name at the category level,
+because the point of that level is that the value reads back on MPFB's own slider, and report the
+divergence; it is a candidate mpfb2 issue. Every bundled category **without** `opposites` is
+unsided and every sided one carries all four `l-`/`r-` entries, so `_set_simple_modifier_value()`'s
+`l-`/`r-` prefixing is dead code on stock data. `measure` is a real section with zero categories.
+And all 1258 bundled target files are `.target.gz`, which makes the two reference setters'
+disagreement about the file extension a genuinely latent crash rather than a rare one.
+
+Nine files added — three tool modules, three payloads, one shared fragment and three test modules —
+and eight shared ones touched. Unit tests grew from 278 to 419, over stubs extended with the write
+half of `TargetService`: a `set_target_value()` that is a silent no-op for an absent name, a
+`get_target_value()` that returns `0.0` for one, a `has_target()` that checks the encoded name while
+the writers do not, a `load_target()` that raises `IOError`, a `target_full_path()` with its
+prefix fallback, and a shape key value clamped to 0.0-1.0 on assignment — each reproducing the
+quirk a payload exists to work around, since a helpful stub would make the workaround look
+unnecessary. The packaging half of the codegen change *was* verified, since it needs no Blender: a
+real non-editable install ships all thirteen payloads and the fragment, which is the failure
+FR 002's own verification pass caught.
+
+**Live verification is outstanding, as it was for [FR 007](done/007-macro-details/README.md).** That
+is now two consecutive mutating efforts landing that way, and the debt is compound rather than
+isolated: the claim that cannot be established from this side of the socket — that a modifier set
+through the tool produces the same result MPFB's own slider does — is the same *kind* of claim
+FR 007 left open, and the session that would settle one would settle both. The checklist is under
+["Verification status" in the request](done/008-detail-targets/README.md#verification-status), and
+[NEXT_STEPS.md](NEXT_STEPS.md) now names that session as the largest piece of unfinished business
+in the file.

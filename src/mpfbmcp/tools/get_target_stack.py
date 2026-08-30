@@ -1,0 +1,168 @@
+"""
+The ``mpfb_get_target_stack`` tool: what is actually shaping this character.
+
+The read half of the detail-target pair completed by ``mpfb_set_targets``, and
+the counterpart of ``mpfb_get_macro_details`` one level down: that one reads the
+eleven phenotype numbers, this one reads the individual morphs stacked on top of
+them.
+
+The answer carries two views of the same facts, because the two levels are
+addressed differently. ``targets`` is one entry per shape key, addressed by
+``shapekey_name`` - the level at which a user-installed target is reachable and
+the level ``mpfb_set_targets``' ``targets`` list takes. ``modifiers`` rolls those
+up into the ``target.json`` categories MPFB's own sliders manipulate, which is
+what ``mpfb_set_targets``' ``modifiers`` list takes and what the user sees in the
+modeling panel.
+
+Nothing here validates a section or category name, and this tool takes none: the
+vocabulary is partly synthesized from the user's own target directories and is
+answered from inside Blender.
+"""
+
+from __future__ import annotations
+
+__all__ = (
+    "register",
+)
+
+from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
+from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
+
+from mpfbmcp import codegen
+from mpfbmcp.connection import send_code
+
+# A dressed, heavily modeled character can carry several hundred shape keys, and
+# the macro stack alone is typically a dozen. The ceiling is here so that an
+# unbounded call is capped rather than answered with the whole stack.
+MAX_LIMIT = 1000
+
+
+def _validated_text(value: object, argument: str, hint: str) -> str | None:
+    """Reject locally what would otherwise round-trip to Blender to fail there."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError(
+            "{} must be a string or omitted, got {!r}".format(argument, value))
+    if not value.strip():
+        # An explicitly empty value and an omitted one arise from different
+        # mistakes, so the empty one is never quietly treated as the omission.
+        raise ValueError("{} must not be empty or whitespace; {}".format(argument, hint))
+    return value
+
+
+def _validated_count(value: object, argument: str, maximum: int | None) -> int:
+    """Reject a non-int, a bool, a negative, and a limit above the ceiling."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        # bool is a subclass of int, so `limit=True` would otherwise page one
+        # entry at a time rather than fail.
+        raise ValueError("{} must be an int, got {!r}".format(argument, value))
+    if value < 0:
+        raise ValueError("{} must not be negative, got {!r}".format(argument, value))
+    if maximum is not None and value > maximum:
+        raise ValueError(
+            "{} must be at most {}, got {!r}".format(argument, maximum, value))
+    return value
+
+
+def _validated_flag(argument: str, value: object) -> bool:
+    if not isinstance(value, bool):
+        # Deliberately not truthiness: "false" and 0 are how a caller signals a
+        # bool it did not manage to build, and accepting them quietly would make
+        # `include_macro="false"` return the macro stack anyway.
+        raise ValueError("{} must be a bool, got {!r}".format(argument, value))
+    return value
+
+
+def register(mcp: FastMCP) -> None:
+    @mcp.tool(
+        annotations=ToolAnnotations(
+            title="Get Target Stack",
+            # Reads shape keys off the mesh. Nothing is loaded, activated,
+            # selected or recalculated.
+            readOnlyHint=True,
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=False,
+        )
+    )
+    def mpfb_get_target_stack(name: str | None = None,
+                              include_macro: bool = False,
+                              include_expressions: bool = False,
+                              name_contains: str | None = None,
+                              limit: int = 200,
+                              offset: int = 0) -> dict[str, object]:
+        """
+        Read the modeling targets currently applied to a MakeHuman character -
+        every shape key on its basemesh, and the modeling sliders they add up to.
+
+        `name` is any object in the character's family - the basemesh, its rig,
+        or a garment fitted to it. Omit it to use the active object.
+        `basemesh_name` names the object the stack was actually read from.
+
+        **The answer has two views of the same facts, and they are addressed
+        differently.**
+
+        - `targets` - one entry per shape key: `shapekey_name` (the raw Blender
+          name, and the address `mpfb_set_targets`' `targets` list takes),
+          `decoded_name` (readable; a name over 60 characters is stored encoded,
+          and only the raw one works as an address), `value`, `kind`
+          (`macro`/`expression`/`detail`/`unknown`), and where the target sits in
+          MPFB's own index: `section`, `category`, `side`, `polarity`,
+          `listed_in_target_json`. Those are `null` for a user target that
+          belongs to no category.
+        - `modifiers` - the same information rolled up per `target.json`
+          category, each `{section, category, side, value}` with `value` in
+          -1.0..+1.0. This is the view MPFB's own sliders show, and the view that
+          feeds straight back into `mpfb_set_targets`' `modifiers` list. Only
+          categories with a non-zero reading appear. It is never paged and never
+          filtered by `name_contains`.
+
+        `asymmetries` lists the left/right categories whose two sides differ -
+        which MPFB's own UI does not surface anywhere - and is what makes
+        `mpfb_symmetrize_targets` an informed operation rather than a blind one.
+
+        `include_macro` (default false) adds the `$md-` phenotype shape keys;
+        they are `mpfb_get_macro_details`' subject and there are typically a
+        dozen of them. `include_expressions` (default false) adds the `!ex-`
+        expression shape keys. `counts_by_kind` reports both counts whether or
+        not they were included.
+
+        **The answer is capped.** `limit` defaults to 200 and cannot exceed
+        1000. Read `truncated` and `total_count` before concluding a target is
+        not on this character, and narrow with `name_contains` rather than
+        paging blindly; `counts_by_section` says where the entries are.
+
+        **This tool sees one thing MPFB itself cannot.** MPFB excludes any shape
+        key whose name *contains* "basis", not merely equals it, so a user target
+        called `basis-nose-widen` is real, is deforming the mesh, and is
+        invisible to every MPFB read and write. It is listed here with
+        `visible_to_targetservice: false`, and it cannot be changed through
+        `mpfb_set_targets` either.
+
+        Returns blender_mcp's response envelope. A subject that cannot be
+        resolved to a basemesh is an answer, `found: false` with a sentence, not
+        an error. Changes nothing: in particular a character whose macro numbers
+        and macro shape keys have drifted apart is reported as it is, not
+        repaired.
+        """
+        code = codegen.assemble(
+            "get_target_stack.py",
+            bootstrap="raising",
+            shared=["target_categories.py"],
+            params={
+                "name": _validated_text(
+                    name, "name", "omit it to use the active object"),
+                "include_macro": _validated_flag("include_macro", include_macro),
+                "include_expressions": _validated_flag(
+                    "include_expressions", include_expressions),
+                "name_contains": _validated_text(
+                    name_contains, "name_contains", "omit it to match every shape key"),
+                "limit": _validated_count(limit, "limit", MAX_LIMIT),
+                "offset": _validated_count(offset, "offset", None),
+            },
+        )
+        # `result` (built in codegen/payloads/get_target_stack.py) is plain
+        # JSON-safe data - shape key values are coerced to float there - so
+        # strict_json=True surfaces a clear error if that ever stops being true.
+        return send_code(code, strict_json=True)

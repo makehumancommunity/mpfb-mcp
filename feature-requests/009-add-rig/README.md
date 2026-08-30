@@ -171,8 +171,14 @@ with clothing, which are [FR 010](../010-mesh-assets/README.md)'s `import_subrig
   not an exception. A built-in rig is `<mpfb data>/rigs/{standard,rigify}/rig.<bare name>.json`; a
   custom one is a `name` in `AssetService.get_custom_rigs()`. Both are the checks
   [`payloads/list_rigs.py`](../../src/mpfbmcp/codegen/payloads/list_rigs.py) already performs, and the
-  two payloads must not drift — if the duplication is more than a few lines, say so in both
-  docstrings, as [FR 008](../008-detail-targets/README.md) requires for its own duplicated scan.
+  two payloads must not drift. [FR 008](../done/008-detail-targets/README.md) faced the same problem
+  at a larger scale and answered it by *factoring* rather than duplicating: `codegen.assemble()` now
+  takes an optional `shared=[...]` naming fragment files concatenated ahead of the payload, and the
+  convention is recorded under
+  [Shared fragments](../../specifications/architecture.md#shared-fragments). Duplicating a few lines
+  and saying so in both docstrings is still the right answer for a small overlap; a rig-existence
+  check shared by two payloads is a judgement call to make when the code is in front of you. What is
+  no longer acceptable is silent duplication.
 - **`operator=None` changes the failure mode, and that is the whole reason for pre-checking.** Both
   adding functions take an optional operator and report through it when they have one; with `None`
   they raise instead — except in one place, where `add_builtin_rig()` reports a missing *weights*
@@ -209,7 +215,7 @@ with clothing, which are [FR 010](../010-mesh-assets/README.md)'s `import_subrig
   "Creation and modification" exists and should be marked **Implemented** and described.
   `mpfb_generate_rigify_rig` is a **new entry**. The `mpfb_list_rigs` entry should gain a line saying
   that its `identifier` and `add_function` are consumed here, the same pairing
-  [FR 008](../008-detail-targets/README.md) draws between `mpfb_list_targets` and its setter.
+  [FR 008](../done/008-detail-targets/README.md) draws between `mpfb_list_targets` and its setter.
 - [architecture.md](../../specifications/architecture.md) — conventions to follow, and one candidate
   addition.
   - **To follow:**

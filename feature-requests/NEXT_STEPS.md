@@ -10,30 +10,31 @@ records what has already landed and why. When an effort below is finished, move 
 
 ## Modeling
 
-Most of the things in this section is done via TargetService. Macrodetails and phenotype have
-landed as [FR 007](done/007-macro-details/README.md), which also settled the `mpfb_create_human`
-parameter-shape question and left a live verification outstanding; see its entry in
-[HISTORY.md](HISTORY.md). What remains here is detail targets.
+Most of the things in this section is done via TargetService. Macrodetails and phenotype landed as
+[FR 007](done/007-macro-details/README.md) and detail targets as
+[FR 008](done/008-detail-targets/README.md); see their entries in [HISTORY.md](HISTORY.md).
+**Both landed without live verification**, and the outstanding checks overlap heavily — they need
+the same dressed, rigged character and both compare against MPFB's own panel — so they are one
+session's work rather than two. That session is the largest single piece of unfinished business in
+this file.
 
-### Detail targets — [FR 008](008-detail-targets/README.md)
+What remains unscoped in this area:
 
-There is currently no tool at all for working with detail targets. Things such as the following
-are needed:
-
-- Inspecting the target stack (optionally filtering out macro details)
-- Applying a single target
-- Modifying the value of a single target
-- Ensuring left-right symmetry
-- Batch loading targets
-
-Scoped as [FR 008](008-detail-targets/README.md): `mpfb_get_target_stack`, `mpfb_set_targets` and
-`mpfb_symmetrize_targets`. Three decisions taken there are worth knowing about from here. Applying
-a target and changing its value are the *same* operation in MPFB and are one tool argument, not two.
-Targets are addressable at two levels — the `target.json` category level, a modifier in -1..+1 built
-from a pair of opposing targets with optional left/right sides, which is what MPFB's own sliders
-manipulate; and the raw shape-key level, which is the only way to reach a user-installed target.
-And batching is not a separate "batch load" tool but the shape of the mutating tool itself, since a
-socket round trip costs about a second and the work inside it costs milliseconds.
+- **Expressions and visemes**, the `!ex-` prefixed shape keys.
+  [`mpfb_get_target_stack`](done/008-detail-targets/README.md) already reports them behind
+  `include_expressions` and deliberately sets none of them: they are neither macro nor modeling
+  targets, they are addressed through `TargetService.expression_name_to_shapekey_name()` rather than
+  through any category, and MPFB drives them from its own pose/expression UI. A request of their own.
+- **Randomization.** `RandomizationService` already implements this inside MPFB, including a second,
+  more compact reading of the same `opposites`/side mechanics FR 008 reimplemented
+  (`_detail_targets_for_category()`). A tool here should wrap that service rather than rebuild it.
+- **Migrating `mpfb_list_targets` onto the shared category-table fragment.** FR 008 added
+  `codegen/shared/target_categories.py` and deliberately left
+  [`payloads/list_targets.py`](../src/mpfbmcp/codegen/payloads/list_targets.py) alone: it is
+  live-verified, and its scan has a genuinely different shape — a flat user-target listing carrying
+  `listed_in_mpfb_ui`, with no synthesized categories at all. The two now walk the same directories
+  by different routes, which is a drift risk rather than a bug. Worth doing when something else
+  needs to touch that payload anyway, and worth doing *with* a live re-verification.
 
 ## Loading / applying assets
 
@@ -64,8 +65,8 @@ this in comments. None of the tools can enforce it, so each reports when it can 
 violating it — a convention [FR 009](009-add-rig/README.md) proposes recording in
 [architecture.md](../specifications/architecture.md).
 
-**Adding is one asset per call**, not batched like [FR 008](008-detail-targets/README.md)'s target
-setting: loading an MHCLO is seconds of mesh import and vertex fitting, so the ~1 s socket round trip
+**Adding is one asset per call**, not batched like
+[FR 008](done/008-detail-targets/README.md)'s target setting: loading an MHCLO is seconds of mesh import and vertex fitting, so the ~1 s socket round trip
 does not dominate and the argument that made batching mandatory there does not carry over.
 
 ### Still unscoped in this area

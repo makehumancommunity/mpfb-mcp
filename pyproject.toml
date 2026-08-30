@@ -20,14 +20,19 @@ mpfb-mcp = "mpfbmcp:main"
 where = ["src"]
 # Without this, discovery defaults to including directories that have no
 # __init__.py as namespace packages - which would pick up codegen/payloads/ and
-# ship the payload files as modules of this package. They are data, not modules
-# (see below), so discovery is told to consider only real packages.
+# codegen/shared/ and ship their files as modules of this package. They are
+# data, not modules (see below), so discovery is told to consider only real
+# packages.
 namespaces = false
 
-# codegen/payloads/ holds generated-code payload files: ordinary .py files that
-# are read and sent to Blender, never imported here (they reference bpy and
-# MPFB's services). Having no __init__.py keeps them out of package discovery,
-# so this is what actually ships them. Without it, an editable install keeps
-# working while a real install ships a package with no payloads in it.
+# codegen/payloads/ and codegen/shared/ hold generated-code files: ordinary .py
+# files that are read and sent to Blender, never imported here (they reference
+# bpy and MPFB's services). Having no __init__.py keeps them out of package
+# discovery, so this is what actually ships them. Without it, an editable
+# install keeps working while a real install ships a package with no payloads
+# in it. One glob per directory, and both of them shallow: a package-data glob
+# does not descend, so "payloads/*.py" would silently ship nothing from a
+# subdirectory of payloads/ - which is why shared fragments live in a sibling
+# directory rather than under payloads/.
 [tool.setuptools.package-data]
-"mpfbmcp.codegen" = ["payloads/*.py"]
+"mpfbmcp.codegen" = ["payloads/*.py", "shared/*.py"]

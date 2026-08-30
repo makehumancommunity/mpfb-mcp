@@ -113,16 +113,35 @@ tool should get its own feature request when scoped.
   **Implemented.** Answers from two sources that are different in kind: the bundled targets are
   indexed by a ~140 KB `target.json` that is far too large to return, so its *path* is reported and
   its sections are browsable one at a time; the user data directories have no index and are scanned
-  per call. Each user target carries the `shapekey_name` a later `mpfb_set_target_value` must be
-  given — derived by MPFB from the filename, and **not** equal to it once a name passes 60
-  characters, where a caller using the filename addresses nothing at all. Capped and paged (see
+  per call. Each user target carries the `shapekey_name` `mpfb_set_targets` must be given —
+  derived by MPFB from the filename, and **not** equal to it once a name passes 60 characters,
+  where a caller using the filename addresses nothing at all. Capped and paged (see
   [How tools bound a large answer](architecture.md#how-tools-bound-a-large-answer)). Reports what
   the index leaves out (`unindexed_system_target_dirs`), which directories were scanned, and two
   facts MPFB's own UI does not show: a target installed since Blender started, and a `*.target.gz`
   in a user targets directory, which MPFB's scan there does not match (`listed_in_mpfb_ui`). A
   section can be `"system"`, `"user"` or `"both"` — MPFB merges a user directory into a bundled
   section of the same name rather than keeping the two apart. Macro details and phenotype are not
-  here: those are basemesh attributes rather than target files.
+  here: those are basemesh attributes rather than target files. **Each identifier it reports feeds
+  a different level of `mpfb_set_targets`**: a section name plus a category name out of
+  `target.json` is a `modifiers` entry, and a user target's `shapekey_name` is a `targets` entry.
+  That pairing is the whole contract between the catalogue and the setter.
+
+- `mpfb_get_target_stack` — which modeling targets are on this character, and what sliders do
+  they add up to? **Implemented.** Reads the shape keys off a character named by *any* object in
+  its family, and answers in the two shapes the two levels are addressed by: `targets`, one entry
+  per shape key with its raw `shapekey_name`, its readable `decoded_name`, its `kind` and where it
+  sits in `target.json`; and `modifiers`, the same information rolled up per category with a value
+  in -1.0..+1.0, computed as `_get_opposed_modifier_value()` computes it, which is both what MPFB's
+  panel shows and what `mpfb_set_targets` takes back. Also reports `asymmetries`, the left/right
+  categories whose two sides differ — a fact MPFB's own UI surfaces nowhere, and what makes
+  `mpfb_symmetrize_targets` an informed operation. Macro and expression shape keys are excluded by
+  default but always counted. Capped and paged (see
+  [How tools bound a large answer](architecture.md#how-tools-bound-a-large-answer)). Reads
+  `key_blocks` directly rather than through `TargetService`, so it can see a shape key whose name
+  contains "basis" — which MPFB itself can neither read nor change (see
+  [A tool may report a fact MPFB's own UI does not show](architecture.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)).
+  Changes nothing, and in particular does not repair a stack it reports as drifted.
 
 **Creation and modification**
 
@@ -158,9 +177,32 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   basemesh, which it raises on, and a generated Rigify rig with no meta rig left in the scene,
   which it reports only through an `operator` an MCP tool cannot give it — refitting the mesh
   assets and silently leaving the rig.
-- `mpfb_set_target_value` — arbitrary named target. Takes its name from `mpfb_list_targets`:
-  the `shapekey_name` of a user target, or a name out of a `target.json` category's `targets`
-  or `opposites`. Not a filename — the two differ for a long name.
+- `mpfb_set_targets` — change a character's detail targets. **Implemented**, and it supersedes the
+  single-target `mpfb_set_target_value` this catalog used to list: what a modeling slider actually
+  manipulates is a `target.json` **category** — a modifier from -1.0 to +1.0 built from a pair of
+  opposing targets, with left and right variants on about a third of them — and a tool that set one
+  shape key at a time would produce characters MPFB's own UI cannot represent. So it works at both
+  levels: `modifiers` for the category level, which is what keeps a character consistent, and
+  `targets` for the raw shape-key level, which is the only way to reach a user-installed target and
+  which takes the `shapekey_name` `mpfb_list_targets` reports (not the filename — the two differ
+  for a long name, silently). **Batched**, because a round trip costs about a second and the work
+  inside costs milliseconds, and **all-or-nothing**: everything is resolved before anything is
+  written, and one bad entry applies none of them (see
+  [A batched mutating tool resolves before it writes](architecture.md#a-batched-mutating-tool-resolves-before-it-writes)).
+  Follows `_set_opposed_modifier_value()` statement for statement, including its ordering, so the
+  value reads back on MPFB's own slider (see
+  [When mpfb-mcp models a concept MPFB's UI has but its services do not](architecture.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not)).
+  `symmetry`, `prune` and `refit` inherit MPFB's own defaults, and the response reports what is now
+  stale the same way `mpfb_set_macro_details` does.
+- `mpfb_symmetrize_targets` — make an already-asymmetric detail stack symmetric, in a named
+  direction. **Implemented**, and a deliberate *addition* rather than a wrapper: MPFB's `symmetry`
+  setting only mirrors changes made while it is on and explicitly leaves previously set values
+  alone, so a character that has drifted has no repair path in MPFB's UI. `direction` is required,
+  because which half of a face is the good one is not something a tool can guess, and `dry_run`
+  reports exactly what a real run would do without writing. Walks the categories rather than the
+  shape key names, so the left/right pairing comes from `target.json`'s `opposites` table and never
+  from an `l-`/`r-` prefix match. A category whose target file cannot be found is skipped and
+  reported rather than abandoning the rest of the body.
 - `mpfb_add_asset` — clothes/proxy via `add_mhclo_asset()`. Takes its `path` (or a `fragment`
   to resolve) and its `asset_type` from `mpfb_list_assets`.
 - `mpfb_set_skin` — via `set_character_skin()`. Takes its `path` from `mpfb_list_assets`'

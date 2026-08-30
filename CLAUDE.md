@@ -24,7 +24,7 @@ efforts; `HISTORY.md` is the log of what has landed.
 
 ## Project status
 
-Proof of concept. Ten tools are implemented: `mpfb_create_human`, wrapping MPFB's
+Proof of concept. Thirteen tools are implemented: `mpfb_create_human`, wrapping MPFB's
 `HumanService.create_human()`; `mpfb_get_status`, reporting whether MPFB is present, initialized
 and how it is configured; the object-finding pair `mpfb_list_objects` and
 `mpfb_get_object_info`, which is how every later tool is meant to name the object it acts on; and
@@ -35,9 +35,15 @@ capped and paged, a convention `mpfb_list_targets` inherits. Finally, three tool
 character that already exists — `mpfb_get_macro_details`, `mpfb_set_macro_details` and
 `mpfb_refit_human` — which is where the conventions for *mutation* come from: a subject resolved
 from any object in the character's family, a response reporting the prior state and the
-consequences, and a not-ready world answered with a sentence rather than an exception. **The
-mutating pair is the one part of the code that has never been run against a real Blender** (see
-[FR 007's verification status](feature-requests/done/007-macro-details/README.md#verification-status)).
+consequences, and a not-ready world answered with a sentence rather than an exception. And below
+the phenotype level, three more that reach the individual morphs: `mpfb_get_target_stack`,
+`mpfb_set_targets` and `mpfb_symmetrize_targets`. Those are where two further conventions come
+from — a *batched* mutating tool that resolves every entry before writing any of them, and what to
+do when mpfb-mcp has to model a concept (a modeling *modifier*) that lives in MPFB's UI rather than
+in any of its services. **The six character-modifying tools are the part of the code that has never
+been run against a real Blender** (see
+[FR 007's](feature-requests/done/007-macro-details/README.md#verification-status) and
+[FR 008's verification status](feature-requests/done/008-detail-targets/README.md#verification-status)).
 See [specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's planned
 beyond them, and [feature-requests/](feature-requests/) for work in progress.
 
@@ -132,6 +138,21 @@ mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP
     payload's docstring names the assembler-bound names it relies on, since a linter flags those
     as undefined. See
     [specifications/architecture.md](specifications/architecture.md#code-generation-layout).
+  - **[codegen/shared/](src/mpfbmcp/codegen/shared)** — the same kind of file, but for a concept
+    two or more payloads model identically, named by the tool module in
+    `assemble(..., shared=["target_categories.py"])` and concatenated between the prelude and the
+    payload with its own labelled seam. There is exactly one so far:
+    `target_categories.py` rebuilds MPFB's `target.json` category table plus the sections it
+    synthesizes from the user's own target directories, which `mpfb_get_target_stack`,
+    `mpfb_set_targets` and `mpfb_symmetrize_targets` all need in the same shape and none of them can
+    import (`mpfb/ui/model/_modelsubpanels.py` builds it at *module import time*, so it is a
+    snapshot from when Blender started). It exists because three copies of that scan would be three
+    chances for two mpfb-mcp tools to disagree about what is installed, not because it is long.
+    Note the packaging detail: a package-data glob does not descend, so this is a *sibling* of
+    `payloads/` with a glob of its own rather than a subdirectory of it. FR 002's rule is
+    unchanged — adding an ordinary tool still touches only a tool module, a payload and a
+    `register()` call. See
+    [specifications/architecture.md](specifications/architecture.md#shared-fragments).
 - **[tools/](src/mpfbmcp/tools)** — one module per MCP tool, each with a `register(mcp)` function,
   following blender_mcp's own tool-module convention. `tools/create_human.py` validates inputs
   (0.0-1.0 macro sliders) *before* generating/sending code, so bad input fails locally rather than
@@ -184,10 +205,34 @@ mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP
   generated Rigify rig with no meta rig, which `HumanService.refit()` reports only through an
   `operator` an MCP tool has none of — it refits the mesh assets, silently skips the rig, and
   returns, so all three tools would otherwise claim a refit that half happened.
+  `tools/get_target_stack.py`, `tools/set_targets.py` and `tools/symmetrize_targets.py` go one
+  level below the phenotype, and all three share the `target_categories.py` fragment because a
+  modeling *modifier* is not a `TargetService` concept at all. `set_targets.py` is the odd one out
+  in this package's argument conventions and knows it: it takes **lists of dicts**, which
+  [Validate before crossing the socket](specifications/architecture.md#validate-before-crossing-the-socket)
+  otherwise rules out, because batching is not optional here — a round trip costs ~1 s and setting
+  a target costs milliseconds. What pays for that is per-entry validation in the tool module,
+  including rejecting an *unknown key* (a misspelled `catagory` is silent otherwise) and naming the
+  failing entry by position, plus the payload's `resolution_errors` channel for the half that can
+  only be answered inside Blender. Note the two different value ranges it enforces: -1.0..+1.0 for
+  a `modifiers` entry, since a category *may* be a pair of opposites, and 0.0..1.0 for a `targets`
+  entry, because that is a raw shape key value and Blender clamps one to that range. Which of the
+  two ranges actually applies to a given category is only knowable inside Blender and comes back as
+  a resolution error. `symmetrize_targets.py` is the only tool here with a **required** argument:
+  `direction` has no default because which half of a face is the good one is not something a tool
+  can guess, and guessing wrong destroys work with no undo across the socket — which is also why it
+  has `dry_run`. Four things live in those payloads that could not live here: MPFB's write ordering
+  (zero the opposing target first, or pruning deletes the wrong half of a pair); the resolve-then-
+  apply split that makes a batch all-or-nothing; the fact that `set_target_value()` is a silent
+  no-op for a target that is not on the mesh while `has_target()` matches an encoded name the
+  writers do not, so each write first resolves *which* name a target is stored under; and the
+  decision to read `key_blocks` directly in the read tool, since `TargetService` cannot see a shape
+  key whose name contains "basis".
 - **[__init__.py](src/mpfbmcp/__init__.py)** — `main()`: builds the `FastMCP` server, calls each
   tool module's `register()`, runs over stdio. Together with a tool module and a payload file,
   this `register()` call is the *whole* of what adding a tool touches — no shared
-  code-generation module is edited.
+  code-generation module is edited (a tool that wants a shared fragment names it in the
+  `assemble()` call it was already making, which is not an edit to `codegen/` either).
 
 Tools return blender_mcp's response envelope as-is (`{"status": "ok"/"error", "result": ...}` or
 `{"status": "error", "message": ...}`), the same convention blender_mcp's own tools use — callers
@@ -276,13 +321,34 @@ this side of the socket:
   on a rigged character, which is what makes the relationship walk do real work. Note also that
   these tests can say nothing at all about the thing the tools exist for — that a character
   modified here matches one modified through MPFB's own phenotype panel.
+- [tests/test_get_target_stack.py](tests/test_get_target_stack.py),
+  [tests/test_set_targets.py](tests/test_set_targets.py) and
+  [tests/test_symmetrize_targets.py](tests/test_symmetrize_targets.py) — the same two layers, over
+  a shared `DetailTargetTestCase` in `blender_stubs.py` that combines both earlier approaches: a
+  real `tempfile` target tree *and* a stub character, because these payloads both walk the disk and
+  write shape keys. The tree carries the four category shapes that matter (unsided with
+  `opposites`, sided with all four `l-`/`r-` entries, no `opposites` at all, and a synthesized user
+  category with a `full_path`) plus one bundled target that ships uncompressed, a sided category
+  whose right-hand files are missing, an over-60-character user target, a target whose name
+  contains "basis", and a gzipped custom target. Each of those is a branch, and the last two are
+  divergences rather than mere edge cases. `StubTargetService` grew the write half, and every part
+  of it reproduces a quirk rather than a convenience: `set_target_value()` is a **silent no-op**
+  for an absent name (a raising stub would make the `has_target`-then-`load_target` logic look
+  unnecessary), `get_target_value()` returns `0.0` for one, `has_target()` checks the encoded name
+  while the writers do not, `load_target()` raises `IOError` for a missing path so the
+  `.target.gz`/`.target` fallback is genuinely exercised, and `target_full_path()` carries its
+  prefix fallback. `StubShapeKey.value` is now **clamped to 0.0-1.0 on assignment**, as Blender
+  clamps a real one — which is the whole reason the category level exists, and which makes a
+  payload that tried to store a negative modifier value fail in the suite rather than in Blender.
 
 Anything needing real MPFB is a manual integration check against a running Blender (see
 [Commands](#commands)), and feature requests are expected to say so explicitly. FR 001 through
-FR 006 each had that check run before being marked Done; **FR 007 did not**, so the three
-character-modifying tools are unverified against real MPFB and
-[its verification status](feature-requests/done/007-macro-details/README.md#verification-status)
-says exactly what is outstanding. Treat that as work owed rather than as a new precedent.
+FR 006 each had that check run before being marked Done; **FR 007 and FR 008 did not**, so all six
+character-modifying tools are unverified against real MPFB. Their verification-status sections
+([FR 007](feature-requests/done/007-macro-details/README.md#verification-status),
+[FR 008](feature-requests/done/008-detail-targets/README.md#verification-status)) say exactly what
+is outstanding, and the two checklists want the same dressed, rigged character — so they are one
+session's work rather than two. Treat that as work owed rather than as a new precedent.
 
 ### Code conventions in this repo
 
