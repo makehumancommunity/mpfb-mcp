@@ -267,3 +267,71 @@ asymmetry rather than infer it from the code. Everything was then removed: all t
 collections compare identical before and after, the active object was restored, and the `.blend` was
 never saved. No code changed as a result of the live pass. Details are under "Verification status"
 in [the request itself](done/006-list-targets/README.md#verification-status).
+
+## [FR 007](done/007-macro-details/README.md) — macro details, refit, and the first mutating tools
+
+Three tools: `mpfb_get_macro_details` reads a character's eleven phenotype sliders,
+`mpfb_set_macro_details` changes any subset of them and rebuilds the shape, and `mpfb_refit_human`
+puts the character's clothes and rig back in fit afterwards. Before them a character was frozen at
+creation: "make her a bit older" meant deleting it and building a new one, losing every asset, rig
+and detail target on it.
+
+**Live verification is outstanding, and this entry is flagged rather than finished in the way
+[FR 004](done/004-list-rigs/README.md) through [FR 006](done/006-list-targets/README.md) were.**
+Those each landed with a run against a real Blender behind them; this one was scoped without it.
+The gap matters here more than it would have for a read-only tool, because the request's first
+non-functional requirement — that a character modified through this tool ends up with the same
+shape keys at the same weights as one modified through MPFB's own phenotype panel — is exactly the
+claim that cannot be established from this side of the socket. The unit tests cover the branching
+around that call and nothing about the call's result. The checklist is under
+["Verification status" in the request](done/007-macro-details/README.md#verification-status).
+
+The interesting part is not reading or writing the properties, which is trivial, but that writing
+one does nothing: the visible shape is a stack of macro *targets* MPFB recomputes from all eleven
+values together. So the payload writes every named property and then calls
+`TargetService.reapply_macro_details()` **once** — MPFB's own interpolation, never a
+reimplementation of it, since the corner-case naming and the encoded `$md-` names are MPFB's
+business and would drift the moment MPFB changed them. Deliberately not `reapply_all_details()`,
+which also reloads the *detail* stack from disk through a prefix-matching path lookup that can
+silently load a different target.
+
+Three conventions were folded into
+[architecture.md](../specifications/architecture.md), all new and all about mutation rather than
+reading:
+[how a mutating tool takes its subject](../specifications/architecture.md#how-a-mutating-tool-takes-its-subject)
+— it accepts any object in the character's family and names the one it actually modified, because
+an agent that got a name out of `mpfb_list_objects` has no way to know which member owns a given
+property;
+[a mutating tool reports before and after](../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
+— the mutation-side counterpart of "an empty answer must never be ambiguous", covering the prior
+values, the shape keys pruning removed, and what is now fitted to the old shape; and
+[preconditions are answers](../specifications/architecture.md#preconditions-are-answers) — edit
+mode and a mesh with no shape keys are ordinary situations, and MPFB meets the first with a bare
+`assert` and the second with a log line saying it is "somewhat surprising".
+
+A fourth clause settles a question `NEXT_STEPS.md` had carried since the start: whether
+`mpfb_create_human` should take a macro-detail dict instead of eleven flat sliders. **It should
+not**, and the reasoning is general enough to sit under
+[Validate before crossing the socket](../specifications/architecture.md#validate-before-crossing-the-socket)
+rather than in the request: a flat scalar is what an MCP schema validates and a client fills in
+reliably, and only flat arguments can express "leave this one alone". Round-tripping is preserved
+on the output side, where both macro tools return MPFB's nested dict.
+
+Two premises of the request were corrected by reading MPFB's source while implementing. The refit
+default rests on `mpfb_refit_human` existing, and the case that tool exists for is a generated
+Rigify rig with no meta rig in the scene, which `HumanService.refit()` reports only through an
+`operator` an MCP tool cannot give it — but it does *not* "return having refitted nothing", as the
+request assumed: the mesh assets are refitted first and only the rig is skipped. So the tools
+detect the condition, still call `refit()`, and report `refit_performed: false` with a
+`refit_incomplete_reason` naming the rig, rather than refusing the call and leaving the garments
+stale as well. The other correction is smaller: MPFB stores the race weights as plain
+`asian`/`caucasian`/`african` properties, while the arguments keep `mpfb_create_human`'s
+`race_`-prefixed names, so the mapping is explicit in the tool module.
+
+Six files added and six shared ones touched. Unit tests grew from 208 to 278, over stubs extended
+with the macro half of `TargetService` — an unclamped property store (matching a real property
+whose definition carries a default but no min/max, which is why the range check lives in the tool
+module), a `reapply_macro_details()` that really adds and removes shape keys including the
+sub-0.0001 prune, and a `create_shape_key()` carrying MPFB's own OBJECT-mode assert. The one
+deliberate departure is the macro interpolation itself, which is a stand-in table rather than
+MPFB's corner cases: no payload depends on which targets come out, only on the shape of the answer.

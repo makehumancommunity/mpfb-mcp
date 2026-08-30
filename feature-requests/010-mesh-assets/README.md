@@ -46,7 +46,7 @@ the ~1.0 s round trip does not dominate the way it does for
 Arguments:
 
 - `name` (optional string) — a Blender object name, resolved to the character's basemesh as in
-  [FR 007](../007-macro-details/README.md). Omitted means the active object.
+  [FR 007](../done/007-macro-details/README.md). Omitted means the active object.
 - `path` (optional string) — the absolute `path` `mpfb_list_assets` reports.
 - `fragment` (optional string) — the `fragment` it reports instead, e.g. `"fedora/fedora.mhclo"`,
   resolved through `AssetService.find_asset_absolute_path(fragment, asset_subdir)`. Exactly one of
@@ -159,7 +159,7 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
 - **Destructive operations announce themselves**, as
   [FR 008](../008-detail-targets/README.md) requires: `mpfb_remove_asset` deletes objects, and
   `mpfb_add_asset` with `material_type: "NONE"` deletes materials.
-- **Preconditions are answers**, per [FR 007](../007-macro-details/README.md).
+- **Preconditions are answers**, per [FR 007](../done/007-macro-details/README.md).
 - **Restore what was borrowed.** `add_mhclo_asset()` calls `bpy.ops.object.shade_smooth()` and the
   fitting code changes the active object; the payload restores the previous active object and
   selection before returning.
@@ -246,8 +246,12 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
     [How tools report the asset behind an object](../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object),
     which this tool both consumes and produces — it is handed a `path`/`fragment` pair and records the
     fragment that a later `mpfb_get_object_info` reads back.
-  - **Plus [FR 007](../007-macro-details/README.md)'s three additions** and
-    [FR 009](../009-add-rig/README.md)'s ordering-constraint rule.
+  - **Plus the three conventions [FR 007](../done/007-macro-details/README.md) landed** —
+    [How a mutating tool takes its subject](../../specifications/architecture.md#how-a-mutating-tool-takes-its-subject),
+    [A mutating tool reports before and after](../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
+    and
+    [Preconditions are answers](../../specifications/architecture.md#preconditions-are-answers) —
+    and [FR 009](../009-add-rig/README.md)'s ordering-constraint rule.
   - **New — an acting tool accepts every identifier its catalogue reports.** `mpfb_list_assets` gives
     a `path` and a `fragment` for a reason: one is passable and one is portable. A tool that took only
     the path would make a stored character description unusable, and one that took only the fragment
@@ -312,8 +316,10 @@ Specifically:
   added.
 - Interaction with [FR 009](../009-add-rig/README.md): equip, then rig, and confirm `rigged_to: null`
   was telling the truth — the garment does not follow the armature.
-- Interaction with [FR 007](../007-macro-details/README.md): change a macro detail after equipping and
-  confirm `mpfb_refit_human` re-fits the garment.
+- Interaction with [FR 007](../done/007-macro-details/README.md): change a macro detail after equipping and
+  confirm `mpfb_refit_human` re-fits the garment. FR 007 landed without live verification of its
+  own, so this doubles as the first live evidence that its refit does anything at all — see
+  [its Verification status](../done/007-macro-details/README.md#verification-status).
 - Cost against [FR 005](../done/005-list-assets/README.md)'s ~1.0 s baseline: how long equipping a
   garment actually takes, split between mesh import and fitting. This is the number the
   one-asset-per-call decision rests on, and it should be recorded rather than assumed.

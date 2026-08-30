@@ -4,10 +4,12 @@
 Stand-ins for Blender and MPFB, for executing generated payloads locally.
 
 The payloads for ``mpfb_list_objects``, ``mpfb_get_object_info``,
-``mpfb_list_rigs``, ``mpfb_list_assets`` and ``mpfb_list_targets`` carry real
-branching - type filtering, relationship walking, three asset_info shapes, a
-weights fallback walk, filtering and paging over an asset library, a two-source
-target scan - so they are worth running,
+``mpfb_list_rigs``, ``mpfb_list_assets``, ``mpfb_list_targets``,
+``mpfb_get_macro_details``, ``mpfb_set_macro_details`` and ``mpfb_refit_human``
+carry real branching - type filtering, relationship walking, three asset_info
+shapes, a weights fallback walk, filtering and paging over an asset library, a
+two-source target scan, preconditions, a write-then-recalculate sequence - so
+they are worth running,
 and they can only be run against stubs: MPFB is reachable only from inside
 Blender (see specifications/architecture.md). This module is shared by those
 tools' test modules because they need the same stub scene and services; it holds
@@ -40,6 +42,27 @@ reason the payload is written the way it is:
   over 60 characters, so ``shapekey_name`` provably differs from the filename
   for a long target. Reproducing only the stripping would make the test pass
   while hiding the bug it exists to catch.
+- ``HumanObjectProperties.set_value()`` stores what it is given **unclamped**,
+  matching a real property whose definition carries a default but no min/max -
+  which is the reason ``mpfb_set_macro_details`` validates its range locally,
+  and a stub that clamped would hide it.
+- ``get_macro_info_dict_from_basemesh()`` reads back through that same property
+  store, so the write-then-read round trip is genuinely under test.
+- ``reapply_macro_details()`` follows MPFB's own sequence and really adds and
+  removes stub shape keys, including the sub-0.0001 prune, so the reported
+  before/after lists are asserted against something that changed.
+- ``create_shape_key()`` opens with MPFB's bare ``assert`` on OBJECT mode, which
+  is what the mutating payloads check the mode themselves to avoid.
+- ``refit()`` raises when handed an object with no basemesh, and otherwise says
+  nothing at all about the generated-Rigify-without-metarig case - the failure
+  the real one reports only through an ``operator``.
+- ``find_rigify_metarig_by_rig()`` is guarded as MPFB's is and follows the
+  metarig's own back-pointer rather than a shared id.
+
+The one place these deliberately depart from MPFB is
+``calculate_target_stack_from_macro_info_dict()``, which uses a stand-in table
+rather than MPFB's corner cases: no payload depends on which targets come out,
+only on the shape of the answer, and copying a data file in would prove nothing.
 
 What they cannot do is tell us anything about the values real MPFB returns;
 that remains a manual check against a running Blender.
@@ -47,11 +70,14 @@ that remains a manual check against a running Blender.
 
 __all__ = (
     "ASSET_LIBRARY_SECTIONS",
+    "MACRO_PROPERTY_DEFAULTS",
     "GeneratedCodeTestCase",
     "StubAssetService",
+    "StubHumanService",
     "StubLocationService",
     "StubMaterial",
     "StubObject",
+    "StubObjectService",
     "StubSystemService",
     "StubTargetService",
 )
@@ -78,6 +104,23 @@ _ALL_TYPES = ("Skeleton", "Subrig", "Basemesh", "Proxymeshes", "Clothes",
 _MESH_ASSET_TYPES = ("Proxymeshes", "Clothes", "Eyes", "Eyelashes", "Eyebrows",
                      "Tongue", "Teeth", "Hair")
 _SKELETON_TYPES = ("Skeleton", "Subrig")
+
+# The eleven macro properties and the defaults their JSON definitions declare.
+# Note what those definitions do *not* declare: a min or a max. The values are
+# stored unclamped, here as in MPFB.
+MACRO_PROPERTY_DEFAULTS = {
+    "gender": 0.5,
+    "age": 0.5,
+    "muscle": 0.5,
+    "weight": 0.5,
+    "proportions": 0.5,
+    "height": 0.5,
+    "cupsize": 0.5,
+    "firmness": 0.5,
+    "asian": 0.33,
+    "caucasian": 0.33,
+    "african": 0.33,
+}
 
 # MPFB's ASSET_LIBRARY_SECTIONS, trimmed to the rows the tests need but with its
 # real shape - a list of dicts carrying more keys than any payload reads, and
@@ -134,30 +177,127 @@ class StubMaterial:
         self.identified = identified
 
 
+class StubShapeKey:
+    """One entry in key_blocks: a name and the weight the payloads read."""
+
+    def __init__(self, name, value=0.0):
+        self.name = name
+        self.value = value
+
+
+class _StubKeyBlocks:
+    """key_blocks: iterable, and indexable by *name* as well as by position.
+
+    reapply_macro_details() zeroes a target with `key_blocks[encoded_name]`, so
+    a plain list here would fail on exactly the line that matters.
+    """
+
+    def __init__(self, blocks=()):
+        self._blocks = list(blocks)
+
+    def __iter__(self):
+        return iter(self._blocks)
+
+    def __len__(self):
+        return len(self._blocks)
+
+    def __contains__(self, key):
+        return any(block.name == key for block in self._blocks)
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._blocks[key]
+        for block in self._blocks:
+            if block.name == key:
+                return block
+        raise KeyError(key)
+
+    def append(self, block):
+        self._blocks.append(block)
+
+    def remove(self, block):
+        self._blocks.remove(block)
+
+
+class StubShapeKeys:
+    def __init__(self, blocks=()):
+        self.key_blocks = _StubKeyBlocks(blocks)
+
+
+class StubMesh:
+    """A mesh datablock. `shape_keys` is None until the first one is added."""
+
+    def __init__(self, shapekeys=None):
+        self.shape_keys = None
+        if shapekeys:
+            self.shape_keys = StubShapeKeys(
+                StubShapeKey(name, value) for name, value in shapekeys)
+
+
 class StubObject:
     """One Blender object: its name, type, parent and MPFB custom properties."""
 
     def __init__(self, name, blender_type="MESH", parent=None, object_type="",
                  asset_source="", alternative_material="", material_source="",
-                 material=None, rig_id=None, metarig=False, rig_type="unknown"):
+                 material=None, rig_id=None, metarig=False, rig_type="unknown",
+                 macro_details=None, is_human_project=False, shapekeys=None,
+                 mode="OBJECT", selected=False, rigify_target_rig=None):
         self.name = name
         self.type = blender_type
         self.parent = parent
         self.material = material
+        # Rigify's link from a metarig to the rig it generated, which is how
+        # MPFB finds one from the other - not a shared id.
+        self.rigify_target_rig = rigify_target_rig
+        # Settable, because the edit-mode precondition is a branch the mutating
+        # payloads exist to get right rather than a state to assume away.
+        self.mode = mode
+        self.data = StubMesh(shapekeys)
+        self._selected = selected
         # Rigify's own markers, which MPFB reads off the armature data rather
         # than through any property of its own.
         self.rig_id = rig_id
         self.metarig = metarig
         # What identify_rig() would deduce from this armature's bones.
         self.rig_type = rig_type
+        human_properties = {
+            "material_source": material_source,
+            "is_human_project": is_human_project,
+        }
+        # MPFB registers the macro properties on bpy.types.Object, so *every*
+        # object reads them back - at their defaults when nothing set them. A
+        # stub where only "macro objects" carry them would make the imported-
+        # mesh case look like a missing-property case, which it is not.
+        human_properties.update(MACRO_PROPERTY_DEFAULTS)
+        human_properties.update(macro_details or dict())
         self.properties = {
             "GEN": {
                 "object_type": object_type,
                 "asset_source": asset_source,
                 "alternative_material": alternative_material,
             },
-            "HUM": {"material_source": material_source},
+            "HUM": human_properties,
         }
+
+    def select_get(self):
+        return self._selected
+
+    def select_set(self, state):
+        self._selected = bool(state)
+
+    def shape_key_add(self, name="Key", from_mix=False):
+        if self.data.shape_keys is None:
+            self.data.shape_keys = StubShapeKeys()
+        block = StubShapeKey(name)
+        self.data.shape_keys.key_blocks.append(block)
+        return block
+
+    def shape_key_remove(self, block):
+        self.data.shape_keys.key_blocks.remove(block)
+        if not len(self.data.shape_keys.key_blocks):
+            # Blender drops the datablock with the last key, which is what makes
+            # `if basemesh.data.shape_keys` a real branch rather than always-true.
+            self.data.shape_keys = None
 
 
 class _StubConfigSet:
@@ -173,6 +313,15 @@ class _StubConfigSet:
             raise ValueError("Must provide a valid entity reference")
         return entity_reference.properties[self._bucket].get(name, default_value or "")
 
+    def set_value(self, name, value, entity_reference=None):
+        if entity_reference is None:
+            raise ValueError("Must provide a valid entity reference")
+        # Deliberately unclamped, matching the real property: the definitions
+        # under entities/objectproperties/humanproperties carry a default but no
+        # min/max. A stub that clamped here would hide the reason
+        # mpfb_set_macro_details validates its range locally.
+        entity_reference.properties[self._bucket][name] = value
+
 
 GeneralObjectProperties = _StubConfigSet("GEN")
 HumanObjectProperties = _StubConfigSet("HUM")
@@ -183,6 +332,12 @@ class StubObjectService:
 
     # Stands in for bpy.data.objects, which get_list_of_children() walks.
     all_objects = ()
+    # The stub bpy module of the run in progress, set by the test harness, so
+    # that activate_blender_object() can change the active object the way the
+    # real one does rather than only pretending to.
+    bpy = None
+    # Every object activate_blender_object() was called on, by name.
+    activations = []
 
     @staticmethod
     def get_object_type(blender_object):
@@ -218,28 +373,86 @@ class StubObjectService:
                 if candidate.parent is parent_object]
 
     @staticmethod
-    def find_related_objects(blender_object, **kwargs):
-        def rec_children(rec_parent, exclude=None):
-            for child in StubObjectService.get_list_of_children(rec_parent):
-                if child is exclude:
-                    continue
-                if StubObjectService.object_is(child, _ALL_TYPES):
-                    yield child
-                elif child.type == "ARMATURE":
-                    yield from rec_children(child)
+    def find_all_objects_of_type_amongst_nearest_relatives(
+            blender_object, mpfb_type_name="Basemesh", *,
+            only_parents=False, strict_parent=False, only_children=False):
+        # The walk every MPFB panel uses to get from whatever the user has
+        # selected to the object that owns what it wants: down through children
+        # (descending through armatures even when they do not match), then up
+        # through parents, taking each parent's other branches on the way.
+        if not blender_object or not mpfb_type_name:
+            return
 
-        if StubObjectService.object_is(blender_object, _ALL_TYPES):
+        def rec_children(rec_parent, exclude=None):
+            if only_parents:
+                return
+            for parents_child in StubObjectService.get_list_of_children(rec_parent):
+                if parents_child is exclude:
+                    continue
+                if StubObjectService.object_is(parents_child, mpfb_type_name):
+                    yield parents_child
+                elif parents_child.type == "ARMATURE":
+                    yield from rec_children(parents_child)
+
+        # Yields the object it was asked about, first, when it matches - which
+        # is why callers dedupe.
+        if StubObjectService.object_is(blender_object, mpfb_type_name):
             yield blender_object
         yield from rec_children(blender_object)
+
+        if only_children:
+            return
 
         came_from = blender_object
         parent = blender_object.parent
         while parent is not None:
-            if StubObjectService.object_is(parent, _ALL_TYPES):
+            if StubObjectService.object_is(parent, mpfb_type_name):
                 yield parent
             yield from rec_children(parent, came_from)
             came_from = parent
             parent = parent.parent
+
+    @staticmethod
+    def find_object_of_type_amongst_nearest_relatives(blender_object, mpfb_type_name="Basemesh",
+                                                      **kwargs):
+        # Really None when nothing matches, which is the branch that turns "this
+        # object is not part of a character" into an answer.
+        return next(
+            StubObjectService.find_all_objects_of_type_amongst_nearest_relatives(
+                blender_object, mpfb_type_name, **kwargs),
+            None)
+
+    @staticmethod
+    def find_related_mesh_assets(blender_object, **kwargs):
+        yield from StubObjectService.find_all_objects_of_type_amongst_nearest_relatives(
+            blender_object, _MESH_ASSET_TYPES, **kwargs)
+
+    @staticmethod
+    def find_related_objects(blender_object, **kwargs):
+        # A thin wrapper over the general walk, exactly as MPFB's is.
+        yield from StubObjectService.find_all_objects_of_type_amongst_nearest_relatives(
+            blender_object, _ALL_TYPES, **kwargs)
+
+    @staticmethod
+    def find_rigify_metarig_by_rig(blender_object):
+        # Guarded exactly as MPFB's is: asked about a rig that is not a
+        # generated Rigify rig, it answers None rather than searching. The link
+        # itself is the metarig's own "rigify_target_rig" pointing back at the
+        # rig, not a shared id.
+        if not StubObjectService.object_is_generated_rigify_rig(blender_object):
+            return None
+        for candidate in StubObjectService.all_objects:
+            if candidate.type == "ARMATURE" and candidate.rigify_target_rig is blender_object:
+                return candidate
+        return None
+
+    @staticmethod
+    def activate_blender_object(object_to_make_active, context=None, deselect_all=False):
+        # Selects *and* activates. The payloads restore both afterwards, so the
+        # stub has to actually do both or there would be nothing to restore.
+        StubObjectService.activations.append(object_to_make_active.name)
+        object_to_make_active.select_set(True)
+        StubObjectService.bpy.context.view_layer.objects.active = object_to_make_active
 
     @staticmethod
     def object_is_generated_rigify_rig(blender_object):
@@ -495,9 +708,16 @@ _SHAPEKEY_ENCODING = [
 
 
 class StubTargetService:
-    """Reproduces filename_to_shapekey_name(), encoding half included."""
+    """The name-encoding half of the real one, and the macro half.
+
+    The macro half stores nothing of its own: it reads through the same property
+    set the payloads write to, and it adds and removes real stub shape keys, so
+    the before/after lists the mutating tool reports are asserted against
+    something that actually changed.
+    """
 
     calls = []
+    reapply_calls = []
 
     @staticmethod
     def encode_shapekey_name(original_name):
@@ -524,9 +744,193 @@ class StubTargetService:
             name = StubTargetService.encode_shapekey_name(name)
         return name
 
+    @staticmethod
+    def decode_shapekey_name(encoded_name):
+        name = str(encoded_name)
+        for code in _SHAPEKEY_ENCODING:
+            name = name.replace(code[1], code[0])
+        return name
+
+    @staticmethod
+    def macrodetail_filename_to_shapekey_name(filename, encode_name=False):
+        # Note the signature: encode_name is positional-or-keyword here, while
+        # on filename_to_shapekey_name it is keyword-only. Reproducing that is
+        # what would catch a payload calling the wrong one of the two.
+        return StubTargetService.filename_to_shapekey_name(
+            filename, macrodetail=True, encode_name=encode_name)
+
+    @staticmethod
+    def has_any_shapekey(blender_object):
+        if not blender_object or blender_object.type != "MESH":
+            return False
+        if not blender_object.data.shape_keys:
+            return False
+        return len(blender_object.data.shape_keys.key_blocks) > 0
+
+    @staticmethod
+    def get_default_macro_info_dict():
+        # MPFB's own values, race weights summing to 0.99 and not to 1.0.
+        return {
+            "gender": 0.5,
+            "age": 0.5,
+            "muscle": 0.5,
+            "weight": 0.5,
+            "proportions": 0.5,
+            "height": 0.5,
+            "cupsize": 0.5,
+            "firmness": 0.5,
+            "race": {
+                "asian": 0.33,
+                "caucasian": 0.33,
+                "african": 0.33,
+            },
+        }
+
+    @staticmethod
+    def get_macro_info_dict_from_basemesh(basemesh):
+        # Reads through the same property set set_value() writes to, so the
+        # write-then-read round trip in mpfb_set_macro_details is genuinely
+        # under test rather than asserted against a value the stub kept aside.
+        def value(name):
+            return HumanObjectProperties.get_value(name, entity_reference=basemesh)
+
+        return {
+            "gender": value("gender"),
+            "age": value("age"),
+            "muscle": value("muscle"),
+            "weight": value("weight"),
+            "proportions": value("proportions"),
+            "height": value("height"),
+            "cupsize": value("cupsize"),
+            "firmness": value("firmness"),
+            "race": {
+                "asian": value("asian"),
+                "caucasian": value("caucasian"),
+                "african": value("african"),
+            },
+        }
+
+    @staticmethod
+    def _interpolate(value, low_name, high_name):
+        return [(low_name, round(1.0 - value, 4)), (high_name, round(value, 4))]
+
+    @staticmethod
+    def calculate_target_stack_from_macro_info_dict(macro_info, cutoff=0.01):
+        """A *stand-in* interpolation. Deliberately not MPFB's real table.
+
+        Reproducing MPFB's corner cases would mean copying a data file into the
+        test suite and would prove nothing extra: no payload depends on which
+        targets come out, only on the shape of what comes back - pairs of a file
+        fragment and a weight, several per macro property, some falling below
+        the cutoff and disappearing. That is what is reproduced here, including
+        the multiplication of race weight by the rest, which is why an
+        unnormalized race sum scales the whole stack.
+        """
+        if macro_info is None:
+            macro_info = StubTargetService.get_default_macro_info_dict()
+
+        stack = []
+        genders = StubTargetService._interpolate(macro_info["gender"], "female", "male")
+        ages = StubTargetService._interpolate(macro_info["age"], "young", "old")
+        for race_name in ("asian", "caucasian", "african"):
+            race_weight = macro_info["race"][race_name]
+            for gender_name, gender_weight in genders:
+                for age_name, age_weight in ages:
+                    weight = race_weight * gender_weight * age_weight
+                    if weight > cutoff:
+                        stack.append([
+                            "macrodetails/" + race_name + "-" + gender_name + "-" + age_name,
+                            round(weight, 4),
+                        ])
+        for name, weight in StubTargetService._interpolate(macro_info["weight"], "minweight",
+                                                           "maxweight"):
+            if weight > cutoff:
+                stack.append(["macrodetails-universal/" + name, round(weight, 4)])
+        return stack
+
+    @staticmethod
+    def get_current_macro_targets(basemesh, decode_names=True):
+        # Filters on the *raw* name starting with "$md" while returning the
+        # decoded one, exactly as MPFB does - the two are different strings and
+        # a stub that filtered on the decoded name would never match anything.
+        targets = []
+        if basemesh and basemesh.data.shape_keys and len(basemesh.data.shape_keys.key_blocks):
+            for shape_key in basemesh.data.shape_keys.key_blocks:
+                name = shape_key.name
+                if decode_names:
+                    name = StubTargetService.decode_shapekey_name(name)
+                if str(shape_key.name).startswith("$md"):
+                    targets.append(name)
+        return targets
+
+    @staticmethod
+    def create_shape_key(blender_object, shape_key_name, also_create_basis=True,
+                         create_from_mix=False):
+        # The bare assert MPFB opens with, and the whole reason the mutating
+        # payloads check the mode themselves: without a message, this comes back
+        # as a traceback that names nothing.
+        assert blender_object.mode == "OBJECT"
+        if also_create_basis and not StubTargetService.has_any_shapekey(blender_object):
+            blender_object.shape_key_add(name="Basis", from_mix=False)
+        return blender_object.shape_key_add(name=shape_key_name, from_mix=create_from_mix)
+
+    @staticmethod
+    def reapply_macro_details(basemesh, remove_zero_weight_targets=True):
+        """MPFB's own sequence: zero, load what is missing, set, then prune."""
+        StubTargetService.reapply_calls.append(
+            (basemesh.name, remove_zero_weight_targets))
+
+        macro_info = StubTargetService.get_macro_info_dict_from_basemesh(basemesh)
+        for target in StubTargetService.get_current_macro_targets(basemesh, decode_names=False):
+            basemesh.data.shape_keys.key_blocks[target].value = 0.0
+
+        current = StubTargetService.get_current_macro_targets(basemesh, decode_names=True)
+        required = StubTargetService.calculate_target_stack_from_macro_info_dict(macro_info)
+
+        for target in required:
+            requested = str(StubTargetService.macrodetail_filename_to_shapekey_name(
+                target[0], encode_name=False)).strip()
+            if requested not in current:
+                # The real one loads the target from disk here, which is where
+                # the OBJECT-mode assert is reached.
+                name = StubTargetService.macrodetail_filename_to_shapekey_name(
+                    target[0], encode_name=True)
+                StubTargetService.create_shape_key(basemesh, name)
+
+        for target in required:
+            requested = str(StubTargetService.macrodetail_filename_to_shapekey_name(
+                target[0], encode_name=True)).strip()
+            basemesh.data.shape_keys.key_blocks[requested].value = target[1]
+
+        if remove_zero_weight_targets and basemesh.data.shape_keys:
+            for shape_key in list(basemesh.data.shape_keys.key_blocks):
+                if str(shape_key.name).startswith("$md") and shape_key.value < 0.0001:
+                    basemesh.shape_key_remove(shape_key)
+
 
 class StubHumanService:
-    """Present only so HumanObjectProperties can be reached off its module."""
+    """refit(), plus the module HumanObjectProperties is reached off."""
+
+    refit_calls = []
+    # Set by a test that wants refit() itself to blow up, to check that the
+    # payload still restores the active object and the selection.
+    refit_raises = None
+
+    @staticmethod
+    def refit(blender_object, *, operator=None):
+        basemesh = StubObjectService.find_object_of_type_amongst_nearest_relatives(
+            blender_object, "Basemesh")
+        if basemesh is None:
+            # The real one raises rather than answering, which is why the
+            # payload resolves the basemesh itself first.
+            raise ValueError("Could not find basemesh as relative of given object")
+        StubHumanService.refit_calls.append(basemesh.name)
+        if StubHumanService.refit_raises is not None:
+            raise StubHumanService.refit_raises
+        # The real one refits the mesh assets *before* it reaches the rig, and
+        # returns silently when a generated Rigify rig has no meta rig - having
+        # refitted the assets and not the rig. Nothing is reported to a caller
+        # that is not an operator, and there is no operator here.
 
 
 _SERVICES = {
@@ -595,6 +999,10 @@ class GeneratedCodeTestCase(unittest.TestCase):
         StubAssetService.update_all_calls = 0
         StubAssetService.packs = dict()
         StubTargetService.calls = []
+        StubTargetService.reapply_calls = []
+        StubObjectService.activations = []
+        StubHumanService.refit_calls = []
+        StubHumanService.refit_raises = None
         StubLocationService.mpfb_data = "/nonexistent-mpfb-data"
         StubLocationService.mpfb_root = pathlib.Path("/nonexistent-mpfb-root")
         StubLocationService.user_data = "/nonexistent-user-data"
@@ -648,6 +1056,11 @@ class GeneratedCodeTestCase(unittest.TestCase):
         code = codegen.assemble(payload, bootstrap="raising", params=params)
         namespace = {}
         bpy = _make_bpy(scene_objects, all_objects, active)
+        # activate_blender_object() changes the active object for real, so the
+        # stub service needs the same bpy the payload is about to run against -
+        # and a test needs it afterwards, to see what the payload left behind.
+        StubObjectService.bpy = bpy
+        self.last_bpy = bpy
         with mock.patch.dict(sys.modules, {"bpy": bpy}):
             exec(code, namespace)  # noqa: S102
         return namespace["result"]

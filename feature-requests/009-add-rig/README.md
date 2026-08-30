@@ -44,7 +44,7 @@ Two tools.
 Mutating. Arguments:
 
 - `name` (optional string) — a Blender object name, resolved to the character's basemesh as in
-  [FR 007](../007-macro-details/README.md). Omitted means the active object.
+  [FR 007](../done/007-macro-details/README.md). Omitted means the active object.
 - `identifier` (required string) — exactly as `mpfb_list_rigs` reports it: a bare name for a standard
   rig, `rigify.<name>` for a Rigify one, `custom.<name>` for a user one. Not a filename, and not the
   `name` field beside it.
@@ -110,10 +110,13 @@ Mutating. Wraps `RigService.generate_rigify_rig()`. Arguments:
   everything** — a partial effect that must be reported rather than presented as "nothing happened".
 - `metarig_disposition` — what became of the meta rig (`kept`, `hidden`, `deleted`).
 - `refit_will_be_possible` (bool) plus an explanatory `message` when it is false. This is the same
-  failure [FR 007](../007-macro-details/README.md) documents from the other end: with no meta rig in
+  failure [FR 007](../done/007-macro-details/README.md) documents from the other end: with no meta rig in
   the scene, `HumanService.refit()` logs a warning, tries to report through an operator it does not
-  have, and **returns having refitted nothing**. `meta_rig_action: "delete"` is precisely what
-  creates that state, so this tool is where the consequence is knowable in advance.
+  have, and **returns having refitted the mesh assets but not the rig** (FR 007 corrected its own
+  "refitted nothing" while implementing — the asset loop runs before the rig block). Implemented,
+  `mpfb_refit_human` detects the condition and answers `refit_performed: false` with a
+  `refit_incomplete_reason`. `meta_rig_action: "delete"` is precisely what creates that state, so
+  this tool is where the consequence is knowable in advance.
 - `mesh_assets_present` — the mesh assets that existed at generation time, since generating before
   attaching them is the second half of the ordering problem.
 - `active_object_after` — generation deselects everything and leaves the generated rig active. Unlike
@@ -130,7 +133,7 @@ re-parenting them, and dealing with sub-rigs; that is its own request, and until
 "already has a rig" refusal above is the honest answer. Also out: pose loading from the `poses`
 library and any other BVH work (see [NEXT_STEPS.md](../NEXT_STEPS.md)); bone-level manipulation, rig
 helpers and IK/FK cycles; `RigService.refit_existing_armature()` on its own, which
-[FR 007](../007-macro-details/README.md)'s `mpfb_refit_human` already covers; and sub-rigs shipped
+[FR 007](../done/007-macro-details/README.md)'s `mpfb_refit_human` already covers; and sub-rigs shipped
 with clothing, which are [FR 010](../010-mesh-assets/README.md)'s `import_subrig`.
 
 ## Non-functional requirements
@@ -213,9 +216,12 @@ with clothing, which are [FR 010](../010-mesh-assets/README.md)'s `import_subrig
     [How tools name things that can be added](../../specifications/architecture.md#how-tools-name-things-that-can-be-added),
     which this tool is the first consumer of, and
     [How generated code addresses objects](../../specifications/architecture.md#how-generated-code-addresses-objects).
-  - **Plus the three additions [FR 007](../007-macro-details/README.md) proposes** — how a mutating
-    tool takes its subject, reporting before and after, and preconditions as answers. Whichever
-    request lands first records them.
+  - **Plus the three conventions [FR 007](../done/007-macro-details/README.md) landed**, which this
+    request now *follows* rather than proposes:
+    [How a mutating tool takes its subject](../../specifications/architecture.md#how-a-mutating-tool-takes-its-subject),
+    [A mutating tool reports before and after](../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
+    and
+    [Preconditions are answers](../../specifications/architecture.md#preconditions-are-answers).
   - **New — a tool reports an ordering constraint it cannot enforce.** MPFB's services have implicit
     sequencing (rig before assets, assets before Rigify generation, and see
     [FR 010](../010-mesh-assets/README.md) for the same problem with proxies and clothes) which no
@@ -264,8 +270,10 @@ and here the mutations are large, so a fresh file per case is the practical form
   it.
 - The full Rigify sequence: add meta rig, attach a garment, generate, and confirm the garment is
   handled by `adjust_children_for_rigify()`. Then the wrong order, to see what it costs.
-- `meta_rig_action` in all three values, and that `"delete"` really does make
-  [FR 007](../007-macro-details/README.md)'s `mpfb_refit_human` a silent no-op.
+- `meta_rig_action` in all three values, and that `"delete"` really does leave
+  [FR 007](../done/007-macro-details/README.md)'s `mpfb_refit_human` unable to refit the rig —
+  which it should report as `refit_performed: false` rather than silently. FR 007 landed without
+  live verification, so this is also the first live check of that branch.
 - The `rigify_colors` assertion path, if it can be provoked at all; if it cannot, say so.
 - Cost against [FR 005](../done/005-list-assets/README.md)'s ~1.0 s socket round-trip baseline: how
   long adding a weighted rig takes, and how long Rigify generation takes on a dressed character.

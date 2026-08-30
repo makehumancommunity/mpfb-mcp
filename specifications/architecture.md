@@ -171,6 +171,21 @@ authoritatively, reporting alongside the result both whether the value was recog
 valid values actually are — so a caller can correct itself from the same response rather than
 needing a second tool or a hardcoded list.
 
+**Structured input is taken as flat scalar arguments, not as a nested dict.** `mpfb_create_human`
+takes eleven separate macro sliders rather than the `macro_detail_dict` MPFB's own
+`create_human()` wants, and `mpfb_set_macro_details` takes the same eleven names. That is
+deliberate and general: a flat scalar is what an MCP tool schema describes and validates well, and
+what a client fills in reliably, while a nested dict-of-dicts is a shape an LLM gets subtly wrong —
+misspelling a container key, omitting one, nesting a field under the wrong parent — and it pushes
+per-field validation into a hand-written dict walk that no schema checks. Flat arguments also
+express something a dict cannot without a sentinel: on a mutating tool, an *omitted* argument means
+"leave this alone", which is what makes a relative change ("a bit older") a single call.
+
+Round-tripping is preserved on the **output** side instead: a tool returns the nested dict in
+MPFB's own shape, so a caller can read a character, hand the dict elsewhere, and map it back onto
+flat arguments mechanically. Assemble MPFB's structure in the tool function, from the flat
+arguments, immediately before generating code.
+
 ## How generated code addresses objects
 
 Tools name a Blender object by its **Blender object name**. Names are unique across the whole
@@ -351,6 +366,70 @@ must say so**, or the discrepancy will be read as the tool being wrong. Two of t
 
 Prefer describing what is actually on disk, and label the part MPFB will not show — rather than
 either papering over the difference or quietly inheriting the limitation.
+
+## How a mutating tool takes its subject
+
+A tool that changes a character accepts **any object in that character's family** — the basemesh,
+its rig, a garment fitted to it — and resolves from there to the object it will actually modify,
+through `ObjectService.find_object_of_type_amongst_nearest_relatives()`. That is the same call
+MPFB's own panels make, and the reason for it is
+[how tools name things](#how-generated-code-addresses-objects): an agent got the name it is holding
+out of `mpfb_list_objects`, which does not say which member of a family owns a given property.
+Requiring the caller to know that would make every mutating tool need a lookup step first.
+
+- **The response names the object that was modified, not the argument.** `basemesh_name` beside
+  `subject_name`, so a caller that passed a rig can see what the change actually landed on.
+- **The walk is MPFB's, not a reimplementation.** It descends through children, ascends through
+  parents, and takes each parent's other branches on the way — which is what finds a garment from
+  the basemesh on a rigged character, since MPFB parents garments to the *rig*.
+- **Failing to resolve is an answer**, `found: false` with a sentence, exactly as for the read-only
+  tools.
+
+## A mutating tool reports before and after
+
+The mutation-side counterpart of "an empty answer must never be ambiguous": a tool that changes
+something and reports only that it succeeded has told the caller very little, and a tool that
+changes something with side effects and mentions none of them has told the caller something false
+by omission.
+
+- **Report the prior value beside the new one**, per changed field, so the change is verifiable
+  without a second round trip — and report a field the caller named even when the value it already
+  had was the one requested. "You asked for this and it was already so" is not the same claim as
+  not mentioning it.
+- **Report what changed as a consequence**, not only what was asked for. `mpfb_set_macro_details`
+  returns the macro shape keys before and after, and the removed and added lists, because pruning
+  deletes shape keys the caller never mentioned and would otherwise see vanish unexplained.
+- **Report what is now stale.** Changing a body's shape invalidates the fit of everything on it,
+  and MPFB's own auto-refit defaults to off. So the tool reports `refit_performed`, and when it is
+  false, what is left needing attention (`assets_possibly_stale`) and which tool addresses it. An
+  expensive default left off is defensible only when the response says what it left undone.
+- **Do only what was asked.** A call that names nothing to change must not "helpfully" recalculate:
+  it answers immediately, saying that nothing was named. A no-op is a common agent mistake, and a
+  full macro rebuild costs seconds.
+- **Restore what was borrowed.** Where the payload has to activate or select an object to do its
+  work — MPFB's own slider callback does — put the previous active object and selection back, in a
+  `finally`, so a failure part-way through does not leave the user's scene rearranged.
+
+## Preconditions are answers
+
+Related to, but distinct from, [FR 001](../feature-requests/done/001-mpfb-get-status/README.md)'s
+"absence is an answer": there the request named something that is not there, while here the request
+is well-formed and the **world** is not ready. Check in the payload and return a sentence naming the
+problem, rather than letting MPFB's own guard surface as a traceback in an error envelope.
+
+- **OBJECT mode.** `TargetService.create_shape_key()` opens with a bare `assert
+  blender_object.mode == "OBJECT"`, reached whenever a macro target has to be loaded. An
+  `AssertionError` with no message is the worst possible form of a very ordinary situation: the
+  user left the mesh in edit mode.
+- **Presence of shape keys.** `reapply_macro_details()` on a mesh with none logs "somewhat
+  surprising" and carries on, producing a partial result. It is what an imported mesh tagged as a
+  basemesh looks like, and it should be reported as that rather than half-done.
+- **Reachability of what the payload needs**, such as a property set read off a service's module
+  (see [Reading module-level names MPFB does not publish](#reading-module-level-names-mpfb-does-not-publish)).
+
+Report which precondition blocked (`ready: false` plus a `blocked_by` naming it) rather than only a
+sentence, so a caller can branch on it; and make sure the tool changed nothing on the way to
+finding out.
 
 ## Response shape
 

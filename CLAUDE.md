@@ -24,15 +24,21 @@ efforts; `HISTORY.md` is the log of what has landed.
 
 ## Project status
 
-Proof of concept. Seven tools are implemented: `mpfb_create_human`, wrapping MPFB's
+Proof of concept. Ten tools are implemented: `mpfb_create_human`, wrapping MPFB's
 `HumanService.create_human()`; `mpfb_get_status`, reporting whether MPFB is present, initialized
 and how it is configured; the object-finding pair `mpfb_list_objects` and
 `mpfb_get_object_info`, which is how every later tool is meant to name the object it acts on; and
 three catalogue tools, `mpfb_list_rigs`, `mpfb_list_assets` and `mpfb_list_targets` — what could be
 *added*, rather than what is already there, each entry named by the identifier the adding function
 will want. `mpfb_list_assets` is also the first tool whose answer does not fit, so it is filtered,
-capped and paged, a convention `mpfb_list_targets` inherits. See
-[specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's planned
+capped and paged, a convention `mpfb_list_targets` inherits. Finally, three tools that act on a
+character that already exists — `mpfb_get_macro_details`, `mpfb_set_macro_details` and
+`mpfb_refit_human` — which is where the conventions for *mutation* come from: a subject resolved
+from any object in the character's family, a response reporting the prior state and the
+consequences, and a not-ready world answered with a sentence rather than an exception. **The
+mutating pair is the one part of the code that has never been run against a real Blender** (see
+[FR 007's verification status](feature-requests/done/007-macro-details/README.md#verification-status)).
+See [specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's planned
 beyond them, and [feature-requests/](feature-requests/) for work in progress.
 
 ## Version control
@@ -159,6 +165,25 @@ mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP
   characters is encoded and a caller using the filename addresses nothing *silently*; and the
   reimplementation (never the import) of `mpfb.ui.model._modelsubpanels`' user-target scan, which is
   what lets the tool see a target installed since Blender started.
+  `tools/get_macro_details.py`, `tools/set_macro_details.py` and `tools/refit_human.py` are the
+  first three that act on a *character* rather than on the install or the scene, and the first two
+  that change one. Their subject is resolved the same way in all three — any object in the
+  character's family, narrowed to the basemesh by
+  `find_object_of_type_amongst_nearest_relatives()` inside the payload, with the resolved name
+  reported back — so `name` validation here is the same shape check as everywhere else.
+  `set_macro_details.py` is the one that validates *values*: MPFB's macro properties carry a
+  default but no `min`/`max` (it is the scene-level proxy property behind MPFB's sliders that
+  clamps), so 0.0-1.0 is enforced here or nowhere, and `prune`/`refit` get the same strict `bool`
+  treatment `list_rigs.py` gives `refresh`. Its eleven sliders are `None` by default rather than
+  `0.5`, because "not mentioned" and "set to the default" are different requests; only what the
+  caller named crosses the socket, and the payload's ordering — write every property, then
+  recalculate **once** — is what keeps a five-slider change the same cost as a one-slider one.
+  Three things live in those payloads that could not live here: the preconditions (OBJECT mode,
+  presence of shape keys), which MPFB meets with a bare `assert` and a log line respectively; the
+  restoration of the previous active object and selection, in a `finally`; and the detection of a
+  generated Rigify rig with no meta rig, which `HumanService.refit()` reports only through an
+  `operator` an MCP tool has none of — it refits the mesh assets, silently skips the rig, and
+  returns, so all three tools would otherwise claim a refit that half happened.
 - **[__init__.py](src/mpfbmcp/__init__.py)** — `main()`: builds the `FastMCP` server, calls each
   tool module's `register()`, runs over stdio. Together with a tool module and a payload file,
   this `register()` call is the *whole* of what adding a tool touches — no shared
@@ -191,8 +216,8 @@ this side of the socket:
   entries injected into `sys.modules`. That exercises the three-state branching locally; it still
   proves nothing about the values real MPFB returns.
 - [tests/blender_stubs.py](tests/blender_stubs.py) — holds no tests. It is the stub Blender scene
-  and stub MPFB services that the two object-finding tools' generated code is executed against,
-  shared because both need the same scene. The stubs deliberately reimplement MPFB's *actual*
+  and stub MPFB services that the generated code of every tool below is executed against,
+  shared because they need the same scene. The stubs deliberately reimplement MPFB's *actual*
   behavior rather than returning convenient values — `""` and not `None` from
   `get_object_type()`, a non-bool `object_is_any_makehuman_object()`, a `find_related_objects()`
   that yields the object it was asked about, a `get_list_of_children()` that walks the whole file
@@ -234,9 +259,30 @@ this side of the socket:
   attribute a skin to whichever pack shipped an asset called "skins". Note this adds a *third*
   stub service module — `ASSET_LIBRARY_SECTIONS` is module-level in `assetservice.py`, so
   `StubAssetService.__module__` is reassigned the same way the object-service stub's is.
+- [tests/test_get_macro_details.py](tests/test_get_macro_details.py),
+  [tests/test_set_macro_details.py](tests/test_set_macro_details.py) and
+  [tests/test_refit_human.py](tests/test_refit_human.py) — the same two layers, over stubs rather
+  than a filesystem, since these payloads ask services rather than walking disk. What the stubs had
+  to grow is the macro half of `TargetService`, and every part of it is there because leaving it out
+  would make a test pass vacuously: `set_value()` stores **unclamped**, matching a property whose
+  definition carries no `min`/`max` — a clamping stub would hide why the tool validates locally;
+  `get_macro_info_dict_from_basemesh()` reads back through that same store, so the write-then-read
+  round trip is genuinely under test; `reapply_macro_details()` really adds and removes stub shape
+  keys, including the sub-0.0001 prune, so `shapekeys_removed`/`_added` are asserted against
+  something that changed; and `create_shape_key()` carries MPFB's own OBJECT-mode `assert`. One
+  thing is deliberately *not* reproduced: the macro interpolation is a stand-in table rather than
+  MPFB's corner cases, because no payload depends on which targets come out, only on the shape of
+  the answer. The fixtures parent garments to the **rig** rather than to the basemesh, as MPFB does
+  on a rigged character, which is what makes the relationship walk do real work. Note also that
+  these tests can say nothing at all about the thing the tools exist for — that a character
+  modified here matches one modified through MPFB's own phenotype panel.
 
 Anything needing real MPFB is a manual integration check against a running Blender (see
-[Commands](#commands)), and feature requests are expected to say so explicitly.
+[Commands](#commands)), and feature requests are expected to say so explicitly. FR 001 through
+FR 006 each had that check run before being marked Done; **FR 007 did not**, so the three
+character-modifying tools are unverified against real MPFB and
+[its verification status](feature-requests/done/007-macro-details/README.md#verification-status)
+says exactly what is outstanding. Treat that as work owed rather than as a new precedent.
 
 ### Code conventions in this repo
 

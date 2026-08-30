@@ -1,6 +1,6 @@
 # Macro details and phenotype
 
-**Status:** Proposed
+**Status:** Done
 
 `mpfb_create_human` can set a character's macro details — gender, age, muscle, weight, height,
 proportions, cupsize, firmness and the three race weights — but only at the moment of creation.
@@ -32,7 +32,7 @@ Secondary: make the *consequences* of a change visible rather than implicit. A m
 the body under any clothes fitted to it and under the rig; the response should say so, and there
 should be a way to act on it without leaving the tool layer.
 
-Also: settle the question [NEXT_STEPS.md](../NEXT_STEPS.md) raises about `mpfb_create_human`'s
+Also: settle the question [NEXT_STEPS.md](../../NEXT_STEPS.md) raises about `mpfb_create_human`'s
 parameter shape, and record the answer, so it stops being an open question.
 
 ## Functional requirements
@@ -44,7 +44,7 @@ Three tools.
 Read-only, always answers. Arguments:
 
 - `name` (optional string) — a Blender object name. Omitted means the active object, per
-  [How generated code addresses objects](../../specifications/architecture.md#how-generated-code-addresses-objects).
+  [How generated code addresses objects](../../../specifications/architecture.md#how-generated-code-addresses-objects).
 
 `result` carries:
 
@@ -52,13 +52,13 @@ Read-only, always answers. Arguments:
   (`"name"` / `"active"`). The argument may name a rig, a shirt or the basemesh itself; the payload
   resolves to the related basemesh, and the response says which object that turned out to be.
 - `found` (bool) and `message` — an unresolvable name or "nothing is active" is a successful answer,
-  not an error, the stance [FR 001](../done/001-mpfb-get-status/README.md) and
-  [FR 003](../done/003-object-finding/README.md) established.
+  not an error, the stance [FR 001](../001-mpfb-get-status/README.md) and
+  [FR 003](../003-object-finding/README.md) established.
 - `macro_details` — the current values, in exactly the nested shape `TargetService` uses
   (`{"gender": …, …, "race": {"asian": …, "caucasian": …, "african": …}}`), read through
   `get_macro_info_dict_from_basemesh()` rather than by reading the properties by hand.
 - `default_macro_details` — `TargetService.get_default_macro_info_dict()`. Requested explicitly in
-  [NEXT_STEPS.md](../NEXT_STEPS.md), and worth having beside the current values: it is what "neutral"
+  [NEXT_STEPS.md](../../NEXT_STEPS.md), and worth having beside the current values: it is what "neutral"
   means, and it is the only way for a caller to tell a deliberately-average character from a default
   one without hardcoding 0.5.
 - `race_sum` and `race_normalized` (bool) — see the race note under Architecture. MPFB does not
@@ -114,15 +114,19 @@ and it should be cheap and obvious rather than a several-second shape rebuild.
 Mutating, wraps `HumanService.refit()`. Arguments: `name` (optional string). Reports which basemesh
 and rig were found, how many mesh assets and subrigs were refitted, and — the case that matters —
 the generated-Rigify-with-no-metarig situation, which `refit()` reports through an `operator` it
-will not have here and otherwise *returns silently having done nothing*.
+will not have here and otherwise passes over in silence. (Reading `humanservice.py` while
+implementing corrected this: the mesh assets are refitted *before* the rig block is reached, so what
+`refit()` silently skips in that case is the **rig**, not everything. The implemented tools
+therefore still call `refit()` — the garments do need refitting — and report `refit_performed:
+false` with a `refit_incomplete_reason` naming the rig, rather than refusing to call it at all.)
 
-Suggested as in scope rather than requested in [NEXT_STEPS.md](../NEXT_STEPS.md). The justification is
+Suggested as in scope rather than requested in [NEXT_STEPS.md](../../NEXT_STEPS.md). The justification is
 that `refit` defaults to `false` on both mutating tools in this request and on
-[FR 008](../008-detail-targets/README.md)'s: without a standalone refit, that default leaves an agent
+[FR 008](../../008-detail-targets/README.md)'s: without a standalone refit, that default leaves an agent
 able to deform a dressed character and no way to fix it. The alternative — defaulting `refit` to
 true — pays a full asset refit on every one of the twenty slider changes a modeling session makes.
 
-**Not in scope.** Detail targets, which are [FR 008](../008-detail-targets/README.md);
+**Not in scope.** Detail targets, which are [FR 008](../../008-detail-targets/README.md);
 `mpfb_get_human_summary`, which is a wider read spanning assets, skin and rig and which should
 *call into* the same macro read rather than duplicate it; expressions and visemes (`!ex-` shape
 keys), which are neither macro nor modeling targets; randomization, which MPFB now has a whole
@@ -151,18 +155,18 @@ keys), which are neither macro nor modeling targets; randomization, which MPFB n
 
 ## Architecture
 
-- Three tool modules under [`src/mpfbmcp/tools/`](../../src/mpfbmcp/tools), three payloads under
-  [`src/mpfbmcp/codegen/payloads/`](../../src/mpfbmcp/codegen/payloads), three `register()` calls in
-  [`__init__.py`](../../src/mpfbmcp/__init__.py). Nothing shared is edited, per
-  [the code-generation layout](../../specifications/architecture.md#code-generation-layout).
+- Three tool modules under [`src/mpfbmcp/tools/`](../../../src/mpfbmcp/tools), three payloads under
+  [`src/mpfbmcp/codegen/payloads/`](../../../src/mpfbmcp/codegen/payloads), three `register()` calls in
+  [`__init__.py`](../../../src/mpfbmcp/__init__.py). Nothing shared is edited, per
+  [the code-generation layout](../../../specifications/architecture.md#code-generation-layout).
 - **Raising bootstrap** (`bootstrap="raising"`) for all three. `TargetService`, `HumanService` and
   `ObjectService` are all in the `SERVICES` dict.
 - **`HumanObjectProperties` is not a service.** It is a `BlenderConfigSet` living on
   `mpfb.entities.objectproperties`, reached as
   `getattr(sys.modules[HumanService.__module__], "HumanObjectProperties", None)` — the convention in
-  [Reading module-level names MPFB does not publish](../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish),
+  [Reading module-level names MPFB does not publish](../../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish),
   and already done exactly this way in
-  [`payloads/get_object_info.py`](../../src/mpfbmcp/codegen/payloads/get_object_info.py). Prefer
+  [`payloads/get_object_info.py`](../../../src/mpfbmcp/codegen/payloads/get_object_info.py). Prefer
   `TargetService.get_macro_info_dict_from_basemesh()` for reading anyway; the property set is only
   needed for *writing*.
 - **Writing a property is only the first of two steps.** `HumanObjectProperties.set_value(...)`
@@ -181,7 +185,7 @@ keys), which are neither macro nor modeling targets; randomization, which MPFB n
   "Basemesh")` — the same call MPFB's own panels make. This is what lets a caller pass the name of
   the rig or of a shirt, which is what `mpfb_list_objects` will have shown them. Resolve the active
   object as `bpy.context.view_layer.objects.active`, per
-  [How generated code addresses objects](../../specifications/architecture.md#how-generated-code-addresses-objects),
+  [How generated code addresses objects](../../../specifications/architecture.md#how-generated-code-addresses-objects),
   and treat `None` as an ordinary answer.
 - **Validate the sliders locally, because MPFB does not.** The property definitions in
   `entities/objectproperties/humanproperties/*.json` carry a `default` but **no `min`/`max`**, and
@@ -190,7 +194,7 @@ keys), which are neither macro nor modeling targets; randomization, which MPFB n
   `_macrosubpanel.py` that carries `min=0.0, max=1.0`. A value of 5.0 will be stored happily and
   produce an interpolation the macro table has no corner cases for. Reject outside 0.0–1.0 in the
   tool module, as `mpfb_create_human` already does, per
-  [Validate before crossing the socket](../../specifications/architecture.md#validate-before-crossing-the-socket).
+  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket).
 - **The race weights are not normalized, and must not be normalized here.** MPFB treats `asian`,
   `caucasian` and `african` as three independent 0–1 properties — the default is 0.33 each, summing
   to 0.99, and `calculate_target_stack_from_macro_info_dict()` multiplies each race's raw value
@@ -216,26 +220,29 @@ keys), which are neither macro nor modeling targets; randomization, which MPFB n
   and restores it itself). Follow MPFB and activate, then restore the previous active object and
   selection before returning. `bpy.ops` is known to work in this execution context —
   `create_human()` already calls `bpy.ops.object.transform_apply` through
-  [`payloads/create_human.py`](../../src/mpfbmcp/codegen/payloads/create_human.py).
+  [`payloads/create_human.py`](../../../src/mpfbmcp/codegen/payloads/create_human.py).
 - **`refit()`'s silent branch.** When the rig is a generated Rigify rig with no meta rig in the
   scene, `HumanService.refit()` logs a warning, calls `operator.report()` if it was given an
-  operator, and **returns having refitted nothing**. There is no operator here. Detect the condition
-  before calling — a `Skeleton` relative for which `ObjectService.object_is_generated_rigify_rig()`
-  is true and `find_rigify_metarig_by_rig()` finds nothing — and report it, or the tool will
-  cheerfully answer `refit_performed: true` over a rig it did not touch.
+  operator, and **returns having refitted the mesh assets but not the rig** — the asset loop runs
+  first, and only `RigService.refit_existing_armature()` raises. There is no operator here. Detect
+  the condition before calling — a `Skeleton` relative for which
+  `ObjectService.object_is_generated_rigify_rig()` is true and `find_rigify_metarig_by_rig()` finds
+  nothing — and report it, or the tool will cheerfully answer `refit_performed: true` over a rig it
+  did not touch. Detecting it is *not* a reason to skip the call: the garments still need
+  refitting, so the implementation calls `refit()` and reports the partial outcome.
 - **`macro_target_stack` entries are file fragments, not shape key names.**
   `calculate_target_stack_from_macro_info_dict()` returns names like
   `macrodetails/caucasian-female-young`; the shape key MPFB creates from one is
   `macrodetail_filename_to_shapekey_name(name, encode_name=True)`, e.g. `$md-$ca-$fe-$yn`. Report
   both, and never present the fragment as something `mpfb_set_target_value` could be given — the
   distinction is the one
-  [How tools name things that can be added](../../specifications/architecture.md#how-tools-name-things-that-can-be-added)
+  [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added)
   exists for.
 - Response envelope unchanged: return `send_code(...)` as-is with `strict_json=True`.
 
 ### The `mpfb_create_human` parameter-shape question
 
-[NEXT_STEPS.md](../NEXT_STEPS.md) asks whether `mpfb_create_human` should stop taking eleven flat
+[NEXT_STEPS.md](../../NEXT_STEPS.md) asks whether `mpfb_create_human` should stop taking eleven flat
 sliders and take a macro-detail dict instead. **Decided: it should not.** Flat scalar parameters are
 what an MCP tool schema describes and validates well, and what a client fills in reliably; a nested
 dict-of-dict argument is a shape an LLM gets subtly wrong (misspelling `race`, omitting a key,
@@ -248,22 +255,22 @@ return the full nested `macro_details` dict in `TargetService`'s own shape, so a
 character, hand the dict to something else, and map it back onto flat arguments mechanically.
 
 This decision should be folded into
-[architecture.md](../../specifications/architecture.md#validate-before-crossing-the-socket) when the
+[architecture.md](../../../specifications/architecture.md#validate-before-crossing-the-socket) when the
 work lands, since it is a general statement about tool signatures rather than about macro details.
 
 ## Affected specifications
 
-- [vision.md](../../specifications/vision.md#target-tool-catalog) — `mpfb_set_macro_details` is
+- [vision.md](../../../specifications/vision.md#target-tool-catalog) — `mpfb_set_macro_details` is
   already listed under "Creation and modification"; mark it **Implemented** and describe what it
   actually does. `mpfb_get_macro_details` and `mpfb_refit_human` are **new entries** and need adding
   (the former under "Introspection (read-only)"). The `mpfb_get_human_summary` entry should be
   amended to say the macro-detail half of its answer is this tool's, so the two do not diverge.
-- [architecture.md](../../specifications/architecture.md) — one convention to follow and three
+- [architecture.md](../../../specifications/architecture.md) — one convention to follow and three
   candidate additions.
   - **To follow:**
-    [How generated code addresses objects](../../specifications/architecture.md#how-generated-code-addresses-objects)
+    [How generated code addresses objects](../../../specifications/architecture.md#how-generated-code-addresses-objects)
     and
-    [Validate before crossing the socket](../../specifications/architecture.md#validate-before-crossing-the-socket).
+    [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket).
   - **New — how a mutating tool takes its subject.** Everything so far has been read-only. The rule
     worth recording: a mutating tool accepts any object in the character's family and resolves to
     the object it will actually modify through
@@ -277,18 +284,18 @@ work lands, since it is a general statement about tool signatures rather than ab
   - **New — preconditions are answers.** OBJECT mode, presence of shape keys, object type: check
     them in the payload and return a sentence, rather than letting MPFB's `assert` or a `ValueError`
     come back as a traceback in an error envelope. Related to, but distinct from,
-    [FR 001](../done/001-mpfb-get-status/README.md)'s "absence is an answer": here the *request* is
+    [FR 001](../001-mpfb-get-status/README.md)'s "absence is an answer": here the *request* is
     well-formed and the *world* is not ready.
   - The flat-parameters-over-dicts decision above, probably as a clause under
-    [Validate before crossing the socket](../../specifications/architecture.md#validate-before-crossing-the-socket).
+    [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket).
 
 ## Tests
 
 Two layers, as established: argument validation with each tool module's `send_code` mocked, then the
-generated source `exec()`d against stubs in [tests/blender_stubs.py](../../tests/blender_stubs.py).
+generated source `exec()`d against stubs in [tests/blender_stubs.py](../../../tests/blender_stubs.py).
 
 The stubs need a `StubTargetService` with the macro half of the real one — this repo already has one
-for the name-encoding half, added by [FR 006](../done/006-list-targets/README.md), and it should be
+for the name-encoding half, added by [FR 006](../006-list-targets/README.md), and it should be
 extended rather than duplicated. Reproduce behavior, not convenience:
 
 - `get_macro_info_dict_from_basemesh()` reading from the same stub property store
@@ -348,3 +355,47 @@ Record the outcome in a `## Verification status` section here.
   defaults, their descriptions (worth lifting into the tool docstring: age 0.0=baby, 0.1875=child,
   0.5=young, 1.0=old is not guessable) and their conspicuous lack of `min`/`max`.
 - MPFB `services/blenderconfigset.py` — `_create_property_by_type()`, which is why that lack matters.
+
+## Verification status
+
+**Implemented and unit-tested; live verification is outstanding.** The three tools, their payloads
+and their tests landed together, and the whole suite passes — 278 tests, up from 208 — but unlike
+[FR 001](../001-mpfb-get-status/README.md) through [FR 006](../006-list-targets/README.md), this
+request was **not** checked against a running Blender before being marked Done. That was a
+deliberate scoping decision, not an oversight, and it matters more here than it would have for the
+read-only tools: these are the first tools that *change* a character, and the request's own first
+non-functional requirement — that a character modified through `mpfb_set_macro_details` ends up
+identical to one modified through MPFB's phenotype panel — is precisely the claim nothing on this
+side of the socket can establish.
+
+What the unit tests do establish is the branching around the call: subject resolution from a rig
+and from a garment, the preconditions, that an omitted slider is left alone rather than defaulted,
+that a slider set to its current value is still reported, that a call naming nothing recalculates
+nothing, that every property is written before a *single* recalculation, that race weights are
+stored raw, that pruning removes shape keys and that `prune: false` keeps them, that the active
+object and the selection are restored even when the refit raises, and that the
+generated-Rigify-without-metarig case is reported rather than claimed. The stubs reproduce MPFB's
+behavior for all of that — an unclamped property store, a `reapply_macro_details()` that really
+adds and removes shape keys, a `create_shape_key()` that asserts on non-OBJECT mode — with one
+deliberate exception: the macro interpolation itself is a stand-in table rather than MPFB's corner
+cases, since no payload depends on which targets come out.
+
+**Still to be done, against a running Blender**, in the request's own words:
+
+- That a character modified through `mpfb_set_macro_details` ends up with the **same shape keys at
+  the same weights** as the same character modified through MPFB's own phenotype sliders. Set the
+  slider in the UI, snapshot; undo; set it through the tool; compare.
+- That the properties and the mesh are in sync afterwards — the derived `macro_target_stack`
+  matching `current_macro_shapekeys`.
+- That `prune` genuinely removes macro shape keys, and that with `prune: false` they accumulate.
+- That a refit after a macro change visibly re-fits clothes on a dressed, rigged character.
+- The edit-mode and no-shape-keys preconditions, observed rather than inferred.
+- The generated-Rigify-without-metarig branch, including the corrected premise above: that the mesh
+  assets *are* refitted while the rig is not.
+- Cost against [FR 005](../005-list-assets/README.md)'s ~1.0 s socket round-trip baseline: a macro
+  change with and without prune, and a refit on a character with several clothes items. The refit
+  default rests on that number being large.
+
+The FR 004–006 discipline applies in full when that run happens, and more strictly, since this is
+mutation: snapshot every datablock collection, compare after, restore the active object, never save
+the `.blend`.

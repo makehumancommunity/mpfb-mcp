@@ -45,7 +45,7 @@ the small read-only catalogue the second one needs.
 Mutating. Wraps `HumanService.set_character_skin()`. Arguments:
 
 - `name` (optional string) — a Blender object name, resolved to the character's basemesh as in
-  [FR 007](../007-macro-details/README.md). Omitted means the active object.
+  [FR 007](../done/007-macro-details/README.md). Omitted means the active object.
 - `path` (optional string) / `fragment` (optional string) — the MHMAT, addressed either way, exactly
   as in [FR 010](../010-mesh-assets/README.md); resolved against the `skins` subdir. Exactly one, and
   **both may be omitted only when `skin_type` is `LAYERED`**, which is the one type that builds a
@@ -147,7 +147,7 @@ uuid-keyed dict `add_mhclo_asset()` accepts.
 - **Side effects outside the `.blend` are reported.** The enhanced skin types write a settings file
   into the user's config directory on first use. Nothing else in mpfb-mcp writes to disk, so this is
   worth a field.
-- **Preconditions are answers**, per [FR 007](../007-macro-details/README.md), including the three
+- **Preconditions are answers**, per [FR 007](../done/007-macro-details/README.md), including the three
   object types `mpfb_set_asset_material` refuses.
 - **An empty catalogue must be explainable.** `mpfb_list_asset_materials` reports the roots it searched
   and the asset source it searched for, so "this hat has no other colours" is distinguishable from
@@ -230,14 +230,18 @@ uuid-keyed dict `add_mhclo_asset()` accepts.
     for the small catalogue, and
     [A tool may report a fact MPFB's own UI does not show](../../specifications/architecture.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)
     for `materials_destroyed` and `scale_assumption`.
-  - **Plus [FR 007](../007-macro-details/README.md)'s three additions** and
-    [FR 010](../010-mesh-assets/README.md)'s "an acting tool accepts every identifier its catalogue
-    reports".
+  - **Plus the three conventions [FR 007](../done/007-macro-details/README.md) landed** —
+    [How a mutating tool takes its subject](../../specifications/architecture.md#how-a-mutating-tool-takes-its-subject),
+    [A mutating tool reports before and after](../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
+    and
+    [Preconditions are answers](../../specifications/architecture.md#preconditions-are-answers) —
+    and [FR 010](../010-mesh-assets/README.md)'s "an acting tool accepts every identifier its
+    catalogue reports".
   - **New — where MPFB's UI coerces or re-defaults a service argument, mpfb-mcp coerces the same way
     and reports both values.** A service signature's default is not always the product's default; the
     `skin_type` and `material_instances` cases here are the first two, and silently passing the
     signature's value would produce characters that cannot be reproduced through the UI — the same
-    quality bar [FR 007](../007-macro-details/README.md) sets for macro details. Reporting
+    quality bar [FR 007](../done/007-macro-details/README.md) sets for macro details. Reporting
     `*_requested` beside `*_used` is what keeps the coercion from looking like a bug.
 
 ## Tests

@@ -131,7 +131,7 @@ errors.
   `[identifier, label, description, index]`. Read them with `LocationService.get_mpfb_root(...)`,
   wrapped in try/except, and fall back to `label: null` — these are UI resource files, not an API,
   and their location may move. Do **not** import the UI modules to get at them: MPFB UI modules run
-  scans at import time (see [FR 006](../../006-list-targets/README.md), where that behavior is the
+  scans at import time (see [FR 006](../006-list-targets/README.md), where that behavior is the
   central pitfall), and
   [architecture.md](../../../specifications/architecture.md#never-import-mpfb-submodules-directly)
   forbids it anyway. Note the enum is not the authority on what exists — the directory is; a rig

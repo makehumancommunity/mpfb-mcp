@@ -36,20 +36,29 @@ def main() -> int:
             "than guessing from Blender object names. To find an asset to apply "
             "or a rig to add, use mpfb_list_assets or mpfb_list_rigs, and "
             "mpfb_list_targets for the modeling morphs: each names its entries "
-            "the way the acting function will want them."
+            "the way the acting function will want them. To change an existing "
+            "character rather than create one, read its phenotype with "
+            "mpfb_get_macro_details first and change only what should differ "
+            "with mpfb_set_macro_details, which leaves unnamed sliders alone. "
+            "Changing a body's shape moves it out from under everything fitted "
+            "to it, so finish a series of modeling changes with one call to "
+            "mpfb_refit_human."
         ),
     )
 
     from mpfbmcp.tools import (
-        create_human, get_object_info, get_status, list_assets, list_objects,
-        list_rigs, list_targets)
+        create_human, get_macro_details, get_object_info, get_status, list_assets,
+        list_objects, list_rigs, list_targets, refit_human, set_macro_details)
     create_human.register(mcp)
+    get_macro_details.register(mcp)
     get_object_info.register(mcp)
     get_status.register(mcp)
     list_assets.register(mcp)
     list_objects.register(mcp)
     list_rigs.register(mcp)
     list_targets.register(mcp)
+    refit_human.register(mcp)
+    set_macro_details.register(mcp)
 
     mcp.run(transport="stdio")
     return 0

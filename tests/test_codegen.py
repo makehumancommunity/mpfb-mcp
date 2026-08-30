@@ -27,8 +27,9 @@ class PayloadFileTests(unittest.TestCase):
     def test_there_is_a_payload_for_each_implemented_tool(self) -> None:
         self.assertEqual(
             codegen.payload_names(),
-            ["create_human.py", "get_object_info.py", "get_status.py", "list_assets.py",
-             "list_objects.py", "list_rigs.py", "list_targets.py"])
+            ["create_human.py", "get_macro_details.py", "get_object_info.py", "get_status.py",
+             "list_assets.py", "list_objects.py", "list_rigs.py", "list_targets.py",
+             "refit_human.py", "set_macro_details.py"])
 
     def test_every_payload_compiles_on_its_own(self) -> None:
         for name in codegen.payload_names():
@@ -74,6 +75,9 @@ class AssembleTests(unittest.TestCase):
             ("list_objects.py", "raising"),
             ("list_rigs.py", "raising"),
             ("list_targets.py", "raising"),
+            ("get_macro_details.py", "raising"),
+            ("set_macro_details.py", "raising"),
+            ("refit_human.py", "raising"),
         )
         for name, bootstrap in payloads:
             with self.subTest(payload=name):

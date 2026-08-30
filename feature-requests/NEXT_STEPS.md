@@ -10,28 +10,10 @@ records what has already landed and why. When an effort below is finished, move 
 
 ## Modeling
 
-Most of the things in this section is done via TargetService. Both subsections below are now
-scoped into numbered requests; the bullets are kept as the original statement of what was wanted.
-
-### Macrodetails / phenotype — [FR 007](007-macro-details/README.md)
-
-While macro details can be specified at human creation time, there are no tools for modifying
-them afterwards. Things such as the following are needed:
-
-- Getting the default macro dict (from TargetService)
-- Getting the current macro details as a dict (from a named human or from active human)
-- Modifying the macro detail settings and recalculating the macro stack
-
-Scoped as [FR 007](007-macro-details/README.md): `mpfb_get_macro_details`,
-`mpfb_set_macro_details` and — added there, because a shape change invalidates the fit of every
-asset on the character and MPFB's own auto-refit defaults to off — `mpfb_refit_human`.
-
-The question of whether `mpfb_create_human` should move from separate parameters to a macro detail
-dict is **answered there: it should not.** Flat scalar parameters are what an MCP tool schema
-describes and validates well, and `mpfb_set_macro_details` mirrors the same eleven names with every
-one optional, which is a distinction ("leave unchanged") a dict cannot express. Round-tripping is
-preserved on the output side instead, since both tools return the full nested dict. See
-[FR 007](007-macro-details/README.md#the-mpfb_create_human-parameter-shape-question).
+Most of the things in this section is done via TargetService. Macrodetails and phenotype have
+landed as [FR 007](done/007-macro-details/README.md), which also settled the `mpfb_create_human`
+parameter-shape question and left a live verification outstanding; see its entry in
+[HISTORY.md](HISTORY.md). What remains here is detail targets.
 
 ### Detail targets — [FR 008](008-detail-targets/README.md)
 

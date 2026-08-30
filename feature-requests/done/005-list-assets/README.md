@@ -226,7 +226,7 @@ character, which is FR 003's and `mpfb_get_human_summary`'s question.
   - **How tools bound a large answer.** This is the first tool whose natural answer does not fit:
     the cap plus `total_count` plus a `truncated` flag that is always present, and the rule that a
     filtered call still reports the totals it filtered out of. `mpfb_list_targets`
-    ([FR 006](../../006-list-targets/README.md)) needs the same convention, which is what makes it
+    ([FR 006](../006-list-targets/README.md)) needs the same convention, which is what makes it
     spec material rather than a local choice.
   - **How tools report a derived rather than recorded fact.** `pack` is inferred from a naming
     convention. FR 003 already drew the line between *identified* and *recorded* values for

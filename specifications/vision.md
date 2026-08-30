@@ -76,9 +76,23 @@ tool should get its own feature request when scoped.
   rather than merely absent. Its vocabulary overlaps `mpfb_get_object_info`'s `rig_type` without
   matching it: `rigify_generated.*` and `unknown` describe an existing armature and name nothing
   that can be added.
+- `mpfb_get_macro_details` — what is this character's phenotype? **Implemented.** Reads the
+  eleven macro sliders off a character named by *any* object in its family (see
+  [How a mutating tool takes its subject](architecture.md#how-a-mutating-tool-takes-its-subject),
+  which the read half follows too), and reports the values in MPFB's own nested shape beside
+  the defaults, so a deliberately average character is distinguishable from an untouched one.
+  Reports the three race weights raw with their `race_sum`, since MPFB treats them as
+  independent and does not normalize them. Reports two things that can disagree: the macro
+  target stack the current values *imply*, each entry named both as the file fragment MPFB
+  loads and as the shape key it becomes, and the macro shape keys actually on the mesh — a
+  difference between them is a character whose numbers and whose shape have drifted apart.
+  `has_shapekeys` distinguishes a real MPFB character from an imported mesh that merely carries
+  the properties. Changes nothing, and in particular does not repair the drift it reports.
 - `mpfb_get_human_summary` — for a given/active human: macro details, equipped assets, rig,
   skin, active targets. Takes its subject from `mpfb_list_objects` / `mpfb_get_object_info`
-  rather than assuming one is already known.
+  rather than assuming one is already known. The macro-detail half of its answer is
+  `mpfb_get_macro_details`', and should be produced by calling into the same read rather than
+  by a second implementation that can diverge from it.
 - `mpfb_list_assets` — what could be put on a character, and under what name?
   **Implemented.** Lists the assets installed under every subdir in MPFB's own asset-library
   table — proxymeshes, skins, ink layers, eyes, eyebrows, eyelashes, hair, teeth, tongue,
@@ -117,8 +131,33 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
 
 - `mpfb_create_human` — wraps `HumanService.create_human()` plus a macro-detail dict.
   **Implemented**, as a proof of concept covering scale + the macro-detail dict only (not
-  `mask_helpers`/`detailed_helpers`/`extra_vertex_groups`/`feet_on_ground`).
-- `mpfb_set_macro_details` — gender/age/weight/muscle/height/proportions via `TargetService`
+  `mask_helpers`/`detailed_helpers`/`extra_vertex_groups`/`feet_on_ground`). It takes the macro
+  detail as eleven flat sliders and assembles MPFB's nested dict itself; whether it should take
+  the dict directly instead is **settled: it should not**, for the reasons under
+  [Validate before crossing the socket](architecture.md#validate-before-crossing-the-socket).
+- `mpfb_set_macro_details` — change a character's phenotype in place. **Implemented.** Takes the
+  same eleven flat sliders as `mpfb_create_human` (see
+  [Validate before crossing the socket](architecture.md#validate-before-crossing-the-socket) for
+  why they are flat rather than a nested dict), with every one optional and an omitted one meaning
+  "leave unchanged" — which is what makes a relative change a single call. Writes every named
+  property, then recalculates the macro target stack **once** through
+  `TargetService.reapply_macro_details()`: MPFB's own interpolation, never a reimplementation of
+  it, so that a character modified here matches one modified through MPFB's phenotype panel.
+  Reports the prior value beside the new one per slider, the shape keys removed and added, and —
+  when `refit` was left at MPFB's own default of false — what is now fitted to the old shape (see
+  [A mutating tool reports before and after](architecture.md#a-mutating-tool-reports-before-and-after)).
+  A call that names no slider recalculates nothing, and a basemesh in edit mode or without shape
+  keys comes back as a sentence rather than an assertion (see
+  [Preconditions are answers](architecture.md#preconditions-are-answers)).
+- `mpfb_refit_human` — re-fit everything on a character to the current shape of its basemesh.
+  **Implemented.** Wraps `HumanService.refit()`, and exists because `refit` defaults to *false* on
+  every modeling tool here, as it does in MPFB's own model panel: a refit is expensive enough that
+  MPFB does not want it per slider drag, and without a standalone one that default would leave an
+  agent able to deform a dressed character with no way to put it right. Reports the mesh assets,
+  rig and sub-rigs it touched, and separates two outcomes `refit()` itself does not: a missing
+  basemesh, which it raises on, and a generated Rigify rig with no meta rig left in the scene,
+  which it reports only through an `operator` an MCP tool cannot give it — refitting the mesh
+  assets and silently leaving the rig.
 - `mpfb_set_target_value` — arbitrary named target. Takes its name from `mpfb_list_targets`:
   the `shapekey_name` of a user target, or a name out of a `target.json` category's `targets`
   or `opposites`. Not a filename — the two differ for a long name.

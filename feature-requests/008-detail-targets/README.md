@@ -44,9 +44,9 @@ Three tools.
 Read-only, always answers. Arguments:
 
 - `name` (optional string) — subject, resolved to a basemesh as in
-  [FR 007](../007-macro-details/README.md).
+  [FR 007](../done/007-macro-details/README.md).
 - `include_macro` (optional bool, default `false`) — whether to include the `$md-` macro shape keys.
-  Off by default because they are [FR 007](../007-macro-details/README.md)'s subject and there are
+  Off by default because they are [FR 007](../done/007-macro-details/README.md)'s subject and there are
   typically a dozen of them cluttering the answer; available because "why is this character shaped
   like that" sometimes has a macro answer.
 - `include_expressions` (optional bool, default `false`) — the `!ex-` prefixed expression shape keys.
@@ -102,8 +102,9 @@ Mutating, batched. Arguments:
   default.
 - `prune` (optional bool, default `true`) — delete a target's shape key when its value reaches
   zero, as `delete_target_on_zero`. MPFB's default.
-- `refit` (optional bool, default `false`) — as in [FR 007](../007-macro-details/README.md); the
-  standalone `mpfb_refit_human` from that request is what makes this default workable.
+- `refit` (optional bool, default `false`) — as in [FR 007](../done/007-macro-details/README.md); the
+  standalone `mpfb_refit_human` from that request is implemented, which is what makes this default
+  workable.
 
 Both lists are optional and either may be empty, but a call with neither is a no-op that answers
 saying so rather than doing anything.
@@ -148,7 +149,7 @@ MPFB has no equivalent of this operation — its `symmetry` setting only affects
 is on, and explicitly does not touch previously set values. This is therefore a deliberate addition
 rather than a wrapper, which the docstring must say.
 
-**Not in scope.** Macro details, which are [FR 007](../007-macro-details/README.md);
+**Not in scope.** Macro details, which are [FR 007](../done/007-macro-details/README.md);
 `TargetService.symmetrize_shape_key()`, which mirrors vertex *coordinates* inside one custom shape
 key using `hm08.mirror` and belongs to MakeTarget/asset authoring rather than modeling; expressions
 and visemes (`!ex-`), which need their own request; saving or loading `.mhm` files; randomization,
@@ -157,7 +158,7 @@ be rebuilt here; and creating new target *files*.
 
 ## Non-functional requirements
 
-- **The same result MPFB's own sliders produce**, as in [FR 007](../007-macro-details/README.md) —
+- **The same result MPFB's own sliders produce**, as in [FR 007](../done/007-macro-details/README.md) —
   and here the bar is higher, because the category mechanics (clearing the opposite, choosing
   `.target.gz` versus `.target`, the `l-`/`r-` prefixes) are things a reimplementation gets subtly
   wrong in ways that only show up as a slider reading the wrong value back in the UI.
@@ -233,7 +234,7 @@ be rebuilt here; and creating new target *files*.
   encoding, but `set_target_value()` and `get_target_value()` match the raw name only. Accept the
   `shapekey_name` FR 006 reports — which is already the encoded one — and do not re-encode it.
 - **Pitfall — do not call `reapply_all_details()` to "refresh" the stack.** Same reasoning as
-  [FR 007](../007-macro-details/README.md): it resolves every stack entry back to a file through
+  [FR 007](../done/007-macro-details/README.md): it resolves every stack entry back to a file through
   `target_full_path()`, which cannot resolve an encoded name and which falls back to a *prefix*
   match — so it can silently drop a target or load a differently-named one. Nothing in this request
   needs it.
@@ -242,7 +243,7 @@ be rebuilt here; and creating new target *files*.
   `nose-scale-depth` resolves to `nose-scale-depth-decr`. Build paths explicitly from the category
   data, as MPFB's panel does, and use `target_full_path()` only where there is nothing else — and
   when used, report the path that was resolved so a wrong match is visible.
-- **Activation, mode and restoration** as in [FR 007](../007-macro-details/README.md):
+- **Activation, mode and restoration** as in [FR 007](../done/007-macro-details/README.md):
   `_set_modifier_value()` activates the basemesh before doing anything, `create_shape_key()`
   asserts OBJECT mode, and the payload restores the previous active object and selection.
 - **Symmetrize is built on the category table, not on names.** Pairing `l-foo` with `r-foo` by
@@ -276,9 +277,14 @@ be rebuilt here; and creating new target *files*.
     for the stack listing, and
     [A tool may report a fact MPFB's own UI does not show](../../specifications/architecture.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)
     for `asymmetries` and for the `"basis"` blind spot.
-  - **Plus the three additions [FR 007](../007-macro-details/README.md) proposes** — how a mutating
-    tool takes its subject, reporting before and after, and preconditions as answers. Whichever of
-    the two requests lands first should record them; the second should follow them.
+  - **Plus the three conventions [FR 007](../done/007-macro-details/README.md) landed**, which this
+    request now *follows* rather than proposes, since that one went first:
+    [How a mutating tool takes its subject](../../specifications/architecture.md#how-a-mutating-tool-takes-its-subject),
+    [A mutating tool reports before and after](../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
+    and
+    [Preconditions are answers](../../specifications/architecture.md#preconditions-are-answers).
+    Note that FR 007's `refit` reporting has a shape worth copying exactly rather than reinventing:
+    `refit_performed`, `refit_incomplete_reason` and `assets_possibly_stale`.
   - **New — a batched mutating tool resolves everything before it writes anything.** The
     all-or-nothing rule above, stated generally: an agent's typo in entry 17 must not leave a
     half-modified character, and a partial success is not something the response format can usefully
@@ -344,9 +350,17 @@ discipline (snapshot every datablock collection, compare after, never save). Spe
 - `symmetrize` on a character made deliberately asymmetric, in both directions, with `dry_run` first.
 - Batch cost against FR 005's ~1.0 s baseline: thirty modifier changes in one call versus thirty
   calls, and how much of the difference is target files being read off disk.
-- Interaction with [FR 007](../007-macro-details/README.md): a macro change after detail targets are
+- Interaction with [FR 007](../done/007-macro-details/README.md): a macro change after detail targets are
   set must leave the detail stack intact — `reapply_macro_details()` should touch only `$md-` keys.
-  If it does not, one of the two requests is wrong and this is where it surfaces.
+  If it does not, one of the two requests is wrong and this is where it surfaces. Note that FR 007
+  landed **without** its own live verification, so this check is now carrying weight for both
+  requests: it is the first live evidence either way that `mpfb_set_macro_details` does what it
+  claims.
+- The `mpfb_set_macro_details` checklist that FR 007 left outstanding, if it has not been run by
+  then — see
+  [its Verification status](../done/007-macro-details/README.md#verification-status). Doing the two
+  together is cheaper than twice, since both need a dressed, rigged character and both compare
+  against MPFB's own panel.
 
 Record the outcome in a `## Verification status` section here.
 
