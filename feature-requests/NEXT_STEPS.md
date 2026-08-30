@@ -53,9 +53,9 @@ manipulate; and the raw shape-key level, which is the only way to reach a user-i
 And batching is not a separate "batch load" tool but the shape of the mutating tool itself, since a
 socket round trip costs about a second and the work inside it costs milliseconds.
 
-## Adding assets
+## Loading / applying assets
 
-The next logical step would be the ability to add assets:
+The next logical step would be the ability to add assets to a character:
 
 - Add rig, including a custom rig
 - Add an MHCLO asset: needs to take asset type and material type as parameters
