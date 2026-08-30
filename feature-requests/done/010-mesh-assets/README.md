@@ -141,13 +141,13 @@ the user is currently editing is not something to do quietly, and every other mu
 already answers that case rather than performing it.
 
 **Not in scope.** Skins and alternative materials, which are
-[FR 011](../../011-skin-and-materials/README.md) — a skin is a material rather than an object and does
+[FR 011](../011-skin-and-materials/README.md) — a skin is a material rather than an object and does
 not go through this function at all. Ink layers and poses, which are in `mpfb_list_assets`' answer
 but are neither MHCLO nor mesh (see [NEXT_STEPS.md](../../NEXT_STEPS.md)). Installing asset packs
 (`mpfb.load_pack`) or targets (`mpfb.install_target`). Batch equipping — see the note above.
 `color_adjustments` and `alternative_materials`, both of which `add_mhclo_asset()` accepts as
 uuid-keyed dicts; the alternative-material half is reachable after the fact through
-[FR 011](../../011-skin-and-materials/README.md)'s `mpfb_set_asset_material`, which is a better shape
+[FR 011](../011-skin-and-materials/README.md)'s `mpfb_set_asset_material`, which is a better shape
 for a tool argument than a dict keyed by a uuid the caller has no way to know.
 
 ## Non-functional requirements

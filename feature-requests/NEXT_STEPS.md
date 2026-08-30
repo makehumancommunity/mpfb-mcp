@@ -14,10 +14,11 @@ Most of the things in this section is done via TargetService. Macrodetails and p
 [FR 007](done/007-macro-details/README.md) and detail targets as
 [FR 008](done/008-detail-targets/README.md); see their entries in [HISTORY.md](HISTORY.md).
 **Neither landed with live verification**, and neither did [FR 009](done/009-add-rig/README.md)'s
-two rig tools or [FR 010](done/010-mesh-assets/README.md)'s two asset tools. The outstanding checks
+two rig tools, [FR 010](done/010-mesh-assets/README.md)'s two asset tools or
+[FR 011](done/011-skin-and-materials/README.md)'s three material tools. The outstanding checks
 overlap heavily — they all need the same dressed, rigged character and all compare against MPFB's
-own panel — so they are **one session's work rather than five**, and that session is by far the
-largest single piece of unfinished business in this file. It has six parts:
+own panel — so they are **one session's work rather than six**, and that session is by far the
+largest single piece of unfinished business in this file. It has seven parts:
 
 - [FR 007](done/007-macro-details/README.md#verification-status) — phenotype sliders, refit, and the
   generated-Rigify-with-no-meta-rig branch of `mpfb_refit_human`.
@@ -25,13 +26,21 @@ largest single piece of unfinished business in this file. It has six parts:
   `mpfb_set_targets` reads back on MPFB's own slider.
 - [FR 009](done/009-add-rig/README.md#verification-status) — that rigging after dressing really does
   leave the clothes unrigged, and the full Rigify sequence in both orders.
-- [FR 010](done/010-mesh-assets/README.md#verification-status) — the largest of the five, and the
+- [FR 010](done/010-mesh-assets/README.md#verification-status) — the largest of the six, and the
   one where the stubs establish least: that a garment equipped through `mpfb_add_asset` is
   indistinguishable from one equipped through MPFB's asset library panel, each of the eight
   `asset_type` values at least once, the **proxy divergence measured rather than read from source**,
   and removal end to end. It also settles FR 009's ordering claim from the other end, and doubles as
   the first live evidence that FR 007's refit does anything at all — so **whichever of the two gets
   there first settles it for both**.
+- [FR 011](done/011-skin-and-materials/README.md#verification-status) — the three material tools,
+  and the part of the session with the least stub backing of all: a material *is* a node tree, and
+  nothing in the suite builds one. All five `skin_type` values against MPFB's own skin library
+  panel, the material-instance slots and their settings, the settings file created once and not
+  twice, `scale_assumption` at a non-default scale, a body-proxy character, `LAYERED` with no MHMAT,
+  both directions of `mpfb_set_asset_material` plus `restore_default`, the alternative-material
+  cache staleness, and per-skin-type cost against FR 005's baseline. It needs the same dressed
+  character as the four above, with a skin installed to put on it.
 - **A re-check of [FR 004](done/004-list-rigs/README.md)**, whose live verification FR 009 made
   stale: `payloads/list_rigs.py` was migrated onto the shared `rig_lookup.py` fragment, so the
   program sent into Blender is a different program even though the unit tests see no behavior
@@ -69,18 +78,22 @@ What remains unscoped in this area:
 
 The next logical step would be the ability to add assets to a character. All three bullets below
 are now scoped into numbered requests, one per domain; the bullets are kept as the original
-statement of what was wanted. Two of the three have landed.
+statement of what was wanted. All three have landed.
 
 - ~~Add rig, including a custom rig~~ — landed as [FR 009](done/009-add-rig/README.md); see its
   [entry in HISTORY.md](HISTORY.md)
 - ~~Add an MHCLO asset: needs to take asset type and material type as parameters~~ — landed as
   [FR 010](done/010-mesh-assets/README.md), which also covers *removing* one; see its
   [entry in HISTORY.md](HISTORY.md)
-- Set skin: needs to take material type as parameter — [FR 011](011-skin-and-materials/README.md)
+- ~~Set skin: needs to take material type as parameter~~ — landed as
+  [FR 011](done/011-skin-and-materials/README.md), which also covers swapping an equipped asset's
+  material and the small catalogue that had to exist for it; see its
+  [entry in HISTORY.md](HISTORY.md)
 
 The split is by domain rather than by size: rigs go through a different, non-interchangeable pair
 of `HumanService` functions; an MHCLO asset is an imported object; and a skin is a material applied
-to objects that already exist. Three decisions taken across them are worth knowing about from here.
+to objects that already exist. Three decisions taken across them are worth knowing about from
+here.
 
 **Removing is in scope alongside adding**, for mesh assets. `HumanService.unload_mhclo_asset()` also
 takes off the delete-group mask modifier and the garment's sub-rig, neither of which a plain object
@@ -99,7 +112,10 @@ violating it. [FR 009](done/009-add-rig/README.md) landed that as a standing con
 [A tool reports an ordering constraint it cannot enforce](../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
 — and [FR 010](done/010-mesh-assets/README.md) followed it from the other end, reporting
 `rigged_to: null` beside `parented_to` for a garment attached to a character that had no rig at that
-moment. FR 011 follows it rather than restating it.
+moment. [FR 011](done/011-skin-and-materials/README.md) turned out to add no ordering constraint of
+its own — a skin can be applied at any point — but it did add the mirror image of one, and it is now
+a standing convention:
+[Where MPFB's UI coerces or re-defaults a service argument](../specifications/architecture.md#where-mpfbs-ui-coerces-or-re-defaults-a-service-argument-mpfb-mcp-does-the-same-and-reports-both).
 
 **Adding is one asset per call**, not batched like
 [FR 008](done/008-detail-targets/README.md)'s target setting: loading an MHCLO is seconds of mesh import and vertex fitting, so the ~1 s socket round trip
@@ -116,7 +132,10 @@ verification above.
 - **Ink layers.** Likewise listed by `mpfb_list_assets` (`ink_layers`) and likewise a different
   mechanism: `MaterialService.load_ink_layer()` adds a UV map and a layer to an existing MakeSkin or
   Layered skin material, works on no other material type, and is invisible when a body proxy is
-  present.
+  present. [FR 011](done/011-skin-and-materials/README.md) excluded them **explicitly** rather than
+  by omission, and it is also what makes them reachable: an ink layer needs a MakeSkin or Layered
+  skin to attach to, and `mpfb_set_skin` is what puts one there. This is the next material request,
+  and its dependency has landed.
 - **Installing asset packs and targets** (`mpfb.load_pack`, `mpfb.install_target`) — the operations
   that put new entries into the catalogues in the first place.
 

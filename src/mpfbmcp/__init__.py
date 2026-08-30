@@ -49,7 +49,15 @@ def main() -> int:
             "silently turns hair into clothes. Take an asset off with "
             "mpfb_remove_asset rather than by deleting the object, or the "
             "body stays masked under something that is no longer there. "
-            "To change an existing "
+            "A character with no skin is grey: give it one with mpfb_set_skin, "
+            "whose skin_type picks between five entirely different materials "
+            "and defaults to MAKESKIN as MPFB's own panel does, not to the "
+            "ENHANCED_SSS its service function defaults to. Applying a skin "
+            "deletes every material already on the body, and on the body proxy "
+            "too. To recolour a garment rather than the body, list its "
+            "alternatives with mpfb_list_asset_materials - they are not in "
+            "mpfb_list_assets' answer - and apply one with "
+            "mpfb_set_asset_material. To change an existing "
             "character rather than create one, read its phenotype with "
             "mpfb_get_macro_details first and change only what should differ "
             "with mpfb_set_macro_details, which leaves unnamed sliders alone. "
@@ -68,9 +76,9 @@ def main() -> int:
 
     from mpfbmcp.tools import (
         add_asset, add_rig, create_human, generate_rigify_rig, get_macro_details,
-        get_object_info, get_status, get_target_stack, list_assets, list_objects,
-        list_rigs, list_targets, refit_human, remove_asset, set_macro_details,
-        set_targets, symmetrize_targets)
+        get_object_info, get_status, get_target_stack, list_asset_materials, list_assets,
+        list_objects, list_rigs, list_targets, refit_human, remove_asset, set_asset_material,
+        set_macro_details, set_skin, set_targets, symmetrize_targets)
     add_asset.register(mcp)
     add_rig.register(mcp)
     create_human.register(mcp)
@@ -79,13 +87,16 @@ def main() -> int:
     get_object_info.register(mcp)
     get_status.register(mcp)
     get_target_stack.register(mcp)
+    list_asset_materials.register(mcp)
     list_assets.register(mcp)
     list_objects.register(mcp)
     list_rigs.register(mcp)
     list_targets.register(mcp)
     refit_human.register(mcp)
     remove_asset.register(mcp)
+    set_asset_material.register(mcp)
     set_macro_details.register(mcp)
+    set_skin.register(mcp)
     set_targets.register(mcp)
     symmetrize_targets.register(mcp)
 

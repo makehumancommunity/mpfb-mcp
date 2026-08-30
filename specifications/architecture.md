@@ -217,6 +217,13 @@ authoritatively, reporting alongside the result both whether the value was recog
 valid values actually are — so a caller can correct itself from the same response rather than
 needing a second tool or a hardcoded list.
 
+There is exactly one exception, and it is narrow: a vocabulary that is small, closed, MPFB's own
+enum rather than anything derived from the user's disk, **and** validated by MPFB only after it has
+destroyed something. `mpfb_set_skin`'s `skin_type` is the only current case; see
+[Preconditions are answers](#preconditions-are-answers) for why. Even there the authoritative check
+stays in the payload and the response still reports `known_skin_types`; the local check only means
+a typo never travels.
+
 **Structured input is taken as flat scalar arguments, not as a nested dict.** `mpfb_create_human`
 takes eleven separate macro sliders rather than the `macro_detail_dict` MPFB's own
 `create_human()` wants, and `mpfb_set_macro_details` takes the same eleven names. That is
@@ -359,7 +366,11 @@ takes them all, requires exactly one, and reports which one resolved and to what
   calls where the caller already had the file.
 - **Exactly one, never both, and never neither.** They can name different files. Silently preferring
   one would attach an asset the caller did not ask for, and there is no reading of "both" that is
-  more likely to be right than refusing.
+  more likely to be right than refusing. An exception to "never neither" needs a reason of its own,
+  not a relaxation of the rule: `mpfb_set_skin` accepts neither identifier when — and only when —
+  `skin_type` is `LAYERED`, which is the single skin type that has a material to build from no file
+  at all. "Neither" is a meaningful request there and a mistake everywhere else, so it is refused
+  everywhere else.
 - **Report the resolution, because it is lossy.** `find_asset_absolute_path()` matches on the
   fragment's *basename*, prefers a candidate whose parent directory also matches, and otherwise
   returns the first hit — so two packs shipping `hat.mhclo` resolve to a coin toss. `resolved_path`
@@ -371,6 +382,39 @@ takes them all, requires exactly one, and reports which one resolved and to what
   so hair added without it *becomes* clothes, permanently and silently. Where a defaulted argument
   changes what the character *is*, the tool requires it rather than inheriting the default, and says
   in its docstring that it diverges from MPFB's own signature for that reason.
+
+## Where MPFB's UI coerces or re-defaults a service argument, mpfb-mcp does the same and reports both
+
+A service signature's default is not always the product's default, and a service's argument is not
+always the one the product would have passed. `HumanService.set_character_skin()` defaults
+`skin_type` to `ENHANCED_SSS`, while the settings panel every user actually sees defaults it to
+`MAKESKIN`; and it accepts `material_instances=True` for a `MAKESKIN` skin, while
+`loadlibraryskin.py` forces that flag to `False` for `MAKESKIN`, `LAYERED` and `GAMEENGINE` alike —
+a coercion the service's own guard makes for only two of the three.
+
+Passing the signature's value in either case would produce a character that **cannot be reproduced
+through MPFB's own UI**, which is the same quality bar
+[FR 007](../feature-requests/done/007-macro-details/README.md) sets for macro details: the goal is
+that the value reads back on MPFB's own slider.
+
+- **Follow the UI, not the signature.** The panel is what the user saw and what a character loaded
+  from a `.mhm` was made with. A signature default is an implementation detail of one function.
+- **Say so in the docstring, naming both values.** "Defaults to `MAKESKIN`, which is MPFB's settings
+  panel's default rather than the function's `ENHANCED_SSS`" is checkable; a bare default is not.
+- **Report `*_requested` beside `*_used`, with a sentence when they differ.** A silent coercion is
+  indistinguishable from a bug: a caller who asks for material instances, gets none, and is told
+  nothing will conclude the tool is broken. `mpfb_set_skin` returns
+  `material_instances_requested` and `material_instances_used` on every call, not only when they
+  disagree — for the same reason
+  [A mutating tool reports before and after](#a-mutating-tool-reports-before-and-after) reports a
+  field the caller named even when it was already so.
+- **The coercion belongs in the payload, not in the stub.** The test has to be testing mpfb-mcp. A
+  stub service that coerced would let the payload do nothing and still pass.
+- **This is not the same as picking between code paths.**
+  [Where MPFB's own code paths disagree](#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
+  is about two implementations of an operation; this is about one implementation whose *arguments*
+  the UI fills in differently from its signature. The remedy is different too: there, name the path
+  you took; here, apply the coercion and report both values.
 
 ## Where MPFB's own code paths disagree, mpfb-mcp picks one and names it
 
@@ -398,6 +442,17 @@ versus services" to *any* two MPFB code paths.
   problem in MPFB that mpfb-mcp is working around, not a fact about mpfb-mcp.
 - **Do not merge them.** Picking one and naming it is the rule; synthesizing a fourth behavior that
   matches none of MPFB's own would make the result unreproducible from inside Blender.
+- **The limiting case is no service path at all.** Setting an alternative material on an equipped
+  asset exists only in `ui/apply_assets/assetlibrary/operators/loadlibrarymaterial.py`, as two
+  module-level helpers. There is nothing to prefer, so the panel's behavior *is* the specification,
+  and it is reimplemented from services rather than imported — quirks included, because every quirk
+  is a way the result would otherwise differ from what the user gets from the panel. Three of them
+  are reproduced deliberately in `mpfb_set_asset_material`: the replacement is always a MakeSkin
+  material under the fixed name `makeskinmaterial`, whatever the asset had before; the slots are
+  *popped* rather than deleted, so the previous material's node groups survive (unlike the skin
+  path, which destroys them); and the viewport colour is keyed on the object's recorded
+  `object_type`, so an asset mislabelled at equip time gets the wrong colour here too. Reproduce
+  them, and say in the payload docstring that they are reproductions rather than choices.
 
 ## How tools bound a large answer
 
@@ -490,6 +545,17 @@ A third turns up in `mpfb_get_target_stack`, and it is the sharpest of them:
   `visible_to_targetservice: false`. Every **write** still goes through `TargetService`, or the
   read and write halves of the same tool would disagree about what exists.
 
+And the same convention has a fourth form, seen from the other side:
+
+- **The tool can be the stale one, and must say so.**
+  `AssetService.alternative_materials_for_asset()` caches its scan per `(asset_source,
+  asset_subdir)` in a module-level dict with no invalidation, so `mpfb_list_asset_materials` reports
+  a snapshot taken the first time anything in that Blender session asked about the asset. A material
+  installed afterwards is on disk, is applicable, and will not appear — and no `refresh` argument
+  could change that, because there is nothing to call. Where the staleness is *ours* rather than
+  MPFB's, the obligation is the same: name it in the docstring and in the response, so a caller who
+  meets it does not read it as a bug.
+
 Prefer describing what is actually on disk, and label the part MPFB will not show — rather than
 either papering over the difference or quietly inheriting the limitation. Where the difference is
 a limitation of MPFB rather than of the tool, that is worth recording as a candidate mpfb2 issue
@@ -569,6 +635,20 @@ problem, rather than letting MPFB's own guard surface as a traceback in an error
   basemesh looks like, and it should be reported as that rather than half-done.
 - **Reachability of what the payload needs**, such as a property set read off a service's module
   (see [Reading module-level names MPFB does not publish](#reading-module-level-names-mpfb-does-not-publish)).
+- **A vocabulary MPFB validates *after* it destroys something.** This is the sharpest case, and it
+  is the one exception to
+  [validate the shape, never the vocabulary](#validate-before-crossing-the-socket).
+  `HumanService.set_character_skin()` opens with
+  `MaterialService.delete_all_materials(..., also_destroy_groups=True)` on the basemesh and the body
+  proxy, and only then tests its five skin types — with five separate `if` statements rather than a
+  chain with an `else`. An unrecognised value therefore deletes the character's materials, builds
+  nothing, and surfaces as a `ValueError` raised from `create_and_assign_material_slots()` about a
+  mesh with no materials: a traceback from a function that never saw the bad argument, after damage
+  that cannot be undone across the socket. Where a vocabulary is checked late and the check is
+  preceded by destruction, check it in the payload first — and, where the vocabulary is small,
+  closed and MPFB's own enum rather than a scan of the user's disk, check it in the tool module too,
+  so a typo never crosses the socket at all. Report `known_*` alongside either way: the local check
+  is belt and braces, and the authoritative answer still comes from Blender.
 
 Report which precondition blocked (`ready: false` plus a `blocked_by` naming it) rather than only a
 sentence, so a caller can branch on it; and make sure the tool changed nothing on the way to

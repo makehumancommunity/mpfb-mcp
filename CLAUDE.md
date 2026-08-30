@@ -24,7 +24,7 @@ efforts; `HISTORY.md` is the log of what has landed.
 
 ## Project status
 
-Proof of concept. Seventeen tools are implemented: `mpfb_create_human`, wrapping MPFB's
+Proof of concept. Twenty tools are implemented: `mpfb_create_human`, wrapping MPFB's
 `HumanService.create_human()`; `mpfb_get_status`, reporting whether MPFB is present, initialized
 and how it is configured; the object-finding pair `mpfb_list_objects` and
 `mpfb_get_object_info`, which is how every later tool is meant to name the object it acts on; and
@@ -56,12 +56,21 @@ and always reports which file it landed on, since resolving a fragment matches o
 `mpfb_remove_asset`, which exists because deleting the object leaves the body's mask modifier and the
 garment's sub-rig behind. Between them they also carry the last convention: **where MPFB's own code
 paths disagree, mpfb-mcp picks one and names it** (adding a proxy has three implementations in MPFB;
-this follows the service-layer one and says so). **The ten character-modifying tools are the part of
-the code that has never been run against a real Blender** (see
+this follows the service-layer one and says so). And last, the three that reach a character's
+*materials*: `mpfb_set_skin`, which is why a character need no longer be grey, and which carries the
+newest convention — **where MPFB's UI coerces or re-defaults a service argument, mpfb-mcp coerces
+the same way and reports both values** (`skin_type` defaults to the settings panel's `MAKESKIN`
+rather than the signature's `ENHANCED_SSS`, and `material_instances` is forced off for three of the
+five types); `mpfb_set_asset_material`, the limiting case of the convention above it, since setting
+an alternative material has *no* service implementation to pick — only a UI operator to reproduce;
+and `mpfb_list_asset_materials`, which exists because alternative materials are not an asset library
+section and `mpfb_list_assets` therefore cannot name them. **The twelve character-modifying tools
+are the part of the code that has never been run against a real Blender** (see
 [FR 007's](feature-requests/done/007-macro-details/README.md#verification-status),
 [FR 008's](feature-requests/done/008-detail-targets/README.md#verification-status),
-[FR 009's](feature-requests/done/009-add-rig/README.md#verification-status) and
-[FR 010's verification status](feature-requests/done/010-mesh-assets/README.md#verification-status)).
+[FR 009's](feature-requests/done/009-add-rig/README.md#verification-status),
+[FR 010's](feature-requests/done/010-mesh-assets/README.md#verification-status) and
+[FR 011's verification status](feature-requests/done/011-skin-and-materials/README.md#verification-status)).
 See [specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's planned
 beyond them, and [feature-requests/](feature-requests/) for work in progress.
 
@@ -303,6 +312,49 @@ mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP
   `unload_mhclo_asset()` checks nothing and would delete either; and the detection of an empty
   `asset_source`, from which that function derives the name `Delete.`, matches no modifier, and
   deletes the object anyway — leaving the body masked under an asset that is no longer there.
+  `tools/set_skin.py`, `tools/set_asset_material.py` and `tools/list_asset_materials.py` are the
+  three that reach a character's *materials*. `set_skin.py` is the **only tool here that validates a
+  vocabulary locally** as well as in Blender, and the exception is earned rather than convenient:
+  `set_character_skin()` deletes every material on the basemesh and the body proxy *before* testing
+  its five `skin_type` values, and tests them with five separate `if` statements rather than a chain
+  with an `else` — so an unrecognised value destroys the skin, builds nothing, and surfaces as a
+  `ValueError` raised from `create_and_assign_material_slots()` about a mesh with no materials. The
+  payload checks it first regardless; the local check only means a typo never crosses the socket. It
+  is also the tool that follows **MPFB's settings panel rather than the function signature**, twice:
+  `skin_type` defaults to `MAKESKIN` and not `ENHANCED_SSS`, and `material_instances` is coerced off
+  for `LAYERED`, `GAMEENGINE` *and* `MAKESKIN` although the service's own guard names only the first
+  two — with `material_instances_requested` reported beside `material_instances_used`, since a
+  silent coercion reads as a bug. Note the consequence: the *default* call creates no material
+  instances. `set_asset_material.py` has **no service function to wrap at all** — the mechanism
+  exists only in `mpfb/ui/apply_assets/assetlibrary/operators/loadlibrarymaterial.py`, as two
+  module-level helpers — so both are reimplemented from services and three of the operator's quirks
+  reproduced rather than tidied up: always a MakeSkin material named `makeskinmaterial` whatever the
+  asset had before; the slots *popped* rather than deleted, so the old node groups survive (unlike
+  the skin path, which destroys them); and the viewport colour keyed on the object's recorded
+  `object_type`, so an asset mislabelled at equip time gets the wrong colour here too. Its `name` is
+  required with no active-object fallback, for `remove_asset.py`'s reason, and it refuses the three
+  types MPFB's own panel refuses — a `Basemesh` and a `Proxymeshes` carry a skin, which is
+  `set_skin.py`'s job. `list_asset_materials.py` exists because alternative materials are **not an
+  asset library section**: they sit in the asset's own directory, so `mpfb_list_assets` cannot name
+  them and the gap is invisible from its answer. It is also the one tool whose answer is stale on
+  *this* side — MPFB caches that scan per asset with no invalidation — which is
+  `mpfb_list_targets`' staleness convention seen from the other end. Both material tools derive the
+  asset subdir as `str(object_type).lower()`, which is MPFB's own derivation in that operator and
+  the one `payloads/get_object_info.py` already makes when it resolves the same property back to a
+  file, rather than `asset_sections.py`'s `subdir_for_object_type()`; the two agree for every
+  current type, and the read and write halves of one property agreeing matters more here than
+  authority does. Seven things live in those three payloads that could not live here: the
+  vocabulary check placed ahead of a destructive call; the body-proxy resolution, done in the
+  payload rather than left to `set_character_skin()` because the response is the only place a
+  caller learns a second object was modified; the reading of every material name *before* the
+  deletion; the enhanced-settings file check, taken before and after the call so
+  `settings_file_created` is an observation rather than a guess — and note it is gated on
+  `material_instances` rather than on the skin type, so the default call writes nothing outside the
+  `.blend` at all; the scale detection, whose first threshold is `> 0.9` against a `scale_factor`
+  that defaults to `1.0`, so an ordinary character reports `DECIMETER` and not `METER`; the
+  active-body-slot fixup, which is UI behaviour with no service behind it and without which the
+  user's material panel is left looking at a fingernail; and the reading of `Mhclo.material`, which
+  comes back as an **absolute path** that may name a file nobody installed.
 - **[__init__.py](src/mpfbmcp/__init__.py)** — `main()`: builds the `FastMCP` server, calls each
   tool module's `register()`, runs over stdio. Together with a tool module and a payload file,
   this `register()` call is the *whole* of what adding a tool touches — no shared
@@ -455,18 +507,46 @@ this side of the socket:
   these cannot say: that a garment equipped here matches one equipped through MPFB's asset library
   panel, or that MPFB's three proxy code paths really do differ — the claim the Architecture section
   rests on.
+- [tests/test_set_skin.py](tests/test_set_skin.py),
+  [tests/test_set_asset_material.py](tests/test_set_asset_material.py) and
+  [tests/test_list_asset_materials.py](tests/test_list_asset_materials.py) — the same two layers,
+  over the same `MeshAssetTestCase`, which grew a `skins` root, two alternative materials beside the
+  fedora, an asset whose MHCLO names a material nobody installed, and a *real* MPFB data directory
+  and user config directory, since `settings_file_created` claims a file appeared where none was.
+  What changed in the stubs is load-bearing: `material_slots` is now **derived from
+  `data.materials`** the way Blender derives it, replacing the old one-material-per-object model,
+  because the skin path deletes materials through `delete_all_materials()` while the
+  alternative-material path pops `data.materials` directly and the two must not be able to look
+  alike. `StubHumanService.set_character_skin()` reproduces MPFB's ordering quirk-first — the source
+  fragment recorded *before* the deletion and only when a file was given, both objects' materials
+  deleted next, then five separate `if` statements that build **nothing** for an unrecognised type —
+  and `create_and_assign_material_slots()` really raises `ValueError` on the mesh that results,
+  which is what makes the payload's vocabulary check a precondition rather than belt and braces. The
+  `material_instances` coercion is **deliberately absent** from that stub, so the payload is what
+  performs it and one test asserts the stub was handed `False` for a call that requested `True`;
+  putting it in the stub would let the payload do nothing and still pass.
+  `alternative_materials_for_asset()` caches per `(asset_source, asset_subdir)` and never
+  invalidates, so the documented staleness is asserted by writing a new MHMAT between two calls, and
+  its `exclude_default` argument is accepted and never read, exactly as MPFB's is. The `Mhclo` stub
+  honours `only_metadata` and returns an absolute material path; `MakeSkinMaterial` raises for a
+  file it cannot read, which is what makes "the slots are already popped when the build fails"
+  reachable. Note what these cannot say, and it is more than elsewhere: **no stub builds a node
+  tree**, so nothing here establishes that any of the five skin types produces the material MPFB's
+  own skin library panel produces — which is the whole primary goal of the effort.
 
 Anything needing real MPFB is a manual integration check against a running Blender (see
 [Commands](#commands)), and feature requests are expected to say so explicitly. FR 001 through
-FR 006 each had that check run before being marked Done; **FR 007, FR 008, FR 009 and FR 010 did
-not**, so all ten character-modifying tools are unverified against real MPFB. Their
+FR 006 each had that check run before being marked Done; **FR 007 through FR 011 did
+not**, so all twelve character-modifying tools are unverified against real MPFB. Their
 verification-status sections
 ([FR 007](feature-requests/done/007-macro-details/README.md#verification-status),
 [FR 008](feature-requests/done/008-detail-targets/README.md#verification-status),
 [FR 009](feature-requests/done/009-add-rig/README.md#verification-status),
-[FR 010](feature-requests/done/010-mesh-assets/README.md#verification-status)) say exactly what is
-outstanding, and all four checklists want the same dressed, rigged character — so they are one
-session's work rather than four. **Two catalogue verifications are stale on top of that**: FR 009
+[FR 010](feature-requests/done/010-mesh-assets/README.md#verification-status),
+[FR 011](feature-requests/done/011-skin-and-materials/README.md#verification-status)) say exactly
+what is outstanding, and all five checklists want the same dressed, rigged character — so they are
+one session's work rather than five. FR 011's is the one where the stubs establish least of all: a
+material *is* a node tree, and nothing in the suite builds one. **Two catalogue verifications are stale on top of that**: FR 009
 migrated `payloads/list_rigs.py` onto `rig_lookup.py` and FR 010 migrated `payloads/list_assets.py`
 onto `asset_sections.py`, so in each case the program sent into Blender is a different program even
 though the unit tests see no behavior change. Re-running FR 004's and FR 005's checks is cheap (both

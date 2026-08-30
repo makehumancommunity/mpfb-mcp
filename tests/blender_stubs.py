@@ -5,7 +5,8 @@ Stand-ins for Blender and MPFB, for executing generated payloads locally.
 
 The payloads for ``mpfb_list_objects``, ``mpfb_get_object_info``,
 ``mpfb_list_rigs``, ``mpfb_list_assets``, ``mpfb_list_targets``,
-``mpfb_get_macro_details``, ``mpfb_set_macro_details`` and ``mpfb_refit_human``
+``mpfb_get_macro_details``, ``mpfb_set_macro_details``, ``mpfb_refit_human`` and
+the mesh-asset and material tools
 carry real branching - type filtering, relationship walking, three asset_info
 shapes, a weights fallback walk, filtering and paging over an asset library, a
 two-source target scan, preconditions, a write-then-recalculate sequence - so
@@ -58,6 +59,27 @@ reason the payload is written the way it is:
   the real one reports only through an ``operator``.
 - ``find_rigify_metarig_by_rig()`` is guarded as MPFB's is and follows the
   metarig's own back-pointer rather than a shared id.
+- ``material_slots`` is *derived* from ``data.materials``, the way Blender
+  derives it, rather than stored beside it - so the skin path's
+  ``delete_all_materials()`` and the alternative-material path's
+  ``data.materials.pop(index=0)`` cannot be made to look alike here when they do
+  not look alike in Blender.
+- ``set_character_skin()`` records ``material_source`` **before** it deletes
+  anything and **only when it was given a file**, deletes the materials on both
+  objects next, and then tests its five skin types with five separate ``if``
+  statements - so an unrecognised type really does build nothing, and
+  ``create_and_assign_material_slots()`` really raises on the mesh that results.
+- ...and its ``material_instances`` coercion is **deliberately absent**: MPFB's
+  UI performs it, not the service, so mpfb-mcp's payload has to be the thing
+  under test. A coercing stub would let the payload do nothing and still pass.
+- ``alternative_materials_for_asset()`` caches per ``(asset_source,
+  asset_subdir)`` and never invalidates, and its ``exclude_default`` argument is
+  accepted and never read - both of which a tool's docstring claims out loud.
+- ``Mhclo.load()`` honours ``only_metadata`` and hands back an **absolute**
+  material path, which can name a file nobody installed.
+- ``MakeSkinMaterial.populate_from_mhmat()`` raises for a file it cannot read,
+  which is what makes "the slots are already popped when the build fails"
+  reachable rather than hypothetical.
 
 The one place these deliberately depart from MPFB is
 ``calculate_target_stack_from_macro_info_dict()``, which uses a stand-in table
@@ -75,7 +97,10 @@ __all__ = (
     "StubAssetService",
     "StubHumanService",
     "StubLocationService",
+    "StubMakeSkinMaterial",
     "StubMaterial",
+    "StubMaterialService",
+    "StubMhclo",
     "StubObject",
     "StubObjectService",
     "StubSystemService",
@@ -86,6 +111,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import sys
 import tempfile
 import types
@@ -196,11 +222,48 @@ class StubMaterial:
 
     ``name`` is here because ``mpfb_add_asset`` reports the material MPFB built,
     and ``MaterialService.create_empty_material()`` names it after the object.
+    ``diffuse_color`` is here because the alternative-material path is the one
+    place MPFB writes it by hand, from a per-object-type table with a fallback,
+    and ``mpfb_set_asset_material`` reports which of the two it got.
+    ``built_from`` records the MHMAT a MakeSkin node tree was applied from, which
+    is the only way a stub can say *which* material was built rather than that
+    one was.
     """
 
     def __init__(self, identified="makeskin", name="Material"):
         self.identified = identified
         self.name = name
+        self.diffuse_color = None
+        self.built_from = None
+
+
+class _StubMaterialSlot:
+    """One entry of ``object.material_slots``, derived from ``data.materials``.
+
+    Derived rather than stored, exactly as Blender derives it: a slot is a view
+    onto the mesh's material list, so a payload that pops ``data.materials`` -
+    which is what MPFB's alternative-material operator does instead of calling
+    ``delete_all_materials()`` - sees the slots disappear with it. Two
+    representations kept in step by hand would let those two paths drift apart
+    here in a way they cannot in Blender.
+    """
+
+    def __init__(self, material, slot_index):
+        self.material = material
+        self.slot_index = slot_index
+        self.name = "" if material is None else material.name
+
+
+class _StubMaterials(list):
+    """``mesh.materials``: a list, plus Blender's keyword-taking ``pop()``.
+
+    ``pop(index=0)`` rather than ``pop(0)`` is not a stylistic difference -
+    ``loadlibrarymaterial.py`` calls it by keyword, and a plain list would
+    accept that only by accident of the parameter name.
+    """
+
+    def pop(self, index=0):
+        return list.pop(self, index)
 
 
 class StubShapeKey:
@@ -285,6 +348,9 @@ class StubMesh:
         # which is a branch rather than a hypothetical.
         self.rigify_colors = [object()] * rigify_colors
         self.rigify_rig_basename = ""
+        # Where materials actually live, as they do in Blender. `material_slots`
+        # on the object is a view onto this.
+        self.materials = _StubMaterials()
         self.shape_keys = None
         if shapekeys:
             self.shape_keys = StubShapeKeys(
@@ -386,7 +452,6 @@ class StubObject:
         self.name = name
         self.type = blender_type
         self.parent = parent
-        self.material = material
         # A list rather than a Vector, but iterable of floats and wholly
         # replaceable, which is all the adding functions need: they assign the
         # armature the basemesh's location and then move the basemesh to the
@@ -410,6 +475,14 @@ class StubObject:
         self.mode = mode
         self.data = StubMesh(shapekeys, rigify_colors=rigify_colors)
         self.data.name = name
+        # The `material=` kwarg is kept as a convenience - it seeds slot 0 -
+        # rather than as a second place a material can live. Everything that
+        # reads or writes one goes through data.materials.
+        if material is not None:
+            self.data.materials.append(material)
+        # Written by the skin payload's reproduction of MPFB's active-body-slot
+        # fixup, which is UI behaviour with no service behind it.
+        self.active_material_index = 0
         self._selected = selected
         # Rigify's own markers, which MPFB reads off the armature data rather
         # than through any property of its own.
@@ -432,9 +505,29 @@ class StubObject:
                 "object_type": object_type,
                 "asset_source": asset_source,
                 "alternative_material": alternative_material,
+                # MPFB's own default, from
+                # entities/objectproperties/generalproperties/scale_factor.json.
+                # It is 1.0 rather than 0.0 and the enhanced skins' first
+                # threshold is > 0.9, so an ordinary character is treated as
+                # decimetre-scaled - which mpfb_set_skin reports precisely
+                # because a caller would expect METER.
+                "scale_factor": 1.0,
             },
             "HUM": human_properties,
         }
+
+    @property
+    def material_slots(self):
+        """Blender's view onto ``data.materials``, rebuilt on each access."""
+        return [_StubMaterialSlot(material, index)
+                for index, material in enumerate(self.data.materials)]
+
+    @property
+    def material(self):
+        """Slot 0's material, which is all several payloads ever ask for."""
+        if not self.data.materials:
+            return None
+        return self.data.materials[0]
 
     def select_get(self):
         return self._selected
@@ -746,6 +839,52 @@ class StubAssetService:
     def get_asset_roots(asset_subdir="clothes"):
         return list(StubAssetService.asset_roots.get(asset_subdir, []))
 
+    # The module-level cache alternative_materials_for_asset() keeps, keyed by
+    # (asset_source, asset_subdir) and never invalidated - which is the whole
+    # reason mpfb_list_asset_materials documents its answer as a snapshot.
+    alternative_material_cache = {}
+    alternative_material_calls = []
+
+    @staticmethod
+    def alternative_materials_for_asset(asset_source, asset_subdir="clothes",
+                                        exclude_default=True):
+        """MPFB's scan, cache included - and its unused ``exclude_default``.
+
+        Two behaviours are reproduced because a tool depends on each. The result
+        is **cached per (asset_source, asset_subdir) with no invalidation**, so a
+        material written into the directory after the first call for an asset is
+        invisible for the rest of the session; and ``exclude_default`` is
+        accepted and **never read**, so the asset's own material is in the list
+        like any other. A stub that filtered it out would make
+        ``mpfb_list_asset_materials``' ``is_default`` flag look pointless.
+        """
+        StubAssetService.alternative_material_calls.append((asset_source, asset_subdir))
+        cache_key = (str(asset_source), str(asset_subdir))
+        if cache_key in StubAssetService.alternative_material_cache:
+            return list(StubAssetService.alternative_material_cache[cache_key])
+        mhclo_path = StubAssetService.find_asset_absolute_path(asset_source, asset_subdir)
+        found = []
+        if mhclo_path:
+            parent_dir = os.path.basename(os.path.dirname(os.path.realpath(mhclo_path)))
+            for root in StubAssetService.get_asset_roots(asset_subdir):
+                for dirpath, _subdirs, files in os.walk(str(root)):
+                    if parent_dir not in dirpath.split(os.sep):
+                        continue
+                    for name in files:
+                        if name.endswith(".mhmat"):
+                            found.append(os.path.abspath(os.path.join(dirpath, name)))
+        found = sorted(set(found))
+        StubAssetService.alternative_material_cache[cache_key] = found
+        return list(found)
+
+    @staticmethod
+    def path_to_fragment(asset_full_path, relative_to_fragment=None, asset_subdir="clothes"):
+        """One directory level plus a filename, which is all MPFB records."""
+        if relative_to_fragment is not None:
+            raise NotImplementedError("relative_to_fragment is not implemented in MPFB either")
+        return (os.path.basename(os.path.dirname(str(asset_full_path)))
+                + "/" + os.path.basename(str(asset_full_path)))
+
     @staticmethod
     def get_asset_list(asset_subdir="clothes", asset_type="mhclo"):
         # A reimplementation of update_asset_list()'s item building, quirks
@@ -818,31 +957,135 @@ class StubClothesService:
 
 
 class StubMaterialService:
-    """One material per object, which is all any payload here reads.
+    """Materials in slots, because two payloads now depend on there being slots.
 
-    ``material_slots`` is not modelled: MPFB's own ``has_materials()`` asks that
-    collection, but every payload reaching for it goes through this service, so
-    a second representation would be a second thing to keep in step.
+    This used to model one material per object, on the grounds that every
+    payload reaching for one went through this service. That stopped being true
+    with the skin tools: ``mpfb_set_skin`` reports ``material_slots`` per object
+    and reproduces MPFB's active-body-slot fixup, and
+    ``mpfb_set_asset_material`` pops ``data.materials`` directly, which is what
+    the operator it reimplements does instead of calling
+    ``delete_all_materials()``. A single-material stub would make the first
+    untestable and let the second look like the third.
+
+    As elsewhere, the behaviour reproduced is MPFB's rather than a convenient
+    version:
+
+    - ``delete_all_materials()`` records whether it was asked to destroy node
+      groups, because the skin path passes ``True`` and the alternative-material
+      path does not call it at all.
+    - ``create_and_assign_material_slots()`` **raises** ``ValueError`` on a mesh
+      with no materials, which is exactly what an unrecognised ``skin_type``
+      produces - the failure the payload's vocabulary check exists to prevent.
+    - it also creates a slot only where the vertex group exists, so
+      ``material_instances`` differs observably per character rather than always
+      adding six.
+    - ``get_diffuse_colors()`` carries MPFB's real key set, which does *not*
+      include every object type an object can carry - the fallback grey in the
+      alternative-material path is reachable rather than dead.
     """
+
+    # What delete_all_materials() was asked to do, per call, so the skin path's
+    # also_destroy_groups=True is assertable rather than assumed.
+    delete_calls = []
+
+    # MPFB's real table from materialservice.py, with its real key set. The
+    # values are stand-ins - no payload reads a channel - but the *keys* are
+    # not, since which types are present is what decides whether the
+    # (0.8, 0.8, 0.8, 1.0) fallback is used.
+    DIFFUSE_COLORS = {
+        "Eyes": [0.0, 0.4, 0.8, 1.0],
+        "Teeth": [0.9, 0.9, 0.85, 1.0],
+        "Proxymeshes": [0.8, 0.6, 0.5, 1.0],
+        "Proxymesh": [0.8, 0.6, 0.5, 1.0],
+        "Bodyproxy": [0.8, 0.6, 0.5, 1.0],
+        "Basemesh": [0.8, 0.6, 0.5, 1.0],
+        "Clothes": [0.4, 0.4, 0.5, 1.0],
+        "Bodypart": [0.3, 0.2, 0.1, 1.0],
+        "Eyebrows": [0.3, 0.2, 0.1, 1.0],
+        "Eyelashes": [0.3, 0.2, 0.1, 1.0],
+        "Hair": [0.3, 0.2, 0.1, 1.0],
+        "Tongue": [0.3, 0.2, 0.1, 1.0],
+    }
+
+    # The vertex groups MPFB makes a material instance for, in its own order.
+    INSTANCE_GROUPS = ("nipple", "lips", "fingernails", "toenails", "ears", "genitals")
 
     @staticmethod
     def get_material(blender_object, slot=0):
-        return blender_object.material
+        materials = blender_object.data.materials
+        if len(materials) <= slot:
+            return None
+        return materials[slot]
 
     @staticmethod
     def has_materials(blender_object):
-        return bool(getattr(blender_object, "material", None))
+        # MPFB asks the slot collection, not the datablock.
+        return bool(blender_object.material_slots) and len(blender_object.material_slots) > 0
 
     @staticmethod
     def delete_all_materials(blender_object, also_destroy_groups=False):
-        blender_object.material = None
+        StubMaterialService.delete_calls.append(
+            (blender_object.name, bool(also_destroy_groups)))
+        blender_object.data.materials.clear()
 
     @staticmethod
     def create_empty_material(name, blender_object=None):
         material = StubMaterial(name=name)
         if blender_object is not None:
-            blender_object.material = material
+            blender_object.data.materials.append(material)
         return material
+
+    @staticmethod
+    def create_v2_skin_material(name, blender_object=None, mhmat_file=None):
+        """The LAYERED branch, and the one that accepts no MHMAT at all.
+
+        MPFB requires a real object here and raises otherwise, and it deletes
+        the existing materials itself before building - both reproduced, since
+        the "LAYERED with no file" case is the only reason mpfb_set_skin can be
+        called without a path.
+        """
+        if blender_object is None:
+            raise ValueError("Cannot create a v2 skin material without an object")
+        StubMaterialService.delete_all_materials(blender_object)
+        material = StubMaterialService.create_empty_material(name, blender_object)
+        material.identified = "layered_skin"
+        material.built_from = mhmat_file
+        return material
+
+    @staticmethod
+    def create_and_assign_material_slots(basemesh, bodyproxy=None):
+        """The per-region slots, and the ValueError an empty mesh gets.
+
+        That raise is not decoration: ``set_character_skin()`` tests its five
+        skin types with five separate ``if`` statements *after* deleting every
+        material, so an unrecognised type arrives here with nothing built and
+        fails from a function that never saw the bad argument. It is the reason
+        mpfb_set_skin checks the vocabulary before calling anything.
+        """
+        if not StubMaterialService.has_materials(basemesh):
+            raise ValueError("Basemesh has no material")
+        base_material = basemesh.data.materials[0]
+        prefix = basemesh.name.split(".")[0]
+        if bodyproxy is not None:
+            StubMaterialService.delete_all_materials(bodyproxy)
+            bodyproxy.data.materials.append(base_material)
+        for group_name in StubMaterialService.INSTANCE_GROUPS:
+            for blender_object in (basemesh, bodyproxy):
+                if blender_object is None:
+                    continue
+                if group_name not in blender_object.vertex_groups:
+                    # No group, no slot: MPFB assigns the instance through the
+                    # vertex group, so a character without one gets nothing.
+                    continue
+                instance = StubMaterial(
+                    identified=base_material.identified,
+                    name=prefix + "." + group_name)
+                blender_object.data.materials.append(instance)
+
+    @staticmethod
+    def get_diffuse_colors():
+        return dict(StubMaterialService.DIFFUSE_COLORS)
 
     @staticmethod
     def identify_material(material):
@@ -998,6 +1241,10 @@ class StubLocationService:
     # real, and only this type reproduces that here.
     mpfb_root = pathlib.Path("/nonexistent-mpfb-root")
     user_data = "/nonexistent-user-data"
+    # Where set_character_skin() copies enhanced_settings.default.json to. Real
+    # rather than nonexistent in the skin fixtures, since the whole point of
+    # `settings_file_created` is that a file appears where none was.
+    user_config = "/nonexistent-user-config"
     second_root = None
 
     @staticmethod
@@ -1023,6 +1270,13 @@ class StubLocationService:
         if sub_path is None:
             return StubLocationService.user_data
         return os.path.join(StubLocationService.user_data, sub_path)
+
+    @staticmethod
+    def get_user_config(sub_path=None):
+        import os
+        if sub_path is None:
+            return StubLocationService.user_config
+        return os.path.join(StubLocationService.user_config, sub_path)
 
     @staticmethod
     def get_second_root(sub_path=None):
@@ -1487,6 +1741,11 @@ class StubHumanService:
     """
 
     refit_calls = []
+    # One dict per set_character_skin() call, and a hook for the failure branch:
+    # the materials are destroyed before anything can raise, so "a failed skin
+    # is not a no-op" is a case that has to be reachable.
+    skin_calls = []
+    skin_raises = None
     # One dict per add_builtin_rig()/add_custom_rig() call.
     add_rig_calls = []
     # How many Rigify colour sets a newly built armature comes out with. Zero is
@@ -1818,12 +2077,177 @@ class StubHumanService:
 
         StubObjectService.unregister_object(asset)
 
+    # The file set_character_skin() seeds into the user config directory. The
+    # only file anything in this package writes outside the .blend, which is why
+    # mpfb_set_skin reports that it happened.
+    ENHANCED_SETTINGS_FILE = "enhanced_settings.default.json"
+
+    @staticmethod
+    def set_character_skin(mhmat_file, basemesh, bodyproxy=None, skin_type="ENHANCED_SSS",
+                           material_instances=True, slot_overrides=None):
+        """MPFB's own sequence, in MPFB's own order, quirks first.
+
+        Four of those quirks are the reason mpfb_set_skin is written the way it
+        is, and leaving any of them out would make a test pass vacuously:
+
+        - ``material_source`` is recorded **before** the deletion and **only
+          when an MHMAT was given**, so a LAYERED skin with no file really does
+          leave the property at whatever it was.
+        - the deletion comes next and takes **both** objects, node groups
+          included, so the materials are gone before the type is looked at.
+        - the five types are tested with five separate ``if`` statements, so an
+          unrecognised one builds **nothing** - and then fails in
+          ``create_and_assign_material_slots()``, which is a different function
+          entirely.
+        - the ``material_instances`` block is guarded on ``LAYERED`` and
+          ``GAMEENGINE`` only. MAKESKIN is excluded by the *UI*, not here, which
+          is why the coercion is deliberately absent from this stub: the payload
+          has to be the thing performing it, or the test is testing the stub.
+
+        The enhanced-settings copy lives inside that same block rather than in
+        the enhanced branches, so a call with material_instances off writes no
+        file whatever its skin type.
+        """
+        StubHumanService.skin_calls.append(dict(
+            mhmat_file=mhmat_file,
+            basemesh=basemesh.name,
+            bodyproxy=None if bodyproxy is None else bodyproxy.name,
+            skin_type=skin_type,
+            material_instances=material_instances,
+            slot_overrides=slot_overrides))
+
+        if bodyproxy is None:
+            bodyproxy = StubObjectService.find_object_of_type_amongst_nearest_relatives(
+                basemesh, "Proxymeshes")
+
+        if mhmat_file:
+            material_source = (os.path.basename(os.path.dirname(mhmat_file))
+                               + "/" + os.path.basename(mhmat_file))
+            HumanObjectProperties.set_value(
+                "material_source", material_source, entity_reference=basemesh)
+            if bodyproxy:
+                HumanObjectProperties.set_value(
+                    "material_source", material_source, entity_reference=bodyproxy)
+
+        StubMaterialService.delete_all_materials(basemesh, also_destroy_groups=True)
+        if bodyproxy:
+            StubMaterialService.delete_all_materials(bodyproxy, also_destroy_groups=True)
+
+        if StubHumanService.skin_raises is not None:
+            raise StubHumanService.skin_raises
+
+        name = basemesh.name
+        if not name.endswith(".body"):
+            name = name + ".body"
+
+        if skin_type == "MAKESKIN":
+            StubMaterialService.create_empty_material(name, basemesh).identified = "makeskin"
+        if skin_type == "GAMEENGINE":
+            StubMaterialService.create_empty_material(name, basemesh).identified = "gameengine"
+        if skin_type == "LAYERED":
+            StubMaterialService.create_v2_skin_material(name, basemesh, mhmat_file)
+        if skin_type in ("ENHANCED", "ENHANCED_SSS"):
+            material = StubMaterialService.create_empty_material(name, basemesh)
+            material.identified = "enhanced_skin"
+            material.built_from = mhmat_file
+
+        if (not material_instances or skin_type == "GAMEENGINE") and bodyproxy and basemesh:
+            material = StubMaterialService.get_material(basemesh)
+            if material is not None:
+                bodyproxy.data.materials.append(material)
+
+        if material_instances and skin_type != "LAYERED" and skin_type != "GAMEENGINE":
+            StubMaterialService.create_and_assign_material_slots(basemesh, bodyproxy)
+            file_name = StubLocationService.get_user_config(
+                StubHumanService.ENHANCED_SETTINGS_FILE)
+            if not os.path.exists(file_name):
+                source = os.path.join(
+                    StubLocationService.get_mpfb_data("settings"),
+                    StubHumanService.ENHANCED_SETTINGS_FILE)
+                shutil.copy(source, file_name)
+
     @staticmethod
     def _proxy_corrective(proxymesh):
         # Private, and read off the service with getattr() by the payload that
         # wants it - so it is here under its real name rather than a public
         # alias, or the degradation path would never be the one under test.
         StubHumanService.corrective_calls.append(proxymesh.name)
+
+
+class StubMhclo:
+    """MPFB's Mhclo entity, for the one field the material tools read.
+
+    An *entity*, not a service, so it is not in the SERVICES dict and is reached
+    off ``humanservice.py``'s module - which is what the payloads do, and which
+    the ``__module__`` reassignment in ``GeneratedCodeTestCase.setUp`` makes
+    possible.
+
+    Two behaviours are reproduced rather than approximated. ``material`` comes
+    back as an **absolute path**, joined against the MHCLO's own directory
+    rather than left as the bare filename the file contains - so a material line
+    naming a file that was never installed produces a path that does not exist,
+    which is ``restore_default``'s failure branch. And ``only_metadata`` is
+    honoured, recorded on the instance and in ``load_calls``, because it is the
+    difference between reading a header and parsing a megabyte of vertices and
+    both tools are supposed to pass it.
+    """
+
+    load_calls = []
+
+    def __init__(self):
+        self.material = None
+        self.name = None
+        self.uuid = None
+        self.verts_read = None
+
+    def load(self, mhclo_filename, *, only_metadata=False):
+        StubMhclo.load_calls.append((str(mhclo_filename), bool(only_metadata)))
+        self.verts_read = not only_metadata
+        folder = os.path.dirname(str(mhclo_filename))
+        with open(str(mhclo_filename), "r", encoding="utf-8") as handle:
+            for line in handle:
+                words = line.split()
+                if len(words) < 2:
+                    continue
+                if words[0] == "material":
+                    self.material = os.path.join(folder, words[1])
+                if words[0] == "name":
+                    self.name = words[1]
+                if words[0] == "uuid":
+                    self.uuid = words[1]
+        return self
+
+
+class StubMakeSkinMaterial:
+    """MPFB's MakeSkinMaterial entity: populate from a file, apply a node tree.
+
+    Also an entity off ``humanservice.py``'s module. It **raises** for a file it
+    cannot read, as the real one does, which is what makes
+    ``mpfb_set_asset_material``'s failure branch - where the object's slots have
+    already been popped - reachable rather than hypothetical. ``applied`` records
+    which MHMAT produced which material, so a test can say *which* material was
+    built rather than only that one was.
+    """
+
+    applied = []
+    # Set by a test that wants the node-tree build itself to blow up, after the
+    # slots have been popped.
+    raise_on_apply = None
+
+    def __init__(self):
+        self.mhmat_file = None
+
+    def populate_from_mhmat(self, mhmat_file):
+        if not os.path.isfile(str(mhmat_file)):
+            raise IOError("No such mhmat file: " + str(mhmat_file))
+        self.mhmat_file = str(mhmat_file)
+
+    def apply_node_tree(self, material):
+        if StubMakeSkinMaterial.raise_on_apply is not None:
+            raise StubMakeSkinMaterial.raise_on_apply
+        material.identified = "makeskin"
+        material.built_from = self.mhmat_file
+        StubMakeSkinMaterial.applied.append((self.mhmat_file, material.name))
 
 
 _SERVICES = {
@@ -1914,6 +2338,8 @@ class GeneratedCodeTestCase(unittest.TestCase):
         StubAssetService.asset_list_calls = []
         StubAssetService.update_all_calls = 0
         StubAssetService.packs = dict()
+        StubAssetService.alternative_material_cache = {}
+        StubAssetService.alternative_material_calls = []
         StubTargetService.calls = []
         StubTargetService.reapply_calls = []
         StubTargetService.load_calls = []
@@ -1928,12 +2354,19 @@ class GeneratedCodeTestCase(unittest.TestCase):
         StubHumanService.unload_calls = []
         StubHumanService.corrective_calls = []
         StubHumanService.add_asset_raises = None
+        StubHumanService.skin_calls = []
+        StubHumanService.skin_raises = None
+        StubMaterialService.delete_calls = []
+        StubMhclo.load_calls = []
+        StubMakeSkinMaterial.applied = []
+        StubMakeSkinMaterial.raise_on_apply = None
         StubRigService.weights_loaded = []
         StubRigService.generate_calls = []
         StubRigService.metarig_valid = True
         StubLocationService.mpfb_data = "/nonexistent-mpfb-data"
         StubLocationService.mpfb_root = pathlib.Path("/nonexistent-mpfb-root")
         StubLocationService.user_data = "/nonexistent-user-data"
+        StubLocationService.user_config = "/nonexistent-user-config"
         StubLocationService.second_root = None
         StubSystemService.rigify_available = True
 
@@ -1954,6 +2387,12 @@ class GeneratedCodeTestCase(unittest.TestCase):
         # the property sets are. Keyed by proxy uuid, and empty for every uuid
         # but one, which is the ordinary case rather than the interesting one.
         humanservice_module.ALL_EXTRA_GROUPS = ALL_EXTRA_GROUPS
+        # Two *entities* rather than services or tables, reached the same way
+        # and for the same reason: humanservice.py imports both, and the
+        # material tools need them because MPFB has no service that builds a
+        # MakeSkin node tree or reads an MHCLO's material line.
+        humanservice_module.MakeSkinMaterial = StubMakeSkinMaterial
+        humanservice_module.Mhclo = StubMhclo
         StubHumanService.__module__ = _HUMANSERVICE_MODULE
 
         # ASSET_LIBRARY_SECTIONS is module-level in assetservice.py rather than
@@ -2372,7 +2811,24 @@ class RigTestCase(GeneratedCodeTestCase):
         return self.objects
 
 
-def write_mhclo(path, *, material=True, uuid=None, delete=True,
+def write_mhmat(path, name=None):
+    """A real MHMAT file, carrying only a name.
+
+    No payload parses one - MPFB's MakeSkinMaterial does, and that is stubbed -
+    but the file has to *exist*, because the alternative-material scan globs for
+    ``*.mhmat`` on disk and both setters check ``os.path.isfile()`` before
+    calling anything.
+    """
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if name is None:
+        name = os.path.splitext(os.path.basename(path))[0]
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write("name " + name + "\n")
+        handle.write("diffuseColor 0.8 0.8 0.8\n")
+    return path
+
+
+def write_mhclo(path, *, material=True, write_material=True, uuid=None, delete=True,
                 mpfbskel=False, weights=False):
     """A real MHCLO file, carrying only the lines the stubs read back.
 
@@ -2382,6 +2838,10 @@ def write_mhclo(path, *, material=True, uuid=None, delete=True,
     ``delete`` decides whether there is a delete group to mask the body with,
     and the companion files decide whether a sub-rig is imported and whether
     weights exist to load.
+
+    ``write_material=False`` writes the ``material`` line without the file it
+    names, which is a real state - a partially installed asset pack - and the
+    branch ``mpfb_set_asset_material``'s ``restore_default`` refuses on.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
     base = os.path.splitext(path)[0]
@@ -2389,9 +2849,8 @@ def write_mhclo(path, *, material=True, uuid=None, delete=True,
     if material:
         material_name = os.path.basename(base) + ".mhmat"
         lines.append("material " + material_name)
-        with open(os.path.join(os.path.dirname(path), material_name), "w",
-                  encoding="utf-8") as handle:
-            handle.write("name " + os.path.basename(base) + "\n")
+        if write_material:
+            write_mhmat(os.path.join(os.path.dirname(path), material_name))
     if uuid:
         lines.append("uuid " + uuid)
     if delete:
@@ -2427,6 +2886,13 @@ class MeshAssetTestCase(GeneratedCodeTestCase):
     clothes root holds another ``fedora.mhclo``, because
     ``find_asset_absolute_path()`` matches on basename and the coin toss that
     produces is what ``resolved_path`` exists to expose.
+
+    The material half was added with the skin tools and follows the same rule.
+    ``fedora`` has two alternative materials beside it and ``dangling`` names a
+    material that was never installed; there is a ``skins`` section with a root
+    of its own; and MPFB's data directory and the user config directory it seeds
+    ``enhanced_settings.default.json`` into are both real, since
+    ``settings_file_created`` claims a file appeared where none was.
     """
 
     def setUp(self):
@@ -2460,6 +2926,31 @@ class MeshAssetTestCase(GeneratedCodeTestCase):
         self.proxy_plain = write_mhclo(
             os.path.join(self.system_root, "proxymeshes", "plainproxy", "plainproxy.mhclo"),
             material=False, uuid="a-uuid-with-no-extra-groups")
+        # An asset whose MHCLO names a material that was never installed. A
+        # partially installed pack looks exactly like this, and it is the branch
+        # mpfb_set_asset_material's restore_default has to refuse rather than
+        # apply a file that is not there.
+        self.dangling = write_mhclo(
+            os.path.join(self.system_root, "clothes", "dangling", "dangling.mhclo"),
+            write_material=False)
+
+        # The other colours of the hat. They sit *beside* the asset rather than
+        # in an asset library section, which is the whole reason
+        # mpfb_list_asset_materials exists and mpfb_list_assets cannot answer
+        # this. write_mhclo() has already written fedora.mhmat as the default.
+        self.fedora_default_material = os.path.join(
+            self.system_root, "clothes", "fedora", "fedora.mhmat")
+        self.fedora_red = write_mhmat(
+            os.path.join(self.system_root, "clothes", "fedora", "red.mhmat"))
+        self.fedora_blue = write_mhmat(
+            os.path.join(self.system_root, "clothes", "fedora", "blue.mhmat"))
+
+        # Skins. A section like any other, and the one whose object_type is
+        # "Material" rather than anything an object in a scene can be.
+        self.young_skin = write_mhmat(
+            os.path.join(self.system_root, "skins", "young", "young.mhmat"))
+        self.old_skin = write_mhmat(
+            os.path.join(self.user_root, "skins", "old", "old.mhmat"))
 
         StubAssetService.asset_roots = {
             "clothes": [os.path.join(self.system_root, "clothes"),
@@ -2467,15 +2958,35 @@ class MeshAssetTestCase(GeneratedCodeTestCase):
             "hair": [os.path.join(self.system_root, "hair")],
             "eyes": [os.path.join(self.system_root, "eyes")],
             "proxymeshes": [os.path.join(self.system_root, "proxymeshes")],
+            "skins": [os.path.join(self.system_root, "skins"),
+                      os.path.join(self.user_root, "skins")],
         }
         # What mpfb_list_assets would report from the same tree, so that the two
         # tools can be compared against one library rather than two fixtures.
         StubAssetService.asset_files = {
-            "clothes": [self.fedora, self.plain, self.rigged, self.other_fedora],
+            "clothes": [self.fedora, self.plain, self.rigged, self.other_fedora,
+                        self.dangling],
             "hair": [self.ponytail],
             "eyes": [self.lowpoly_eyes],
             "proxymeshes": [self.proxy, self.proxy_plain],
+            "skins": [self.young_skin, self.old_skin],
         }
+
+        # MPFB's own data directory and the user config directory it seeds from
+        # it. Both real, because `settings_file_created` claims a file appeared
+        # where none was and only a real filesystem can settle that.
+        self.mpfb_data_root = os.path.join(root, "mpfbdata")
+        os.makedirs(os.path.join(self.mpfb_data_root, "settings"), exist_ok=True)
+        self.enhanced_settings_source = os.path.join(
+            self.mpfb_data_root, "settings", "enhanced_settings.default.json")
+        with open(self.enhanced_settings_source, "w", encoding="utf-8") as handle:
+            handle.write('{"body": {}}\n')
+        self.user_config_root = os.path.join(root, "userconfig")
+        os.makedirs(self.user_config_root, exist_ok=True)
+        self.enhanced_settings_target = os.path.join(
+            self.user_config_root, "enhanced_settings.default.json")
+        StubLocationService.mpfb_data = self.mpfb_data_root
+        StubLocationService.user_config = self.user_config_root
 
     def build_character(self, rig=False, proxy=False, dressed=False,
                         rig_type="default", rig_id=None, **basemesh_kwargs):

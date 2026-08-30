@@ -116,7 +116,22 @@ tool should get its own feature request when scoped.
   identifiers each feed a specific argument elsewhere: `path` **or** `fragment` becomes
   `mpfb_add_asset`'s (exactly one of the two), and `object_type` becomes its **required**
   `asset_type` — which also decides the subdir a `fragment` is resolved against, so the two travel
-  together.
+  together. For a skin the same pair feeds `mpfb_set_skin` instead, under the `object_type`
+  `Material`. **One thing is deliberately not in this answer and the gap is invisible from here:**
+  an asset's *alternative* materials, which do not live in a library section at all but in the
+  asset's own directory. `mpfb_list_asset_materials` is the catalogue for those.
+
+- `mpfb_list_asset_materials` — which other materials does this equipped asset have?
+  **Implemented**, and it is a tool of its own rather than a filter on `mpfb_list_assets` for one
+  reason: alternative materials are **not an asset library section**. They are MHMAT files sitting
+  in the asset's own directory, found by scanning the asset type's roots for `*.mhmat` whose path
+  contains the asset's parent directory as a segment. Reports both identifiers per entry, the
+  asset's own default material and whether it is installed, the fragment recorded on the object now,
+  and the roots that were actually searched — so an asset with no alternatives is explainable rather
+  than merely empty. Two facts belong in its answer rather than being smoothed away: MPFB does not
+  filter the asset's own material out of the scan despite taking an `exclude_default` argument, so
+  it is *flagged* rather than removed; and the scan is cached per asset with no invalidation, so the
+  answer is a snapshot and a material installed later in the same Blender session will not appear.
 
 - `mpfb_list_targets` — which modeling targets could be set, and under what name?
   **Implemented.** Answers from two sources that are different in kind: the bundled targets are
@@ -245,9 +260,34 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   otherwise be silently partial. Distinguishes four fates rather than claiming one clean outcome:
   the mask modifiers removed, the sub-rig, the `Delete.*` vertex groups MPFB leaves behind, and the
   orphaned mesh datablock.
-- `mpfb_set_skin` — via `set_character_skin()`. Takes its `path` from `mpfb_list_assets`'
-  `skins` subdir; a skin is a material rather than a mesh asset, so it is not
-  `mpfb_add_asset`'s job.
+- `mpfb_set_skin` — via `set_character_skin()`. **Implemented.** Takes its `path` **or** its
+  `fragment` from `mpfb_list_assets`' `skins` subdir — exactly one, both accepted, and
+  `resolved_path` always reported, per
+  [An acting tool accepts every identifier its catalogue reports](architecture.md#an-acting-tool-accepts-every-identifier-its-catalogue-reports).
+  A skin is a *material* rather than a mesh asset, so it is not `mpfb_add_asset`'s job: it is
+  applied to objects that already exist, and to two of them, since MPFB gives the body proxy the
+  same skin and nothing else would tell the caller a second object changed. The dimension the
+  original one-line entry did not mention at all is `skin_type`: `MAKESKIN`, `GAMEENGINE`,
+  `ENHANCED`, `ENHANCED_SSS` or `LAYERED`, which are five entirely different node trees built from
+  the same MHMAT, and the choice costs more than the file does. Two of MPFB's defaults are followed
+  from its **settings panel rather than the function signature**, per
+  [Where MPFB's UI coerces or re-defaults a service argument](architecture.md#where-mpfbs-ui-coerces-or-re-defaults-a-service-argument-mpfb-mcp-does-the-same-and-reports-both):
+  `skin_type` defaults to `MAKESKIN` and not `ENHANCED_SSS`, and `material_instances` is coerced
+  off for three of the five types — so `material_instances_requested` and `_used` are both reported.
+  `LAYERED` is the one type that may name no file at all. Three things are reported that nothing in
+  Blender would show: `materials_destroyed`, because the call deletes every material on the body and
+  the proxy, node groups included, with no undo across the socket; `settings_file_created`, the one
+  file this package ever writes outside the `.blend`; and `scale_assumption`, which the enhanced
+  types derive from the character's `scale_factor` and which changes the subsurface radii.
+- `mpfb_set_asset_material` — swap an equipped asset's material for one of the alternatives shipped
+  beside it, or put its own back. **Implemented**, and the one tool here with **no service function
+  to wrap**: the mechanism lives entirely in MPFB's asset library operator, so both of its helpers
+  are reimplemented from services and its quirks reproduced rather than tidied up (see
+  [Where MPFB's own code paths disagree](architecture.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)).
+  `name` is **required** and is the asset's own object name — no active-object fallback, because
+  this destroys that object's material — and it refuses a `Basemesh`, a `Proxymeshes` and a
+  `Skeleton`, exactly as MPFB's own panel does; the first two carry a skin, which is
+  `mpfb_set_skin`'s job.
 - `mpfb_add_rig` — builtin or custom. **Implemented.** Takes its `identifier` from
   `mpfb_list_rigs`, the same way the tools above take their subject from `mpfb_list_objects` /
   `mpfb_get_object_info`, and **dispatches on the `custom.` prefix itself** rather than letting the

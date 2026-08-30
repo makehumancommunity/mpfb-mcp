@@ -573,3 +573,78 @@ reproduces. The migration also makes **FR 005's live verification stale**, exact
 FR 004's. The checklist is under
 ["Verification status" in the request](done/010-mesh-assets/README.md#verification-status), and
 [NEXT_STEPS.md](NEXT_STEPS.md) folds both into the same outstanding session.
+
+## [FR 011](done/011-skin-and-materials/README.md) — skins, asset materials, and the UI's own defaults
+
+Three tools, and the end of grey characters. `mpfb_set_skin` wraps
+`HumanService.set_character_skin()`; `mpfb_set_asset_material` swaps an equipped garment's material
+for one of the alternatives shipped beside it, or puts its own back; and
+`mpfb_list_asset_materials` is the small catalogue the second one had to have, because nothing else
+names those files. Before them mpfb-mcp could list every skin on the machine and apply none of them,
+so every character it produced looked like clay — [FR 005](done/005-list-assets/README.md) had been
+reporting the `skins` subdir since the catalogue was built, with nothing on the other end.
+
+A skin is not an asset in the sense [FR 010](done/010-mesh-assets/README.md) uses the word. It is a
+*material*, applied to objects that already exist rather than imported as one, and to **two** of
+them — MPFB gives the body proxy the same skin, and the response is the only place a caller learns
+a second object changed. It also carries a parameter that matters more than the file does:
+`skin_type` picks between five entirely different node trees built from the same MHMAT, and the
+one-line entry in `vision.md` had not mentioned it at all.
+
+The interesting half is not the wrapping. **A service signature's default is not always the
+product's default**, and `set_character_skin()` disagrees with MPFB's own settings panel twice:
+`skin_type` defaults to `ENHANCED_SSS` in the signature and `MAKESKIN` in the panel, and
+`material_instances` is accepted as `True` for a `MAKESKIN` skin that `loadlibraryskin.py` would
+have forced to `False`. Passing the signature's values would produce characters that **cannot be
+reproduced through MPFB's own UI** — the same bar [FR 007](done/007-macro-details/README.md) sets
+for macro details. So the tool follows the panel both times and reports
+`material_instances_requested` beside `material_instances_used`, which is the new standing
+convention in [architecture.md](../specifications/architecture.md#where-mpfbs-ui-coerces-or-re-defaults-a-service-argument-mpfb-mcp-does-the-same-and-reports-both):
+where MPFB's UI coerces or re-defaults a service argument, mpfb-mcp coerces the same way and reports
+both values, because a silent coercion is indistinguishable from a bug.
+
+`mpfb_set_asset_material` is the limiting case of FR 010's other convention. Where that request
+picked between three MPFB implementations of adding a proxy, this one has **none to pick from**:
+setting an alternative material exists only in a UI operator, as two module-level helpers with no
+service behind them. Both are reimplemented from services — importing an MPFB submodule is
+forbidden, and a UI operator module is the worst case of it — and three of the operator's quirks are
+reproduced rather than tidied up, because each is a way the result would otherwise differ from what
+the panel gives the user: the replacement is always a MakeSkin material under the fixed name
+`makeskinmaterial`, the slots are *popped* rather than deleted so the old node groups survive, and
+the viewport colour is keyed on the object's recorded `object_type`.
+
+`mpfb_list_asset_materials` exists because alternative materials are not an asset library section —
+they are MHMAT files in the asset's own directory — so `mpfb_list_assets` cannot report them and the
+gap was invisible from its answer. It also inherits `mpfb_list_targets`' staleness convention *from
+the other side*: MPFB caches that scan per asset with no invalidation, so here it is mpfb-mcp that
+reports a snapshot, and the docstring says so.
+
+Reading MPFB's source turned up ten things the request did not know; three changed the design.
+**`set_character_skin()` tests its five types with five separate `if` statements, after deleting
+every material on the character** — so an unrecognised `skin_type` destroys the skin, builds
+nothing, and raises from a function that never saw the bad argument. That is why the vocabulary is
+checked in the payload before anything is destroyed and, uniquely in this package, in the tool
+module as well; it is now recorded as the one exception to
+[validate the shape, never the vocabulary](../specifications/architecture.md#validate-before-crossing-the-socket).
+**The enhanced-settings file copy is gated on `material_instances`, not on the skin type**, so the
+default call writes nothing outside the `.blend` at all. And **`scale_factor` defaults to `1.0`
+while the first threshold is `> 0.9`**, so an ordinary character is treated as decimetre-scaled —
+which `scale_assumption` reports precisely because a caller would expect `METER`.
+
+Six files added — three tool modules, three payloads — plus three test modules, and no shared
+fragment: `asset_sections.py` gained a second consumer but was not edited, so **no existing live
+verification was made stale**. Unit tests grew from 559 to 654, over stubs whose material model was
+rebuilt: `material_slots` is now derived from `data.materials` the way Blender derives it, since the
+skin path deletes materials and the alternative-material path pops slots and the two must not look
+alike. `set_character_skin()` reproduces MPFB's ordering quirk-first — the source fragment recorded
+before the deletion and only when a file was given, the five-`if` dispatch that builds nothing for
+an unknown type — and the `material_instances` coercion is **deliberately absent from the stub**, so
+the payload is what performs it and the test is testing mpfb-mcp.
+
+**Live verification is outstanding**, as for [FR 007](done/007-macro-details/README.md),
+[FR 008](done/008-detail-targets/README.md), [FR 009](done/009-add-rig/README.md) and FR 010 — and
+the stubs establish less here than anywhere: a material *is* a node tree, and nothing in the suite
+builds one, so the primary goal ("the same result MPFB's own skin library produces") rests entirely
+on reading source. The checklist is under
+["Verification status" in the request](done/011-skin-and-materials/README.md#verification-status),
+and [NEXT_STEPS.md](NEXT_STEPS.md) folds it into the same outstanding session as the other five.

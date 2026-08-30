@@ -29,9 +29,10 @@ class PayloadFileTests(unittest.TestCase):
             codegen.payload_names(),
             ["add_asset.py", "add_rig.py", "create_human.py", "generate_rigify_rig.py",
              "get_macro_details.py", "get_object_info.py", "get_status.py",
-             "get_target_stack.py", "list_assets.py", "list_objects.py", "list_rigs.py",
-             "list_targets.py", "refit_human.py", "remove_asset.py", "set_macro_details.py",
-             "set_targets.py", "symmetrize_targets.py"])
+             "get_target_stack.py", "list_asset_materials.py", "list_assets.py",
+             "list_objects.py", "list_rigs.py", "list_targets.py", "refit_human.py",
+             "remove_asset.py", "set_asset_material.py", "set_macro_details.py",
+             "set_skin.py", "set_targets.py", "symmetrize_targets.py"])
 
     def test_shared_fragments_are_the_ones_expected(self) -> None:
         # A short list on purpose: a fragment exists only where two or more
@@ -103,6 +104,11 @@ class AssembleTests(unittest.TestCase):
             ("get_target_stack.py", "raising", ("target_categories.py",)),
             ("set_targets.py", "raising", ("target_categories.py",)),
             ("symmetrize_targets.py", "raising", ("target_categories.py",)),
+            ("add_asset.py", "raising", ("asset_sections.py",)),
+            ("remove_asset.py", "raising", ()),
+            ("set_skin.py", "raising", ("asset_sections.py",)),
+            ("set_asset_material.py", "raising", ()),
+            ("list_asset_materials.py", "raising", ()),
         )
         for name, bootstrap, shared in payloads:
             with self.subTest(payload=name):

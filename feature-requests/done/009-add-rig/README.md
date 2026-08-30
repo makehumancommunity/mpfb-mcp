@@ -134,7 +134,7 @@ re-parenting them, and dealing with sub-rigs; that is its own request, and until
 library and any other BVH work (see [NEXT_STEPS.md](../../NEXT_STEPS.md)); bone-level manipulation, rig
 helpers and IK/FK cycles; `RigService.refit_existing_armature()` on its own, which
 [FR 007](../007-macro-details/README.md)'s `mpfb_refit_human` already covers; and sub-rigs shipped
-with clothing, which are [FR 010](../../010-mesh-assets/README.md)'s `import_subrig`.
+with clothing, which are [FR 010](../010-mesh-assets/README.md)'s `import_subrig`.
 
 ## Non-functional requirements
 
@@ -230,7 +230,7 @@ with clothing, which are [FR 010](../../010-mesh-assets/README.md)'s `import_sub
     [Preconditions are answers](../../../specifications/architecture.md#preconditions-are-answers).
   - **New — a tool reports an ordering constraint it cannot enforce.** MPFB's services have implicit
     sequencing (rig before assets, assets before Rigify generation, and see
-    [FR 010](../../010-mesh-assets/README.md) for the same problem with proxies and clothes) which no
+    [FR 010](../010-mesh-assets/README.md) for the same problem with proxies and clothes) which no
     single call can validate and which produces no error when violated. The rule worth recording:
     where a tool can *observe* that the caller is about to violate one, it reports the observation in
     the response — naming the objects affected — rather than either failing or staying silent. This
