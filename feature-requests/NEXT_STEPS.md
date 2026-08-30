@@ -10,9 +10,10 @@ records what has already landed and why. When an effort below is finished, move 
 
 ## Modeling
 
-Most of the things in this section is done via TargetService.
+Most of the things in this section is done via TargetService. Both subsections below are now
+scoped into numbered requests; the bullets are kept as the original statement of what was wanted.
 
-### Macrodetails / phenotype
+### Macrodetails / phenotype — [FR 007](007-macro-details/README.md)
 
 While macro details can be specified at human creation time, there are no tools for modifying
 them afterwards. Things such as the following are needed:
@@ -21,11 +22,18 @@ them afterwards. Things such as the following are needed:
 - Getting the current macro details as a dict (from a named human or from active human)
 - Modifying the macro detail settings and recalculating the macro stack
 
-Consider whether the create human tool should move from separate parameters to instead 
-using the macro detail dict as input. It is not obvious that this is a good idea, but it should
-be considered.
+Scoped as [FR 007](007-macro-details/README.md): `mpfb_get_macro_details`,
+`mpfb_set_macro_details` and — added there, because a shape change invalidates the fit of every
+asset on the character and MPFB's own auto-refit defaults to off — `mpfb_refit_human`.
 
-### Detail targets
+The question of whether `mpfb_create_human` should move from separate parameters to a macro detail
+dict is **answered there: it should not.** Flat scalar parameters are what an MCP tool schema
+describes and validates well, and `mpfb_set_macro_details` mirrors the same eleven names with every
+one optional, which is a distinction ("leave unchanged") a dict cannot express. Round-tripping is
+preserved on the output side instead, since both tools return the full nested dict. See
+[FR 007](007-macro-details/README.md#the-mpfb_create_human-parameter-shape-question).
+
+### Detail targets — [FR 008](008-detail-targets/README.md)
 
 There is currently no tool at all for working with detail targets. Things such as the following
 are needed:
@@ -35,6 +43,15 @@ are needed:
 - Modifying the value of a single target
 - Ensuring left-right symmetry
 - Batch loading targets
+
+Scoped as [FR 008](008-detail-targets/README.md): `mpfb_get_target_stack`, `mpfb_set_targets` and
+`mpfb_symmetrize_targets`. Three decisions taken there are worth knowing about from here. Applying
+a target and changing its value are the *same* operation in MPFB and are one tool argument, not two.
+Targets are addressable at two levels — the `target.json` category level, a modifier in -1..+1 built
+from a pair of opposing targets with optional left/right sides, which is what MPFB's own sliders
+manipulate; and the raw shape-key level, which is the only way to reach a user-installed target.
+And batching is not a separate "batch load" tool but the shape of the mutating tool itself, since a
+socket round trip costs about a second and the work inside it costs milliseconds.
 
 ## Adding assets
 
