@@ -282,8 +282,10 @@ be rebuilt here; and creating new target *files*.
   - **New — a batched mutating tool resolves everything before it writes anything.** The
     all-or-nothing rule above, stated generally: an agent's typo in entry 17 must not leave a
     half-modified character, and a partial success is not something the response format can usefully
-    describe. Likely to apply to any later batch tool (`mpfb_add_asset` over several garments, for
-    one).
+    describe. It applies to any later *batch* tool — but note that
+    [FR 010](../010-mesh-assets/README.md) deliberately does not make `mpfb_add_asset` one, because
+    loading an MHCLO costs seconds of real work rather than milliseconds, so the latency argument
+    that forces batching here does not carry over.
   - **New, smaller — when mpfb-mcp models a concept MPFB's UI has but its services do not.** A
     modifier/category is not a `TargetService` concept at all; it lives in `target.json` and in a UI
     module. This tool lifts it out of the UI into the tool layer, and the rule worth recording is
