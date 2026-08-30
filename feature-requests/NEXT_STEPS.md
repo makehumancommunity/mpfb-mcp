@@ -8,58 +8,41 @@ Completed efforts are no longer listed here — they move to [HISTORY.md](HISTOR
 records what has already landed and why. When an effort below is finished, move it there
 (see the [lifecycle in CLAUDE.md](CLAUDE.md#lifecycle)).
 
-`mpfb_get_status`, the first introspection tool, has landed —
-see [FR 001](done/001-mpfb-get-status/README.md) and its
-[entry in HISTORY.md](HISTORY.md#fr-001--mpfb_get_status). Its manual verification against a
-running Blender is still outstanding and is tracked in the request itself, under
-[Verification status](done/001-mpfb-get-status/README.md#verification-status), rather than as
-an effort here.
+## Modeling
 
-The code-structure and readability rework has also landed — see
-[FR 002](done/002-codegen-structure/README.md) and its
-[entry in HISTORY.md](HISTORY.md#fr-002--code-generation-restructured-into-per-tool-payload-files).
-Its real-Blender smoke pass is likewise still outstanding, tracked under
-[Verification status](done/002-codegen-structure/README.md#verification-status) in the request.
+Most of the things in this section is done via TargetService.
 
-Basic object finding and identification has landed too, as `mpfb_list_objects` and
-`mpfb_get_object_info` — see [FR 003](done/003-object-finding/README.md) and its
-[entry in HISTORY.md](HISTORY.md#fr-003--object-finding-and-identification). Its live
-verification is the largest outstanding one of the three, since every `asset_info` value rests
-on reading MPFB's source rather than on observation; it is tracked under
-[Verification status](done/003-object-finding/README.md#verification-status) in the request.
+### Macrodetails / phenotype
 
-See [specifications/vision.md](../specifications/vision.md#target-tool-catalog) for the rest of
-the target tool catalog. `mpfb_get_human_summary` is the natural next introspection tool and can
-now take its subject from FR 003's tools rather than assuming one is known, but it has not been
-scoped into a feature request yet.
+While macro details can be specified at human creation time, there are no tools for modifying
+them afterwards. Things such as the following are needed:
 
-## Finding available assets
+- Getting the default macro dict (from TargetService)
+- Getting the current macro details as a dict (from a named human or from active human)
+- Modifying the macro detail settings and recalculating the macro stack
 
-**Complete.** All three halves have landed — the rig one as `mpfb_list_rigs`
-([FR 004](done/004-list-rigs/README.md)), the asset one as `mpfb_list_assets`
-([FR 005](done/005-list-assets/README.md)) and the target one as `mpfb_list_targets`
-([FR 006](done/006-list-targets/README.md)) — each with its live verification run as part of the
-effort rather than left outstanding, unlike FR 001-003. See
-[HISTORY.md](HISTORY.md#fr-004--mpfb_list_rigs) onwards for what each turned out to be.
+Consider whether the create human tool should move from separate parameters to instead 
+using the macro detail dict as input. It is not obvious that this is a good idea, but it should
+be considered.
 
-Four conventions came out of them and now stand in
-[architecture.md](../specifications/architecture.md):
-[How tools name things that can be added](../specifications/architecture.md#how-tools-name-things-that-can-be-added)
-from FR 004,
-[How tools bound a large answer](../specifications/architecture.md#how-tools-bound-a-large-answer)
-and
-[How tools report a derived rather than recorded fact](../specifications/architecture.md#how-tools-report-a-derived-rather-than-recorded-fact)
-from FR 005, and from FR 006 both
-[Reading MPFB's data files directly](../specifications/architecture.md#reading-mpfbs-data-files-directly)
-and
-[A tool may report a fact MPFB's own UI does not show](../specifications/architecture.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show).
-Follow them rather than restating them in a new request.
+### Detail targets
 
-One thing FR 006 turned up is worth raising **upstream with mpfb2** rather than working around here:
-MPFB's scan of `<user data>/targets/<section>/` matches only `*.target`, while its `custom` scan
-matches both `*.target` and `*.target.gz`, so a gzipped target in a user targets directory is
-loadable but invisible in MPFB's own modeling panels. `mpfb_list_targets` reports it with
-`listed_in_mpfb_ui: false`; the asymmetry itself looks like an oversight in MPFB.
+There is currently no tool at all for working with detail targets. Things such as the following
+are needed:
+
+- Inspecting the target stack (optionally filtering out macro details)
+- Applying a single target
+- Modifying the value of a single target
+- Ensuring left-right symmetry
+- Batch loading targets
+
+## Adding assets
+
+The next logical step would be the ability to add assets:
+
+- Add rig, including a custom rig
+- Add an MHCLO asset: needs to take asset type and material type as parameters
+- Set skin: needs to take material type as parameter 
 
 ## Observability
 
