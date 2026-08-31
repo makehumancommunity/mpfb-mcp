@@ -19,9 +19,12 @@ two rig tools, [FR 010](done/010-mesh-assets/README.md)'s two asset tools or
 overlap heavily — they all need the same dressed, rigged character and all compare against MPFB's
 own panel — so they are **one session's work rather than six**, and that session is by far the
 largest single piece of unfinished business in this file. It has seven parts, and it is now scoped
-as [FR 012](012-live-verification/README.md), which also carries the two things that would stop the
-postponement repeating: logging of the exact program sent into Blender, and a re-runnable harness.
-The seven parts are kept below as the original statement of what is wanted:
+as [FR 013](013-live-verification/README.md), which also carries a re-runnable harness — one of the
+two things that would stop the postponement repeating. The other, being able to see the exact
+program sent into Blender and the response that came back, was pulled out of it and is now
+[FR 012](012-observability/README.md), which should land first; see
+[Observability](#observability) below. The seven parts are kept below as the original statement of
+what is wanted:
 
 - [FR 007](done/007-macro-details/README.md#verification-status) — phenotype sliders, refit, and the
   generated-Rigify-with-no-meta-rig branch of `mpfb_refit_human`.
@@ -147,11 +150,25 @@ verification above.
 Logging should be added so that it is possible to see the exact python code sent to blender,
 and the reponses that came back.
 
-A **subset** of this is scoped into [FR 012](012-live-verification/README.md): an env-gated dump of
-the exact program and the response, per call, with the round-trip duration — enough to resolve an
-add-on traceback's line number against a 52 KB generated program and to take that request's cost
-measurements. What stays here is the rest: log levels, a structured log, and anything surfaced back
-to the MCP caller.
+This is now scoped **whole** as [FR 012](012-observability/README.md): an env-gated per-call record
+of the exact program, the full response envelope and the round-trip duration, written to files under
+a directory the user names; plus the rest of what this entry asked for — log levels over a proper
+`logging` hierarchy with no handler attached by default, the per-call index standing in for a second
+structured log, and a narrow answer for what reaches the MCP caller (an error envelope only, and
+only while the record is enabled).
+
+It was previously scoped only as a subset, inside what is now
+[FR 013](013-live-verification/README.md). It was pulled out because it is a change to the package
+rather than an instrument for one session, because it is worth having whether or not that session
+happens, and because it should land before it: a live failure without it is a traceback naming a
+line in a 52 KB program nobody kept, and FR 013's cost measurements need a recorded duration per
+call rather than a stopwatch.
+
+One piece is explicitly *not* in FR 012 and stays unscoped here: splitting a call's duration into
+transport, `exec`/compile and MPFB's own work. Doing that means instrumenting the generated program,
+and FR 012 refuses to let a diagnostic setting change the program that is sent — which is the one
+property its record depends on. FR 013 takes the split ad hoc instead, through the envelope's
+`stdout`. If it turns out to be wanted permanently, it is a request of its own.
 
 ## Second backend: the community "blender mcp"
 

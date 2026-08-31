@@ -26,6 +26,14 @@ reason these twelve did. Alongside that, and because a first live run is the onl
 whole surface is being exercised at once, take the measurements that four already-made decisions
 rest on and review the structure they produced.
 
+**This request depends on [FR 012](../012-observability/README.md), which should land first.** The
+other reason the run is expensive is that a live failure surfaces as a traceback naming a line in a
+program nobody kept — and the cost measurements below need a recorded duration per call rather than
+a stopwatch. Both were originally scoped here; they are a change to the package rather than an
+instrument for one session, they are worth having whether or not this session happens, and folding
+them in made this request two efforts wearing one number. What this request assumes from FR 012 is
+narrow: a per-call record of the exact program, the response envelope and the round-trip duration.
+
 ## Goals
 
 **Primary: find and fix outright bugs.** The twelve character-modifying tools have never run against
@@ -40,35 +48,16 @@ one measurement of what any of it costs. Produce a written review, grounded in n
 the run rather than in argument, with each recommendation classified as fix-here, new-request, or
 rejected-with-a-reason.
 
-**Enabling, and not a goal in itself: make the next verification cheap.** Enough logging to diagnose
-a failure inside a 52 KB generated program, and a re-runnable harness. Both exist to serve the two
-goals above; neither should grow past that.
+**Enabling, and not a goal in itself: make the next verification cheap.** A re-runnable harness,
+standing on [FR 012](../012-observability/README.md)'s per-call record for the diagnostics. It
+exists to serve the two goals above and should not grow past that.
 
 **Explicitly not a goal:** new tools, new capability, or the structural refactors the review
 recommends. Those are separate requests (see [What this effort may change](#what-this-effort-may-change)).
 
 ## Functional requirements
 
-### FR-1: See what was sent and what came back
-
-A live failure currently surfaces as a traceback naming a line number in a program nobody can look
-at. Add logging, gated on an environment variable so the default path is byte-for-byte unchanged,
-that records per call:
-
-- the **exact** string handed to `send_code()` — not a reconstruction, since the add-on's traceback
-  line numbers are only useful against the real assembled source;
-- the response envelope, in full;
-- wall-clock duration of the round trip, measured around the socket call.
-
-The program and the response go to per-call files rather than inline into a log line: a 52 KB
-program in a log is unreadable, and the cost measurements in [FR-9](#fr-9-measure-what-four-decisions-rest-on)
-should fall out of this record rather than being hand-timed a second time.
-
-Boundary: this is a **subset** of the Observability entry in [NEXT_STEPS.md](../NEXT_STEPS.md#observability).
-What is in scope is what this session needs. Structured logging, log levels, and anything surfaced
-back to the MCP caller stay in that entry.
-
-### FR-2: A harness that can be run again
+### FR-1: A harness that can be run again
 
 A `verification/` directory at repo root — a sibling of `tests/`, not part of the installed package
 and not discovered by `python3 -m unittest discover -s tests` — holding:
@@ -76,7 +65,7 @@ and not discovered by `python3 -m unittest discover -s tests` — holding:
 - a **snapshot/compare helper** capturing the twelve datablock collections FR 006's run named
   (objects, meshes, materials, images, node groups, armatures, actions, shape keys, collections,
   textures, brushes, worlds) plus `bpy.data.is_dirty`, and diffing two snapshots into a report;
-- a **fixture builder** producing the characters of [FR-3](#fr-3-two-characters-one-session);
+- a **fixture builder** producing the characters of [FR-2](#fr-2-two-characters-one-session);
 - **one runnable script per checklist**, each printing one pass/fail/skipped line per checklist item
   with the observed value beside it.
 
@@ -86,7 +75,7 @@ one command. Drive everything through the real tool callables
 `send_code()` calls — FR 006's precedent, and the only way what is verified is the tool an MCP
 client would actually call.
 
-### FR-3: Two characters, one session
+### FR-2: Two characters, one session
 
 The seven checklists want the same dressed, rigged character; building it once is most of the saving.
 Build two:
@@ -105,7 +94,7 @@ that do not ship with MPFB — a `.target.gz` under the user `custom` directory,
 over 60 characters, and one whose name contains `"basis"` — which the harness installs and removes
 again, as FR 006's run did with its gzipped probe.
 
-### FR-4: Run the seven checklists, in an order where each pays for the next
+### FR-3: Run the seven checklists, in an order where each pays for the next
 
 The checklists themselves are not restated here; they live in their own requests and are the
 authority. What this request fixes is the **order**, because several settle each other:
@@ -133,7 +122,7 @@ session. Cache-dependent checks (the alternative-material cache, MPFB's asset li
 `_modelsubpanels`' import-time snapshot) are re-run against a **restarted** Blender rather than by
 trying to invalidate a cache MPFB gives no way to invalidate.
 
-### FR-5: Rewrite each source request's verification record, honestly
+### FR-4: Rewrite each source request's verification record, honestly
 
 Each of the seven gets its `## Verification status` section rewritten in place, in
 `feature-requests/done/`, following [FR 006](../done/006-list-targets/README.md#verification-status)'s
@@ -145,7 +134,7 @@ An item that was not reached stays `[ ]` with a sentence saying why. The failure
 request exists to correct is a `Done` that outran its evidence; producing a second one would be
 worse than producing none.
 
-### FR-6: Classify every finding, and fix only one class here
+### FR-5: Classify every finding, and fix only one class here
 
 Four buckets, decided as each finding appears rather than afterwards:
 
@@ -162,7 +151,7 @@ A fix changes the program, so checks already run against the old one no longer s
 which checks were re-run after which fix; a checklist that was green before a mid-session fix and
 never re-run is an unreached item, not a passed one.
 
-### FR-7: Confirm the seven candidate MPFB issues before filing them
+### FR-6: Confirm the seven candidate MPFB issues before filing them
 
 FR 008 through FR 011 each ended by naming things that look like MPFB bugs, all of them read from
 source and none observed. Confirm each against the running install, then file the ones that hold:
@@ -181,7 +170,7 @@ The proxy divergence is the one that is not merely a tidiness point: the Archite
 FR 010 justifies which code path `mpfb_add_asset` follows on those three paths differing, so if they
 do not differ, a documented decision loses its reason.
 
-### FR-8: Produce the architectural review
+### FR-7: Produce the architectural review
 
 A `review.md` beside this README, written after the run so it can cite it. It answers, with numbers
 where a number exists:
@@ -209,20 +198,23 @@ where a number exists:
 - **Do the three payload-count-driven decisions still hold?** The refit-by-default in
   `mpfb_set_macro_details`, the batching in `mpfb_set_targets`, and one-asset-per-call in
   `mpfb_add_asset` were each argued against FR 005's ~1.0 s round trip. Two of the three are now
-  measurable ([FR-9](#fr-9-measure-what-four-decisions-rest-on)).
+  measurable ([FR-8](#fr-8-measure-what-four-decisions-rest-on)).
 
 Every recommendation carries a classification: fixed here, scoped as request NNN, or rejected with
 the reason.
 
-### FR-9: Measure what four decisions rest on
+### FR-8: Measure what four decisions rest on
 
-Taken from FR-1's log record, three runs each, median reported, first call to a tool reported
-separately since it pays for MPFB's caches:
+Taken from [FR 012](../012-observability/README.md)'s per-call record, three runs each, median
+reported, first call to a tool reported separately since it pays for MPFB's caches:
 
 - the **round-trip baseline** itself, re-measured — FR 005's ~1.0 s is the number four decisions
   cite, and it was measured once, on one tool, a year of development ago;
 - **where a call's time goes**: transport, `exec`/compile of the generated program, and MPFB's own
-  work. Programs run from 4 KB (`create_human.py`) to 52 KB (`set_targets.py`), mean ~23 KB, most of
+  work. FR 012 records the round trip undivided, and deliberately does not instrument the generated
+  program to split it — so take the split during this session the way that request points at, by
+  having a payload print its own timings into the envelope's `stdout`. Programs run from 4 KB
+  (`create_human.py`) to 52 KB (`set_targets.py`), mean ~23 KB, most of
   it comments and docstrings that
   [Readability and developer experience are prioritized](../../specifications/architecture.md#readability-and-developer-experience-are-prioritized)
   deliberately keeps. If compile time is negligible the tradeoff stops being an open question; if it
@@ -257,28 +249,15 @@ read-only checks run first because later ones compare against their output; a Bl
 budgeted where a cache demands one rather than avoided.
 
 **No new abstractions in the package as a side effect of testing it.** The harness lives outside
-`src/`, and the logging is one gated addition at the single point everything already funnels
-through. If verifying a tool requires changing that tool's structure, that is a finding for the
-review, not a change to make quietly during the run.
+`src/`, and the only addition inside it — FR 012's record — is one gated change at the single point
+everything already funnels through. If verifying a tool requires changing that tool's structure,
+that is a finding for the review, not a change to make quietly during the run.
 
 ## Architecture
 
-### Where the two additions go
+### Where the harness goes
 
-**Logging belongs in [connection.py](../../src/mpfbmcp/connection.py)'s `send_code()`**, the one
-function every tool crosses, and nowhere else. Gate it on an environment variable in the same style
-as `BLENDER_MCP_HOST`/`BLENDER_MCP_PORT`, which that module already reads; when unset, behavior is
-unchanged. Write the program and the response as separate files under a per-run directory, named so
-that the ordering of calls is recoverable, with an index line per call carrying tool name, byte
-count, duration and status.
-
-Two details matter more than they look. The logged program must be the **exact** string passed to
-the add-on — an add-on traceback names a line in that string, and the assembly order (bootstrap,
-prelude, shared fragments, payload) means a payload's own line 40 is somewhere near line 300 of what
-ran. And the files will contain absolute paths from the user's install and, for
-`mpfb_set_asset_material`, MHMAT paths; they are diagnostic output, not something to commit.
-
-**The harness belongs in `verification/`**, a sibling of `tests/`. It must not be picked up by
+**`verification/`**, a sibling of `tests/`. It must not be picked up by
 `unittest discover -s tests`, and it must not be shipped:
 [pyproject.toml](../../pyproject.toml) already sets `namespaces = false` and declares package data by
 explicit glob, so a top-level directory outside `src/` is not shipped — but check, because that
@@ -289,7 +268,8 @@ payloads not shipped at all).
 
 - **`strict_json`.** Anything a payload leaves in `result` has to be JSON-encodable, and FR 005
   already found a value that is not (`get_asset_list()`'s `thumb`). Such a failure surfaces as an
-  envelope error rather than a payload error, and FR-1's logging is what distinguishes the two.
+  envelope error rather than a payload error, and [FR 012](../012-observability/README.md)'s record
+  is what distinguishes the two.
   Expect at least one, in the tools whose responses no live call has ever serialized.
 - **`bpy.context.mode`, not just the object's.** Both [FR 009](../done/009-add-rig/README.md) and
   [FR 010](../done/010-mesh-assets/README.md) learned this from source: an unrelated object left in
@@ -312,8 +292,9 @@ payloads not shipped at all).
 ### What this effort may change
 
 **Fixed here:** defects in mpfb-mcp; corrections to
-[specifications/](../../specifications/) and to the seven verification records; the logging and the
-harness.
+[specifications/](../../specifications/) and to the seven verification records; the harness.
+Observability is *not* fixed here: it is [FR 012](../012-observability/README.md), and if the run
+finds it insufficient the correction belongs to that request rather than to this one.
 
 **Deferred to their own requests**, with the requests *written before this one closes* so the
 moment is not lost: a fourth and fifth shared fragment if the census argues for one; the
@@ -371,15 +352,17 @@ it is the work.** Nothing here is complete on a green unit run.
   runner. It is an instrument, and its own correctness is established by the fact that its checks
   fail when pointed at a deliberately broken call — worth doing once per checklist, since a harness
   that cannot fail proves nothing.
-- Live verification of *this* request means: every checklist in FR-4 run, every result recorded per
-  FR-5, and the harness re-run once from scratch to prove FR-2's repeatability requirement.
+- Live verification of *this* request means: every checklist in FR-3 run, every result recorded per
+  FR-4, and the harness re-run once from scratch to prove FR-1's repeatability requirement.
 
 ## References
 
 - [NEXT_STEPS.md](../NEXT_STEPS.md#modeling) — the seven-part description of this session, which this
   request scopes.
+- [FR 012](../012-observability/README.md) — the prerequisite: the per-call record this session's
+  diagnostics and cost measurements both read from.
 - [FR 006](../done/006-list-targets/README.md#verification-status) — the model for a good verification
   record: what was run, what it changed about the request, and what could not be reverted.
 - [CLAUDE.md](../../CLAUDE.md#commands) — how to bring up Blender with MPFB and the blender_mcp add-on,
   and the `BLENDER_MCP_HOST`/`BLENDER_MCP_PORT` overrides.
-- [../mpfb2](../../../mpfb2) — where the confirmed MPFB defects from FR-7 get filed.
+- [../mpfb2](../../../mpfb2) — where the confirmed MPFB defects from FR-6 get filed.
