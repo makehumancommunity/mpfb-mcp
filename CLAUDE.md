@@ -71,6 +71,16 @@ are the part of the code that has never been run against a real Blender** (see
 [FR 009's](feature-requests/done/009-add-rig/README.md#verification-status),
 [FR 010's](feature-requests/done/010-mesh-assets/README.md#verification-status) and
 [FR 011's verification status](feature-requests/done/011-skin-and-materials/README.md#verification-status)).
+Nothing is scheduled to change that count next: the most recent effort added no tool at all.
+[FR 012](feature-requests/done/012-observability/README.md) made a call *visible* instead — an
+env-gated per-call record of the exact program, the exact envelope and the round-trip duration,
+plus a `logging` hierarchy with no handler by default (see
+[observability.py](src/mpfbmcp/observability.py) and the
+[Commands](#commands) section for the two variables). It lands before
+[FR 013](feature-requests/013-live-verification/README.md) precisely because the twelve tools above
+are unverified: a live failure that names a line in a program nobody kept is most of what made that
+session expensive to face. Its own live check — that such a line number really does resolve against
+the dumped program — is the one thing it could not verify and the first item of FR 013's session.
 See [specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's planned
 beyond them, and [feature-requests/](feature-requests/) for work in progress.
 
@@ -114,6 +124,32 @@ add-on installed and enabled, start the add-on's socket server from its preferen
 `localhost:9876`), then run `mpfb-mcp` and call the tool from an MCP client. `BLENDER_MCP_HOST` /
 `BLENDER_MCP_PORT` override the address if the add-on isn't on the default.
 
+Two further environment variables, both **off by default**, make a call visible
+([observability.py](src/mpfbmcp/observability.py)). They are mpfb-mcp's own, which is why they do
+*not* carry the `BLENDER_MCP_` prefix the two above share with blender_mcp:
+
+```bash
+# Keep a per-call record: for every call, the exact program in a .py written BEFORE the
+# socket call, the full response envelope in a .json written after, and one tab-separated
+# line in index.tsv (seq, timestamp, tool, bytes, ms, status, response bytes). Files land in
+# a per-run subdirectory named for the timestamp and the pid, so two servers against one
+# Blender do not interleave.
+MPFB_MCP_RECORD_DIR=~/mpfb-mcp-records mpfb-mcp
+
+# Attach a stderr handler to the mpfbmcp logger hierarchy (which otherwise has none).
+# INFO is one line per call; DEBUG shows what a tool decided locally before the socket.
+MPFB_MCP_LOG_LEVEL=DEBUG mpfb-mcp
+```
+
+Unset, no directory is created, no file is opened, nothing is formatted and the bytes on the wire
+are identical — which is also the path the whole test suite exercises. **The record is diagnostic
+output about the machine it ran on**: absolute paths from the install, the asset library layout,
+MHMAT and MHCLO paths, and the parameters of the character being built. There are no credentials
+anywhere in this system, so nothing is scrubbed and nothing should be — but do not point the
+directory inside this repository, and read a record before sharing it. While the record is enabled,
+an **error** envelope gains an `mpfb_mcp_record` key naming the two files it wrote; a success
+envelope is untouched in every configuration.
+
 ## Architecture
 
 This package is a thin MCP-tool layer; MPFB itself only ever runs inside Blender. There is no
@@ -133,6 +169,25 @@ mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP
   duplicate of blender_mcp's `blmcp.tools_helpers.connection` protocol (see the module docstring),
   not an import of it — mpfb-mcp installs and runs without a blender_mcp checkout on the path.
   If blender_mcp's wire protocol changes, this needs to be updated to match by hand.
+- **[observability.py](src/mpfbmcp/observability.py)** — the record of what crossed that socket,
+  and this package's logger. It hangs off `send_code()` and nowhere else, which is the whole design
+  constraint: twenty tools cross one function, so a per-call record is a change in one file rather
+  than twenty, and **no tool module, payload or `codegen/` module was edited to add it**. It needed
+  no new argument either — `codegen` already labels the payload seam so a Blender traceback's line
+  number can be traced back to a file, and the same marker names the tool, a coupling now pinned by
+  tests on both sides. Three things about it are decisions rather than details. The program is
+  written **before** the socket call, so a call that hangs, times out or takes Blender down still
+  leaves the program that did it; writing both files together afterwards would lose exactly the
+  cases the record exists for. Nothing here may fail a call, so every disk touch is best-effort and
+  warns once — including `default=repr` on the response, since MPFB has already been seen to return
+  a value `json` cannot encode. And the per-call log line is gated on `MPFB_MCP_LOG_LEVEL` rather
+  than on `logger.isEnabledFor()`, because `FastMCP()` calls `logging.basicConfig()`: the root
+  logger is already at `INFO` in the real server, so an ambient check would mean every session paid
+  for timing nobody asked for, and propagation is turned off while this package's own handler is
+  attached or each line would print twice. **Never write to stdout from anywhere in this package**
+  — it is the JSON-RPC channel, and corrupting it surfaces as a client that hangs rather than as an
+  error. See
+  [specifications/architecture.md](specifications/architecture.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program).
 - **[codegen/](src/mpfbmcp/codegen)** — assembles the Python source executed inside Blender, out
   of three parts in a fixed order: a shared bootstrap, a parameter prelude, and a per-tool payload
   file. `codegen.assemble("create_human.py", bootstrap="raising", params={...})` is the single
@@ -371,9 +426,29 @@ Stdlib `unittest`, no pytest. Because MPFB is only ever reachable through genera
 into a live Blender, the suite can *never* exercise real MPFB behavior — it verifies what is on
 this side of the socket:
 
-- [tests/test_connection.py](tests/test_connection.py) — the wire protocol, against a throwaway
-  local `socketserver.TCPServer` standing in for the blender_mcp add-on (framing, error
+- [tests/fake_addon.py](tests/fake_addon.py) — holds no tests. The throwaway local
+  `socketserver.TCPServer` that stands in for the blender_mcp add-on, plus the environment-variable
+  bookkeeping, shared by the two modules below. It can do three things a canned response cannot,
+  each because a test needs it: answer differently per request, answer *nothing* and close the
+  connection, and keep the raw request bytes so "the bytes on the wire did not change" is an
+  assertion rather than a claim.
+- [tests/test_connection.py](tests/test_connection.py) — the wire protocol (framing, error
   envelopes, `BLENDER_MCP_HOST`/`BLENDER_MCP_PORT` handling).
+- [tests/test_observability.py](tests/test_observability.py) — the exception to the paragraph
+  above: this is the one part of the package that **is** fully testable on this side of the socket,
+  because it is entirely on this side of it. Two of its tests are load-bearing rather than
+  routine. The tool name is extracted from a real `codegen.assemble()` output for *every* payload
+  rather than from a hand-written marker, since the marker format is the coupling between two
+  modules that otherwise have nothing to do with each other. And the ordering — program on disk
+  before the add-on answers — is asserted by having the fake add-on look at the filesystem while it
+  holds the request, because an implementation that writes both files after the response passes
+  every other test here. The rest: that the disabled path creates nothing and sends identical
+  bytes, byte-for-byte fidelity (non-ASCII, CRLF, trailing whitespace, a 5000-character line), the
+  index fields including the no-response case, an unwritable directory not failing the call,
+  nothing reaching stdout in any configuration, and that an ambient `INFO` root logger — what
+  `FastMCP()` leaves behind — does *not* switch the per-call line on. One thing still needs a live
+  run: that a traceback line number from a real add-on failure resolves to the right line of the
+  dumped program.
 - [tests/test_codegen.py](tests/test_codegen.py) — assembly: that every payload file compiles on
   its own (nothing imports them, so a syntax error would otherwise surface only inside Blender),
   that the right bootstrap is selected, and that `PARAMS` round-trips — including for a value
@@ -553,6 +628,14 @@ though the unit tests see no behavior change. Re-running FR 004's and FR 005's c
 are read-only calls) and belongs in the same session, since FR 009's weights checks and FR 010's
 `resolved_path` compare against their output. Treat all of this as work owed rather than as a new
 precedent.
+
+[FR 012](feature-requests/done/012-observability/README.md) is the one recent effort where that
+sentence hardly applies, since almost all of it *is* on this side of the socket — but it too has one
+outstanding live item, named in its
+[verification status](feature-requests/done/012-observability/README.md#verification-status): that a
+traceback line number from a real add-on failure resolves to the right line of the dumped program.
+Running with `MPFB_MCP_RECORD_DIR` set is also what makes every check in that owed session
+diagnosable, so it belongs at the start of it rather than as an afterthought.
 
 ### Code conventions in this repo
 
