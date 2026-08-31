@@ -18,7 +18,10 @@ two rig tools, [FR 010](done/010-mesh-assets/README.md)'s two asset tools or
 [FR 011](done/011-skin-and-materials/README.md)'s three material tools. The outstanding checks
 overlap heavily — they all need the same dressed, rigged character and all compare against MPFB's
 own panel — so they are **one session's work rather than six**, and that session is by far the
-largest single piece of unfinished business in this file. It has seven parts:
+largest single piece of unfinished business in this file. It has seven parts, and it is now scoped
+as [FR 012](012-live-verification/README.md), which also carries the two things that would stop the
+postponement repeating: logging of the exact program sent into Blender, and a re-runnable harness.
+The seven parts are kept below as the original statement of what is wanted:
 
 - [FR 007](done/007-macro-details/README.md#verification-status) — phenotype sliders, refit, and the
   generated-Rigify-with-no-meta-rig branch of `mpfb_refit_human`.
@@ -143,6 +146,12 @@ verification above.
 
 Logging should be added so that it is possible to see the exact python code sent to blender,
 and the reponses that came back.
+
+A **subset** of this is scoped into [FR 012](012-live-verification/README.md): an env-gated dump of
+the exact program and the response, per call, with the round-trip duration — enough to resolve an
+add-on traceback's line number against a 52 KB generated program and to take that request's cost
+measurements. What stays here is the rest: log levels, a structured log, and anything surfaced back
+to the MCP caller.
 
 ## Second backend: the community "blender mcp"
 
