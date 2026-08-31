@@ -134,7 +134,11 @@ def assemble(payload: str, *, bootstrap: str = "raising",
 
     # Assembly order is fixed and every seam is labelled, so that a line number
     # reported from inside Blender can be mapped back to the file it came from
-    # by counting from the nearest marker above it.
+    # by counting from the nearest marker above it. The payload marker has a
+    # second consumer: observability.tool_name_from_program() reads the tool's
+    # name out of it, which is why send_code() needs no extra argument to say
+    # who called it. Its exact format is therefore pinned by tests here and in
+    # tests/test_observability.py rather than by this comment.
     parts = ["{}\n{}\n".format(_BOOTSTRAPS[bootstrap], prelude)]
     for fragment in shared or []:
         parts.append("# --- shared: {} ---\n{}\n".format(fragment, read_shared(fragment)))

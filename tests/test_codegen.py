@@ -118,7 +118,10 @@ class AssembleTests(unittest.TestCase):
 
     def test_seam_comment_names_the_payload_file(self) -> None:
         # What makes a line number reported from inside Blender traceable back
-        # to a file: the payload starts at a known, labelled offset.
+        # to a file: the payload starts at a known, labelled offset. The marker
+        # has a second reader - observability parses the tool's name out of it,
+        # which is why send_code() needs no extra argument - and the other half
+        # of that coupling is pinned in tests/test_observability.py.
         source = codegen.assemble("get_status.py", bootstrap="non_raising")
 
         self.assertIn("# --- payload: get_status.py ---", source)

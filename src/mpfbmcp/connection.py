@@ -9,6 +9,16 @@ without needing a checkout of blender_mcp on the Python path. It talks to the
 variables, same JSON + NUL-delimited framing, same "execute" request shape.
 
 If blender_mcp's protocol changes, this needs to be updated to match.
+
+``send_code()`` is also the one function every tool crosses, so it is where
+mpfb-mcp's own diagnostics attach: ``MPFB_MCP_RECORD_DIR`` keeps the exact
+program and the exact envelope on disk, and ``MPFB_MCP_LOG_LEVEL`` puts a line
+per call on stderr. Both are off by default, both live in ``observability`` so
+that this module stays a protocol client, and neither carries the
+``BLENDER_MCP_`` prefix - those two are shared with blender_mcp because both
+processes address the same add-on, while these are mpfb-mcp's own. The
+additions are around the protocol rather than in it: the bytes on the wire are
+the same in every configuration.
 """
 
 from __future__ import annotations
@@ -21,6 +31,8 @@ __all__ = (
 import json
 import os
 import socket
+
+from mpfbmcp import observability
 
 _DEFAULT_HOST = "localhost"
 _DEFAULT_PORT = 9876
@@ -57,6 +69,11 @@ def send_code(code: str, strict_json: bool = True) -> dict[str, object]:
         "strict_json": strict_json,
     }) + "\0"
 
+    # Opened before the socket block, because that is what writes the program
+    # to disk: a call that hangs, times out or takes Blender down has to leave
+    # behind the program that did it. Does nothing at all unless asked to.
+    record = observability.begin(code)
+
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.settimeout(_TIMEOUT)
@@ -72,27 +89,37 @@ def send_code(code: str, strict_json: bool = True) -> dict[str, object]:
                 if b"\0" in buf:
                     break
     except ConnectionRefusedError as ex:
+        record.failed(ex)
         raise ConnectionError(
             "Cannot connect to Blender at {:s}:{:d}. Ensure Blender is running with the "
             "blender_mcp add-on enabled and its server started.".format(host, port)
         ) from ex
     except socket.timeout as ex:
+        record.failed(ex)
         raise ConnectionError(
             "Blender connection timed out at {:s}:{:d}".format(host, port)
         ) from ex
     except OSError as ex:
+        record.failed(ex)
         raise ConnectionError(
             "Socket error communicating with Blender at {:s}:{:d}: {:s}".format(host, port, str(ex))
         ) from ex
 
     if not buf:
-        raise ConnectionError("Empty response from Blender")
+        empty = ConnectionError("Empty response from Blender")
+        record.failed(empty)
+        raise empty
 
     line, _sep, _rest = buf.partition(b"\0")
     try:
         response: dict[str, object] = json.loads(line.decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError) as ex:
+        record.failed(ex)
         raise ConnectionError(
             "Invalid response from Blender at {:s}:{:d}: {:s}".format(host, port, str(ex))
         ) from ex
-    return response
+
+    record.finished(response)
+    # A no-op unless this is an error envelope and the record is enabled; see
+    # observability._CallRecord.annotate().
+    return record.annotate(response)
