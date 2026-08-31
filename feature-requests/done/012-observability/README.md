@@ -1,6 +1,6 @@
 # Observability: seeing the program that was sent and the response that came back
 
-**Status:** Proposed
+**Status:** Done
 
 Every tool in this package does the same three things: assemble a Python program, hand it to
 `send_code()`, and return whatever comes off the wire. Nothing keeps the program afterwards, and
@@ -18,11 +18,11 @@ tool — and four separate design decisions now cite that number: the refit-by-d
 `mpfb_add_asset`, and the deliberate retention of comments and docstrings inside generated programs.
 None of them can be re-checked today without repeating the hand measurement.
 
-This is the [Observability entry in NEXT_STEPS.md](../NEXT_STEPS.md#observability), scoped whole. It
+This is the [Observability entry in NEXT_STEPS.md](../../NEXT_STEPS.md#observability), scoped whole. It
 was previously scoped only as a subset, inside the live-verification request; it is pulled out here
 because it is a change to the package rather than an instrument for one session, because it is
 worth having whether or not that session happens, and because it should land *before* it, not
-alongside it. [FR 013](../013-live-verification/README.md) depends on this request for its
+alongside it. [FR 013](../../013-live-verification/README.md) depends on this request for its
 diagnostics and for its cost measurements.
 
 ## Goals
@@ -95,7 +95,7 @@ The reason to do it at all is that the person reading the failure is usually an 
 person who set the environment variable, and a failure that does not say where its own evidence
 landed wastes the record. The reason to keep it this narrow is that a field which appears only
 sometimes is exactly the kind of thing
-[Response shape](../../specifications/architecture.md#response-shape) exists to discipline. If the
+[Response shape](../../../specifications/architecture.md#response-shape) exists to discipline. If the
 tension cannot be resolved in favour of the narrow version, the correct outcome is to add nothing
 and say so.
 
@@ -131,7 +131,7 @@ truncated or re-wrapped version of it. A 52 KB file is fine; a 52 KB file with t
 useless for the one job it has.
 
 **Readability of the record**, on the same footing as
-[readability of the code](../../specifications/architecture.md#readability-and-developer-experience-are-prioritized).
+[readability of the code](../../../specifications/architecture.md#readability-and-developer-experience-are-prioritized).
 The index is meant to be read in a terminal and grepped; the program files are meant to be opened in
 an editor and jumped to by line number.
 
@@ -139,7 +139,7 @@ an editor and jumped to by line number.
 
 ### Where it goes
 
-[connection.py](../../src/mpfbmcp/connection.py)'s `send_code()`, and nowhere else. That module
+[connection.py](../../../src/mpfbmcp/connection.py)'s `send_code()`, and nowhere else. That module
 already reads `BLENDER_MCP_HOST` / `BLENDER_MCP_PORT`, so environment-driven configuration is an
 established shape there.
 
@@ -155,7 +155,7 @@ blender_mcp's protocol stays true — the additions are around the protocol, not
 argument — would touch all twenty tool modules and quietly amend the rule that adding a tool touches
 a tool module, a payload and a `register()` call.
 
-It is not needed. [codegen.assemble()](../../src/mpfbmcp/codegen/__init__.py) already labels every
+It is not needed. [codegen.assemble()](../../../src/mpfbmcp/codegen/__init__.py) already labels every
 seam, and the last one is `# --- payload: <name> ---`, put there so a line number reported from
 inside Blender can be traced back to its file. The same marker identifies the tool: scan the code
 for it and take the name. A program with no marker — something assembled by hand, or a future call
@@ -188,7 +188,7 @@ exact program that ran" conditional on a diagnostic setting, which would undermi
 
 The decomposition is still reachable when it is actually wanted: the add-on's envelope already
 carries `stdout`, so a payload can print its own timings during a session without any change to this
-mechanism. [FR 013](../013-live-verification/README.md)'s cost measurements should take the
+mechanism. [FR 013](../../013-live-verification/README.md)'s cost measurements should take the
 round-trip and the byte count from this record and get the split, if it needs one, that way.
 
 ### Pitfalls
@@ -209,26 +209,26 @@ round-trip and the byte count from this record and get the split, if it needs on
 
 ## Affected specifications
 
-- **[specifications/architecture.md](../../specifications/architecture.md)** — this adds a standing
+- **[specifications/architecture.md](../../../specifications/architecture.md)** — this adds a standing
   convention and there is currently no section for it. The natural placement is beside
-  [No direct dependency on MPFB or blender_mcp](../../specifications/architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp),
+  [No direct dependency on MPFB or blender_mcp](../../../specifications/architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp),
   which is where the socket boundary is described, saying: everything crosses one function,
   diagnostics attach there and nowhere else, the generated program is never altered to observe it,
   and stdout belongs to the transport. The note under
-  [Code-generation layout](../../specifications/architecture.md#code-generation-layout) about seams
+  [Code-generation layout](../../../specifications/architecture.md#code-generation-layout) about seams
   being labelled for line-number tracing gains a second consumer and should say so.
-- **[specifications/vision.md](../../specifications/vision.md)** — untouched. This adds no tool and
+- **[specifications/vision.md](../../../specifications/vision.md)** — untouched. This adds no tool and
   changes no tool's answer; the one caller-visible effect
   ([FR-4](#fr-4-what-if-anything-reaches-the-mcp-caller)) is confined to an error envelope while
   the record is enabled.
-- **[CLAUDE.md](../../CLAUDE.md#commands)** — not a specification, but the Commands section
+- **[CLAUDE.md](../../../CLAUDE.md#commands)** — not a specification, but the Commands section
   documents `BLENDER_MCP_HOST` / `BLENDER_MCP_PORT` and is where the new variables have to be
   documented for anyone to find them.
 
 ## Tests
 
 Unusually for this repo, **almost all of this is testable on this side of the socket**, because it
-is entirely on this side of the socket. [tests/test_connection.py](../../tests/test_connection.py)
+is entirely on this side of the socket. [tests/test_connection.py](../../../tests/test_connection.py)
 already stands up a throwaway local `socketserver.TCPServer` in place of the add-on, which is the
 right instrument for all of the below.
 
@@ -253,16 +253,85 @@ right instrument for all of the below.
 number from a real add-on failure resolves to the right line of the dumped program. Force a failure
 in a real Blender — a payload edited to raise, or a tool called against a character that does not
 meet its preconditions — and check the line by hand. That is the first item of
-[FR 013](../013-live-verification/README.md)'s session, and this request should land before it so
+[FR 013](../../013-live-verification/README.md)'s session, and this request should land before it so
 the rest of that session is diagnosable.
 
 ## References
 
-- [NEXT_STEPS.md](../NEXT_STEPS.md#observability) — the entry this request scopes.
-- [FR 013](../013-live-verification/README.md) — the consumer: its diagnostics and its cost
+- [NEXT_STEPS.md](../../NEXT_STEPS.md#observability) — the entry this request scopes.
+- [FR 013](../../013-live-verification/README.md) — the consumer: its diagnostics and its cost
   measurements both come from this record.
-- [FR 005](../done/005-list-assets/README.md) — the source of the ~1.0 s round-trip figure that four
+- [FR 005](../005-list-assets/README.md) — the source of the ~1.0 s round-trip figure that four
   decisions cite, and of the `strict_json` encoding failure this record has to tolerate.
-- [connection.py](../../src/mpfbmcp/connection.py) — the one function everything crosses.
-- [codegen/\_\_init\_\_.py](../../src/mpfbmcp/codegen/__init__.py) — the seam markers, and why the
+- [connection.py](../../../src/mpfbmcp/connection.py) — the one function everything crosses.
+- [codegen/\_\_init\_\_.py](../../../src/mpfbmcp/codegen/__init__.py) — the seam markers, and why the
   payload name is already in the program.
+
+## Verification status
+
+**Implemented and unit-tested; one live check is outstanding.** The module, the two hooks in
+`send_code()` and the tests landed together, and the whole suite passes — 681 tests, up from 654.
+Unusually for this repo that number means most of what the request asked for: the mechanism is
+entirely on this side of the socket, so the disabled path, the write ordering, byte fidelity, the
+index fields, the swallowed failure, the absence of stdout output and the tool-name coupling are
+all asserted rather than argued.
+
+### What is outstanding
+
+- [ ] **That a traceback line number from a real add-on failure resolves to the right line of the
+  dumped program.** This is the thing the request exists for and the only part of it a stub cannot
+  establish: nothing here has ever received a line number from Blender. Force a failure in a real
+  Blender — a payload edited to raise, or a tool called against a character that does not meet its
+  preconditions — and check the line by hand against the `.py` in the run directory. It is the
+  first item of [FR 013](../../013-live-verification/README.md)'s session, which is where it is
+  now owed.
+
+Everything else on the request's [Tests](#tests) list was run and passes. Nothing was verified
+against a running Blender, and nothing here claims to have been.
+
+### What changed against this request
+
+**`FastMCP()` calls `logging.basicConfig()`.** This was not known when the request was written and
+it changes two things. In the real server the *root* logger is therefore already at `INFO` with a
+handler attached before any tool runs, so [FR-3](#fr-3-a-conventional-log-alongside-it)'s "no
+handler attached by default" would have been true in letter and false in effect: an ordinary
+`logger.isEnabledFor(INFO)` gate would have switched the per-call line — and its
+`perf_counter()` bracketing and formatting — on for every session, which is exactly what
+[Zero cost when off](#non-functional-requirements) forbids. The per-call line is consequently gated
+on `MPFB_MCP_LOG_LEVEL` itself. And propagation is turned off while this package's own handler is
+attached, or a user who opts in gets every line twice. Worth recording for its own sake: mcp's
+handler is a `RichHandler` on a `Console(stderr=True)`, so the host is *not* itself a threat to the
+transport — but [Never stdout](#never-stdout) was one library-default away from being violated by
+code this request never touches.
+
+**The mechanism lives in a new `src/mpfbmcp/observability.py`, not inside `connection.py`.**
+[Where it goes](#where-it-goes) says "`connection.py`'s `send_code()`, and nowhere else", and the
+*attachment point* is exactly that — two calls and a `record.annotate()` on the return. The
+mechanism itself is a sibling module, because putting ~300 lines of record-keeping into the file
+whose docstring calls it a faithful duplicate of blender_mcp's protocol would have made that claim
+awkward to defend. The requirement the placement actually served —
+[One place, not twenty](#non-functional-requirements) — is met and testable: no tool module, no
+payload and no `codegen/` module was edited.
+
+**[FR-4](#fr-4-what-if-anything-reaches-the-mcp-caller) resolved in favour of the narrow version.**
+An error envelope, while the record is enabled, gains `mpfb_mcp_record` naming the program and the
+response file. A success envelope is untouched in every configuration, and both cases are asserted.
+
+**The payload marker is parsed tolerantly.** The first version of the regex required the line to
+end immediately after ` ---`, which the byte-fidelity test broke by handing `send_code()` a program
+with a CRLF in it — the tool name silently became `unnamed`. Trailing whitespace and a carriage
+return are now allowed, since the marker has to be found in whatever was handed to `send_code()`
+rather than only in what `codegen` produced.
+
+**The response-serialization pitfall is real but not reachable from here.** The envelope
+`send_code()` records has by definition just come out of `json.loads()`, so it always re-encodes.
+The failure the request anticipated is on the *Blender* side — `strict_json` rejecting a value like
+`get_asset_list()`'s `thumb` — and arrives as an error envelope, which the record handles like any
+other. `default=repr` is kept regardless, and is tested against the recorder directly rather than
+through a call, since no call can produce the case.
+
+**`tests/fake_addon.py` was extracted.** The throwaway add-on server moved out of
+`test_connection.py` so two modules could share it, and grew three abilities each test here needed:
+answering per request (the ordering test has the fake add-on look at the filesystem while it holds
+the request), answering nothing and closing (the no-response index line), and keeping the raw
+request bytes (so "off means the same bytes on the wire" is an assertion).

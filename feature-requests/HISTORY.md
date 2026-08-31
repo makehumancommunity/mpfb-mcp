@@ -648,3 +648,58 @@ builds one, so the primary goal ("the same result MPFB's own skin library produc
 on reading source. The checklist is under
 ["Verification status" in the request](done/011-skin-and-materials/README.md#verification-status),
 and [NEXT_STEPS.md](NEXT_STEPS.md) folds it into the same outstanding session as the other five.
+
+## [FR 012](done/012-observability/README.md) — observability: seeing what crossed the socket
+
+The first effort since the proof of concept that adds **no tool at all**. Twenty tools do the same
+three things — assemble a program, hand it to `send_code()`, return the envelope — and until now
+nothing kept any of it. A failure inside Blender arrived as a traceback naming a line number in a
+program that existed on neither side of the socket, and mapping that line back to a file was
+guesswork twice over: a payload's own line 40 lands near line 300 of what actually ran, and the
+programs run from about 4 KB to about 52 KB. There was no timing either, while four design
+decisions cite a ~1.0 s round trip measured once, by hand, on one tool, a year of development ago.
+
+`MPFB_MCP_RECORD_DIR` names a directory and each call leaves three things in a per-run subdirectory
+of it: the exact program in a `.py`, the full envelope in a `.json`, and one tab-separated line in
+`index.tsv` — sequence, timestamp, tool, program bytes, milliseconds, envelope status, response
+bytes. `MPFB_MCP_LOG_LEVEL` attaches a `stderr` handler to a `logging` hierarchy that otherwise has
+none. Both are off by default, and off means literally off: no directory created, no file opened,
+nothing formatted, the same bytes on the wire — which matters beyond tidiness, since the disabled
+path is the one the entire test suite exercises.
+
+Two structural points are the interesting half. **The tool name was already in the program.**
+`codegen` labels the payload seam so that a Blender traceback's line number can be traced back to a
+file; the same marker says which tool the program belongs to, so `send_code()` needed no extra
+argument and **no tool module, no payload and no `codegen/` module was edited**. That created a new
+coupling — a format written by one module and parsed by another, two modules that previously had
+nothing to do with each other — which is now pinned by tests on both sides rather than by a
+comment. And **the program is written before the socket call**, not with the response afterwards:
+writing both together is the easy version and silently loses every case the record exists for, a
+timeout, a crash, a call that never returns.
+
+Reading the host turned up the thing the request did not know. **`FastMCP()` calls
+`logging.basicConfig()`**, so in the real server the root logger is at `INFO` with a handler on it
+before any tool runs. An ordinary `logger.isEnabledFor(INFO)` gate would therefore have switched
+per-call timing and formatting on in every session that never asked for it, making "no handler by
+default" true in letter and false in effect; the per-call line is gated on this package's own
+variable instead, and propagation is off while its own handler is attached, or each line prints
+twice. mcp's handler turns out to be a `RichHandler` on a `Console(stderr=True)`, so the transport
+was never actually at risk — but the margin was one library default, which is why
+[Stdout belongs to the transport](../specifications/architecture.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program)
+is now a standing rule rather than a warning in one docstring.
+
+The one caller-visible change is deliberately narrow, and was the request's own open question: an
+**error** envelope, and only while the record is enabled, gains an `mpfb_mcp_record` key naming the
+two files. Whoever reads a failure is usually an agent rather than the person who set the variable,
+and a failure that does not say where its own evidence landed wastes the record. A success envelope
+is untouched in every configuration.
+
+Two files added — `src/mpfbmcp/observability.py` and `tests/test_observability.py` — plus
+`tests/fake_addon.py`, the throwaway add-on server pulled out of `test_connection.py` so both
+modules could share it, now able to answer per request, answer nothing, and keep the raw request
+bytes. Unit tests grew from 654 to 681, and unusually for this repo that number covers most of the
+request: the mechanism is entirely on this side of the socket. **One live check is outstanding** —
+that a traceback line number from a real add-on failure resolves to the right line of the dumped
+program, which is the one thing no stub can establish. It is the first item of
+[FR 013](013-live-verification/README.md)'s session, recorded in
+["Verification status"](done/012-observability/README.md#verification-status).

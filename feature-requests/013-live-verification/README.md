@@ -6,7 +6,7 @@
 each checked against a running Blender before being marked Done.
 [FR 007](../done/007-macro-details/README.md) through [FR 011](../done/011-skin-and-materials/README.md)
 were not — five consecutive requests, twelve tools, every one of which *changes* a character. The
-suite passes (654 tests) and proves the branching around each call; none of it touches MPFB. On top
+suite passes (681 tests) and proves the branching around each call; none of it touches MPFB. On top
 of that, two verifications that *were* run are now stale: FR 009 migrated
 `payloads/list_rigs.py` onto `codegen/shared/rig_lookup.py` and FR 010 migrated
 `payloads/list_assets.py` onto `codegen/shared/asset_sections.py`, so in both cases the program sent
@@ -26,13 +26,23 @@ reason these twelve did. Alongside that, and because a first live run is the onl
 whole surface is being exercised at once, take the measurements that four already-made decisions
 rest on and review the structure they produced.
 
-**This request depends on [FR 012](../012-observability/README.md), which should land first.** The
-other reason the run is expensive is that a live failure surfaces as a traceback naming a line in a
-program nobody kept — and the cost measurements below need a recorded duration per call rather than
-a stopwatch. Both were originally scoped here; they are a change to the package rather than an
-instrument for one session, they are worth having whether or not this session happens, and folding
-them in made this request two efforts wearing one number. What this request assumes from FR 012 is
-narrow: a per-call record of the exact program, the response envelope and the round-trip duration.
+**[FR 012](../done/012-observability/README.md) has landed**, and this request's prerequisite is
+therefore met: the other reason the run was expensive is that a live failure surfaced as a traceback
+naming a line in a program nobody kept, and the cost measurements below need a recorded duration per
+call rather than a stopwatch. Both were originally scoped here; they are a change to the package
+rather than an instrument for one session, they are worth having whether or not this session
+happens, and folding them in made this request two efforts wearing one number.
+
+Concretely, what this session now has. Run the server with `MPFB_MCP_RECORD_DIR` set — see
+[CLAUDE.md](../../CLAUDE.md#commands) — and every call leaves the exact program in a `.py`, the full
+envelope in a `.json`, and one line in `index.tsv` carrying the tool, the program size in bytes and
+the round-trip duration in milliseconds. Those two columns are the input to
+[FR-8](#fr-8-measure-what-four-decisions-rest-on), and the `.py` is what a traceback's line number
+is resolved against. `MPFB_MCP_LOG_LEVEL=DEBUG` puts a line per call on stderr while watching. Note
+also that **FR 012 inherited one live check into this session, and it should be the first thing
+done**: that a line number from a real add-on failure really does resolve to the right line of the
+dumped program. Everything else here is easier to diagnose once that is confirmed, and worth
+distrusting until it is.
 
 ## Goals
 
@@ -49,7 +59,7 @@ the run rather than in argument, with each recommendation classified as fix-here
 rejected-with-a-reason.
 
 **Enabling, and not a goal in itself: make the next verification cheap.** A re-runnable harness,
-standing on [FR 012](../012-observability/README.md)'s per-call record for the diagnostics. It
+standing on [FR 012](../done/012-observability/README.md)'s per-call record for the diagnostics. It
 exists to serve the two goals above and should not grow past that.
 
 **Explicitly not a goal:** new tools, new capability, or the structural refactors the review
@@ -99,6 +109,10 @@ again, as FR 006's run did with its gzipped probe.
 The checklists themselves are not restated here; they live in their own requests and are the
 authority. What this request fixes is the **order**, because several settle each other:
 
+0. **[FR 012](../done/012-observability/README.md)'s inherited check**, before anything else and on
+   whatever call is convenient: force a failure in Blender and confirm the traceback's line number
+   resolves to the right line of the dumped program. It is one deliberate failure, and everything
+   below is harder to diagnose until it is confirmed.
 1. **[FR 004](../done/004-list-rigs/README.md)** and **[FR 005](../done/005-list-assets/README.md)**
    re-checks. Read-only, cheap, and first because FR 009's weights answers and FR 010's
    `resolved_path` are compared against their output.
@@ -205,8 +219,9 @@ the reason.
 
 ### FR-8: Measure what four decisions rest on
 
-Taken from [FR 012](../012-observability/README.md)'s per-call record, three runs each, median
-reported, first call to a tool reported separately since it pays for MPFB's caches:
+Taken from [FR 012](../done/012-observability/README.md)'s per-call record — the `ms` and `bytes`
+columns of `index.tsv`, under `MPFB_MCP_RECORD_DIR` — three runs each, median reported, first call
+to a tool reported separately since it pays for MPFB's caches:
 
 - the **round-trip baseline** itself, re-measured — FR 005's ~1.0 s is the number four decisions
   cite, and it was measured once, on one tool, a year of development ago;
@@ -268,7 +283,7 @@ payloads not shipped at all).
 
 - **`strict_json`.** Anything a payload leaves in `result` has to be JSON-encodable, and FR 005
   already found a value that is not (`get_asset_list()`'s `thumb`). Such a failure surfaces as an
-  envelope error rather than a payload error, and [FR 012](../012-observability/README.md)'s record
+  envelope error rather than a payload error, and [FR 012](../done/012-observability/README.md)'s record
   is what distinguishes the two.
   Expect at least one, in the tools whose responses no live call has ever serialized.
 - **`bpy.context.mode`, not just the object's.** Both [FR 009](../done/009-add-rig/README.md) and
@@ -293,7 +308,7 @@ payloads not shipped at all).
 
 **Fixed here:** defects in mpfb-mcp; corrections to
 [specifications/](../../specifications/) and to the seven verification records; the harness.
-Observability is *not* fixed here: it is [FR 012](../012-observability/README.md), and if the run
+Observability is *not* fixed here: it is [FR 012](../done/012-observability/README.md), and if the run
 finds it insufficient the correction belongs to that request rather than to this one.
 
 **Deferred to their own requests**, with the requests *written before this one closes* so the
@@ -341,7 +356,7 @@ behavior recorded as the reason. That is the same test `rig_lookup.py` passed an
 The usual sentence is inverted for this request: **the live verification is not a footnote at the end,
 it is the work.** Nothing here is complete on a green unit run.
 
-- The existing suite (654 tests, `python3 -m unittest discover -s tests`) is the regression net for
+- The existing suite (681 tests, `python3 -m unittest discover -s tests`) is the regression net for
   every fix. A fix lands with a test that fails before it, wherever the stubs can express the
   failure — and with an explicit note where they cannot, which will be common: no stub builds a node
   tree, imports a mesh, fits a vertex or reproduces a real MPFB cache.
@@ -359,7 +374,7 @@ it is the work.** Nothing here is complete on a green unit run.
 
 - [NEXT_STEPS.md](../NEXT_STEPS.md#modeling) — the seven-part description of this session, which this
   request scopes.
-- [FR 012](../012-observability/README.md) — the prerequisite: the per-call record this session's
+- [FR 012](../done/012-observability/README.md) — the prerequisite: the per-call record this session's
   diagnostics and cost measurements both read from.
 - [FR 006](../done/006-list-targets/README.md#verification-status) — the model for a good verification
   record: what was run, what it changed about the request, and what could not be reverted.
