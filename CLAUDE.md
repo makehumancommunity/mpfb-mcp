@@ -55,8 +55,8 @@ catalogue reports** — it takes `mpfb_list_assets`' `path` *or* its `fragment`,
 and always reports which file it landed on, since resolving a fragment matches on basename; and
 `mpfb_remove_asset`, which exists because deleting the object leaves the body's mask modifier and the
 garment's sub-rig behind. Between them they also carry the last convention: **where MPFB's own code
-paths disagree, mpfb-mcp picks one and names it** (adding a proxy has three implementations in MPFB;
-this follows the service-layer one and says so). And last, the three that reach a character's
+paths disagree, mpfb-mcp picks one and names it** (adding a proxy has three implementations in MPFB,
+two of which differ; this follows the service-layer one and says so). And last, the three that reach a character's
 *materials*: `mpfb_set_skin`, which is why a character need no longer be grey, and which carries the
 newest convention — **where MPFB's UI coerces or re-defaults a service argument, mpfb-mcp coerces
 the same way and reports both values** (`skin_type` defaults to the settings panel's `MAKESKIN`
@@ -64,25 +64,45 @@ rather than the signature's `ENHANCED_SSS`, and `material_instances` is forced o
 five types); `mpfb_set_asset_material`, the limiting case of the convention above it, since setting
 an alternative material has *no* service implementation to pick — only a UI operator to reproduce;
 and `mpfb_list_asset_materials`, which exists because alternative materials are not an asset library
-section and `mpfb_list_assets` therefore cannot name them. **The twelve character-modifying tools
-are the part of the code that has never been run against a real Blender** (see
-[FR 007's](feature-requests/done/007-macro-details/README.md#verification-status),
-[FR 008's](feature-requests/done/008-detail-targets/README.md#verification-status),
-[FR 009's](feature-requests/done/009-add-rig/README.md#verification-status),
-[FR 010's](feature-requests/done/010-mesh-assets/README.md#verification-status) and
-[FR 011's verification status](feature-requests/done/011-skin-and-materials/README.md#verification-status)).
-Nothing is scheduled to change that count next: the most recent effort added no tool at all.
-[FR 012](feature-requests/done/012-observability/README.md) made a call *visible* instead — an
-env-gated per-call record of the exact program, the exact envelope and the round-trip duration,
+section and `mpfb_list_assets` therefore cannot name them.
+
+**All twenty tools have now been run against a real Blender.** For five requests and twelve tools
+that was outstanding; [FR 013](feature-requests/done/013-live-verification/README.md) cleared it in
+one session and, more importantly, made the next one cheap: the checks live in
+[verification/](verification/) as one script per checklist, driving the real tool callables, and
+re-running a whole checklist after a fix is one command. Each of the seven affected requests
+carries a rewritten record with the observed value beside every item —
+[FR 004](feature-requests/done/004-list-rigs/README.md#verification-status),
+[FR 005](feature-requests/done/005-list-assets/README.md#verification-status),
+[FR 007](feature-requests/done/007-macro-details/README.md#verification-status),
+[FR 008](feature-requests/done/008-detail-targets/README.md#verification-status),
+[FR 009](feature-requests/done/009-add-rig/README.md#verification-status),
+[FR 010](feature-requests/done/010-mesh-assets/README.md#verification-status),
+[FR 011](feature-requests/done/011-skin-and-materials/README.md#verification-status) — and
+[FR 013's review](feature-requests/done/013-live-verification/review.md) carries what the run said
+about the surface as a whole, in numbers.
+
+Three claims that had never been anything but readings of MPFB's source are now observations. A
+character built through `mpfb_set_macro_details` has the same 21 shape keys at the same values as
+one built on MPFB's own phenotype slider. A garment equipped through `mpfb_add_asset` is identical
+to one equipped through MPFB's asset library panel down to the vertex positions. And rigging after
+dressing really does leave the clothes unrigged — 0 weighted vertices against 285 — which is the
+claim
+[A tool reports an ordering constraint it cannot enforce](specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
+is built on. The run also found **three defects nothing on this side of the socket could have
+caught**, all now fixed with regression tests: a body proxy that did not hide the base mesh,
+because the guard could not tell MPFB's own `Hide helpers` mask from the one it was looking for;
+two macro-shape-key lists reported in two different name spaces while the docstring told callers to
+compare them; and two `[]`s that meant "not computed".
+
+[FR 012](feature-requests/done/012-observability/README.md) is what made that session diagnosable —
+an env-gated per-call record of the exact program, the exact envelope and the round-trip duration,
 plus a `logging` hierarchy with no handler by default (see
 [observability.py](src/mpfbmcp/observability.py) and the
-[Commands](#commands) section for the two variables). It lands before
-[FR 013](feature-requests/013-live-verification/README.md) precisely because the twelve tools above
-are unverified: a live failure that names a line in a program nobody kept is most of what made that
-session expensive to face. Its own live check — that such a line number really does resolve against
-the dumped program — is the one thing it could not verify and the first item of FR 013's session.
-See [specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's planned
-beyond them, and [feature-requests/](feature-requests/) for work in progress.
+[Commands](#commands) section for the two variables). Its own outstanding live check, that a
+traceback line number resolves against the dumped program, was the first thing FR 013 did and it
+passed. See [specifications/vision.md](specifications/vision.md#target-tool-catalog) for what's
+planned beyond the twenty, and [feature-requests/](feature-requests/) for work in progress.
 
 ## Version control
 
@@ -465,10 +485,17 @@ this side of the socket:
 - [tests/blender_stubs.py](tests/blender_stubs.py) — holds no tests. It is the stub Blender scene
   and stub MPFB services that the generated code of every tool below is executed against,
   shared because they need the same scene. The stubs deliberately reimplement MPFB's *actual*
-  behavior rather than returning convenient values — `""` and not `None` from
-  `get_object_type()`, a non-bool `object_is_any_makehuman_object()`, a `find_related_objects()`
-  that yields the object it was asked about, a `get_list_of_children()` that walks the whole file
-  — because those quirks are the reason the payloads are written as they are.
+  behavior rather than returning convenient values — and FR 013's live run is the argument for
+  that discipline rather than an illustration of it: the stub basemesh had **no modifiers at all**,
+  where every basemesh MPFB creates carries a `Hide helpers` MASK modifier on the vertex group
+  `body`, and that single convenience hid a defect through two rounds of review (`mpfb_add_asset`
+  never added the `Hide base mesh` modifier a body proxy needs, because its guard could not tell
+  the two apart). Adding the real modifier to the stub broke three existing tests, two of which
+  were the tests being kind. When a live finding *can* be pushed down into the stubs it must be.
+  The same discipline is why `get_object_type()` returns `""` and not `None`,
+  `object_is_any_makehuman_object()` returns a non-bool, `find_related_objects()` yields the object
+  it was asked about, and `get_list_of_children()` walks the whole file — every one of those quirks
+  is the reason some payload is written as it is.
 - [tests/test_list_objects.py](tests/test_list_objects.py) and
   [tests/test_get_object_info.py](tests/test_get_object_info.py) — argument validation with
   `send_code` mocked, then the generated code run against those stubs: subject resolution by name
@@ -609,33 +636,41 @@ this side of the socket:
   tree**, so nothing here establishes that any of the five skin types produces the material MPFB's
   own skin library panel produces — which is the whole primary goal of the effort.
 
-Anything needing real MPFB is a manual integration check against a running Blender (see
-[Commands](#commands)), and feature requests are expected to say so explicitly. FR 001 through
-FR 006 each had that check run before being marked Done; **FR 007 through FR 011 did
-not**, so all twelve character-modifying tools are unverified against real MPFB. Their
-verification-status sections
-([FR 007](feature-requests/done/007-macro-details/README.md#verification-status),
-[FR 008](feature-requests/done/008-detail-targets/README.md#verification-status),
-[FR 009](feature-requests/done/009-add-rig/README.md#verification-status),
-[FR 010](feature-requests/done/010-mesh-assets/README.md#verification-status),
-[FR 011](feature-requests/done/011-skin-and-materials/README.md#verification-status)) say exactly
-what is outstanding, and all five checklists want the same dressed, rigged character — so they are
-one session's work rather than five. FR 011's is the one where the stubs establish least of all: a
-material *is* a node tree, and nothing in the suite builds one. **Two catalogue verifications are stale on top of that**: FR 009
-migrated `payloads/list_rigs.py` onto `rig_lookup.py` and FR 010 migrated `payloads/list_assets.py`
-onto `asset_sections.py`, so in each case the program sent into Blender is a different program even
-though the unit tests see no behavior change. Re-running FR 004's and FR 005's checks is cheap (both
-are read-only calls) and belongs in the same session, since FR 009's weights checks and FR 010's
-`resolved_path` compare against their output. Treat all of this as work owed rather than as a new
-precedent.
+Anything needing real MPFB is verified against a running Blender, and feature requests are
+expected to say so explicitly. That check is no longer a manual session: it lives in
+**[verification/](verification/)**, a sibling of `tests/` that is not discovered by
+`unittest discover -s tests` and is not shipped. It holds a snapshot/compare helper over twelve
+datablock collections, a fixture builder, and one script per checklist, each driving the real tool
+callables the way an MCP client would and each printing one pass/fail/skipped line per item with
+the observed value beside it.
 
-[FR 012](feature-requests/done/012-observability/README.md) is the one recent effort where that
-sentence hardly applies, since almost all of it *is* on this side of the socket — but it too has one
-outstanding live item, named in its
-[verification status](feature-requests/done/012-observability/README.md#verification-status): that a
-traceback line number from a real add-on failure resolves to the right line of the dumped program.
-Running with `MPFB_MCP_RECORD_DIR` set is also what makes every check in that owed session
-diagnosable, so it belongs at the start of it rather than as an afterthought.
+```bash
+# Everything, in the order where each checklist pays for the next. Needs a running
+# Blender with MPFB and the blender_mcp add-on; run_all.py checks the install first.
+MPFB_MCP_RECORD_DIR=~/mpfb-mcp-records PYTHONPATH=. python3 verification/run_all.py
+
+# One checklist, after a fix.
+MPFB_MCP_RECORD_DIR=~/mpfb-mcp-records PYTHONPATH=. python3 verification/check_fr010.py
+
+# The cost measurements four decisions rest on, and the MPFB defect reproductions.
+PYTHONPATH=. python3 verification/measure.py
+PYTHONPATH=. python3 verification/check_mpfb_issues.py
+```
+
+Two properties of it are load-bearing. Checks go **through the tool callables**, not through
+hand-written `send_code()` calls, or what is verified is a program no client will ever send. And a
+comparison against "what MPFB's own panel produces" is **a diff, not a screenshot**: MPFB's panels
+are thin — the phenotype slider is a `FloatProperty` whose setter calls
+`TargetService.reapply_macro_details()`, the asset library button calls
+`HumanService.add_mhclo_asset()`, the rig button calls `add_builtin_rig()` — so driving the property
+or calling the operator *is* pressing the button, and the two results are compared field by field
+in one file. It runs in a scratch scene, never saves the `.blend`, and asserts that all twelve
+collections are identical afterwards as a checklist item rather than as a footnote. See
+[verification/README.md](verification/README.md) for what it changes outside the `.blend` and puts
+back, and for the two things it cannot put back.
+
+**One harness process at a time**: two against one Blender interleave, and the second fails in ways
+that look like tool defects.
 
 ### Code conventions in this repo
 

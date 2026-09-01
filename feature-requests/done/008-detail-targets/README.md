@@ -383,7 +383,97 @@ discipline (snapshot every datablock collection, compare after, never save). Spe
   together is cheaper than twice, since both need a dressed, rigged character and both compare
   against MPFB's own panel.
 
-Record the outcome in a `## Verification status` section here.
+Record the outcome in a `## Verification status
+
+**Implemented, unit-tested and live-verified (2026-09-01)**, by
+[FR 013](../013-live-verification/README.md)'s session, against Blender 5.1.0 with MPFB 2.0.17
+running `FROM_SOURCE` out of `../mpfb2`. It is now a script:
+[verification/check_fr008.py](../../../verification/check_fr008.py), which installs the three probe
+targets this request needs and removes them again.
+
+Every scene mutation was reverted — all twelve datablock collections plus `bpy.data.is_dirty`
+compare **identical** before and after — and the three probe targets were deleted from
+`~/makehuman/mpfb/data/custom`. The `.blend` was never saved.
+
+### What changed against this request
+
+**The slider round trip is exact, in both directions, and needed no UI.**
+`ui/model/_modelsubpanels.py` registers one `FloatProperty` per modeling category on
+`bpy.types.Scene`, named `UiService.as_valid_identifier(section + "." + category)` — so
+`nose.nose-scale-horiz-decr-incr` is `scene.nose_nose_scale_horiz_decr_incr`, and reading it *is*
+reading MPFB's own slider. Writing 0.62 through `mpfb_set_targets` reads back as 0.62 on the
+slider; writing 0.4 to the slider reads back as 0.4 through `mpfb_get_target_stack`.
+
+**One defect was found and fixed.** `mpfb_symmetrize_targets` under `dry_run: true` reported
+`targets: []` per changed category where the real run reports the shape keys it touched. `[]`
+means "none of them"; what was meant is "not computed", since which files a write would touch is
+only knowable by doing the write. It is now `null`, which is
+[FR 006](../006-list-targets/README.md)'s own rule applied to the one place twelve tools' worth of
+review had missed it. Regression test in `tests/test_symmetrize_targets.py`.
+
+**The >60-character encoding rule is narrower than this request's checklist assumed.** A name over
+60 characters turns encoding *on*, but the encoding table replaces specific substrings (`female`,
+`average`, `muscle`, …), so a long name containing none of them encodes to itself. The probe
+target had to be built out of encodable words for the check to mean anything — worth knowing,
+because a naive long-name probe would have passed while proving nothing.
+
+### Checklist
+
+- [x] **The slider round trip.** A modifier set through the tool reads back on MPFB's own slider
+      (`nose_nose_scale_horiz_decr_incr` = 0.62 for a written 0.62); a modifier moved on the slider
+      reads back through `mpfb_get_target_stack` (0.4 for a written 0.4).
+- [x] A negative value, a sided value and a value at exactly zero: −0.5 reads back as −0.5;
+      `side: "left"` at 0.7 sets the left slider to 0.7 and leaves the right at 0.0; a write of 0.0
+      reads back as 0.0.
+- [x] A target not previously on the mesh is loaded on demand from the right file and named as the
+      catalogue said: `chin-prognathism-decr-incr` at 0.55 created exactly
+      `chin-prognathism-incr`, loaded from
+      `.../targets/chin/chin-prognathism-incr.target.gz` — and only the positive target, the
+      negative one not being needed.
+- [x] A **user** target addressed by its `shapekey_name` through the raw `targets` list applies and
+      reads back, including a name long enough to be encoded: the 72-character file
+      `mpfbmcp_probe_a_very_long_female_average_muscle_weight_height_young_name.target` is
+      addressed and stored as `mpfbmcp_probe_a_very_long_$fe_$av_$mu_$wg_$hg_$yn_name`, at 0.8.
+- [x] **The gzipped-custom-target naming divergence, observed rather than derived.** For
+      `mpfbmcp_probe_vwide.target.gz`, `_modelsubpanels`' construction yields
+      `mpfbmcp_probe_vwide.gz` and `TargetService.filename_to_shapekey_name()` yields
+      `mpfbmcp_probe_vwide`. **Confirmed as an mpfb2 defect** — see
+      [FR 013's review](../013-live-verification/review.md#the-seven-candidate-mpfb-defects).
+- [x] **That both shape keys really do exist at once.** Confirmed against a Blender restarted with
+      the `.target.gz` already installed, which is what makes MPFB's panel property
+      (`custom_mpfbmcp_probe_vwide_gz`) exist at all. Setting that slider to 0.5 and then setting
+      `mpfbmcp_probe_vwide` to 0.7 through `mpfb_set_targets`' raw `targets` list leaves **both**
+      `mpfbmcp_probe_vwide.gz` (0.5) and `mpfbmcp_probe_vwide` (0.7) on the same mesh. One file,
+      two shape keys, two different values.
+
+**A second, worse MPFB defect was found while setting this check up**, and it is not one this
+request predicted. `_modelsubpanels.py` registers each synthesized category as a Scene property
+named `"custom_" + name`; Blender rejects an identifier over 63 characters with a `ValueError`, and
+nothing catches it — it propagates out of MPFB's `register()`. Leaving the over-60-character probe
+target on disk across a restart therefore **prevented MPFB from loading at all**. The sharp form:
+encoding starts above 60 characters and registration breaks above 56, so an encoded user target
+cannot be present at startup at all. `mpfb_set_targets` handles such a target correctly once MPFB
+is up — that is the item above — but MPFB cannot survive the file being there when it starts. The
+harness now installs and removes that probe within a single checklist run and never leaves it, and
+the defect is reproduced by
+[verification/check_mpfb_issues.py](../../../verification/check_mpfb_issues.py).
+- [x] The Blender 0.0-1.0 clamp on shape key values, observed: `slider_min` 0.0, `slider_max` 1.0,
+      a write of −0.5 stores 0.0 and a write of 1.5 stores 1.0.
+- [x] The `"basis"`-substring exclusion, observed by installing a user target whose name contains
+      it: the shape key is on the mesh, `TargetService.get_target_stack()` cannot see it — so
+      MPFB's own panel cannot change it — and `mpfb_get_target_stack` reports it with
+      `visible_to_targetservice: false`.
+- [x] `symmetrize` in both directions, with `dry_run` first and with a `section` filter: the dry run
+      leaves the right side at 0.0 and reports the same category-level change the real run then
+      makes (which moves it to 0.65); `section: "nose"` considers only that section.
+- [x] A macro change after detail targets leaves the detail stack intact: 6 non-macro shape keys
+      before and after a `gender`/`age` change, none lost, none gained, none changed.
+      `reapply_macro_details()` touches only `$md-` keys, so neither this request nor
+      [FR 007](../007-macro-details/README.md) is wrong about the other.
+- [x] Batch cost — see
+      [FR-8's measurements](../013-live-verification/review.md#do-the-three-payload-count-driven-decisions-still-hold).
+- [x] Revert: all twelve datablock collections identical, `is_dirty` false before and after; the
+      three probe targets removed.
 
 ## References
 

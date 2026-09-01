@@ -228,6 +228,28 @@ def has_mask_for(blender_object, group_name):
     return False
 
 
+def hides_the_base_mesh(blender_object):
+    """Whether a *body-proxy* hide modifier is already on this basemesh.
+
+    Not ``has_mask_for(basemesh, "body")``, which is what this used to ask and
+    which is always true: every basemesh MPFB creates already carries a
+    ``Hide helpers`` MASK modifier on the vertex group ``body``. The two
+    modifiers differ only in ``invert_vertex_group`` - ``Hide helpers`` shows
+    the body and hides the helper geometry, while the one a body proxy needs
+    inverts that and hides the body itself - so the inversion is what has to be
+    tested. Asking the looser question meant the modifier was never added and
+    the basemesh stayed visible under its own proxy.
+    """
+    for modifier in (getattr(blender_object, "modifiers", None) or []):
+        if str(getattr(modifier, "type", "")) != "MASK":
+            continue
+        if str(getattr(modifier, "vertex_group", "")) != "body":
+            continue
+        if bool(getattr(modifier, "invert_vertex_group", False)):
+            return True
+    return False
+
+
 def blocked(subject, basemesh, reason, message, **extra):
     """One shape for every refusal, so a caller can branch on ``blocked_by``."""
     answer = dict(
@@ -515,7 +537,7 @@ else:
         proxy_extras = None
         if normalized_asset_type == "Proxymeshes" and asset_object is not None:
             hide_modifier_added = False
-            if not has_mask_for(basemesh, "body"):
+            if not hides_the_base_mesh(basemesh):
                 modifier = basemesh.modifiers.new("Hide base mesh", "MASK")
                 modifier.vertex_group = "body"
                 modifier.invert_vertex_group = True
@@ -560,7 +582,7 @@ else:
 
             proxy_extras = dict(
                 basemesh_hidden=hide_modifier_added,
-                basemesh_hide_modifier_present=has_mask_for(basemesh, "body"),
+                basemesh_hide_modifier_present=hides_the_base_mesh(basemesh),
                 scale_factor_copied=scale_factor_copied,
                 extra_vertex_groups_created=extra_groups_created,
                 corrective_applied=corrective_applied,

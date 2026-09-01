@@ -90,8 +90,16 @@ def race_sum_of(macro_details):
 
 
 def macro_shapekeys_of(basemesh):
+    """The macro shape keys on the mesh, under the names they are stored with.
+
+    Undecoded, for the reason ``get_macro_details.py`` gives: these feed
+    ``shapekeys_added`` and ``shapekeys_removed``, and a name a caller cannot
+    look up on the mesh is a worse answer than a less readable one. The decoded
+    form is one call to ``TargetService.decode_shapekey_name()`` away and
+    ``mpfb_get_macro_details`` reports it alongside.
+    """
     return [
-        str(name) for name in TargetService.get_current_macro_targets(basemesh, decode_names=True)
+        str(name) for name in TargetService.get_current_macro_targets(basemesh, decode_names=False)
     ]
 
 

@@ -86,6 +86,27 @@ def delete_group_name_from(asset_source):
     return "Delete." + name
 
 
+def delete_group_masks_on(blender_object):
+    """The MASK modifiers on this object that could be an asset's delete group.
+
+    Every MASK modifier is *not* the answer, and that is the point of the
+    filter. MPFB puts a ``Hide helpers`` MASK on every basemesh it creates, and
+    a body proxy adds a ``Hide base mesh`` one - both structural, both on the
+    ``body`` vertex group, and both catastrophic to delete. This field is read
+    by someone about to remove an orphaned mask by hand, so naming those two
+    beside the one they are looking for would be worse than naming nothing.
+    ``Delete.`` is the prefix ``unload_mhclo_asset()`` itself derives, so
+    filtering on it is not a heuristic of this package's own.
+    """
+    found = []
+    for modifier in getattr(blender_object, "modifiers", None) or []:
+        if getattr(modifier, "type", None) != "MASK":
+            continue
+        if str(getattr(modifier, "name", "")).startswith("Delete."):
+            found.append(str(modifier.name))
+    return found
+
+
 def mask_modifiers_for(blender_object, group_name):
     """The MASK modifiers ``unload_mhclo_asset()`` would remove from this object.
 
@@ -182,9 +203,7 @@ elif delete_group_name is None:
          "nothing was removed. Delete the object and its Delete.* mask modifier by hand, or "
          "restore the property."),
         basemesh_name=basemesh.name,
-        mask_modifiers_present=[
-            str(modifier.name) for modifier in (getattr(basemesh, "modifiers", None) or [])
-            if getattr(modifier, "type", None) == "MASK"])
+        mask_modifiers_present=delete_group_masks_on(basemesh))
 else:
     # Everything below is read while the object still exists.
     body_proxy = ObjectService.find_object_of_type_amongst_nearest_relatives(

@@ -231,15 +231,34 @@ class GeneratedGetMacroDetailsTests(GeneratedCodeTestCase):
         self.assertNotEqual(entry["target_fragment"], entry["shapekey_name"])
         self.assertIsInstance(entry["weight"], float)
 
-    def test_current_shapekeys_are_decoded_and_reported(self) -> None:
+    def test_current_shapekeys_are_reported_under_the_names_on_the_mesh(self) -> None:
         rig, basemesh, shirt = self.build_character(
             shapekeys=[("Basis", 0.0), ("$md-$ca-$fe-$yn", 1.0)])
 
         result = self.run_get("Human", scene_objects=[rig, basemesh, shirt])
 
-        # Decoded, and only the macro ones: Basis is not a macro target.
-        self.assertEqual(
-            result["current_macro_shapekeys"], ["macrodetail-caucasian-female-young"])
+        # Undecoded, and only the macro ones: Basis is not a macro target. The
+        # name matters as much as the filtering - see the test below, which is
+        # the reason this one is not asserting the decoded form.
+        self.assertEqual(result["current_macro_shapekeys"], ["$md-$ca-$fe-$yn"])
+        self.assertEqual(result["current_macro_shapekeys_decoded"],
+                         ["macrodetail-caucasian-female-young"])
+
+    def test_the_stack_and_the_mesh_listing_are_one_vocabulary(self) -> None:
+        # The docstring tells a caller to compare macro_target_stack against
+        # current_macro_shapekeys and read a difference as drift. That is only
+        # possible if the two name shape keys the same way. They did not: the
+        # stack reported encoded names and the mesh listing decoded ones, so the
+        # comparison reported drift on every healthy character there is.
+        rig, basemesh, shirt = self.build_character(
+            shapekeys=[("Basis", 0.0), ("$md-$ca-$fe-$yn", 1.0)])
+
+        result = self.run_get("Human", scene_objects=[rig, basemesh, shirt])
+
+        on_the_mesh = set(result["current_macro_shapekeys"])
+        in_the_stack = set(entry["shapekey_name"] for entry in result["macro_target_stack"])
+        self.assertTrue(on_the_mesh)
+        self.assertTrue(on_the_mesh <= in_the_stack)
 
     def test_drift_between_properties_and_shape_is_reported(self) -> None:
         # The state mpfb_set_macro_details exists to repair: the values imply a

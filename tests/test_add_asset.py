@@ -416,6 +416,42 @@ class GeneratedCodeTests(MeshAssetTestCase):
         self.assertEqual(
             StubHumanService.corrective_calls, [result["asset_object_name"]])
 
+    def test_the_hide_modifier_is_added_beside_mpfbs_own_body_mask(self):
+        # The regression this exists for: `Hide helpers` is a MASK modifier on
+        # the vertex group "body" and every basemesh MPFB creates has one, so a
+        # guard asking only "is there a mask on body?" is always satisfied and
+        # the proxy's own hide modifier is never added. The two differ in
+        # `invert_vertex_group`, and only the inverted one hides the body.
+        self.build_character()
+        masks_before = [
+            (modifier.name, modifier.vertex_group, modifier.invert_vertex_group)
+            for modifier in self.basemesh.modifiers if modifier.type == "MASK"]
+        self.assertEqual(masks_before, [("Hide helpers", "body", False)])
+
+        result = self.run_add_asset(
+            asset_type="Proxymeshes", fragment="proxy721/proxy721.mhclo")
+
+        masks_after = [
+            (modifier.name, modifier.vertex_group, modifier.invert_vertex_group)
+            for modifier in self.basemesh.modifiers if modifier.type == "MASK"]
+        self.assertIn(("Hide base mesh", "body", True), masks_after)
+        self.assertIn(("Hide helpers", "body", False), masks_after)
+        self.assertTrue(result["proxy_extras"]["basemesh_hidden"])
+
+    def test_a_second_proxy_does_not_add_a_second_hide_modifier(self):
+        # The guard still has to be a guard: what it must not do is confuse
+        # MPFB's own mask for the one it is looking for.
+        self.build_character()
+        self.run_add_asset(asset_type="Proxymeshes", fragment="proxy721/proxy721.mhclo")
+        result = self.run_add_asset(
+            asset_type="Proxymeshes", fragment="plainproxy/plainproxy.mhclo")
+        inverted = [modifier.name for modifier in self.basemesh.modifiers
+                    if modifier.type == "MASK" and modifier.invert_vertex_group
+                    and modifier.vertex_group == "body"]
+        self.assertEqual(inverted, ["Hide base mesh"])
+        self.assertFalse(result["proxy_extras"]["basemesh_hidden"])
+        self.assertTrue(result["proxy_extras"]["basemesh_hide_modifier_present"])
+
     def test_a_proxy_whose_uuid_has_no_extra_groups_is_the_ordinary_case(self):
         self.build_character()
         result = self.run_add_asset(

@@ -96,9 +96,13 @@ def register(mcp: FastMCP) -> None:
             is a name any tool accepts as input**; they explain the shape, they
             do not address it.
           - `current_macro_shapekeys`: the macro shape keys actually on the mesh
-            now, decoded. Compare with `macro_target_stack`: if they disagree,
-            the properties have been changed without a recalculation, and
-            `mpfb_set_macro_details` will repair it.
+            now, under the names they are stored with - which is the same
+            vocabulary as `macro_target_stack`'s `shapekey_name`, so the two
+            can be compared directly. If they disagree, the properties have been
+            changed without a recalculation, and `mpfb_set_macro_details` will
+            repair it. `current_macro_shapekeys_decoded` is the same list in
+            MPFB's readable form (`macrodetail-asian-female-young` rather than
+            `$md-$as-$fe-$yn`); it is for reading, not for comparing.
           - `has_shapekeys` and `is_human_project`: a mesh tagged as a basemesh
             but never built by MPFB reads back a full set of macro properties
             that mean nothing. These two are how that is told apart.

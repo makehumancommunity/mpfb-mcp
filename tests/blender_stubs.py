@@ -3003,6 +3003,15 @@ class MeshAssetTestCase(GeneratedCodeTestCase):
                 rig_type=rig_type, rig_id=rig_id)
         self.basemesh = StubObject(
             "Human", parent=self.rig, object_type="Basemesh", **basemesh_kwargs)
+        # Every basemesh MPFB creates carries this, and it is the reason the
+        # proxy path needs a precise guard rather than a loose one: it is a MASK
+        # modifier on the vertex group "body", which is also the group the
+        # "Hide base mesh" modifier a body proxy needs uses. The two differ only
+        # in `invert_vertex_group`, so a stub without this one lets a guard that
+        # cannot tell them apart pass.
+        hide_helpers = self.basemesh.modifiers.new(name="Hide helpers", type="MASK")
+        hide_helpers.vertex_group = "body"
+        hide_helpers.invert_vertex_group = False
         self.objects = [obj for obj in (self.rig, self.basemesh) if obj]
         self.body_proxy = None
         if proxy:

@@ -22,7 +22,7 @@ This is the [Observability entry in NEXT_STEPS.md](../../NEXT_STEPS.md#observabi
 was previously scoped only as a subset, inside the live-verification request; it is pulled out here
 because it is a change to the package rather than an instrument for one session, because it is
 worth having whether or not that session happens, and because it should land *before* it, not
-alongside it. [FR 013](../../013-live-verification/README.md) depends on this request for its
+alongside it. [FR 013](../013-live-verification/README.md) depends on this request for its
 diagnostics and for its cost measurements.
 
 ## Goals
@@ -188,7 +188,7 @@ exact program that ran" conditional on a diagnostic setting, which would undermi
 
 The decomposition is still reachable when it is actually wanted: the add-on's envelope already
 carries `stdout`, so a payload can print its own timings during a session without any change to this
-mechanism. [FR 013](../../013-live-verification/README.md)'s cost measurements should take the
+mechanism. [FR 013](../013-live-verification/README.md)'s cost measurements should take the
 round-trip and the byte count from this record and get the split, if it needs one, that way.
 
 ### Pitfalls
@@ -253,13 +253,13 @@ right instrument for all of the below.
 number from a real add-on failure resolves to the right line of the dumped program. Force a failure
 in a real Blender — a payload edited to raise, or a tool called against a character that does not
 meet its preconditions — and check the line by hand. That is the first item of
-[FR 013](../../013-live-verification/README.md)'s session, and this request should land before it so
+[FR 013](../013-live-verification/README.md)'s session, and this request should land before it so
 the rest of that session is diagnosable.
 
 ## References
 
 - [NEXT_STEPS.md](../../NEXT_STEPS.md#observability) — the entry this request scopes.
-- [FR 013](../../013-live-verification/README.md) — the consumer: its diagnostics and its cost
+- [FR 013](../013-live-verification/README.md) — the consumer: its diagnostics and its cost
   measurements both come from this record.
 - [FR 005](../005-list-assets/README.md) — the source of the ~1.0 s round-trip figure that four
   decisions cite, and of the `strict_json` encoding failure this record has to tolerate.
@@ -269,25 +269,53 @@ the rest of that session is diagnosable.
 
 ## Verification status
 
-**Implemented and unit-tested; one live check is outstanding.** The module, the two hooks in
-`send_code()` and the tests landed together, and the whole suite passes — 681 tests, up from 654.
-Unusually for this repo that number means most of what the request asked for: the mechanism is
-entirely on this side of the socket, so the disabled path, the write ordering, byte fidelity, the
-index fields, the swallowed failure, the absence of stdout output and the tool-name coupling are
-all asserted rather than argued.
+**Implemented, unit-tested and live-verified (2026-09-01).** The module, the two hooks in
+`send_code()` and the tests landed on 2026-08-31 with one item outstanding: that a traceback line
+number from a real add-on failure resolves to the right line of the dumped program. It was the
+first thing [FR 013](../013-live-verification/README.md)'s session did, and it passed.
 
-### What is outstanding
+**The check.** A program shaped exactly as `codegen.assemble()` builds one — the same bootstrap,
+the same JSON prelude, the same labelled payload seam, a real payload file underneath — with a
+raise appended on a line the check computed. Blender answered
+`File "<string>", line 182 ... RuntimeError`, and **line 182 of the dumped `.py` is the raising
+line**. It was then repeated with `get_status.py`'s program and confirmed again at line 152. The
+error envelope carried `mpfb_mcp_record` naming the two files, and the index line carried the tool
+name, the byte count, a real duration and `error`.
 
-- [ ] **That a traceback line number from a real add-on failure resolves to the right line of the
-  dumped program.** This is the thing the request exists for and the only part of it a stub cannot
-  establish: nothing here has ever received a line number from Blender. Force a failure in a real
-  Blender — a payload edited to raise, or a tool called against a character that does not meet its
-  preconditions — and check the line by hand against the `.py` in the run directory. It is the
-  first item of [FR 013](../../013-live-verification/README.md)'s session, which is where it is
-  now owed.
+It is now a script rather than a one-off:
+[verification/check_fr012.py](../../../verification/check_fr012.py), which also re-asserts that the
+disabled path writes nothing while the call still works.
 
-Everything else on the request's [Tests](#tests) list was run and passes. Nothing was verified
-against a running Blender, and nothing here claims to have been.
+**One note about the failure that was used.** The first attempt edited
+`payloads/refit_human.py` to raise, which is what this request's own text suggested, and it worked
+— but the script does not do that: no tool in this package has an uncaught path, which is the
+property the package is written for, and a payload edited to raise leaves the working tree dirty if
+the run is interrupted. Building a program of the same shape tests the same coupling without that
+risk.
+
+### What the session added to the record
+
+The record itself was the session's main instrument, and two things about it are worth recording
+from the other side of the socket.
+
+**Its per-call log line is gated on either variable, not only on `MPFB_MCP_LOG_LEVEL`.** With
+`MPFB_MCP_RECORD_DIR` set and `MPFB_MCP_LOG_LEVEL` unset, the `INFO` line still appears — because
+a `_Call` object exists and `FastMCP()` has already put a handler on the root logger. That is
+defensible (turning the record on *is* asking for diagnostics) and it is what the whole session
+ran with, but it is not what
+[Zero cost when off](#non-functional-requirements) literally says. The property that matters — both
+unset means nothing is constructed, formatted or written — is unaffected and is still asserted by
+`tests/test_observability.py`.
+
+**The `ms` column measures the round trip and includes whatever else the machine is doing.**
+Midway through the session, `add_rig` moved from ~2.2 s to ~8.0 s for about fifteen minutes and
+then back, with small probes unaffected throughout. Nothing in the program changed. That is not a
+defect in the record — it is the record doing its job — but it is why
+[FR-8's measurements](../013-live-verification/review.md#do-the-three-payload-count-driven-decisions-still-hold)
+report medians and say which figures are stable.
+
+Everything else on the request's [Tests](#tests) list was already asserted by the unit suite and
+still is.
 
 ### What changed against this request
 
@@ -298,11 +326,11 @@ handler attached by default" would have been true in letter and false in effect:
 `logger.isEnabledFor(INFO)` gate would have switched the per-call line — and its
 `perf_counter()` bracketing and formatting — on for every session, which is exactly what
 [Zero cost when off](#non-functional-requirements) forbids. The per-call line is consequently gated
-on `MPFB_MCP_LOG_LEVEL` itself. And propagation is turned off while this package's own handler is
-attached, or a user who opts in gets every line twice. Worth recording for its own sake: mcp's
-handler is a `RichHandler` on a `Console(stderr=True)`, so the host is *not* itself a threat to the
-transport — but [Never stdout](#never-stdout) was one library-default away from being violated by
-code this request never touches.
+on the environment rather than on the logger. And propagation is turned off while this package's
+own handler is attached, or a user who opts in gets every line twice. Worth recording for its own
+sake: mcp's handler is a `RichHandler` on a `Console(stderr=True)`, so the host is *not* itself a
+threat to the transport — but [Never stdout](#never-stdout) was one library-default away from being
+violated by code this request never touches.
 
 **The mechanism lives in a new `src/mpfbmcp/observability.py`, not inside `connection.py`.**
 [Where it goes](#where-it-goes) says "`connection.py`'s `send_code()`, and nowhere else", and the
@@ -335,3 +363,4 @@ through a call, since no call can produce the case.
 answering per request (the ordering test has the fake add-on look at the filesystem while it holds
 the request), answering nothing and closing (the no-response index line), and keeping the raw
 request bytes (so "off means the same bytes on the wire" is an assertion).
+

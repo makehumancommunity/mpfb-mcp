@@ -701,5 +701,86 @@ bytes. Unit tests grew from 654 to 681, and unusually for this repo that number 
 request: the mechanism is entirely on this side of the socket. **One live check is outstanding** —
 that a traceback line number from a real add-on failure resolves to the right line of the dumped
 program, which is the one thing no stub can establish. It is the first item of
-[FR 013](013-live-verification/README.md)'s session, recorded in
+[FR 013](done/013-live-verification/README.md)'s session, recorded in
 ["Verification status"](done/012-observability/README.md#verification-status).
+
+## [FR 013](done/013-live-verification/README.md) — the live verification, and the harness that makes the next one cheap
+
+The debt this cleared was five requests and twelve tools deep. FR 007 through FR 011 each reached
+`Done` with their live check outstanding, each postponement honestly recorded and each justified by
+the same thing: the check was one large manual session, and nothing from the previous one survived
+to make the next one cheaper. FR 006's run built a character by hand, snapshotted twelve datablock
+collections by hand, compared them by hand and threw all of it away. That — not laziness — is why a
+five-request backlog was not five times as easy to face as a one-request one, and it is the defect
+this effort was really about.
+
+**All eight checklists ran and all eight are green**: FR 012's inherited item, the two stale
+catalogue re-checks (FR 004 and FR 005, both made stale by shared-fragment migrations), and FR 007
+through FR 011. Every one of the seven affected requests carries a rewritten
+`## Verification status` with the observed value beside each item.
+
+**Three claims that had only ever been readings of MPFB's source are now observations.** A
+character built through `mpfb_set_macro_details` ends with the same 21 shape keys at the same
+values as one built on MPFB's own phenotype slider. A garment equipped through `mpfb_add_asset` is
+identical to one equipped through MPFB's asset library panel down to the vertex positions. And
+rigging after dressing really does leave the clothes unrigged — 0 weighted vertices against 285 —
+which is the claim
+[A tool reports an ordering constraint it cannot enforce](../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
+rests on. None of the three needed a screenshot: MPFB's panels are thin enough that driving the
+scene property behind a slider or calling the operator behind a button *is* pressing it, so each
+comparison is a diff of two objects in one file.
+
+**Three defects were found and fixed, none of which anything on this side of the socket could have
+caught.** A body proxy did not hide the base mesh, because `mpfb_add_asset`'s idempotence guard
+could not tell MPFB's own `Hide helpers` mask from the `Hide base mesh` one it was looking for —
+they differ only in `invert_vertex_group`, and the response reported the mistake back as
+reassurance. `mpfb_get_macro_details` reported two lists in two different name spaces while its
+docstring told callers to compare them, so the drift check it offered was false on every character
+there is. And two fields returned `[]` where they meant "not computed" — a dry run's per-target
+list, and a refusal that named every MASK modifier on the body including two the user must never
+delete. The stubs could express all three once they stopped being kind: the stub basemesh had no
+modifiers at all, and adding MPFB's real one broke three existing tests, two of which were the
+tests being wrong.
+
+**Four decisions were argued against a round-trip figure that is four times too high.** FR 005's
+~1.0 s was measured once, on one tool, on a cold asset library. The socket round trip is **250 ms**.
+All four decisions survive on the corrected number — and the batching one survives by a much larger
+margin than its own argument claimed: thirty modifier changes cost **3.6 s** in one call and
+**98.4 s** in thirty, because what batching saves is not the transport but thirty rebuilds of
+MPFB's category table. Two open questions closed: compile time for a 50 KB generated program is
+**3.7 ms**, about a thousandth of the call, so
+[readability over program size](../specifications/architecture.md#readability-and-developer-experience-are-prioritized)
+costs 0.1% and is no longer a tradeoff worth discussing; and all five skin types build within 33 ms
+of each other, so `LAYERED` is not the outlier MPFB's own documentation implies (its warning is
+about render cost).
+
+**Of seven candidate MPFB defects carried forward from FR 008-FR 011, four were confirmed, two
+refuted and one turned out worse than described.** `RigService.identify_rig()` cannot return `None`
+— it falls through to `"unknown"` — and the alternative-material cache *does* have an invalidator;
+both were readings of source that the running install did not support. `set_character_skin()`'s
+five-`if` dispatch is confirmed and is quieter than feared: with `material_instances` off, which is
+the default for three of the five types, a one-letter typo deletes every material on the character
+and raises **nothing at all**. And "three disagreeing proxy code paths" is two: the library operator
+agreed with `_check_add_proxy()` on every field compared. The decision that rested on it survives
+with a better reason, now in the specification — what makes the choice load-bearing is that the
+*obvious* implementation is the one that differs.
+
+The enabling half is [verification/](../verification/): a harness, a fixture builder, eight
+checklist scripts, a measurement script and a runner, outside `src/`, not discovered by the test
+runner and not shipped. Re-running a whole checklist after a fix is one command. Its worth showed
+up immediately — roughly a third of the first-pass failures were the harness's own, every one a
+wrong response *field name*, and in a manual session each would have been indistinguishable from a
+defect. Two comparisons are marked as needing a restarted Blender rather than approximated, because
+`ui/model/_modelsubpanels.py` builds its table at module import time.
+
+Alongside it, [review.md](done/013-live-verification/review.md): the architectural review, written
+after the run so it could cite it, with every recommendation classified as fixed-here, scoped as a
+request, or rejected with a reason. It found no drift among nineteen duplicated payload helpers —
+sixteen are byte-identical and the three that differ do so for reasons — and it found the largest
+uncosted thing in the package, which is that the three tools sharing `target_categories.py` rebuild
+MPFB's category table from disk on every call, at ~1.5-2 s each.
+
+The lifecycle changed too, since this effort is the one with standing to propose it:
+[a `Done` whose live verification is outstanding must say so on the status line](CLAUDE.md#sections-inside-the-readmemd-file),
+not only in a section further down. That is how five requests reached `Done` without anyone
+noticing the debt compounding.

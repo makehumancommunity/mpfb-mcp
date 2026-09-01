@@ -336,7 +336,84 @@ verification is of *mutation*, so the FR 004–006 discipline of reverting every
   and without prune, and how long a refit takes on a character with several clothes items. The refit
   default rests on that number being large.
 
-Record the outcome in a `## Verification status` section here.
+Record the outcome in a `## Verification status
+
+**Implemented, unit-tested and live-verified (2026-09-01)**, by
+[FR 013](../013-live-verification/README.md)'s session, against Blender 5.1.0 with MPFB 2.0.17
+running `FROM_SOURCE` out of `../mpfb2`. This request landed on 2026-08-29 without that check;
+what follows is what running it actually established, and it is now a script rather than a
+session: [verification/check_fr007.py](../../../verification/check_fr007.py).
+
+Every scene mutation was reverted — all twelve datablock collections plus `bpy.data.is_dirty`
+compare **identical** before and after, and the `.blend` was never saved.
+
+### What changed against this request
+
+**The first non-functional requirement is met exactly, and it was automatable after all.** This
+request wrote the check as "set the slider in the UI, snapshot; undo; set it through the tool;
+compare", which reads like an eyeballing exercise. It is not: MPFB's phenotype panel draws
+`scene.mpfb_macropanel_<target>`, a `FloatProperty` whose setter writes the object property,
+calls `TargetService.reapply_macro_details()` and optionally refits. Assigning that scene property
+*is* moving the slider. Two fresh characters — one driven through that property, one through
+`mpfb_set_macro_details`, with `gender=0.9, age=0.75, weight=0.7` — ended with **21 shape keys
+each, the same 21 names at the same values to six decimal places**, no key present in one and not
+the other. Two characters rather than one-then-undone, because there is no undo across this
+socket.
+
+**One defect was found and fixed** ([FR 013](../013-live-verification/README.md)'s
+[review](../013-live-verification/review.md)). `macro_target_stack[].shapekey_name` was
+reported **encoded** (`$md-$as-$fe-$yn`) while `current_macro_shapekeys` was reported **decoded**
+(`macrodetail-asian-female-young`), and the docstring told a caller to compare the two and read a
+difference as drift. The comparison could never succeed on any character. Both now report the
+names the shape keys are stored under, `mpfb_get_macro_details` gains
+`current_macro_shapekeys_decoded` for reading, and `mpfb_set_macro_details`'
+`macro_shapekeys_before`/`_after`, `shapekeys_added` and `shapekeys_removed` moved the same way,
+so a name in any of them can be looked up on the mesh. Regression tests in
+`tests/test_get_macro_details.py` and `tests/test_set_macro_details.py`.
+
+**The refit costs almost as much as the macro change it follows**, which the request assumed but
+did not know: a macro change with `refit: false` is ~1.26 s and a bare `mpfb_refit_human` on an
+undressed character is ~0.76 s, against a socket round trip that is itself most of the latter.
+See [FR-8's measurements](../013-live-verification/review.md#do-the-three-payload-count-driven-decisions-still-hold).
+
+### Checklist
+
+- [x] **The same shape keys at the same weights as MPFB's own phenotype slider.** 21 keys each,
+      identical names, identical values; `only_in_ui` and `only_in_tool` both empty and
+      `differing_values` empty.
+- [x] Properties and mesh in sync — 42 entries in `macro_target_stack`, 42 macro shape keys on the
+      mesh, the two sets equal. (Equal only *after* the naming fix above; before it, the two lists
+      shared no element.)
+- [x] `prune` genuinely removes macro shape keys and `prune: false` keeps them: 9 keys before, 9
+      after a `prune: false` change with four of them at zero weight, 5 after the same change with
+      `prune: true` and none at zero. The four removed are named in `shapekeys_removed`.
+- [x] An omitted slider is left alone rather than defaulted — `gender` and `age` unchanged across a
+      call that named only `muscle`.
+- [x] The OBJECT-mode precondition, observed: `ready: false`, `blocked_by: "not_object_mode"`, and
+      nothing changed. MPFB's own `create_shape_key()` meets this with a bare `assert`.
+- [x] The no-shape-keys precondition, observed on a basemesh whose keys were cleared by hand:
+      `ready: false`, `blocked_by: "no_shapekeys"`.
+- [x] **A refit visibly re-fits clothes on a dressed, rigged character** — observed in
+      [FR 010's run](../010-mesh-assets/README.md#verification-status) rather than here, since that
+      is where the dressed character exists. A macro change with `refit: false` leaves the garment's
+      vertex fingerprint at `733.5443`; `mpfb_refit_human` moves it to `734.1956` and reports
+      `refit_performed: true`. This is the first live evidence that the refit does anything at all.
+- [x] **The generated-Rigify-without-meta-rig branch** — observed in
+      [FR 009's run](../009-add-rig/README.md#verification-status), which is where a generated rig
+      exists. `meta_rig_action: "delete"` gives `refit_will_be_possible: false`, and the following
+      `mpfb_refit_human` returns `refit_performed: false` with a `refit_incomplete_reason` naming
+      the generated rig — while still reporting the one mesh asset it *did* refit. The corrected
+      premise holds: the mesh assets are refitted and the rig is not.
+- [x] Cost against a re-measured baseline: macro change with `prune: true` 1265 ms (median of 3),
+      with `prune: false` 1263 ms — pruning is free at this size — with `refit: true` 1268 ms, and
+      `mpfb_refit_human` alone 759 ms.
+- [x] Revert: all twelve datablock collections identical, `is_dirty` false before and after.
+
+### What this run could not establish
+
+Nothing on this checklist. The two items marked as observed elsewhere were observed, not inferred;
+they are recorded under the request whose fixture produced them so that a re-run of *that*
+checklist re-establishes them.
 
 ## References
 

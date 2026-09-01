@@ -343,7 +343,104 @@ Specifically:
   garment actually takes, split between mesh import and fitting. This is the number the
   one-asset-per-call decision rests on, and it should be recorded rather than assumed.
 
-Record the outcome in a `## Verification status` section here.
+Record the outcome in a `## Verification status
+
+**Implemented, unit-tested and live-verified (2026-09-01)**, by
+[FR 013](../013-live-verification/README.md)'s session, against Blender 5.1.0 with MPFB 2.0.17
+running `FROM_SOURCE` out of `../mpfb2`, over a 845-asset library. It is now a script:
+[verification/check_fr010.py](../../../verification/check_fr010.py) — the largest of the eight, and
+the one that settled claims for two other requests.
+
+[FR 005](../005-list-assets/README.md)'s verification, which this effort's `asset_sections.py`
+migration made stale, was re-run in the same session and is green again.
+
+Every scene mutation was reverted — all twelve datablock collections plus `bpy.data.is_dirty`
+compare **identical** before and after — and the `.blend` was never saved.
+
+### What the run found: one defect, fixed
+
+**A body proxy did not hide the base mesh.** The payload guarded its `Hide base mesh` modifier
+with `has_mask_for(basemesh, "body")`, and every basemesh MPFB creates already carries a
+`Hide helpers` MASK modifier on the vertex group `body` — the two differ only in
+`invert_vertex_group`. So the guard fired on every call, the modifier was never added, and a
+character wearing a body proxy was rendered with both meshes overlapping. Worse,
+`proxy_extras.basemesh_hide_modifier_present` reported `true`, so the response confirmed the
+mistake. The guard now tests the inversion; `tests/blender_stubs.py`'s basemesh carries
+`Hide helpers` as MPFB's does, which is what made the existing proxy test fail; and two regression
+tests in `tests/test_add_asset.py` pin both halves — that the modifier is added beside MPFB's own,
+and that a second proxy still does not add a second one.
+
+This is the only finding in the session that contradicted a **documented decision**: the payload's
+docstring says it follows `HumanService._check_add_proxy()`, and until this fix it did not.
+
+### What changed against this request
+
+**"Three disagreeing proxy code paths" is two.** This request's Architecture section rests on
+three; the run measured them. `add_mhclo_asset()` alone and `HumanService._check_add_proxy()`
+differ, visibly: no `Hide base mesh` modifier, 124 vertex groups against 130, and `scale_factor`
+left at `1.0` rather than copied from the character's `0.1`. But `_check_add_proxy()` and the asset
+library's proxy operator produced **identical state on every field compared** — masks, modifiers,
+vertex-group count, materials, scale factor, object type, `asset_source`, corrective shape keys.
+The operator is a duplicated implementation, not a divergent one. The decision to follow
+`_check_add_proxy()` survives with a better reason: the path that differs is the *obvious* one, the
+service function whose name matches the operation.
+[The specification](../../../specifications/architecture.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
+is corrected to say so. The third path this request named — a `.mhm` load — *is*
+`_check_add_proxy()`, which `deserialize_from_dict()` calls, so it was never a separate column.
+
+**`mask_modifiers_present` named modifiers a caller must never delete.** In the empty-`asset_source`
+refusal, the field listed *every* MASK modifier on the basemesh — which on a real character means
+MPFB's own `Hide helpers`, and with a proxy `Hide base mesh` too — beside the orphaned delete-group
+mask it is meant to point at. That field is read by someone about to remove a modifier by hand. It
+is now filtered to the `Delete.` prefix `unload_mhclo_asset()` itself derives.
+
+### Checklist
+
+- [x] **A garment equipped through the tool is indistinguishable from one equipped through MPFB's
+      asset library panel.** `mpfb.load_library_clothes` and `mpfb_add_asset` were each given
+      `cortu_jeans_shorts` with `material_type: MAKESKIN` on identically-built rigged characters:
+      identical `asset_source`, `object_type`, vertex count, polygon count, material name (modulo
+      the character-name prefix both carry), modifier types, vertex-group names, parent type,
+      delete group on the basemesh, and **an identical vertex-position fingerprint of 733.5443** —
+      so the fit is the same fit and not merely the same mesh.
+- [x] **Each of the eight `asset_type` values at least once**, all eight added: `Clothes` (delete
+      group `Delete.aethelraed_flapper_dress`), `Hair` (no delete group), `Eyes`, `Eyebrows`,
+      `Eyelashes`, `Teeth`, `Tongue`, `Proxymeshes`. Each recorded the capitalised `object_type`
+      the argument named.
+- [x] **The proxy divergence, measured rather than read from source** — see above.
+- [x] `mpfb_add_asset` reproduces the code path its docstring names. This is the check that failed
+      first and now passes.
+- [x] `material_type: "NONE"` on an MHCLO that names a material leaves the object with **no
+      material at all**, and the response warns that MPFB deleted the imported mesh's materials
+      and created nothing.
+- [x] An MHCLO declaring no delete vertices produces **no delete group**: `cortu_jeans_shorts`
+      gives `Delete.cortu_jeans_shorts`, `culturalibre_cl_bowler_hat` gives `null`. `null` is an
+      ordinary answer, as this request's correction said.
+- [x] Two copies of one asset: `Human.cortu_jeans_shorts` and `Human.cortu_jeans_shorts.001`, and
+      removing the second leaves the first.
+- [x] **Removal end to end**, on a character with a body proxy: the `Delete.cortu_jeans_shorts`
+      mask is gone from the basemesh *and* from the proxy, the object list is byte-identical to
+      what it was before the asset was added, and every remaining modifier matches.
+- [x] **Equip then rig: `rigged_to: null` was telling the truth.** The garment on the
+      wrongly-ordered character has no armature modifier and 0 weighted vertices; the
+      rightly-ordered one has 285. This settles
+      [FR 009](../009-add-rig/README.md#verification-status)'s ordering claim from the equipping
+      end.
+- [x] **A macro change then `mpfb_refit_human` re-fits the garment**, which is the first live
+      evidence that [FR 007](../007-macro-details/README.md)'s refit does anything: the garment's
+      vertex fingerprint is 733.5443 before and after a `weight`/`muscle` change with
+      `refit: false`, and 734.1956 after the refit, which reports `refit_performed: true`.
+- [x] Cost of equipping one asset: ~2.78 s (median of three garments), against a socket round trip
+      of well under a second — see
+      [FR-8's measurements](../013-live-verification/review.md#do-the-three-payload-count-driven-decisions-still-hold).
+- [x] Revert: all twelve datablock collections identical, `is_dirty` false before and after.
+
+### What was not reached
+
+Nothing on the checklist. One thing this request's Tests section asked for was answered
+differently rather than skipped: "add the same proxy through `mpfb_add_asset`, through MPFB's proxy
+library operator and through a `.mhm` load, and diff the three" became a diff of `add_mhclo_asset()`,
+`_check_add_proxy()` and the library operator, because the `.mhm` path *is* the second of those.
 
 ## References
 

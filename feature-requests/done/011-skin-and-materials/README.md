@@ -310,7 +310,106 @@ revert discipline, fresh file per case. Specifically:
   takes to build, since `LAYERED` is documented by MPFB itself as heavy enough to be unsuitable for
   animation.
 
-Record the outcome in a `## Verification status` section here.
+Record the outcome in a `## Verification status
+
+**Implemented, unit-tested and live-verified (2026-09-01)**, by
+[FR 013](../013-live-verification/README.md)'s session, against Blender 5.1.0 with MPFB 2.0.17
+running `FROM_SOURCE` out of `../mpfb2`, over 85 installed skins and an asset carrying three
+alternative materials. It is now a script:
+[verification/check_fr011.py](../../../verification/check_fr011.py).
+
+This is the request where the stubs established least — a material is a node tree and nothing in
+`tests/` builds one — so every item below is a first observation rather than a re-check.
+
+Every scene mutation was reverted: all twelve datablock collections plus `bpy.data.is_dirty`
+compare **identical** before and after, and the `.blend` was never saved. Three things outside the
+`.blend` were touched deliberately and put back: `enhanced_settings.default.json` was moved aside
+so its *creation* could be observed and restored afterwards; one probe `.mhmat` was written beside
+an asset for the cache-staleness item and deleted; and MPFB's alternative-material cache now holds
+this session's scans, which is the documented cost.
+
+### What changed against this request
+
+**The primary claim holds, for all five skin types.** Each type was applied twice on identically
+built characters — once through `mpfb.load_library_skin`, MPFB's own skin library button, and once
+through `mpfb_set_skin` — and the resulting **node trees match**: the same slot layout, the same
+node count, the same sorted set of node types, the same link count, the same recorded
+`material_source`, and the same active body slot. `MAKESKIN` builds a 4-node tree
+(`BSDF_PRINCIPLED`, `MIX_RGB`, `OUTPUT_MATERIAL`, `TEX_IMAGE`, 4 links); `ENHANCED` builds a
+2-node one (`GROUP`, `OUTPUT_MATERIAL`). This was the whole primary goal and it was, until now, a
+reading of MPFB's source.
+
+**`scale_assumption` for an ordinary character is `METER`, not `DECIMETER`.** This request, the
+tool docstring, the payload docstring and `CLAUDE.md` all said `DECIMETER`, reasoning from the
+`scale_factor` property's declared default of `1.0` against MPFB's `> 0.9` threshold. But
+`create_human()` **writes 0.1 onto every character it makes**, so the default character is below
+the threshold and lands on `METER`. The arithmetic in the payload was right and the prose around it
+was wrong; all four places are corrected. All three bands were then observed by setting the
+property directly: 0.1 → `METER`, 1.0 → `DECIMETER`, 10.0 → `CENTIMETER`.
+
+**Two of this request's four candidate mpfb2 defects are refuted, and a third is worse than
+described.**
+
+- `alternative_materials_for_asset()`'s cache **can** be invalidated:
+  `AssetService.invalidate_alternative_materials_cache()` exists and clears both
+  `_ALTERNATIVE_MATERIALS` and `_ALTERNATIVE_MATERIAL_TILES`. The staleness this request describes
+  is real — nothing calls it — but "uninvalidatable" is wrong, and it means
+  `mpfb_list_asset_materials` could grow the same `refresh` argument the other catalogue tools
+  have. Scoped as a request rather than added here.
+- `exclude_default` is confirmed dead: identical results with and without it, the asset's own
+  material present in both.
+- `set_character_skin()`'s five-`if` dispatch is confirmed, and is **worse than described**. This
+  request expected a `ValueError` from `create_and_assign_material_slots()`. That happens only when
+  `material_instances` is on (and arrives as `AttributeError: 'NoneType' object has no attribute
+  'copy'`). With instancing off — which is the default for three of the five types, `MAKESKIN`
+  included — a one-letter typo deleted every material on the character and **raised nothing at
+  all**. A silent destruction, not a misleading traceback. That is the strongest possible argument
+  for the vocabulary check this request put in the tool module, and it is now an observation.
+
+### Checklist
+
+- [x] **All five `skin_type` values against MPFB's own skin library panel** — same node tree, same
+      slot layout, same recorded `material_source`, same active slot, for `MAKESKIN`, `ENHANCED`,
+      `ENHANCED_SSS`, `LAYERED` and `GAMEENGINE`.
+- [x] `material_instances: true` yields the extra slots and they carry the settings file's values:
+      `["body"]` without, `["body", "nipple", "lips", "fingernails", "toenails", "ears",
+      "genitals"]` with — and all seven names are keys in `enhanced_settings.default.json`. The
+      request's coercion is visible from the other side too: a call requesting instances on a
+      `MAKESKIN` skin reports `material_instances_requested: true` and
+      `material_instances_used: false`.
+- [x] The settings file is created once and not twice, observed on a profile where it did not
+      exist: first call `settings_file_created: true`, second `false`. **A default call creates it
+      not at all** — `material_instances` is coerced off for `MAKESKIN`, so the default call writes
+      nothing outside the `.blend`, which this request had inferred and can now be stated.
+- [x] `scale_assumption` at three scales — see above — and `null` for `MAKESKIN`, which does not
+      use it.
+- [x] A skin on a character wearing a body proxy reaches **both**: the basemesh's hand-built
+      material is named in `materials_destroyed` under the basemesh's entry, the proxy has its own
+      entry, and both objects end with the new `body` material and the right active slot.
+- [x] `LAYERED` with no MHMAT at all is accepted and builds a material; every other type with no
+      file is refused in the tool module before any code is generated.
+- [x] `mpfb_set_asset_material` in both directions plus `restore_default`, on an asset with three
+      alternatives, each read back through `mpfb_get_object_info`. Note what the read-back is
+      called: `asset_info.material_source`, one key filled from `material_source` for a skin and
+      from `alternative_material` for anything else. That is now in the tool docstring.
+- [x] The alternative-material cache staleness, by writing a new `.mhmat` into the asset's
+      directory between two calls: the second answer is unchanged.
+- [x] Cost per skin type — see
+      [FR-8's measurements](../013-live-verification/review.md#do-the-three-payload-count-driven-decisions-still-hold).
+      `LAYERED` is not the outlier MPFB's documentation would suggest at *build* time; what MPFB
+      warns about is render cost.
+- [x] Revert: all twelve datablock collections identical, `is_dirty` false before and after;
+      `enhanced_settings.default.json` restored; the probe `.mhmat` removed.
+
+### What was not reached
+
+- [ ] **That the material-instance slots carry the *specific* subsurface settings from
+      `enhanced_settings.default.json`, value by value.** The slot names were matched against the
+      file's keys and all seven matched; the individual socket values inside each node group were
+      not compared. What was checked establishes that the settings file is the source of the slot
+      set, not that every value in it arrived.
+- [ ] **That `scale_assumption` corresponds to the subsurface radii actually built.** The band is
+      observed; the radii it feeds are inside a node group and were not read back.
 
 ## References
 

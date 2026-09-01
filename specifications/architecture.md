@@ -41,8 +41,27 @@ Blender. Every interaction with MPFB crosses two boundaries:
 A consequence: mpfb-mcp's own test suite cannot exercise real MPFB behavior — it can only
 verify the wire protocol and the generated code (see the "Tests" section of individual
 feature requests). Exercising a tool against real MPFB requires a running Blender with MPFB
-and blender_mcp installed and enabled, and is a manual/integration verification step, not
-part of the unit test suite.
+and blender_mcp installed and enabled, and is a verification step outside the unit test
+suite — but a **named and re-runnable** one, not a manual session. It lives in
+[verification/](../verification/): a snapshot/compare helper over twelve datablock
+collections, a fixture builder, and one script per checklist, each driving the real tool
+callables the way an MCP client would and each printing one pass/fail/skipped line per item
+with the observed value beside it. Re-running a whole checklist after a code fix is one
+command.
+
+That distinction is not cosmetic. Five consecutive requests reached `Done` without their live
+check, each postponement justified by the cost of a session nothing of which survived to make
+the next one cheaper — which is exactly the defect a re-runnable harness removes. The harness
+lives outside `src/`, is not discovered by `unittest discover -s tests`, and is not shipped;
+nothing in it may be imported by the package.
+
+Two properties of it are load-bearing rather than incidental. **Checks go through the tool
+callables**, not through hand-assembled `send_code()` calls, or what is verified is a program
+no client will ever send — a large part of what is under test is the tool module's own
+validation and defaulting. And **a comparison against "what MPFB's own panel produces" is a
+diff, not a screenshot**: MPFB's panels are thin, so driving the scene property behind a
+slider or calling the operator behind a button *is* pressing it, and the two results can be
+compared field by field in one file.
 
 ## Diagnostics attach at the socket boundary, never to the program
 
@@ -475,8 +494,19 @@ Sometimes there is no single MPFB implementation to wrap. Adding a topology prox
 `HumanService.add_mhclo_asset()` imports and fits it and stops there;
 `HumanService._check_add_proxy()` calls that and then hides the basemesh, copies the scale factor,
 creates the proxy's extra vertex groups and runs a corrective pass; and the asset library's proxy
-operator does not call `add_mhclo_asset()` at all and carries a third variant gated on its own scene
-settings. Nothing documents which is canonical, and the three produce visibly different characters.
+operator does not call `add_mhclo_asset()` at all and carries a third implementation gated on its
+own scene settings. Nothing documents which is canonical.
+
+**Measured** (FR 013's live run), the picture is sharper than "the three disagree", and the
+sharper version is the better argument. `add_mhclo_asset()` alone and `_check_add_proxy()` really
+do produce visibly different characters: no `Hide base mesh` modifier, 124 vertex groups against
+130, and `scale_factor` left at `1.0` rather than copied from the character's `0.1`. But
+`_check_add_proxy()` and the library operator produced **identical** state on every field compared.
+So the operator is a duplicated implementation rather than a divergent one — and what makes the
+choice load-bearing is not that three paths disagree but that the *obvious* implementation, the
+service function whose name matches the operation, is the one that differs. A rule that only fired
+when three implementations visibly disagreed would not have fired here, and would have been wrong
+not to.
 
 This is the sharper, more general form of
 [When mpfb-mcp models a concept MPFB's UI has but its services do not](#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not),
@@ -491,8 +521,14 @@ versus services" to *any* two MPFB code paths.
 - **Report the parts that differ, individually.** `proxy_extras` names each of the four things
   `_check_add_proxy()` does beyond the plain add, so a caller who sees a difference against MPFB's
   panel can see exactly where it comes from.
-- **Record the divergence as a candidate mpfb2 issue.** Three implementations of one operation is a
-  problem in MPFB that mpfb-mcp is working around, not a fact about mpfb-mcp.
+- **Record the divergence as a candidate mpfb2 issue — and then confirm it before filing.** Three
+  implementations of one operation is a problem in MPFB that mpfb-mcp is working around, not a fact
+  about mpfb-mcp. But a candidate defect read from source is a hypothesis: of the seven FR 008
+  through FR 011 recorded, the live run confirmed four, refuted two outright
+  (`RigService.identify_rig()` cannot return `None`; the alternative-material cache *does* have an
+  invalidator) and found the fifth to be worse and quieter than described. Each is provoked by a
+  script under [verification/](../verification/), so a claim about MPFB is re-checkable against a
+  future MPFB rather than frozen as an opinion.
 - **Do not merge them.** Picking one and naming it is the rule; synthesizing a fourth behavior that
   matches none of MPFB's own would make the result unreproducible from inside Blender.
 - **The limiting case is no service path at all.** Setting an alternative material on an equipped
@@ -799,3 +835,20 @@ Tools return blender_mcp's response envelope largely as-is: `{"status": "ok", "r
 or `{"status": "error", "message": ...}` (optionally `stdout`/`stderr`). Callers — including
 future mpfb-mcp tools composing on top of others — must check `status` rather than assume
 success. This mirrors blender_mcp's own tools and avoids inventing a second error convention.
+
+**`null` and `[]` are different answers, and the difference is load-bearing.** `[]` means "none
+of them"; `null` means "not known" or "not computed". FR 006 established it; FR 013's live run
+found two places where it had quietly been broken, in code that had been reviewed twice.
+`mpfb_symmetrize_targets` under `dry_run: true` reported `targets: []` for each category it would
+change, where what it meant was that it had not done the write and therefore could not say which
+files it would touch — so it now reports `null`. And `mpfb_remove_asset`'s `mask_modifiers_present`
+reported every MASK modifier on the basemesh, including MPFB's own `Hide helpers`, in a field read
+by somebody about to delete a modifier by hand.
+
+Both were written by somebody who knew the rule, which is why it is worth stating here rather than
+leaving as a habit. The test to apply to a field returning a container: **would an empty one be a
+true statement about the world?** If the answer is "we did not look", it is `null`.
+
+The same test applies to a *filter*. A field that answers "which of these is the one you are
+looking for?" must not include entries that are certainly not, however honestly they belong to
+the collection it was read from.

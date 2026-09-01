@@ -274,7 +274,72 @@ holds for the published community packs; that `get_asset_list()`'s items carry t
 request depends on for every one of the eleven subdirs (the non-mhclo ones are the risk); how long
 a cold `get_asset_list()` and a `refresh=true` take on a full library, and how badly the preview
 loading bites; and whether the label collision is common enough in practice to force the fallback.
-Record the outcome in a `## Verification status` section here, as FR 001–003 do.
+Record the outcome in a `## Verification status
+
+**Live-verified twice: 2026-08-29 originally, and re-verified 2026-09-01** by
+[FR 013](../013-live-verification/README.md)'s session, against Blender 5.1.0 with MPFB 2.0.17
+running `FROM_SOURCE` out of `../mpfb2`. The re-run was owed because
+[FR 010](../010-mesh-assets/README.md) migrated `payloads/list_assets.py` onto the shared
+`codegen/shared/asset_sections.py` fragment, so the program sent into Blender is a different
+program even though the unit tests see no behavior change.
+
+It is now a script rather than a session:
+[verification/check_fr005.py](../../../verification/check_fr005.py).
+
+**The install has grown since 2026-08-29**, which is what let this re-run close the one item the
+original could not. It now holds 845 assets across the eleven subdirs (was 730), 108 asset packs,
+and — the important change — 59 poses where there were none. Asset roots are still MPFB's bundled
+data dir and `~/makehuman/mpfb/data`.
+
+Every scene mutation was reverted: a scratch basemesh was created, a `clothes`, a `hair` and a
+`proxymeshes` asset added to it and a `skins` entry applied, and all twelve datablock collections
+plus `bpy.data.is_dirty` compare **identical** afterwards. The `.blend` was never saved. What
+could not be reverted, and was not meant to be, is MPFB's asset cache and its loaded previews —
+the documented cost of the caching decision, unchanged.
+
+### What changed against the 2026-08-29 record
+
+**The `bvh` row's item shape is no longer unobserved.** The original record named it as the one
+thing it could not check, `poses` being empty. It now has 59 entries and they carry the full item
+key set — `path`, `fragment`, `name`, `label`, `object_type: "Pose"`, `asset_subdir`,
+`file_type: "bvh"`, `pack`, `pack_ambiguous`, `thumb_path` — with fragments of the ordinary
+`<dir>/<file>.bvh` shape. Nothing about that row needed correcting; it simply had never been seen.
+
+The five corrections the original record carried (`fragment` versus `path`, `object_type` being an
+argument, the pack filter matching any claiming pack, an asset sitting directly in an asset root,
+and `refresh` being cheap) all still hold.
+
+### Checklist
+
+- [x] All eleven subdirs listed from MPFB's own `ASSET_LIBRARY_SECTIONS`, in its order:
+      `proxymeshes` 12, `skins` 85, `ink_layers` 5, `eyes` 2, `eyebrows` 26, `eyelashes` 9,
+      `hair` 64, `teeth` 7, `tongue` 1, `clothes` 575, `poses` 59. Total 845, and
+      `section_table_from_mpfb` is `true`, so the fallback literal was not used.
+- [x] The item key set is present for **every** subdir that has assets — all eleven now have
+      assets, including `poses`, so there is no unobserved row left.
+- [x] The label collision is real: 89 `.mhmat` files on disk under `skins` become 85 entries,
+      MPFB's cache being keyed by label. Every other subdir's disk count matches its reported
+      count exactly.
+- [x] Pack attribution against the real 108 packs: 807 of 845 attributed, 38 unattributed, and
+      **64 `pack_ambiguous`**. Ambiguity is 7.6% here, so the flag still earns its place.
+- [x] Filters: `name_contains` case-insensitive over name and label (`"JEANS"` and `"jeans"` both
+      find 8); `pack` case-insensitive with MPFB's substring semantics (`"hair03"` and `"HAIR03"`
+      both find 14); `asset_subdir` case-insensitive (`"HAIR"` finds 64); and the three combine
+      with AND, matching a listing filtered by hand.
+- [x] A misspelled subdir (`subdir_recognized: false`), a misspelled pack
+      (`pack_recognized: false`) and a genuinely empty subdir are three distinguishable answers.
+- [x] Paging over the real 575-entry `clothes` listing: three pages of 250 concatenate to exactly
+      the unpaged listing in the same order, `truncated` true on all three, and an offset past the
+      end answers with `count: 0` rather than failing.
+- [x] `asset_roots_searched` is per subdir and narrower than the configured data roots — only
+      `poses` reports both roots, since the bundled MPFB data dir contains no other asset subdir.
+- [x] **Assets reported here were actually applied**, and the `path` this tool reports is exactly
+      the `resolved_path` the acting tool lands on: a `clothes`, a `hair` and a `proxymeshes`
+      entry through `mpfb_add_asset` and a `skins` entry through `mpfb_set_skin`, each resolved
+      from the reported `fragment` and each landing on the reported `path`.
+- [x] Whole response survives `strict_json` at 845 entries: the cached items' `thumb` preview
+      object is still dropped rather than reported.
+- [x] Revert: all twelve datablock collections identical, `is_dirty` false before and after.
 
 ## Verification status
 

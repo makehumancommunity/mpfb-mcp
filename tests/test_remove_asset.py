@@ -244,7 +244,12 @@ class GeneratedCodeTests(MeshAssetTestCase):
         GeneralObjectProperties.set_value("asset_source", "", entity_reference=asset)
         result = self.run_remove(added["asset_object_name"])
         self.assertEqual(result["blocked_by"], "asset_source_missing")
+        # The delete-group masks only. MPFB's own `Hide helpers` is a MASK on
+        # the basemesh too, and naming it here would point somebody removing an
+        # orphaned mask by hand at a modifier they must not touch.
         self.assertEqual(result["mask_modifiers_present"], ["Delete.fedora"])
+        self.assertIn("Hide helpers",
+                      [modifier.name for modifier in self.basemesh.modifiers])
         self.assertEqual(StubHumanService.unload_calls, [])
         self.assertIn(
             added["asset_object_name"], [obj.name for obj in StubObjectService.all_objects])
@@ -272,13 +277,14 @@ class GeneratedCodeTests(MeshAssetTestCase):
         self.build_character()
         added = self.equip(self.fedora)
         for modifier in self.basemesh.modifiers:
-            if modifier.type == "MASK":
+            if modifier.type == "MASK" and modifier.name.startswith("Delete."):
                 modifier.name = "Renamed by hand"
         result = self.run_remove(added["asset_object_name"])
         self.assertTrue(result["removed"])
         self.assertEqual(result["mask_modifiers_removed"], [])
         self.assertEqual(
-            [modifier.name for modifier in self.basemesh.modifiers], ["Renamed by hand"])
+            [modifier.name for modifier in self.basemesh.modifiers],
+            ["Hide helpers", "Renamed by hand"])
 
 
 if __name__ == "__main__":

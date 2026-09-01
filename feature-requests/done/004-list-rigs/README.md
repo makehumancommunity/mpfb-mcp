@@ -221,7 +221,70 @@ assumes. Specifically: that every `identifier` reported is actually accepted by
 `HumanService.add_builtin_rig()` / `add_custom_rig()`; that the UI property JSONs are where this
 request says and parse into the labels shown; that `get_mpfb_root()` still misbehaves as described;
 and that the custom-rig path works with a real MakeRig export. Record the outcome in a
-`## Verification status` section here, as FR 001–003 do.
+`## Verification status
+
+**Live-verified twice: 2026-08-29 originally, and re-verified 2026-09-01** by
+[FR 013](../013-live-verification/README.md)'s session, against Blender 5.1.0 with MPFB 2.0.17
+running `FROM_SOURCE` out of `../mpfb2`. The re-run was owed because
+[FR 009](../009-add-rig/README.md) migrated `payloads/list_rigs.py` onto the shared
+`codegen/shared/rig_lookup.py` fragment: the unit tests saw no behavior change, but the program
+sent into Blender was a different program, so the 2026-08-29 verification no longer said anything
+about the code that runs today.
+
+It is now a script rather than a session:
+[verification/check_fr004.py](../../../verification/check_fr004.py), re-runnable in one command.
+
+The install was the same one: all 8 standard rigs, both Rigify rigs and three custom rigs
+(`gurgel`, `meh`, `yada`) in `~/makehuman/mpfb/data/rigs`, each with a weights file beside it.
+Every scene mutation was reverted — all twelve datablock collections plus `bpy.data.is_dirty`
+compare **identical** before and after, and the `.blend` was never saved.
+
+### What changed against the 2026-08-29 record
+
+Nothing. Every item below produced the same answer as it did before the migration, which is the
+whole point of re-running it. The three corrections that record carried
+(`unrecognized_custom_rig_files` excluding the `weights.*` companions, `refresh` using
+`get_custom_rigs(use_cache=False)`, `rig_dirs` entries being objects) still hold and are still
+what the payload does.
+
+### Checklist
+
+- [x] Every rig on disk listed and nothing else — 13 entries: 8 standard, 2 rigify, 3 custom.
+      `unrecognized_custom_rig_files` is `[]`, so the `weights.*.json` files sharing those
+      directories are still correctly excluded rather than reported as malformed rigs.
+- [x] Labels resolve from MPFB's real UI property JSONs — 10 of 13 labelled, the three custom
+      ones `null`. MPFB's own rigify labels still read as swapped (`rigify.human` is labelled
+      "Default (no toes)"); reported verbatim.
+- [x] Weights fallbacks — `default_no_toes` reports `weights_from: "default"` and `rigify.human`
+      reports `human_toes`, and both load real weights when added.
+- [x] **Every one of the 13 `identifier`s was actually added**, each to its own scratch basemesh,
+      through the `add_function` the entry named, and the weights that arrived matched the
+      prediction in every case. Observed per rig (bones / vertex groups carrying a non-zero
+      weight): `cmu_mb` 31/182, `default` 163/290, `default_no_toes` 137/264, `game_engine`
+      53/203, `game_engine_with_breast` 55/205, `mixamo` 52/203, `mixamo_unity` 64/214,
+      `openpose` 24/173, `rigify.human` 185/332, `rigify.human_toes` 213/360, `custom.gurgel`
+      1/152, `custom.meh` 1/152, `custom.yada` 53/203. All 13 parented the basemesh and got an
+      armature modifier targeting the new armature. All 13 were then deleted, leaving nothing.
+- [x] The negative that justifies `add_function`, both ways.
+      `add_builtin_rig("custom.gurgel")` raises `OSError: Could not find the rig file:
+      .../rigs/standard/rig.custom.gurgel.json`; `add_custom_rig("default_no_toes")` raises
+      `ValueError: Custom rig '_no_toes' not found in user data.` — an error naming a rig that
+      never existed. Both still in the tool docstring.
+- [x] `refresh=true` returns the same 13 identifiers in the same order, without disturbing the
+      cache global.
+- [x] `rigify_available` is `true` on this install; the `available: false` branch remains
+      unit-tests-only.
+- [x] `rig_dirs` names the two bundled dirs under the source-dist MPFB and the one user rigs dir,
+      all three flagged as existing.
+- [x] Whole response survives `strict_json` with real data.
+- [x] Revert: all twelve datablock collections identical, `is_dirty` false before and after.
+
+### What this re-run added to the record
+
+**A rig added through `mpfb_add_rig` is byte-for-byte the rig MPFB's own "Add standard rig"
+button produces.** That is FR 009's claim rather than this request's, but it was checked over
+this same rig tree and it is what makes the catalogue's `add_function` prediction meaningful;
+see [FR 009's verification status](../009-add-rig/README.md#verification-status).
 
 ## Verification status
 

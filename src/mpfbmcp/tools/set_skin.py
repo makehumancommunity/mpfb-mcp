@@ -188,7 +188,10 @@ def register(mcp: FastMCP) -> None:
         `ENHANCED_SSS` or `LAYERED`. They are five entirely different node trees
         built from the same MHMAT: a plain PBR material for export, MakeSkin's,
         the enhanced one with and without subsurface scattering, and the
-        multilayered one. **The default follows MPFB's settings panel, not
+        multilayered one. All five cost about the same to *build* - measured
+        within 33 ms of each other - so pick on the look you want, not on speed;
+        MPFB's warning that `LAYERED` is unsuitable for animation is about
+        render cost. **The default follows MPFB's settings panel, not
         `set_character_skin()`'s own signature**, which defaults to
         `ENHANCED_SSS` - so what this tool produces by default is what the panel
         produces by default.
@@ -221,8 +224,11 @@ def register(mcp: FastMCP) -> None:
         the `.blend` - and `scale_assumption` (`METER`/`DECIMETER`/`CENTIMETER`),
         which the enhanced types derive from the character's `scale_factor` and
         which changes the subsurface radii. `scale_assumption` is null for the
-        three types that do not use it. Note that MPFB's default `scale_factor`
-        of 1.0 lands on `DECIMETER`, not `METER`.
+        three types that do not use it. Note where the bands fall: the
+        `scale_factor` property *declares* a default of 1.0, but
+        `create_human()` writes 0.1 onto every character it makes, so an
+        ordinary MPFB character reports `METER`. `DECIMETER` needs a
+        `scale_factor` above 0.9 and `CENTIMETER` one above 9.
 
         Six situations answer with `applied: false` and a `blocked_by` naming
         which, rather than failing, and change nothing on the way to finding

@@ -150,8 +150,17 @@ else:
     macro_details = macro_details_of(basemesh)
     race_sum = race_sum_of(macro_details)
     stack = target_stack_entries(macro_details)
+    # Read *undecoded*, so that these names are the ones really on the mesh and
+    # are the same vocabulary as the stack's ``shapekey_name`` above. Decoding
+    # them here made the two lists the docstring tells a caller to compare
+    # incomparable: every macro shape key is stored under an encoded name like
+    # ``$md-$as-$fe-$yn``, so a decoded listing agreed with the stack on nothing
+    # and the comparison reported drift on a perfectly healthy character.
     current_macro_shapekeys = [
-        str(name) for name in TargetService.get_current_macro_targets(basemesh, decode_names=True)
+        str(name) for name in TargetService.get_current_macro_targets(basemesh, decode_names=False)
+    ]
+    current_macro_shapekeys_decoded = [
+        str(TargetService.decode_shapekey_name(name)) for name in current_macro_shapekeys
     ]
     has_shapekeys = bool(TargetService.has_any_shapekey(basemesh))
 
@@ -192,5 +201,6 @@ else:
         macro_target_stack=stack,
         macro_target_count=len(stack),
         current_macro_shapekeys=current_macro_shapekeys,
+        current_macro_shapekeys_decoded=current_macro_shapekeys_decoded,
         message="".join(message_parts),
     )

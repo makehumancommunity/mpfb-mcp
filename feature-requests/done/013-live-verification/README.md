@@ -1,10 +1,10 @@
 # Live verification of the twelve character-modifying tools, and a review of the tool surface
 
-**Status:** Accepted
+**Status:** Done
 
-[FR 001](../done/001-mpfb-get-status/README.md) through [FR 006](../done/006-list-targets/README.md) were
+[FR 001](../001-mpfb-get-status/README.md) through [FR 006](../006-list-targets/README.md) were
 each checked against a running Blender before being marked Done.
-[FR 007](../done/007-macro-details/README.md) through [FR 011](../done/011-skin-and-materials/README.md)
+[FR 007](../007-macro-details/README.md) through [FR 011](../011-skin-and-materials/README.md)
 were not — five consecutive requests, twelve tools, every one of which *changes* a character. The
 suite passes (681 tests) and proves the branching around each call; none of it touches MPFB. On top
 of that, two verifications that *were* run are now stale: FR 009 migrated
@@ -20,13 +20,13 @@ the actual defect, and it is why the debt compounded rather than being paid down
 backlog is not five times as easy to face as a one-request one.
 
 So this request has two halves. Run the checks and fix what they find — every outstanding claim in
-[NEXT_STEPS.md](../NEXT_STEPS.md)'s seven-part list, in one session, on one shared character. And
+[NEXT_STEPS.md](../../NEXT_STEPS.md)'s seven-part list, in one session, on one shared character. And
 remove the reasons the run is expensive, so that the next tool does not land unverified for the same
 reason these twelve did. Alongside that, and because a first live run is the only moment where the
 whole surface is being exercised at once, take the measurements that four already-made decisions
 rest on and review the structure they produced.
 
-**[FR 012](../done/012-observability/README.md) has landed**, and this request's prerequisite is
+**[FR 012](../012-observability/README.md) has landed**, and this request's prerequisite is
 therefore met: the other reason the run was expensive is that a live failure surfaced as a traceback
 naming a line in a program nobody kept, and the cost measurements below need a recorded duration per
 call rather than a stopwatch. Both were originally scoped here; they are a change to the package
@@ -34,7 +34,7 @@ rather than an instrument for one session, they are worth having whether or not 
 happens, and folding them in made this request two efforts wearing one number.
 
 Concretely, what this session now has. Run the server with `MPFB_MCP_RECORD_DIR` set — see
-[CLAUDE.md](../../CLAUDE.md#commands) — and every call leaves the exact program in a `.py`, the full
+[CLAUDE.md](../../../CLAUDE.md#commands) — and every call leaves the exact program in a `.py`, the full
 envelope in a `.json`, and one line in `index.tsv` carrying the tool, the program size in bytes and
 the round-trip duration in milliseconds. Those two columns are the input to
 [FR-8](#fr-8-measure-what-four-decisions-rest-on), and the `.py` is what a traceback's line number
@@ -59,7 +59,7 @@ the run rather than in argument, with each recommendation classified as fix-here
 rejected-with-a-reason.
 
 **Enabling, and not a goal in itself: make the next verification cheap.** A re-runnable harness,
-standing on [FR 012](../done/012-observability/README.md)'s per-call record for the diagnostics. It
+standing on [FR 012](../012-observability/README.md)'s per-call record for the diagnostics. It
 exists to serve the two goals above and should not grow past that.
 
 **Explicitly not a goal:** new tools, new capability, or the structural refactors the review
@@ -94,7 +94,7 @@ Build two:
   Rigify generation, skin. This is the character FR 007, FR 008, FR 010 and FR 011 check against.
 - **Character B**, in the wrong order — clothes first, then the rig — for one purpose only: to
   observe that the garments are not rigged. That claim is what
-  [A tool reports an ordering constraint it cannot enforce](../../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
+  [A tool reports an ordering constraint it cannot enforce](../../../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
   is built on, and it is currently a reading of MPFB's source.
 
 State the install the run needs, and check it before starting rather than discovering it halfway:
@@ -109,24 +109,24 @@ again, as FR 006's run did with its gzipped probe.
 The checklists themselves are not restated here; they live in their own requests and are the
 authority. What this request fixes is the **order**, because several settle each other:
 
-0. **[FR 012](../done/012-observability/README.md)'s inherited check**, before anything else and on
+0. **[FR 012](../012-observability/README.md)'s inherited check**, before anything else and on
    whatever call is convenient: force a failure in Blender and confirm the traceback's line number
    resolves to the right line of the dumped program. It is one deliberate failure, and everything
    below is harder to diagnose until it is confirmed.
-1. **[FR 004](../done/004-list-rigs/README.md)** and **[FR 005](../done/005-list-assets/README.md)**
+1. **[FR 004](../004-list-rigs/README.md)** and **[FR 005](../005-list-assets/README.md)**
    re-checks. Read-only, cheap, and first because FR 009's weights answers and FR 010's
    `resolved_path` are compared against their output.
-2. **[FR 007](../done/007-macro-details/README.md#verification-status)** and
-   **[FR 008](../done/008-detail-targets/README.md#verification-status)** on Character A before it is
+2. **[FR 007](../007-macro-details/README.md#verification-status)** and
+   **[FR 008](../008-detail-targets/README.md#verification-status)** on Character A before it is
    dressed — phenotype sliders, the modifier round trip through MPFB's own panel, and FR 008's check
    that a macro change leaves the detail stack intact.
-3. **[FR 010](../done/010-mesh-assets/README.md#verification-status)**, dressing Character A. The
+3. **[FR 010](../010-mesh-assets/README.md#verification-status)**, dressing Character A. The
    largest of the seven, and the one that pays for two others: it settles FR 009's ordering claim
    from the equipping end, and a refit on a dressed character is the first live evidence that
    FR 007's `mpfb_refit_human` does anything at all.
-4. **[FR 009](../done/009-add-rig/README.md#verification-status)** across both characters, including the
+4. **[FR 009](../009-add-rig/README.md#verification-status)** across both characters, including the
    full Rigify sequence in both orders and `meta_rig_action: "delete"` foreclosing the refit.
-5. **[FR 011](../done/011-skin-and-materials/README.md#verification-status)** last, on the finished
+5. **[FR 011](../011-skin-and-materials/README.md#verification-status)** last, on the finished
    character — all five `skin_type` values against MPFB's own skin library panel, both directions of
    `mpfb_set_asset_material`, and the alternative-material cache staleness.
 
@@ -139,7 +139,7 @@ trying to invalidate a cache MPFB gives no way to invalidate.
 ### FR-4: Rewrite each source request's verification record, honestly
 
 Each of the seven gets its `## Verification status` section rewritten in place, in
-`feature-requests/done/`, following [FR 006](../done/006-list-targets/README.md#verification-status)'s
+`feature-requests/done/`, following [FR 006](../006-list-targets/README.md#verification-status)'s
 shape, which is the model: the date and the install it ran against; a `[x]`/`[ ]` checklist with the
 **observed value** beside each item; a "What changed against this request" section wherever the run
 contradicted what was written; and an explicit statement of the revert result.
@@ -157,7 +157,7 @@ Four buckets, decided as each finding appears rather than afterwards:
   commit and in the record rather than writing a test that passes for the wrong reason;
 - **an MPFB defect** — recorded and filed against `../mpfb2`, not fixed here;
 - **the request or the specification was wrong** — corrected in
-  [specifications/](../../specifications/), as FR 006's run corrected `source` into a three-valued
+  [specifications/](../../../specifications/), as FR 006's run corrected `source` into a three-valued
   field;
 - **a design gap needing more than a fix** — a new numbered request, not absorbed into this one.
 
@@ -171,14 +171,14 @@ FR 008 through FR 011 each ended by naming things that look like MPFB bugs, all 
 source and none observed. Confirm each against the running install, then file the ones that hold:
 
 - a gzipped custom target is addressed as `vwide.gz` by `_modelsubpanels` and as `vwide` by
-  `TargetService.filename_to_shapekey_name()` — two shape keys for one file ([FR 008](../done/008-detail-targets/README.md));
+  `TargetService.filename_to_shapekey_name()` — two shape keys for one file ([FR 008](../008-detail-targets/README.md));
 - `RigService.identify_rig()` can return `None`, on which
-  `MPFB_OT_GenerateRigifyRigOperator.poll()` raises rather than returning `False` ([FR 009](../done/009-add-rig/README.md));
+  `MPFB_OT_GenerateRigifyRigOperator.poll()` raises rather than returning `False` ([FR 009](../009-add-rig/README.md));
 - three disagreeing proxy code paths, and `unload_mhclo_asset()` deleting whatever object it is
-  handed without checking it is a mesh asset ([FR 010](../done/010-mesh-assets/README.md));
+  handed without checking it is a mesh asset ([FR 010](../010-mesh-assets/README.md));
 - `set_character_skin()`'s five-`if` dispatch, which turns a typo into destroyed materials;
   `alternative_materials_for_asset()`'s never-read `exclude_default`; that function's
-  uninvalidatable module-level cache ([FR 011](../done/011-skin-and-materials/README.md)).
+  uninvalidatable module-level cache ([FR 011](../011-skin-and-materials/README.md)).
 
 The proxy divergence is the one that is not merely a tidiness point: the Architecture section of
 FR 010 justifies which code path `mpfb_add_asset` follows on those three paths differing, so if they
@@ -193,7 +193,7 @@ where a number exists:
   new state and a list of consequences. Having read twelve real responses off a real character,
   say which fields were used, which were never looked at, and which were ambiguous — in particular
   whether `null` and `[]` stayed distinguishable everywhere, as
-  [FR 006](../done/006-list-targets/README.md) insisted they should.
+  [FR 006](../006-list-targets/README.md) insisted they should.
 - **Is the duplication a risk or an economy?** It is countable today: subject resolution appears in
   10 payloads, active-object/selection restore in 8, the `bpy.context.mode` precondition in 6, and
   three shared fragments exist for the cases judged worth sharing. The question the review must
@@ -203,11 +203,11 @@ where a number exists:
   is what an MCP client loads before any work happens; the four largest are `mpfb_list_assets`
   (5.5 KB), `mpfb_list_targets` (4.7 KB), `mpfb_add_asset` (4.6 KB) and `mpfb_get_object_info`
   (4.2 KB). Say which of that is needed *at call time* and which is rationale that belongs in
-  [specifications/](../../specifications/) or behind a future `mpfb_search_docs`.
+  [specifications/](../../../specifications/) or behind a future `mpfb_search_docs`.
 - **Is the tool granularity right?** Building Character A takes one round trip per step. Now that
   the number of steps and the cost of each are known, say whether any pair of tools is always called
   together, and whether a composite belongs in the catalog — noting that
-  [FR 008](../done/008-detail-targets/README.md) already took the batching argument once, for one tool,
+  [FR 008](../008-detail-targets/README.md) already took the batching argument once, for one tool,
   and gave a cost-based reason.
 - **Do the three payload-count-driven decisions still hold?** The refit-by-default in
   `mpfb_set_macro_details`, the batching in `mpfb_set_targets`, and one-asset-per-call in
@@ -219,7 +219,7 @@ the reason.
 
 ### FR-8: Measure what four decisions rest on
 
-Taken from [FR 012](../done/012-observability/README.md)'s per-call record — the `ms` and `bytes`
+Taken from [FR 012](../012-observability/README.md)'s per-call record — the `ms` and `bytes`
 columns of `index.tsv`, under `MPFB_MCP_RECORD_DIR` — three runs each, median reported, first call
 to a tool reported separately since it pays for MPFB's caches:
 
@@ -231,7 +231,7 @@ to a tool reported separately since it pays for MPFB's caches:
   having a payload print its own timings into the envelope's `stdout`. Programs run from 4 KB
   (`create_human.py`) to 52 KB (`set_targets.py`), mean ~23 KB, most of
   it comments and docstrings that
-  [Readability and developer experience are prioritized](../../specifications/architecture.md#readability-and-developer-experience-are-prioritized)
+  [Readability and developer experience are prioritized](../../../specifications/architecture.md#readability-and-developer-experience-are-prioritized)
   deliberately keeps. If compile time is negligible the tradeoff stops being an open question; if it
   is not, that is a finding;
 - **the batching claim**: thirty modifier changes in one `mpfb_set_targets` call against thirty
@@ -274,7 +274,7 @@ that is a finding for the review, not a change to make quietly during the run.
 
 **`verification/`**, a sibling of `tests/`. It must not be picked up by
 `unittest discover -s tests`, and it must not be shipped:
-[pyproject.toml](../../pyproject.toml) already sets `namespaces = false` and declares package data by
+[pyproject.toml](../../../pyproject.toml) already sets `namespaces = false` and declares package data by
 explicit glob, so a top-level directory outside `src/` is not shipped — but check, because that
 file has been edited twice for exactly this class of accident (payloads shipped as modules, then
 payloads not shipped at all).
@@ -283,17 +283,17 @@ payloads not shipped at all).
 
 - **`strict_json`.** Anything a payload leaves in `result` has to be JSON-encodable, and FR 005
   already found a value that is not (`get_asset_list()`'s `thumb`). Such a failure surfaces as an
-  envelope error rather than a payload error, and [FR 012](../done/012-observability/README.md)'s record
+  envelope error rather than a payload error, and [FR 012](../012-observability/README.md)'s record
   is what distinguishes the two.
   Expect at least one, in the tools whose responses no live call has ever serialized.
-- **`bpy.context.mode`, not just the object's.** Both [FR 009](../done/009-add-rig/README.md) and
-  [FR 010](../done/010-mesh-assets/README.md) learned this from source: an unrelated object left in
+- **`bpy.context.mode`, not just the object's.** Both [FR 009](../009-add-rig/README.md) and
+  [FR 010](../010-mesh-assets/README.md) learned this from source: an unrelated object left in
   edit mode fails an operator on a subject that looks perfectly fine. The harness should assert a
   clean context *before* each checklist item, or a good fraction of the failures will be the
   harness's own.
 - **The payload brace rule.** A payload file may contain no empty brace pair anywhere — that is what
   a substitution point looks like — which is why payloads build messages by concatenation rather
-  than with `.format()`. [tests/test_codegen.py](../../tests/test_codegen.py) enforces it, so any fix
+  than with `.format()`. [tests/test_codegen.py](../../../tests/test_codegen.py) enforces it, so any fix
   written into a payload during the run has to respect it; the suite will catch it, but knowing why
   saves the detour.
 - **A fix invalidates what came before it.** FR 009 and FR 010 both demonstrated the sharper version:
@@ -307,14 +307,14 @@ payloads not shipped at all).
 ### What this effort may change
 
 **Fixed here:** defects in mpfb-mcp; corrections to
-[specifications/](../../specifications/) and to the seven verification records; the harness.
-Observability is *not* fixed here: it is [FR 012](../done/012-observability/README.md), and if the run
+[specifications/](../../../specifications/) and to the seven verification records; the harness.
+Observability is *not* fixed here: it is [FR 012](../012-observability/README.md), and if the run
 finds it insufficient the correction belongs to that request rather than to this one.
 
 **Deferred to their own requests**, with the requests *written before this one closes* so the
 moment is not lost: a fourth and fifth shared fragment if the census argues for one; the
 `mpfb_list_targets` migration onto `target_categories.py`, which
-[NEXT_STEPS.md](../NEXT_STEPS.md#modeling) says should be done *with* a live re-verification and which
+[NEXT_STEPS.md](../../NEXT_STEPS.md#modeling) says should be done *with* a live re-verification and which
 is therefore cheapest while the harness is warm; and any trimming of the tool descriptions. These
 are deferred rather than dropped because folding a refactor into a bug hunt makes every finding
 ambiguous about which change caused it.
@@ -327,27 +327,27 @@ behavior recorded as the reason. That is the same test `rig_lookup.py` passed an
 
 ## Affected specifications
 
-- **[specifications/architecture.md](../../specifications/architecture.md)** — the paragraph under
-  [No direct dependency on MPFB or blender_mcp](../../specifications/architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp)
+- **[specifications/architecture.md](../../../specifications/architecture.md)** — the paragraph under
+  [No direct dependency on MPFB or blender_mcp](../../../specifications/architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp)
   currently says live verification is "a manual/integration verification step"; with a harness it
   becomes a named, re-runnable one. Expect edits wherever the run contradicts a standing convention
   — the likely candidates are
-  [Preconditions are answers](../../specifications/architecture.md#preconditions-are-answers),
-  [A mutating tool reports before and after](../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
-  and [Response shape](../../specifications/architecture.md#response-shape), all three of which were
+  [Preconditions are answers](../../../specifications/architecture.md#preconditions-are-answers),
+  [A mutating tool reports before and after](../../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
+  and [Response shape](../../../specifications/architecture.md#response-shape), all three of which were
   written from source rather than from observation.
-- **[specifications/vision.md](../../specifications/vision.md)** — the catalog entries for the twelve
+- **[specifications/vision.md](../../../specifications/vision.md)** — the catalog entries for the twelve
   character-modifying tools carry claims phrased as fact ("the result matches what MPFB's three
   'Add ... rig' buttons produce"). Each is a reading of source. Every one that the run confirms
   should say so; every one it contradicts is a correction.
-- **[feature-requests/CLAUDE.md](../CLAUDE.md)** — the [Lifecycle](../CLAUDE.md#lifecycle) says nothing
+- **[feature-requests/CLAUDE.md](../../CLAUDE.md)** — the [Lifecycle](../../CLAUDE.md#lifecycle) says nothing
   about live verification, which is how five requests reached `Done` without it. This effort is the
   one with standing to propose what `Done` should require: at minimum that a request whose live
   check is outstanding says so in its status line rather than only in a section further down.
-- The `## Verification status` sections of [FR 004](../done/004-list-rigs/README.md),
-  [FR 005](../done/005-list-assets/README.md), [FR 007](../done/007-macro-details/README.md),
-  [FR 008](../done/008-detail-targets/README.md), [FR 009](../done/009-add-rig/README.md),
-  [FR 010](../done/010-mesh-assets/README.md) and [FR 011](../done/011-skin-and-materials/README.md) —
+- The `## Verification status` sections of [FR 004](../004-list-rigs/README.md),
+  [FR 005](../005-list-assets/README.md), [FR 007](../007-macro-details/README.md),
+  [FR 008](../008-detail-targets/README.md), [FR 009](../009-add-rig/README.md),
+  [FR 010](../010-mesh-assets/README.md) and [FR 011](../011-skin-and-materials/README.md) —
   records rather than specifications, but rewritten by this effort and listed here so the scope is
   visible.
 
@@ -372,12 +372,125 @@ it is the work.** Nothing here is complete on a green unit run.
 
 ## References
 
-- [NEXT_STEPS.md](../NEXT_STEPS.md#modeling) — the seven-part description of this session, which this
+- [NEXT_STEPS.md](../../NEXT_STEPS.md#modeling) — the seven-part description of this session, which this
   request scopes.
-- [FR 012](../done/012-observability/README.md) — the prerequisite: the per-call record this session's
+- [FR 012](../012-observability/README.md) — the prerequisite: the per-call record this session's
   diagnostics and cost measurements both read from.
-- [FR 006](../done/006-list-targets/README.md#verification-status) — the model for a good verification
+- [FR 006](../006-list-targets/README.md#verification-status) — the model for a good verification
   record: what was run, what it changed about the request, and what could not be reverted.
-- [CLAUDE.md](../../CLAUDE.md#commands) — how to bring up Blender with MPFB and the blender_mcp add-on,
+- [CLAUDE.md](../../../CLAUDE.md#commands) — how to bring up Blender with MPFB and the blender_mcp add-on,
   and the `BLENDER_MCP_HOST`/`BLENDER_MCP_PORT` overrides.
-- [../mpfb2](../../../mpfb2) — where the confirmed MPFB defects from FR-6 get filed.
+- [../mpfb2](../../../../mpfb2) — where the confirmed MPFB defects from FR-6 get filed.
+
+## Verification status
+
+**Done (2026-09-01).** Every checklist in [FR-3](#fr-3-run-the-seven-checklists-in-an-order-where-each-pays-for-the-next)
+ran, every result is recorded per [FR-4](#fr-4-rewrite-each-source-requests-verification-record-honestly),
+and the harness was re-run from scratch against a freshly restarted Blender per
+[FR-1](#fr-1-a-harness-that-can-be-run-again)'s repeatability requirement.
+
+Against Blender 5.1.0 with MPFB 2.0.17 running `FROM_SOURCE` out of `../mpfb2`: 13 rigs including
+three custom ones, Rigify enabled, 845 assets across eleven subdirs, 108 asset packs, 85 skins, and
+an asset carrying three alternative materials. `verification/run_all.py` checks all of that before
+it starts.
+
+**Final tally: 78 checks passed, 0 failed, 2 skipped** across the eight checklists, plus 8 more in
+`check_mpfb_issues.py`. Both skips are items asserted in another
+checklist's script because that is where the fixture exists (FR 007's dressed-character refit, in
+`check_fr010.py`; FR 007's generated-Rigify-without-meta-rig branch, in `check_fr009.py`). Nothing
+is `[ ]` in any of the seven records except two items in
+[FR 011](../011-skin-and-materials/README.md#verification-status), each marked with what it
+would take.
+
+### What the run produced
+
+- **Three mpfb-mcp defects**, all fixed here with regression tests, all invisible from this side of
+  the socket: the body-proxy hide modifier that was never added, the two macro shape-key lists in
+  two name spaces, and two `[]`s that meant "not computed". See
+  [review.md](review.md#what-the-run-found-before-anything-else).
+- **Two standing decisions whose stated reason was wrong**, corrected in
+  [specifications/](../../../specifications/): the proxy path (two code paths differ, not three) and
+  `scale_assumption`'s band for an ordinary character (`METER`, not `DECIMETER` — the property's
+  declared default of 1.0 is not what `create_human()` writes).
+- **Four measurements** that four decisions rested on, three of which had never been taken. The
+  round trip is 250 ms and not ~1.0 s; compile time for the largest generated program is 3.7 ms;
+  batching is worth 27x; all five skin types cost the same to build. All four decisions survive on
+  the corrected numbers. See
+  [review.md](review.md#do-the-three-payload-count-driven-decisions-still-hold).
+- **Seven candidate MPFB defects settled** — four confirmed, two refuted, one worse than described —
+  plus one found by accident that is the most serious of the set. All are reproduced by
+  `verification/check_mpfb_issues.py` and scoped for filing as
+  [FR 019](../../019-file-mpfb-defects/README.md).
+- **Six requests scoped out**, [FR 014](../../014-uniform-performed-flag/README.md) through
+  [FR 019](../../019-file-mpfb-defects/README.md), written before this one closed so the moment was not
+  lost.
+
+### What changed against this request
+
+**The two "cannot be automated" comparisons were automatable.** This request said
+[two checks cannot be automated and should not pretend to be](#pitfalls-the-run-will-hit) — "the
+same shape keys at the same weights as MPFB's own slider produces" and "indistinguishable from a
+garment equipped through the asset library panel" — and proposed doing them as UI-then-tool-then-diff
+with a kept snapshot. Both turned out to be exact diffs instead, because MPFB's panels are thin: the
+phenotype slider is a `FloatProperty` whose setter calls `TargetService.reapply_macro_details()`,
+and the asset library button calls the same `HumanService.add_mhclo_asset()` the tool calls. Driving
+the property or the operator *is* pressing the button. Nothing in this session needed a screenshot.
+
+What genuinely cannot be automated from a running session is different and narrower: anything
+depending on `ui/model/_modelsubpanels.py`'s category table, which is built at *module import time*.
+That needed the Blender restart this request budgeted for, and it closed
+[FR 008](../008-detail-targets/README.md#verification-status)'s last item — one `.target.gz`
+really does become two shape keys on one mesh, at two different values.
+
+**The restart also caused an outage, and that is the session's most serious finding.** Leaving the
+over-60-character probe target on disk across the restart prevented MPFB from registering at all:
+`_modelsubpanels.py` registers each synthesized category as a Scene property named
+`"custom_" + name`, Blender rejects an identifier over 63 characters, and the `ValueError`
+propagates out of MPFB's `register()`. The harness now keeps that probe within a single checklist
+run (`fixtures.SAFE_AT_STARTUP`), and the defect is reproduced safely by
+`check_mpfb_issues.py` rather than by breaking an install.
+
+**[FR-2](#fr-2-two-characters-one-session)'s "build once" is implemented but only partly used, and
+that is a correction rather than a shortfall.** `fixtures.ensure_character_a()` is idempotent and
+advances a character through MPFB's documented order from whatever stage it is at, and
+`build_character_b()` builds the wrongly-ordered one; both exist and both are used. But most
+checklists build their own purpose-named characters instead, because
+[FR-1](#fr-1-a-harness-that-can-be-run-again)'s requirement — that re-running one checklist after a
+fix is one command — turns out to matter more than the saving. A script that depends on another
+script having run is not one command. The saving FR-2 was really after is delivered a different
+way: character-building is automatic, so it costs seconds rather than a manual rebuild, and the
+full sequence runs end to end in about seven minutes.
+
+**The harness's own correctness was established by accident rather than by design, and better.**
+This request asks for each checklist to be pointed at a deliberately broken call once, "since a
+harness that cannot fail proves nothing". That was not needed: four checks failed against real
+defects on their first run — the body-proxy hide modifier, the macro naming, the dry run's
+`targets`, and the proxy divergence assertion that turned out to assert the wrong thing — and each
+one went green only after the corresponding fix. A harness that caught four genuine failures has
+demonstrated more than one pointed at a fake.
+
+**[FR-5](#fr-5-classify-every-finding-and-fix-only-one-class-here)'s re-run discipline was
+followed.** Every fix invalidated the checks that preceded it, so the full sequence was run twice
+end to end — once mid-session after the three fixes, and once against the restarted Blender — and
+both runs produce the same lines. The individual checklists were also re-run singly after each fix,
+which is the thing this request exists to make cheap: a re-run is one command.
+
+**One observation about [FR 012](../012-observability/README.md) that belongs to it rather than
+here.** Its `ms` column measures the round trip including whatever else the machine is doing:
+mid-session, `add_rig` moved from ~2.2 s to ~8.0 s for about fifteen minutes and back, with small
+probes unaffected and no change to the program. Every figure in
+[review.md](review.md#do-the-three-payload-count-driven-decisions-still-hold) is a median taken
+outside that window. Per
+[What this effort may change](#what-this-effort-may-change), no correction was made to FR 012; the
+observation is recorded in
+[its verification status](../012-observability/README.md#verification-status).
+
+### What could not be reverted
+
+As named up front, and nothing beyond it. MPFB's asset-list cache and its loaded previews; the
+alternative-material cache, which this session filled with its own scans — and which, it turns out,
+*can* be invalidated ([FR 018](../../018-alternative-material-refresh/README.md)). Everything else was
+put back: all twelve datablock collections compare identical after every checklist,
+`enhanced_settings.default.json` was moved aside to observe its creation and restored, the probe
+`.mhmat` written beside an asset was deleted, and the three probe targets were removed. The
+`.blend` was never saved by anything in `verification/`.

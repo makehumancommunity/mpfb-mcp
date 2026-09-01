@@ -185,7 +185,9 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   "leave unchanged" — which is what makes a relative change a single call. Writes every named
   property, then recalculates the macro target stack **once** through
   `TargetService.reapply_macro_details()`: MPFB's own interpolation, never a reimplementation of
-  it, so that a character modified here matches one modified through MPFB's phenotype panel.
+  it, so that a character modified here matches one modified through MPFB's phenotype panel —
+  **verified live**, and exactly: the same 21 shape keys at the same values to six decimals as the
+  panel's own slider produces.
   Reports the prior value beside the new one per slider, the shape keys removed and added, and —
   when `refit` was left at MPFB's own default of false — what is now fitted to the old shape (see
   [A mutating tool reports before and after](architecture.md#a-mutating-tool-reports-before-and-after)).
@@ -209,8 +211,9 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   levels: `modifiers` for the category level, which is what keeps a character consistent, and
   `targets` for the raw shape-key level, which is the only way to reach a user-installed target and
   which takes the `shapekey_name` `mpfb_list_targets` reports (not the filename — the two differ
-  for a long name, silently). **Batched**, because a round trip costs about a second and the work
-  inside costs milliseconds, and **all-or-nothing**: everything is resolved before anything is
+  for a long name, silently). **Batched**, and by a larger margin than that decision claimed:
+  thirty modifier changes cost 3.6 s in one call and 98.4 s in thirty, of which only 7.5 s is
+  transport — most of the rest is thirty rebuilds of MPFB's category table. **All-or-nothing**: everything is resolved before anything is
   written, and one bad entry applies none of them (see
   [A batched mutating tool resolves before it writes](architecture.md#a-batched-mutating-tool-resolves-before-it-writes)).
   Follows `_set_opposed_modifier_value()` statement for statement, including its ordering, so the
@@ -243,7 +246,8 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   otherwise see: the object's actual name (Blender uniquifies a second copy to `…hat.001`, and that
   name is what `mpfb_remove_asset` needs), the delete group and which objects got a mask for it,
   whether a material was built at all, the sub-rig, and a `warnings` list for the four things MPFB
-  only logs. It is the other end of
+  only logs. **Verified live**: a garment equipped this way is identical to one equipped through
+  MPFB's asset library panel down to the vertex positions, and all eight asset types were added. It is the other end of
   [A tool reports an ordering constraint it cannot enforce](architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
   from `mpfb_add_rig`: `rigged_to` is `null` with `parented_to` beside it when the character had no
   rig at the moment of attachment. For a `Proxymeshes` asset it follows `_check_add_proxy()` — the
@@ -269,7 +273,10 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   same skin and nothing else would tell the caller a second object changed. The dimension the
   original one-line entry did not mention at all is `skin_type`: `MAKESKIN`, `GAMEENGINE`,
   `ENHANCED`, `ENHANCED_SSS` or `LAYERED`, which are five entirely different node trees built from
-  the same MHMAT, and the choice costs more than the file does. Two of MPFB's defaults are followed
+  the same MHMAT — **verified live**: each produces the node tree MPFB's own skin library panel
+  produces for the same file, node for node. The choice is about the look and not about the cost:
+  all five build within 33 ms of each other, and MPFB's warning that `LAYERED` is unsuitable for
+  animation is about render time. Two of MPFB's defaults are followed
   from its **settings panel rather than the function signature**, per
   [Where MPFB's UI coerces or re-defaults a service argument](architecture.md#where-mpfbs-ui-coerces-or-re-defaults-a-service-argument-mpfb-mcp-does-the-same-and-reports-both):
   `skin_type` defaults to `MAKESKIN` and not `ENHANCED_SSS`, and `material_instances` is coerced
@@ -278,7 +285,9 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   Blender would show: `materials_destroyed`, because the call deletes every material on the body and
   the proxy, node groups included, with no undo across the socket; `settings_file_created`, the one
   file this package ever writes outside the `.blend`; and `scale_assumption`, which the enhanced
-  types derive from the character's `scale_factor` and which changes the subsurface radii.
+  types derive from the character's `scale_factor` and which changes the subsurface radii — `METER`
+  for a character MPFB built, whose `scale_factor` is 0.1, whatever the property's declared default
+  says.
 - `mpfb_set_asset_material` — swap an equipped asset's material for one of the alternatives shipped
   beside it, or put its own back. **Implemented**, and the one tool here with **no service function
   to wrap**: the mechanism lives entirely in MPFB's asset library operator, so both of its helpers
@@ -294,7 +303,9 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   caller name the function: `add_builtin_rig()` and `add_custom_rig()` are not interchangeable and
   crossing them does not fail legibly. Calls MPFB's own functions and reimplements none of the
   naming, parenting, weight-fallback or Rigify bookkeeping, so the result matches what MPFB's three
-  "Add ... rig" buttons produce. Reports what the caller could not otherwise see: which weights
+  "Add ... rig" buttons produce — **verified live**: the same 163 bones, the same bone names, the
+  same vertex-group count, the same total vertex weight and the same parenting as
+  `mpfb.add_standard_rig` produces. Reports what the caller could not otherwise see: which weights
   file was actually used and whose it was, whether an armature modifier was added, and that both
   adding functions **move the basemesh to the origin** and hand the armature its old location. Its
   five refusals are answers rather than exceptions (see

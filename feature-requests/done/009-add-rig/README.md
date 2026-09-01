@@ -285,7 +285,86 @@ and here the mutations are large, so a fresh file per case is the practical form
   long adding a weighted rig takes, and how long Rigify generation takes on a dressed character.
   Generation is expected to be much the slowest operation mpfb-mcp performs.
 
-Record the outcome in a `## Verification status` section here.
+Record the outcome in a `## Verification status
+
+**Implemented, unit-tested and live-verified (2026-09-01)**, by
+[FR 013](../013-live-verification/README.md)'s session, against Blender 5.1.0 with MPFB 2.0.17
+running `FROM_SOURCE` out of `../mpfb2`, with Rigify enabled and three real custom rigs installed.
+It is now a script: [verification/check_fr009.py](../../../verification/check_fr009.py).
+
+[FR 004](../004-list-rigs/README.md)'s verification, which this effort's `rig_lookup.py` migration
+made stale, was re-run in the same session and is green again; see
+[its status](../004-list-rigs/README.md#verification-status).
+
+Every scene mutation was reverted — all twelve datablock collections plus `bpy.data.is_dirty`
+compare **identical** before and after — including the `WGTS_<rig>` widget collection Rigify
+generation leaves behind, which the harness purges along with the widget objects. The `.blend` was
+never saved.
+
+### What changed against this request
+
+**The ordering constraint is confirmed, and it is the sharpest result of the session.** Character
+B was dressed and *then* rigged; Character A's counterpart was rigged and then dressed. The
+garment on the wrongly-ordered character has **no armature modifier and 0 weighted vertices**; the
+correctly-ordered one has an `Armature` modifier and **285 weighted vertices**. That claim — that
+MPFB rigs a garment only if a rig exists at the moment it is attached, and nothing rigs it
+afterwards — is what
+[A tool reports an ordering constraint it cannot enforce](../../../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
+is built on, and until now it was a reading of MPFB's source. It is now an observation. Recorded
+from the other end in [FR 010's status](../010-mesh-assets/README.md#verification-status) too,
+since that is the checklist that produced the fixture.
+
+**One candidate mpfb2 defect this request filed is refuted.** `RigService.identify_rig()` cannot
+return `None`: it ends with an `if guessed_rig is None:` block that assigns `"unknown"`,
+`"rigify.unknown"` or `"rigify_generated.unknown"`. Provoked against an armature whose only bone
+matches nothing MPFB knows, it returned `"unknown"`, and
+`MPFB_OT_GenerateRigifyRigOperator.poll()` returned `False` rather than raising. The
+`not_a_metarig` handling in `payloads/generate_rigify_rig.py` is still right — it is the answer for
+`"unknown"` — but the reason given for it was wrong.
+
+A *different* defect was found while provoking it, and is worth filing:
+`ObjectService.object_is_rigify_metarig()` reads `blender_object.pose.bones` without checking, and
+an armature object created through `bpy.data.objects.new()` has `pose` set to `None` until the
+depsgraph has seen it, so `identify_rig()` raises `AttributeError` on it.
+
+**The `rigify_colors` assertion cannot be provoked from outside MPFB.** This request asked
+whether it can be at all. On an install with Rigify enabled, the colour set is populated by
+Rigify's own theme code during armature creation — 6 colours were observed on a freshly added meta
+rig — so `assert len(...rigify_colors) > 0` cannot fail; and with Rigify disabled,
+`mpfb_add_rig` refuses before reaching it. The stray-object report the payload carries remains
+correct and remains unreachable, which is the honest description of it.
+
+### Checklist
+
+- [x] **A rig added through this tool is indistinguishable from one added through MPFB's panel.**
+      `mpfb.add_standard_rig` and `mpfb_add_rig` were each given `default` on a fresh character:
+      identical bone count (163), identical bone-name set, identical vertex-group count, identical
+      total vertex weight (65237.992), same armature modifier name, same parenting, same basemesh
+      location.
+- [x] **The ordering constraint, observed.** Dressed-then-rigged: `armature_modifier: null`, 0
+      weighted vertices. Rigged-then-dressed: `Armature`, 285 weighted vertices, and
+      `mpfb_add_asset` reported `rigged_to: "RightOrderCharacter.rig"`.
+- [x] A second rig is refused rather than added: `added: false`,
+      `blocked_by: "already_rigged"`, and the character still has exactly one armature.
+- [x] **The full Rigify sequence in both orders.** Meta rig → clothes → generate: the garment is
+      re-parented onto the generated rig and its armature modifier retargeted to it, and
+      `is_metarig`/`next_step` said so in advance. Generate → clothes: the asset is rigged to the
+      generated rig but `warnings` names the real problem — that
+      `RigifyHelpers.adjust_children_for_rigify()` handled only what was present at generation and
+      will not run again.
+- [x] The `rigify_colors` assertion: **not provokable on this install**, for the reason above.
+      Reported rather than ticked off as an untested branch.
+- [x] `meta_rig_action: "delete"` forecloses the refit: `refit_will_be_possible: false`, and the
+      following `mpfb_refit_human` returns `refit_performed: false` with an
+      `refit_incomplete_reason` naming the generated rig — while still reporting the one mesh asset
+      it did refit. This is also the first live check of that branch of
+      [FR 007](../007-macro-details/README.md).
+- [x] An armature `identify_rig()` cannot place is refused rather than crashing:
+      `generated: false`, `blocked_by: "not_a_metarig"`, with a message naming what it found.
+- [x] Cost: adding `default` 2169 ms, adding `rigify.human_toes` 2214 ms, generating on a dressed
+      character 1429 ms — see
+      [FR-8's measurements](../013-live-verification/review.md#do-the-three-payload-count-driven-decisions-still-hold).
+- [x] Revert: all twelve datablock collections identical, `is_dirty` false before and after.
 
 ## References
 

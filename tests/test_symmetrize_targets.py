@@ -225,6 +225,21 @@ class GeneratedSymmetrizeTargetsTests(DetailTargetTestCase):
               entry["destination_value_before"], entry["destination_value_after"])
              for entry in real["changed"]])
 
+    def test_a_dry_run_leaves_the_per_target_list_null_rather_than_empty(self):
+        # The one thing a dry run genuinely cannot report: which target files a
+        # write would touch depends on whether the opposing target is already on
+        # the mesh, which is only settled by doing the write. `[]` would say "no
+        # shape keys would be touched" - a different claim, and a false one.
+        self.asymmetric_character()
+
+        dry = self.run_symmetrize(dry_run=True)
+        real = self.run_symmetrize()
+
+        self.assertTrue(dry["changed"])
+        self.assertEqual([entry["targets"] for entry in dry["changed"]],
+                         [None] * len(dry["changed"]))
+        self.assertTrue(all(isinstance(entry["targets"], list) for entry in real["changed"]))
+
     def test_a_dry_run_reports_no_stale_assets(self):
         self.asymmetric_character()
 

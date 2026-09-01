@@ -132,7 +132,10 @@ def register(mcp: FastMCP) -> None:
 
         Returns blender_mcp's response envelope. `result` carries `changed` (per
         category: both sides' values before, the value after, and every target
-        file touched), `already_symmetric`, and `skipped` for a category whose
+        file touched - `targets` is `null` rather than `[]` under
+        `dry_run: true`, because which files a write would touch is only
+        knowable by doing the write), `already_symmetric`, and `skipped` for a
+        category whose
         target file could not be found - one unreachable target is reported
         rather than abandoning the rest of the body. A subject that cannot be
         resolved (`found: false`) and a basemesh in edit mode or without shape

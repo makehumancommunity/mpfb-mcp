@@ -355,7 +355,14 @@ else:
             for entry, _section_name, _category, source_value in planned:
                 reported = dict(entry)
                 reported["destination_value_after"] = round(source_value, 6)
-                reported["targets"] = []
+                # Null and not an empty list. Which target files a write would
+                # touch is only knowable by doing the write - a category's
+                # opposing target may or may not already be on the mesh - so a
+                # dry run has not computed this. An empty list would say "no
+                # shape keys would be touched", which is a different and false
+                # claim; see the response-shape rule in
+                # specifications/architecture.md.
+                reported["targets"] = None
                 changed.append(reported)
         elif planned:
             previous_active = bpy.context.view_layer.objects.active

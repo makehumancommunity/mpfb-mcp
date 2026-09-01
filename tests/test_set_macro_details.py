@@ -289,9 +289,11 @@ class GeneratedSetMacroDetailsTests(GeneratedCodeTestCase):
 
         result = self.run_set([self.change("race_asian", "asian", 0.0)])
 
-        self.assertIn("macrodetail-asian-female-young", result["macro_shapekeys_before"])
-        self.assertIn("macrodetail-asian-female-young", result["shapekeys_removed"])
-        self.assertNotIn("macrodetail-asian-female-young", result["macro_shapekeys_after"])
+        # Named as the shape keys on the mesh are named, so that a caller can
+        # look one up rather than only read it.
+        self.assertIn("$md-$as-$fe-$yn", result["macro_shapekeys_before"])
+        self.assertIn("$md-$as-$fe-$yn", result["shapekeys_removed"])
+        self.assertNotIn("$md-$as-$fe-$yn", result["macro_shapekeys_after"])
         self.assertTrue(result["shapekeys_added"])
         self.assertEqual(
             sorted(result["macro_shapekeys_after"]),
@@ -305,7 +307,7 @@ class GeneratedSetMacroDetailsTests(GeneratedCodeTestCase):
         result = self.run_set([self.change("race_asian", "asian", 0.0)], prune=False)
 
         self.assertEqual(result["shapekeys_removed"], [])
-        self.assertIn("macrodetail-asian-female-young", result["macro_shapekeys_after"])
+        self.assertIn("$md-$as-$fe-$yn", result["macro_shapekeys_after"])
 
     def test_edit_mode_is_an_answer_rather_than_an_assertion(self) -> None:
         # TargetService.create_shape_key() opens with a bare assert, which would

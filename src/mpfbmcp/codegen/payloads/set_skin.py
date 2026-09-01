@@ -63,9 +63,12 @@ Two facts are reported that nothing in Blender shows. The enhanced types copy
 absent - the only file this package ever writes outside the ``.blend`` - and the
 copy is gated on ``material_instances`` rather than on the skin type, so the
 default call writes nothing. And the enhanced types derive a scale name from the
-character's ``scale_factor``, which changes the subsurface radii; MPFB's own
-default of ``1.0`` lands on ``DECIMETER`` rather than ``METER``, because the
-first threshold is ``> 0.9``.
+character's ``scale_factor``, which changes the subsurface radii. Note where the
+bands actually fall, since the property's declared default is misleading: it
+declares ``1.0``, which is above the first threshold of ``> 0.9`` and would give
+``DECIMETER`` - but ``create_human()`` writes ``0.1`` onto every character it
+makes, so an ordinary character is below it and reports ``METER``. Observed
+live, not read off the property definition.
 """
 
 import os
@@ -184,9 +187,11 @@ def scale_assumption_for(basemesh):
     """MPFB's own scale detection, reproduced only to be able to report it.
 
     ``set_character_skin()`` runs exactly these comparisons inside its enhanced
-    branch and feeds the answer to the subsurface radii. Note the first
-    threshold: MPFB's default ``scale_factor`` of 1.0 is *above* 0.9, so an
-    ordinary character is treated as decimetre-scaled. Reported because a
+    branch and feeds the answer to the subsurface radii. Note where they fall on
+    a real character: ``create_human()`` writes a ``scale_factor`` of 0.1, which
+    is below the first threshold, so an ordinary character is treated as
+    metre-scaled. The property's *declared* default of 1.0 would give
+    ``DECIMETER`` and no character MPFB builds has it. Reported because a
     wrongly scaled character gets a subtly wrong skin and nothing else in the
     response would explain it.
     """

@@ -51,6 +51,20 @@ Immediately under the title there should be a single status line of the form:
 
 The status is one of: `Proposed`, `Accepted`, `In progress`, `Done`, `Rejected`.
 
+**A `Done` whose live verification is still outstanding must say so on the status line**, not
+only in a section further down. The form is:
+
+    **Status:** Done (live verification outstanding)
+
+This exists because five consecutive efforts reached plain `Done` with every character-modifying
+tool unverified against a running Blender; the fact was recorded honestly each time, in a
+`## Verification status` section nobody reading the status line would see, and the debt compounded
+until it was one large session rather than five small ones (see
+[FR 013](done/013-live-verification/README.md)). The cost of that session is now much lower — the
+checks are scripts under [verification/](../verification/) and re-running one is a command — so
+the qualifier should be rare. When it is used, the request must name what is outstanding and why,
+and the effort that clears it rewrites the section rather than adding a second one.
+
 Then there should be up to 20 lines of text (a soft guideline) describing the background,
 for example why the feature or change is desirable or what problem it intends to solve.
 
@@ -74,7 +88,10 @@ Then there should be the following sections, each under a level 2 heading (for e
   added. Note that mpfb-mcp's unit tests cannot exercise real MPFB behavior (see
   [architecture.md](../specifications/architecture.md)) — if the effort needs verification
   against a real Blender/MPFB instance, say so explicitly here rather than leaving it to be
-  discovered during implementation.
+  discovered during implementation. Where it does, the live check belongs in
+  [verification/](../verification/) as a script rather than in this file as a list of things
+  somebody should do by hand: a checklist that can be re-run after a fix is the difference
+  between a verification and a memory of one.
 - "References" (optional, when relevant): Web links, references to earlier commits,
   references to other local code repos or similar things.
 
@@ -85,7 +102,10 @@ A feature request moves through its status values as work proceeds. When the eff
 
 1. Fold the durable parts of the request — new or changed functional requirements,
    architectural decisions, vocabulary, etc. — into the relevant documents under
-   [specifications/](../specifications/)
+   [specifications/](../specifications/). A decision folded in should say what it rests on:
+   FR 013 found two standing decisions justified by readings of MPFB's source that the running
+   install did not support, and a decision whose stated reason is wrong is harder to revisit
+   than one that never gave a reason.
 2. Set the request's status line to `**Status:** Done` and **move the subdir into
    `feature-requests/done/`** (keeping its number and slug). The subdir is **kept**, not
    deleted: it stays as a record of what was planned and decided. Because `done/` is one

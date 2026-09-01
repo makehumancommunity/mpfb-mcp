@@ -153,7 +153,9 @@ def register(mcp: FastMCP) -> None:
         `found: true`, `result` carries `changed` (one `{name, previous, new}`
         per slider named), the full `macro_details` after the change,
         `race_sum`, `macro_shapekeys_before`/`_after` with `shapekeys_removed`
-        and `shapekeys_added`, `refit_performed`, and `basemesh_name`.
+        and `shapekeys_added` - all four naming shape keys as the mesh stores
+        them (`$md-$as-$fe-$yn`), so a name from here can be looked up rather
+        than only read - `refit_performed`, and `basemesh_name`.
 
         Two situations answer rather than fail, both with `changed: []`: a
         subject that cannot be resolved to a basemesh (`found: false`), and a
