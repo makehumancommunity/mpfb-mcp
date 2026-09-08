@@ -2,14 +2,18 @@
 Payload for ``mpfb_generate_rigify_rig``: turn a meta rig into a real one.
 
 Not a module of this package - this file is never imported here. It is read as
-a resource and executed inside Blender, on top of the raising bootstrap (see
-``mpfbmcp.codegen.assemble``). A linter will flag three names as undefined
-because the assembler binds them ahead of this file:
+a resource and executed inside Blender, on top of the raising bootstrap and the
+``performed.py`` shared fragment (see ``mpfbmcp.codegen.assemble``). A linter
+will flag four names as undefined because the assembler binds them ahead of
+this file:
 
 - ``PARAMS`` - the tool's arguments as plain JSON data: ``name`` (the subject),
   ``rig_name`` (the generated rig's basename, or None) and ``meta_rig_action``.
 - ``_MPFB_SERVICES`` - MPFB's SERVICES dict, from the raising bootstrap.
 - ``sys`` - already imported by that bootstrap (unused here, but bound).
+- ``with_performed()`` - from the shared fragment ``performed.py``, named by
+  every mutating payload. It stamps the uniform ``performed`` flag onto the
+  finished answer, in the last line of this file.
 
 **The subject is the meta rig, not the basemesh**, which makes this the one
 mutating tool here that does not resolve to a ``Basemesh``. It still accepts any
@@ -288,3 +292,9 @@ else:
         selection_restored=False,
         message="".join(message_parts),
     )
+
+
+# The verb is "generated", which is false when Rigify rejected the meta rig -
+# a ready: true answer that changed the scene without producing a rig. See
+# codegen/shared/performed.py.
+result = with_performed(result, result.get("generated", False))

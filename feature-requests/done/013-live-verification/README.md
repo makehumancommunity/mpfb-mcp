@@ -421,7 +421,7 @@ would take.
   plus one found by accident that is the most serious of the set. All are reproduced by
   `verification/check_mpfb_issues.py` and scoped for filing as
   [FR 019](../../019-file-mpfb-defects/README.md).
-- **Six requests scoped out**, [FR 014](../../014-uniform-performed-flag/README.md) through
+- **Six requests scoped out**, [FR 014](../014-uniform-performed-flag/README.md) through
   [FR 019](../../019-file-mpfb-defects/README.md), written before this one closed so the moment was not
   lost.
 

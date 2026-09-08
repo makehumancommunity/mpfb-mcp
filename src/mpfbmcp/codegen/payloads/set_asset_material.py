@@ -3,7 +3,7 @@ Payload for ``mpfb_set_asset_material``: swap an asset's material, MPFB's way.
 
 Not a module of this package - this file is never imported here. It is read as
 a resource and executed inside Blender, on top of the raising bootstrap (see
-``mpfbmcp.codegen.assemble``). A linter will flag three names as undefined
+``mpfbmcp.codegen.assemble``). A linter will flag four names as undefined
 because the assembler binds them ahead of this file:
 
 - ``PARAMS`` - the tool's arguments as plain JSON data: ``name``, ``path``,
@@ -12,6 +12,9 @@ because the assembler binds them ahead of this file:
 - ``sys`` - already imported by that bootstrap, and used here to reach
   ``GeneralObjectProperties``, the object-type vocabulary, and the two
   *entities* MPFB keeps at module level: ``MakeSkinMaterial`` and ``Mhclo``.
+- ``with_performed()`` - from the shared fragment ``performed.py``, named by
+  every mutating payload. It stamps the uniform ``performed`` flag onto the
+  finished answer, in the last line of this file.
 
 **Nothing here calls a service function that does this job, because there is
 none.** Alternative materials exist only in
@@ -428,3 +431,7 @@ else:
             diffuse_color_from=diffuse_color_from,
             message="".join(message_parts),
         )
+
+
+# The verb is "applied". See codegen/shared/performed.py.
+result = with_performed(result, result.get("applied", False))

@@ -1,4 +1,4 @@
-# A fourth shared code-generation fragment, and the census that found it
+# One more shared code-generation fragment, and the census that found it
 
 **Status:** Proposed
 
@@ -59,9 +59,12 @@ produce; where the two implementations differ in shape, the choice between them 
 decision, and whichever is chosen must be checked against the other's tests rather than replacing
 them.
 
-**The fragment must earn its place.** `codegen/shared/` has three files and a stated bar: a
+**The fragment must earn its place.** `codegen/shared/` has four files and a stated bar: a
 concept two or more payloads model identically, where two implementations disagreeing would be a
 bug rather than an inconsistency. Anything that does not clear that bar stays duplicated.
+(The directory slug still says "fourth": the fourth was
+[FR 014](../done/014-uniform-performed-flag/README.md)'s `performed.py`, which landed first. This one
+would be the fifth, and the slug is kept because a request keeps its number and slug.)
 
 ## Architecture
 
@@ -79,7 +82,7 @@ should not make that worse, and the two efforts should agree on which one touche
 ## Affected specifications
 
 - **[specifications/architecture.md](../../specifications/architecture.md)** —
-  [Shared fragments](../../specifications/architecture.md#shared-fragments) gains the fourth fragment
+  [Shared fragments](../../specifications/architecture.md#shared-fragments) gains this fragment
   and, more usefully, the census result: that sixteen duplications are identical and that being
   identical is not by itself a reason to merge.
 

@@ -785,6 +785,70 @@ The lifecycle changed too, since this effort is the one with standing to propose
 not only in a section further down. That is how five requests reached `Done` without anyone
 noticing the debt compounding.
 
+## [FR 014](done/014-uniform-performed-flag/README.md) — one name for "it happened", across the eleven mutating tools
+
+The first of the six requests scoped out of FR 013, and the smallest one whose justification is a
+measurement rather than a judgement. Every mutating tool already reported whether it had done the
+thing, under its own name: `added`, `applied`, `removed`, `generated`, `changed`, `recalculated`,
+`refit_performed`. Each reads well on its own. The set does not — reaching for the wrong name
+yields `None` rather than an error, so getting it wrong is silent, and
+[FR 013](done/013-live-verification/README.md)'s harness, written with the source open, guessed
+wrong on **three tools in one session**, each wrong guess turning a passing check into what looked
+like a tool defect. The refusal fields `found`, `ready` and `blocked_by` were uniform already and
+were never mis-read, which is what says the problem was the variation rather than the naming.
+
+Every mutating tool now also reports **`performed`**, a real boolean, true exactly when the
+character was changed. Nothing was renamed and nothing removed: a caller written against `added`
+still works, and `added: true` beside `asset_object_name` still reads better than `performed: true`
+would. The convention is
+[a section of its own in mutating-tools.md](../specifications/mutating-tools.md#the-flag-a-caller-branches-on-is-called-performed).
+
+**The request's own count was wrong, and correcting it is the interesting part.** It said twelve
+mutating tools and named nine verbs; there are **eleven** tools, and the two the list missed are
+exactly the two where the flag is *not* a rename of an existing field. `mpfb_create_human` has no
+verb at all — it creates a character or comes back as an error envelope. `mpfb_set_macro_details`'s
+verb is `recalculated`, and a call that names no slider returns `ready: true` having recalculated
+nothing, because [do only what was asked](../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after)
+makes a no-op a success rather than a refusal. A third case the request did anticipate:
+`mpfb_symmetrize_targets` under `dry_run: true` returns a populated `changed` and has written
+nothing. A fourth nobody anticipated turned up while the tests were written: `mpfb_set_targets`
+fails a whole batch on one bad entry and answers `ready: true` with an empty `applied`, which is
+the first thing a flag derived from `ready` alone would get wrong.
+
+So the flag is genuinely not the verb, four times over, and that is what makes this a request
+rather than a rename.
+
+**One place, not eleven.** `codegen/shared/performed.py` is the fourth shared fragment, and the
+first that binds nothing from the bootstrap and reads nothing out of MPFB — one function over a
+dict the payload has already finished building, which is what lets it be concatenated ahead of any
+payload. Each payload calls it once, on its last line, stamping the flag onto whichever answer the
+branches above it built: `set_asset_material.py` constructs eleven refusals and one success, and a
+key written twelve times is twelve chances to write it wrong in the branches nobody re-reads. The
+two universal falsehoods — a refusal and an unresolved subject are never performed — live in the
+fragment, so no call site has to remember them. Eleven `shared=[...]` arguments were added to
+`assemble()` calls the tool modules were already making; no shared code-generation module was
+edited, which is the property [architecture.md](../specifications/architecture.md#shared-fragments)
+asks a fragment to preserve. It also earns its place there on the same ground `rig_lookup.py` does:
+consequence, not size. Eleven implementations of the flag would be the original problem in a new
+spelling.
+
+**The verification is an audit rather than a checklist item.** The flag is computed on the near
+side of the socket, so the 701-test suite (up from 685) carries all of it — ten per-tool checks
+that `performed` matches that tool's verb, four exercising the fragment's function directly, and
+two in `test_codegen.py` pinning *which* payloads stamp it, in both directions. What unit tests
+cannot establish is that the variable a payload stamps from is the one live MPFB sets, since the
+stubs feed the verb and the flag from the same run. So `verification/harness.py` now wraps every
+mutating tool callable in an audit that compares the two on **every call any checklist already
+makes**, reported by `Report.summary()` as one more item per checklist. No check script was edited:
+the request asked for something "nearly free", and this is stronger than a per-call-site assertion
+would have been, because it also covers the calls a checklist makes as setup rather than as its
+subject.
+
+The eleven tool docstrings gained a short paragraph saying to branch on `performed` and read the
+verb — about 1.5 KB against the description budget
+[FR 016](016-trim-tool-descriptions/README.md) wants to shrink, which is the trade that request
+already names: rationale out, field names in.
+
 ## [FR 020](done/020-trim-claude-md/README.md) — the root CLAUDE.md trimmed, and the rule that keeps it trimmed
 
 The second effort that adds no tool. The root [CLAUDE.md](../CLAUDE.md) had reached **704 lines**

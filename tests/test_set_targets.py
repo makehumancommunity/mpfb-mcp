@@ -197,7 +197,7 @@ class GeneratedSetTargetsTests(DetailTargetTestCase):
             {"name": name, "modifiers": list(modifiers), "targets": list(targets),
              "symmetry": symmetry, "prune": prune, "refit": refit},
             scene_objects=self.objects, active=active,
-            shared=["target_categories.py"])
+            shared=["target_categories.py", "performed.py"])
 
     @staticmethod
     def modifier(section, category, value, side=None):
@@ -731,6 +731,29 @@ class GeneratedSetTargetsTests(DetailTargetTestCase):
         self.assertIn("generated Rigify rig", result["refit_incomplete_reason"])
         self.assertEqual(StubHumanService.refit_calls, ["Human"])
         self.assertIsNotNone(result["assets_possibly_stale"])
+
+    # --- the uniform "it happened" flag -------------------------------------
+
+    def test_performed_is_true_only_when_something_was_applied(self):
+        self.build_character()
+
+        applied = self.run_set([self.modifier("chin", "chin-triangle", 0.5)])
+        self.assertTrue(applied["applied"])
+        self.assertIs(applied["performed"], True)
+
+        # Named nothing: a ready: true answer that wrote nothing.
+        nothing = self.run_set()
+        self.assertTrue(nothing["ready"])
+        self.assertIs(nothing["performed"], False)
+
+        # One unresolvable entry fails the whole batch, so the answer is
+        # ready: true with an empty "applied" - the case a flag read off
+        # "ready" alone would get wrong.
+        rejected = self.run_set([self.modifier("chin", "no-such-category", 0.5)])
+        self.assertTrue(rejected["ready"])
+        self.assertTrue(rejected["resolution_errors"])
+        self.assertEqual(rejected["applied"], [])
+        self.assertIs(rejected["performed"], False)
 
 
 if __name__ == "__main__":

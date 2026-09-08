@@ -3,13 +3,16 @@ Payload for ``mpfb_add_rig``: attach a rig, and report what that cost.
 
 Not a module of this package - this file is never imported here. It is read as
 a resource and executed inside Blender, on top of the raising bootstrap (see
-``mpfbmcp.codegen.assemble``). A linter will flag three names as undefined
+``mpfbmcp.codegen.assemble``). A linter will flag four names as undefined
 because the assembler binds them ahead of this file:
 
 - ``PARAMS`` - the tool's arguments as plain JSON data: ``name``, ``identifier``
   and ``import_weights``.
 - ``_MPFB_SERVICES`` - MPFB's SERVICES dict, from the raising bootstrap.
 - ``sys`` - already imported by that bootstrap (unused here, but bound).
+- ``with_performed()`` - from the shared fragment ``performed.py``, named by
+  every mutating payload. It stamps the uniform ``performed`` flag onto the
+  finished answer, in the last line of this file.
 
 ...and a further set because they come from the shared fragment
 ``rig_lookup.py``, concatenated ahead of this file: ``as_path()``,
@@ -412,3 +415,7 @@ else:
             subrigs_not_rigged=subrigs_not_rigged,
             message="".join(message_parts),
         )
+
+
+# The verb is "added". See codegen/shared/performed.py.
+result = with_performed(result, result.get("added", False))

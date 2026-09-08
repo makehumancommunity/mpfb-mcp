@@ -68,12 +68,16 @@ class ArgumentValidationTests(unittest.TestCase):
                 self.tool(name=None)
         send_code.assert_not_called()
 
-    def test_no_shared_fragment_is_named(self):
-        # Removal needs no section table: the object records its own type.
+    def test_performed_py_is_the_only_shared_fragment_named(self):
+        # Removal needs no section table: the object records its own type. The
+        # one fragment it does name is the uniform "it happened" flag every
+        # mutating tool carries.
         with mock.patch.object(remove_asset, "send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(name="Human.fedora")
-        self.assertNotIn("# --- shared:", send_code.call_args[0][0])
+        source = send_code.call_args[0][0]
+        self.assertIn("# --- shared: performed.py ---", source)
+        self.assertEqual(source.count("# --- shared:"), 1)
 
     def test_response_envelope_is_returned_unchanged(self):
         envelope = {"status": "error", "message": "no MPFB"}
@@ -101,7 +105,7 @@ class GeneratedCodeTests(MeshAssetTestCase):
         result = self.run_payload(
             "add_asset.py", arguments, scene_objects=self.objects,
             all_objects=self.objects, active=self.basemesh,
-            shared=["asset_sections.py"])
+            shared=["asset_sections.py", "performed.py"])
         self.objects = list(StubObjectService.all_objects)
         return result
 
@@ -109,7 +113,7 @@ class GeneratedCodeTests(MeshAssetTestCase):
         result = self.run_payload(
             "remove_asset.py", {"name": name},
             scene_objects=self.objects, all_objects=self.objects,
-            active=self.basemesh, context_mode=context_mode)
+            active=self.basemesh, context_mode=context_mode, shared=["performed.py"])
         self.objects = list(StubObjectService.all_objects)
         return result
 
@@ -285,6 +289,21 @@ class GeneratedCodeTests(MeshAssetTestCase):
         self.assertEqual(
             [modifier.name for modifier in self.basemesh.modifiers],
             ["Hide helpers", "Renamed by hand"])
+
+    # --- the uniform "it happened" flag -------------------------------------
+
+    def test_performed_tracks_removed(self):
+        self.build_character()
+        equipped = self.equip(self.fedora)["asset_object_name"]
+
+        removed = self.run_remove(equipped)
+        self.assertIs(removed["performed"], True)
+        self.assertEqual(removed["performed"], removed["removed"])
+
+        refused = self.run_remove("Nope")
+        self.assertEqual(refused["blocked_by"], "not_found")
+        self.assertIs(refused["performed"], False)
+        self.assertEqual(refused["performed"], refused["removed"])
 
 
 if __name__ == "__main__":

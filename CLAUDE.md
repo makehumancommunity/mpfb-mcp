@@ -142,7 +142,7 @@ map, and carries only what is not stated there or in its sibling specifications.
 | [codegen/](src/mpfbmcp/codegen) | Assembles the source executed inside Blender, in a fixed order: bootstrap, parameter prelude, optional shared fragments, payload. One entry point: `codegen.assemble("create_human.py", bootstrap="raising", params={...}, shared=["rig_lookup.py"])`. ([rationale](specifications/architecture.md#code-generation-layout)) |
 | [codegen/bootstrap.py](src/mpfbmcp/codegen/bootstrap.py) | The only shared part still written as a string. `_MPFB_MODULE_SCAN` is the `sys.modules` scan that finds MPFB whatever extension repo it was installed from; `MPFB_BOOTSTRAP` raises unless MPFB is fully initialized, `MPFB_STATUS_BOOTSTRAP` never raises and classifies the install instead. Reuse one of the two for any new tool; **never resolve a service by importing an MPFB submodule.** ([rationale](specifications/architecture.md#resolving-mpfb-from-generated-code)) |
 | [codegen/payloads/](src/mpfbmcp/codegen/payloads) | One ordinary `.py` per tool, named for its tool module. Not modules of this package, never imported here, read as package resources — the directory has no `__init__.py` and `pyproject.toml` declares them as package data *and* sets `namespaces = false`. Each payload's docstring names the assembler-bound names it relies on, since a linter flags those as undefined. ([rationale](specifications/architecture.md#code-generation-layout)) |
-| [codegen/shared/](src/mpfbmcp/codegen/shared) | **Three fragments**, for concepts two or more payloads model identically: `target_categories.py` (MPFB's modeling-category table, used by the three detail-target tools), `rig_lookup.py` (which rig file and whose weights, used by `list_rigs` and `add_rig`), `asset_sections.py` (MPFB's `ASSET_LIBRARY_SECTIONS` table, used by the asset and material tools). A *sibling* of `payloads/` with a package-data glob of its own, because such a glob does not descend. ([rationale](specifications/architecture.md#shared-fragments)) |
+| [codegen/shared/](src/mpfbmcp/codegen/shared) | **Four fragments**, for concepts two or more payloads model identically: `target_categories.py` (MPFB's modeling-category table, used by the three detail-target tools), `rig_lookup.py` (which rig file and whose weights, used by `list_rigs` and `add_rig`), `asset_sections.py` (MPFB's `ASSET_LIBRARY_SECTIONS` table, used by the asset and material tools), `performed.py` (the uniform `performed` flag, named by all eleven mutating tools and the only fragment that binds nothing from the bootstrap). A *sibling* of `payloads/` with a package-data glob of its own, because such a glob does not descend. ([rationale](specifications/architecture.md#shared-fragments)) |
 | [tools/](src/mpfbmcp/tools) | One module per MCP tool, each with `register(mcp)`. See the tool table below. ([rationale](specifications/architecture.md#one-module-per-tool)) |
 | [__init__.py](src/mpfbmcp/__init__.py) | `main()`: builds the `FastMCP` server, calls each tool module's `register()`, runs over stdio. |
 
@@ -208,7 +208,7 @@ These are the specific local checks, and each exists because the alternative fai
 
 ## Tests
 
-Stdlib `unittest`, no pytest, 685 tests. Two layers per tool: the wrapper with `send_code`
+Stdlib `unittest`, no pytest, 701 tests. Two layers per tool: the wrapper with `send_code`
 mocked, then the assembled source `exec()`'d against stub Blender and stub MPFB services.
 **Read [specifications/testing.md](specifications/testing.md) before adding or changing a
 test** — in particular the rule that stubs reproduce MPFB's real behaviour rather than
@@ -220,7 +220,7 @@ convenient values, and the list of what the suite can never establish.
 | [blender_stubs.py](tests/blender_stubs.py) | No tests. The stub scene and stub services every payload below is executed against, plus the shared `GeneratedCodeTestCase`, `DetailTargetTestCase`, `RigTestCase` and `MeshAssetTestCase`. Its docstring enumerates every MPFB quirk it reproduces and why. |
 | [test_connection.py](tests/test_connection.py) | The wire protocol: framing, error envelopes, host/port env vars. |
 | [test_observability.py](tests/test_observability.py) | The one component fully testable on this side of the socket, and held to a higher bar accordingly. |
-| [test_codegen.py](tests/test_codegen.py) | Assembly: every payload compiles standalone, the right bootstrap is selected, `PARAMS` round-trips. |
+| [test_codegen.py](tests/test_codegen.py) | Assembly: every payload compiles standalone, the right bootstrap is selected, `PARAMS` round-trips. Also `performed.py`'s one function, run directly, and which payloads stamp its flag. |
 | [test_create_human.py](tests/test_create_human.py) | Parameter validation and generated source, `send_code` mocked. |
 | [test_get_status.py](tests/test_get_status.py) | The three-state branching, `exec()`'d against stubbed `bpy` and `sys.modules` entries. |
 | [test_list_objects.py](tests/test_list_objects.py), [test_get_object_info.py](tests/test_get_object_info.py) | Subject resolution by name and by active object, the relationship walk, three `asset_info` shapes. |

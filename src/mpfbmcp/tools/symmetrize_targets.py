@@ -140,11 +140,16 @@ def register(mcp: FastMCP) -> None:
         rather than abandoning the rest of the body. A subject that cannot be
         resolved (`found: false`) and a basemesh in edit mode or without shape
         keys (`ready: false`) are answers, not errors.
+
+        **Branch on `performed`.** Every mutating tool here reports that field
+        under the same name, a real boolean, true exactly when the character was
+        changed. Under `dry_run: true` it is false even though `changed` has
+        entries in it: those are the writes that *would* happen.
         """
         code = codegen.assemble(
             "symmetrize_targets.py",
             bootstrap="raising",
-            shared=["target_categories.py"],
+            shared=["target_categories.py", "performed.py"],
             params={
                 "name": _validated_name(name),
                 "direction": _validated_direction(direction),

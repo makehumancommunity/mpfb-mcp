@@ -103,7 +103,7 @@ class GeneratedRefitHumanTests(GeneratedCodeTestCase):
     def run_refit(self, name="Human", active=None):
         return self.run_payload(
             "refit_human.py", {"name": name},
-            scene_objects=self.objects, active=active)
+            scene_objects=self.objects, active=active, shared=["performed.py"])
 
     def test_a_rigged_dressed_character_is_refitted(self) -> None:
         self.build_character(garments=("Shirt", "Shoes"), subrigs=("Shirt.rig",))
@@ -248,6 +248,34 @@ class GeneratedRefitHumanTests(GeneratedCodeTestCase):
         self.assertFalse(self.basemesh.select_get())
         self.assertIs(self.last_bpy.context.view_layer.objects.active, self.garments[0])
 
+    # --- the uniform "it happened" flag -------------------------------------
+
+    def test_performed_is_set_from_refit_performed(self) -> None:
+        # Including the case the two could most easily disagree about: a
+        # generated Rigify rig with no meta rig is ready: true, refits the mesh
+        # assets, and leaves the rig - which is not "performed".
+        self.build_character()
+        refitted = self.run_refit()
+        self.assertIs(refitted["performed"], True)
+        self.assertEqual(refitted["performed"], refitted["refit_performed"])
+
+        self.build_character(rig=False)
+        rigify = StubObject("RIG-human", blender_type="ARMATURE", object_type="Skeleton",
+                            rig_id="abc123")
+        self.basemesh.parent = rigify
+        self.garments[0].parent = rigify
+        self.objects = [rigify] + self.objects
+        partial = self.run_refit("Human")
+        self.assertTrue(partial["ready"])
+        self.assertIs(partial["performed"], False)
+        self.assertEqual(partial["performed"], partial["refit_performed"])
+
+        self.build_character(mode="EDIT")
+        blocked = self.run_refit()
+        self.assertEqual(blocked["blocked_by"], "not_object_mode")
+        self.assertIs(blocked["performed"], False)
+        self.assertEqual(blocked["performed"], blocked["refit_performed"])
+
 
 def _params_in(code: str) -> dict:
     """The PARAMS the generated source will bind, by executing its prelude."""
@@ -257,7 +285,6 @@ def _params_in(code: str) -> dict:
     namespace: dict = {}
     exec(prelude[prelude.index("import json"):], namespace)  # noqa: S102
     return namespace["PARAMS"]
-
 
 if __name__ == "__main__":
     unittest.main()

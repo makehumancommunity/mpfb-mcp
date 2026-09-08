@@ -66,7 +66,7 @@ writes its full result - the printed lines are capped, the file is not - into
 
 | File | What it is |
 |------|------------|
-| `harness.py` | Tool callables, the scratch scene, snapshot/compare, the probe channel into Blender, and the pass/fail report |
+| `harness.py` | Tool callables, the scratch scene, snapshot/compare, the probe channel into Blender, and the pass/fail report. The mutating tool callables come back wrapped in the `performed` audit, so every checklist gets that check on the calls it already makes and reports it in its summary |
 | `fixtures.py` | The install check, the probe targets, and the characters - `ensure_character_a` is idempotent, so a checklist run alone builds exactly as much as it needs |
 | `check_fr0NN.py` | One script per checklist, each self-sufficient |
 | `measure.py` | FR-8's four measurements |

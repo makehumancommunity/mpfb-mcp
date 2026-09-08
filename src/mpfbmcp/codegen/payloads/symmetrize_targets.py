@@ -13,6 +13,9 @@ ahead of this file:
 - ``TARGET_SECTIONS``, ``KNOWN_SECTIONS``, ``find_section``,
   ``category_is_opposed``, ``target_names_for``, ``resolve_target_path`` - from
   the shared fragment, whose docstring explains what a category is.
+- ``with_performed()`` - from the shared fragment ``performed.py``, named by
+  every mutating payload. It stamps the uniform ``performed`` flag onto the
+  finished answer, in the last line of this file.
 
 **MPFB has no equivalent of this operation.** Its ``symmetry`` setting only
 affects changes made while it is switched on - its own property description says
@@ -460,3 +463,9 @@ else:
             ),
             message="".join(message_parts),
         )
+
+
+# The one tool whose verb is not enough on its own: a dry run reports the
+# changes it would make in "changed" and writes none of them. See
+# codegen/shared/performed.py.
+result = with_performed(result, result.get("changed") and not result.get("dry_run"))

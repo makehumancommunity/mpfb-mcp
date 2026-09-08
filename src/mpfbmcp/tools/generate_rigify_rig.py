@@ -150,10 +150,16 @@ def register(mcp: FastMCP) -> None:
         character is already on a generated rig - generation moved it there, so
         its meta rig is no longer among its relatives); `rigify_unavailable`;
         and `not_object_mode`.
+
+        **Branch on `performed`.** Every mutating tool here reports that field
+        under the same name, a real boolean, true exactly when the character was
+        changed. It equals `generated` here - and as above, `generated: false`
+        still does not mean nothing happened to the scene.
         """
         code = codegen.assemble(
             "generate_rigify_rig.py",
             bootstrap="raising",
+            shared=["performed.py"],
             params={
                 "name": _validated_name(name),
                 "rig_name": _validated_rig_name(rig_name),

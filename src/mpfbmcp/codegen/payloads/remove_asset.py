@@ -2,15 +2,19 @@
 Payload for ``mpfb_remove_asset``: unload one MHCLO asset, and say what is left.
 
 Not a module of this package - this file is never imported here. It is read as
-a resource and executed inside Blender, on top of the raising bootstrap (see
-``mpfbmcp.codegen.assemble``). A linter will flag three names as undefined
-because the assembler binds them ahead of this file:
+a resource and executed inside Blender, on top of the raising bootstrap and the
+``performed.py`` shared fragment (see ``mpfbmcp.codegen.assemble``). A linter
+will flag four names as undefined because the assembler binds them ahead of
+this file:
 
 - ``PARAMS`` - the tool's arguments as plain JSON data: ``name``.
 - ``_MPFB_SERVICES`` - MPFB's SERVICES dict, from the raising bootstrap.
 - ``sys`` - already imported by that bootstrap, and used here to reach the
   object-type vocabulary and ``GeneralObjectProperties`` off ObjectService's
   module.
+- ``with_performed()`` - from the shared fragment ``performed.py``, named by
+  every mutating payload. It stamps the uniform ``performed`` flag onto the
+  finished answer, in the last line of this file.
 
 **Everything reported is read before anything is deleted.** The object's name,
 type and ``asset_source`` are gone the moment ``bpy.data.objects.remove()``
@@ -298,3 +302,7 @@ else:
         mesh_data_orphaned=mesh_data_name,
         message="".join(message_parts),
     )
+
+
+# The verb is "removed". See codegen/shared/performed.py.
+result = with_performed(result, result.get("removed", False))

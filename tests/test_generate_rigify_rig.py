@@ -65,10 +65,14 @@ class ArgumentValidationTests(unittest.TestCase):
         self.assertIn(
             json.dumps({"name": None, "rig_name": None, "meta_rig_action": "hide"}), source)
 
-    def test_no_shared_fragment_is_sent(self):
-        # This payload resolves nothing off the rig directories, so it needs
-        # none - and naming one it did not use would be noise in the program.
-        self.assertNotIn("# --- shared:", self._sent_source())
+    def test_performed_py_is_the_only_shared_fragment_sent(self):
+        # This payload resolves nothing off the rig directories, so it names
+        # none of the lookup fragments - and naming one it did not use would be
+        # noise in the program. The one it does name is the uniform "it
+        # happened" flag every mutating tool carries.
+        source = self._sent_source()
+        self.assertIn("# --- shared: performed.py ---", source)
+        self.assertEqual(source.count("# --- shared:"), 1)
 
     def test_response_envelope_is_returned_unchanged(self):
         envelope = {"status": "error", "message": "no MPFB"}
@@ -127,6 +131,7 @@ class GenerateGeneratedCodeTests(RigTestCase):
             scene_objects=self.objects,
             active=self.basemesh if active is _UNSET else active,
             context_mode=context_mode,
+            shared=["performed.py"],
         )
 
     # -- the ordinary path --------------------------------------------------
@@ -348,6 +353,19 @@ class GenerateGeneratedCodeTests(RigTestCase):
                 self.assertEqual(result["metarig_name"], "Human.metarig")
                 self.assertEqual(StubRigService.generate_calls, [])
 
+    # --- the uniform "it happened" flag -------------------------------------
+
+    def test_performed_tracks_generated(self):
+        self.build_character(rig=True)
+        refused = self.run_generate()
+        self.assertEqual(refused["blocked_by"], "not_a_metarig")
+        self.assertIs(refused["performed"], False)
+        self.assertEqual(refused["performed"], refused["generated"])
+
+        self.build_metarig_character()
+        generated = self.run_generate()
+        self.assertIs(generated["performed"], True)
+        self.assertEqual(generated["performed"], generated["generated"])
 
 class PayloadSourceTests(unittest.TestCase):
     def test_the_payload_never_imports_an_mpfb_submodule(self):

@@ -10,8 +10,9 @@ come with changing something the caller cannot undo across the socket.
 
 They fall into a sequence: take the subject, check that the world is ready, do only what was
 asked, put back what was borrowed, and report what changed — including what changed as a
-consequence, and what the change has now invalidated. Two further sections cover the cases MPFB
-makes hard: an ordering constraint nothing enforces, and a batch that must be all-or-nothing.
+consequence, and what the change has now invalidated, under one flag name shared by every tool
+here. Two further sections cover the cases MPFB makes hard: an ordering constraint nothing
+enforces, and a batch that must be all-or-nothing.
 
 ## How a mutating tool takes its subject
 
@@ -71,6 +72,40 @@ by omission.
   genuinely *cannot* — `RigService.generate_rigify_rig()`'s own final act is to select and activate
   the rig it produced, so there is no state left to restore to — say what the selection now is
   (`active_object_after`) rather than quietly leaving the caller to assume nothing moved.
+
+## The flag a caller branches on is called `performed`
+
+Every mutating tool reports `performed`, a real boolean, **true exactly when the operation was
+carried out**. It is false in every refusal (`ready: false`), false when the subject could not be
+resolved (`found: false`), and false when the tool completed successfully without doing anything it
+was asked to do.
+
+The tools kept their own verbs beside it — `added`, `applied`, `removed`, `generated`, `changed`,
+`recalculated`, `refit_performed` — because `added: true` beside `asset_object_name` reads better
+than `performed: true` does, and each response is written around its own verb. What the set of
+verbs cost is a caller working across more than one tool: reaching for the wrong name yields `None`
+rather than an error, so the mistake is silent. [FR 013](../feature-requests/done/013-live-verification/README.md)'s
+harness, written with the source open, guessed wrong on three tools in one session, and each wrong
+guess turned a passing check into what looked like a tool defect. The refusal fields `found`,
+`ready` and `blocked_by` already meant the same thing everywhere and were never mis-read, which is
+what says the problem was the *variation* rather than the naming.
+
+- **The flag is not always the verb**, which is what makes it worth having rather than a rename
+  away. `mpfb_symmetrize_targets` under `dry_run: true` returns a populated `changed` and has
+  written nothing. `mpfb_set_macro_details` called with no slider named returns `ready: true`
+  having recalculated nothing, per *do only what was asked* above. `mpfb_set_targets` fails a whole
+  batch on one bad entry and returns `ready: true` with an empty `applied`.
+- **Where a verb already means exactly this, the flag is derived from it, not written beside it.**
+  `mpfb_refit_human`'s `refit_performed` is that field, and setting `performed` from it is what
+  keeps the two from disagreeing about the one case they could: a generated Rigify rig with no meta
+  rig, which refits the mesh assets and leaves the rig.
+- **It is stamped once, at the bottom of the payload, rather than written into each branch.**
+  `mpfb_set_asset_material` builds eleven refusals and one success; a key written twelve times is
+  twelve chances to write it wrong, and the refusals are the branches nobody re-reads. The two
+  universal falsehoods — a refusal and an unresolved subject are never performed — live in
+  `codegen/shared/performed.py` with the stamping, so no call site has to remember them.
+- **Nothing was renamed to get it.** A response-shape change across eleven tools at once must not be
+  able to break a caller; every existing verb still means what it meant.
 
 ## Preconditions are answers
 

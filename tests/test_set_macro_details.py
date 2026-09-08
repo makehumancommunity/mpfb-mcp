@@ -185,7 +185,7 @@ class GeneratedSetMacroDetailsTests(GeneratedCodeTestCase):
         return self.run_payload(
             "set_macro_details.py",
             {"name": name, "changes": list(changes), "prune": prune, "refit": refit},
-            scene_objects=self.objects, active=active)
+            scene_objects=self.objects, active=active, shared=["performed.py"])
 
     @staticmethod
     def change(argument, prop, value):
@@ -455,6 +455,28 @@ class GeneratedSetMacroDetailsTests(GeneratedCodeTestCase):
         self.assertFalse(self.basemesh.select_get())
         self.assertIs(self.last_bpy.context.view_layer.objects.active, self.shirt)
 
+    # --- the uniform "it happened" flag -------------------------------------
+
+    def test_performed_tracks_recalculated_including_the_no_op_call(self) -> None:
+        self.build_character()
+
+        changed = self.run_set([self.change("age", "age", 1.0)])
+        self.assertIs(changed["performed"], True)
+        self.assertEqual(changed["performed"], changed["recalculated"])
+
+        # Named nothing, so nothing was rebuilt - and this is a ready: true
+        # answer rather than a refusal, which is what makes it worth pinning.
+        nothing = self.run_set()
+        self.assertTrue(nothing["ready"])
+        self.assertIs(nothing["performed"], False)
+        self.assertEqual(nothing["performed"], nothing["recalculated"])
+
+        self.build_character(mode="EDIT")
+        blocked = self.run_set([self.change("age", "age", 1.0)])
+        self.assertEqual(blocked["blocked_by"], "not_object_mode")
+        self.assertIs(blocked["performed"], False)
+        self.assertEqual(blocked["performed"], blocked["recalculated"])
+
 
 def _params_in(code: str) -> dict:
     """The PARAMS the generated source will bind, by executing its prelude."""
@@ -464,7 +486,6 @@ def _params_in(code: str) -> dict:
     namespace: dict = {}
     exec(prelude[prelude.index("import json"):], namespace)  # noqa: S102
     return namespace["PARAMS"]
-
 
 if __name__ == "__main__":
     unittest.main()

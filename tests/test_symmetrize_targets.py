@@ -131,7 +131,7 @@ class GeneratedSymmetrizeTargetsTests(DetailTargetTestCase):
             {"name": name, "direction": direction, "section": section,
              "dry_run": dry_run, "prune": prune, "refit": refit},
             scene_objects=self.objects, active=active,
-            shared=["target_categories.py"])
+            shared=["target_categories.py", "performed.py"])
 
     def asymmetric_character(self):
         """Left arm at +0.4, right arm at -0.25, plus an unsided target."""
@@ -436,6 +436,31 @@ class GeneratedSymmetrizeTargetsTests(DetailTargetTestCase):
         self.assertFalse(result["refit_performed"])
         self.assertIsNone(result["assets_possibly_stale"])
         self.assertIn("No refit was needed", result["message"])
+
+    # --- the uniform "it happened" flag -------------------------------------
+
+    def test_performed_is_false_under_dry_run_however_full_changed_is(self):
+        # The case that makes the flag more than a rename: a dry run reports
+        # every change it would make and writes none of them.
+        self.asymmetric_character()
+
+        preview = self.run_symmetrize(dry_run=True)
+        self.assertTrue(preview["changed"])
+        self.assertIs(preview["performed"], False)
+
+        applied = self.run_symmetrize()
+        self.assertTrue(applied["changed"])
+        self.assertIs(applied["performed"], True)
+
+        # Nothing left asymmetric, so nothing was written this time either.
+        again = self.run_symmetrize()
+        self.assertEqual(again["changed"], [])
+        self.assertIs(again["performed"], False)
+
+        self.asymmetric_character()
+        blocked = self.run_symmetrize(section="nope")
+        self.assertEqual(blocked["blocked_by"], "unknown_section")
+        self.assertIs(blocked["performed"], False)
 
 
 if __name__ == "__main__":

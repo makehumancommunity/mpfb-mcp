@@ -95,10 +95,16 @@ def register(mcp: FastMCP) -> None:
         identified and removal would be silently partial
         (`asset_source_missing`); and anything not in OBJECT mode
         (`not_object_mode`).
+
+        **Branch on `performed`.** Every mutating tool here reports that field
+        under the same name, a real boolean, true exactly when the character was
+        changed. It equals `removed` for this tool: read `removed` for the
+        sentence, `performed` for the branch.
         """
         code = codegen.assemble(
             "remove_asset.py",
             bootstrap="raising",
+            shared=["performed.py"],
             params={
                 "name": _validated_name(name),
             },

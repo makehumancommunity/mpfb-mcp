@@ -164,6 +164,11 @@ def register(mcp: FastMCP) -> None:
         A call that names no slider at all also does nothing, deliberately: it
         answers immediately instead of paying for a full shape rebuild that
         would change nothing.
+
+        **Branch on `performed`.** Every mutating tool here reports that field
+        under the same name, a real boolean, true exactly when the character was
+        changed. Here it equals `recalculated`, so the no-op call above comes
+        back `performed: false`.
         """
         supplied = (
             gender, age, muscle, weight, proportions, height, cupsize, firmness,
@@ -179,6 +184,7 @@ def register(mcp: FastMCP) -> None:
         code = codegen.assemble(
             "set_macro_details.py",
             bootstrap="raising",
+            shared=["performed.py"],
             params={
                 "name": _validated_name(name),
                 "changes": changes,

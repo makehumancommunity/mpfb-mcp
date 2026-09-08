@@ -172,6 +172,11 @@ def register(mcp: FastMCP) -> None:
         because the MHCLO names none or because the file it names is not on disk
         (`default_material_not_found`); and the requested file does not exist
         (`material_not_found`). Edit mode answers with `not_object_mode`.
+
+        **Branch on `performed`.** Every mutating tool here reports that field
+        under the same name, a real boolean, true exactly when the character was
+        changed. It equals `applied` for this tool: read `applied` for the
+        sentence, `performed` for the branch.
         """
         checked_restore = _validated_flag("restore_default", restore_default)
         checked_path, checked_fragment = _validated_request(
@@ -179,6 +184,7 @@ def register(mcp: FastMCP) -> None:
         code = codegen.assemble(
             "set_asset_material.py",
             bootstrap="raising",
+            shared=["performed.py"],
             params={
                 "name": _validated_name(name),
                 "path": checked_path,

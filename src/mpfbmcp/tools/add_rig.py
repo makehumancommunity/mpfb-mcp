@@ -143,6 +143,11 @@ def register(mcp: FastMCP) -> None:
         cannot swap one, so delete the existing rig first); a `rigify.*`
         identifier with Rigify not enabled (`rigify_unavailable`); and anything
         not in OBJECT mode (`not_object_mode`).
+
+        **Branch on `performed`.** Every mutating tool here reports that field
+        under the same name, a real boolean, true exactly when the character was
+        changed. It equals `added` for this tool: read `added` for the sentence,
+        `performed` for the branch.
         """
         code = codegen.assemble(
             "add_rig.py",
@@ -155,7 +160,7 @@ def register(mcp: FastMCP) -> None:
             # Shared with mpfb_list_rigs' payload, which predicts what this tool
             # then does. One implementation of "which file, whose weights", so
             # the catalogue and the action cannot disagree.
-            shared=["rig_lookup.py"],
+            shared=["rig_lookup.py", "performed.py"],
         )
         # `result` (built in codegen/payloads/add_rig.py) is plain JSON-safe
         # data - locations are coerced to lists of float there - so

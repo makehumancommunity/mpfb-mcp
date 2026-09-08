@@ -165,7 +165,7 @@ class GeneratedCodeTests(MeshAssetTestCase):
             scene_objects=self.objects,
             all_objects=self.objects,
             active=self.basemesh,
-            shared=["asset_sections.py"])
+            shared=["asset_sections.py", "performed.py"])
         # Carry the objects the payload created into the next call, so two
         # equips in one test see each other - which is what makes the .001
         # naming observable at all.
@@ -486,7 +486,7 @@ class GeneratedCodeTests(MeshAssetTestCase):
              "material_type": None, "subdiv_levels": 1, "set_up_rigging": True,
              "interpolate_weights": True, "import_subrig": True, "import_weights": True},
             scene_objects=self.objects, all_objects=self.objects, active=None,
-            shared=["asset_sections.py"])
+            shared=["asset_sections.py", "performed.py"])
         self.assertEqual(result["blocked_by"], "subject_not_found")
         self.assertFalse(result["found"])
         self.assertEqual(StubHumanService.add_asset_calls, [])
@@ -500,7 +500,7 @@ class GeneratedCodeTests(MeshAssetTestCase):
              "material_type": None, "subdiv_levels": 1, "set_up_rigging": True,
              "interpolate_weights": True, "import_subrig": True, "import_weights": True},
             scene_objects=self.objects + [stray], all_objects=self.objects + [stray],
-            active=None, shared=["asset_sections.py"])
+            active=None, shared=["asset_sections.py", "performed.py"])
         self.assertEqual(result["blocked_by"], "subject_not_found")
 
     def test_a_path_naming_no_file_is_an_answer(self):
@@ -533,7 +533,7 @@ class GeneratedCodeTests(MeshAssetTestCase):
              "material_type": None, "subdiv_levels": 1, "set_up_rigging": True,
              "interpolate_weights": True, "import_subrig": True, "import_weights": True},
             scene_objects=self.objects, all_objects=self.objects, active=self.basemesh,
-            shared=["asset_sections.py"], context_mode="EDIT_MESH")
+            shared=["asset_sections.py", "performed.py"], context_mode="EDIT_MESH")
         self.assertEqual(result["blocked_by"], "not_object_mode")
 
     def test_a_failed_import_names_what_it_left_behind(self):
@@ -546,6 +546,19 @@ class GeneratedCodeTests(MeshAssetTestCase):
         # Even a failure puts the scene back the way it was found.
         self.assertIs(self.last_bpy.context.view_layer.objects.active, self.basemesh)
 
+    # --- the uniform "it happened" flag -------------------------------------
+
+    def test_performed_tracks_added(self):
+        self.build_character()
+
+        added = self.run_add_asset(path=self.fedora)
+        self.assertIs(added["performed"], True)
+        self.assertEqual(added["performed"], added["added"])
+
+        refused = self.run_add_asset(path=os.path.join(self.system_root, "nope.mhclo"))
+        self.assertEqual(refused["blocked_by"], "asset_not_found")
+        self.assertIs(refused["performed"], False)
+        self.assertEqual(refused["performed"], refused["added"])
 
 class UnreadableMhcloTests(MeshAssetTestCase):
     """An MHCLO that cannot be read claims nothing about its material."""
@@ -567,7 +580,7 @@ class UnreadableMhcloTests(MeshAssetTestCase):
         result = self.run_payload(
             "add_asset.py", arguments, scene_objects=self.objects,
             all_objects=self.objects, active=self.basemesh,
-            shared=["asset_sections.py"])
+            shared=["asset_sections.py", "performed.py"])
         self.assertIsNone(result["mhclo_names_material"])
         self.assertTrue(any("could not be read" in w for w in result["warnings"]))
 

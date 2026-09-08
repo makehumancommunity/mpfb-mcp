@@ -14,6 +14,9 @@ ahead of this file:
   ``category_names_in``, ``category_is_opposed``, ``category_value_range``,
   ``target_names_for``, ``resolve_target_path``, ``lookup_target`` - from the
   shared fragment, whose docstring explains what a category is.
+- ``with_performed()`` - from the shared fragment ``performed.py``, named by
+  every mutating payload. It stamps the uniform ``performed`` flag onto the
+  finished answer, in the last line of this file.
 
 **Two phases, and the split is the point.** Everything is resolved first -
 sections, categories, sides, ranges and the file each target would be loaded
@@ -700,3 +703,9 @@ else:
                 ),
                 message="".join(message_parts),
             )
+
+
+# The verb is "applied", one entry per change, and it is empty in every branch
+# that wrote nothing - including the all-or-nothing resolution failure. See
+# codegen/shared/performed.py.
+result = with_performed(result, result.get("applied"))

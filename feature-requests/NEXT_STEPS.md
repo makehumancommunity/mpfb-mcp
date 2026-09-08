@@ -142,15 +142,17 @@ the payloads and `codegen/` untouched. Not yet scoped into a numbered request.
 
 Six requests, written while [FR 013](done/013-live-verification/README.md)'s findings were fresh and
 deliberately kept out of it: folding a refactor into a bug hunt makes every finding ambiguous about
-which change caused it. Each is grounded in something the run measured or observed.
+which change caused it. Each is grounded in something the run measured or observed. **One has
+landed**: [FR 014](done/014-uniform-performed-flag/README.md) gave every mutating tool a uniform
+`performed` flag beside its own verb, as `codegen/shared/performed.py`; see its
+[entry in HISTORY.md](HISTORY.md), including the four cases where the flag is genuinely not the
+verb. Five remain.
 
-- **[FR 014](014-uniform-performed-flag/README.md)** — a uniform `performed` flag beside each
-  mutating tool's own verb. Five different names today, and FR 013's harness guessed wrong on three
-  tools in one session, each time getting `None` rather than an error.
-- **[FR 015](015-fourth-shared-fragment/README.md)** — a fourth shared code-generation fragment, for
+- **[FR 015](015-fourth-shared-fragment/README.md)** — one more shared code-generation fragment, for
   the two duplications whose divergence would be silent, plus the drift census that found them.
   Sixteen of nineteen duplicated payload helpers are byte-identical; nothing has drifted, and these
-  two are the ones where it would matter.
+  two are the ones where it would matter. (It would now be the *fifth* fragment: FR 014 added the
+  fourth.)
 - **[FR 016](016-trim-tool-descriptions/README.md)** — trim the tool descriptions from 66.7 KB
   toward ~45 KB by moving rationale into the specifications, and put the response *field names* in.
 - **[FR 017](017-category-table-cost/README.md)** — the largest uncosted thing in the package: the

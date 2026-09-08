@@ -22,6 +22,24 @@ import unittest
 
 from mpfbmcp import codegen
 
+# Every payload for a tool that changes a character, and therefore every payload
+# that owes its caller the uniform ``performed`` flag. Written out rather than
+# derived, so that adding a mutating tool without the flag fails here instead of
+# quietly agreeing with itself.
+MUTATING_PAYLOADS = (
+    "add_asset.py",
+    "add_rig.py",
+    "create_human.py",
+    "generate_rigify_rig.py",
+    "refit_human.py",
+    "remove_asset.py",
+    "set_asset_material.py",
+    "set_macro_details.py",
+    "set_skin.py",
+    "set_targets.py",
+    "symmetrize_targets.py",
+)
+
 
 class PayloadFileTests(unittest.TestCase):
     def test_there_is_a_payload_for_each_implemented_tool(self) -> None:
@@ -40,7 +58,26 @@ class PayloadFileTests(unittest.TestCase):
         # seam is being used for ordinary tool code.
         self.assertEqual(
             codegen.shared_names(),
-            ["asset_sections.py", "rig_lookup.py", "target_categories.py"])
+            ["asset_sections.py", "performed.py", "rig_lookup.py",
+             "target_categories.py"])
+
+    def test_every_mutating_payload_stamps_the_performed_flag(self) -> None:
+        # The uniform "it happened" flag is the one thing every mutating tool
+        # has to report under the same name, so the check that it is reported
+        # at all belongs here rather than eleven times over.
+        for name in MUTATING_PAYLOADS:
+            with self.subTest(payload=name):
+                self.assertIn("with_performed(result,", codegen.read_payload(name))
+
+    def test_no_read_only_payload_stamps_it(self) -> None:
+        # The other half of the same claim: a read-only tool changes nothing,
+        # so "performed" would be a field with no meaning rather than a
+        # uniformly false one.
+        for name in codegen.payload_names():
+            if name in MUTATING_PAYLOADS:
+                continue
+            with self.subTest(payload=name):
+                self.assertNotIn("with_performed", codegen.read_payload(name))
 
     def test_every_payload_compiles_on_its_own(self) -> None:
         for name in codegen.payload_names():
@@ -205,6 +242,50 @@ class ParameterPreludeTests(unittest.TestCase):
 
         self.assertNotIn(hostile, source)
         compile(source, "<generated>", "exec")
+
+
+class PerformedFragmentTests(unittest.TestCase):
+    """``with_performed()`` from codegen/shared/performed.py, run directly.
+
+    The fragment is the one that binds nothing from the bootstrap and touches
+    no ``bpy``, so it can be executed here rather than through a payload inside
+    a stub Blender. That is the point of testing the two guards in the place
+    they live: eleven payloads rely on them, and none of the eleven should have
+    to re-establish that a refusal is never "performed".
+    """
+
+    def setUp(self) -> None:
+        namespace: dict = {}
+        exec(codegen.read_shared("performed.py"), namespace)  # noqa: S102
+        self.with_performed = namespace["with_performed"]
+
+    def test_the_answer_is_stamped_in_place_and_returned(self) -> None:
+        answer = {"added": True}
+        self.assertIs(self.with_performed(answer, True), answer)
+        self.assertEqual(answer, {"added": True, "performed": True})
+
+    def test_the_flag_is_a_real_bool_whatever_the_verb_is(self) -> None:
+        # Several verbs are lists - "applied" holds one entry per change - and a
+        # caller branching on the flag should not have to know which.
+        for done, expected in ((True, True), (False, False), ([], False),
+                               ([{"target": "x"}], True), (None, False), (0, False)):
+            with self.subTest(done=done):
+                answer = self.with_performed({}, done)
+                self.assertIs(answer["performed"], expected)
+
+    def test_a_refusal_is_never_performed(self) -> None:
+        # Both guards, against a "done" that says otherwise: a payload that
+        # stamps the flag from its verb at the bottom of the file must not be
+        # able to claim a refusal succeeded.
+        self.assertIs(
+            self.with_performed({"found": False, "ready": False}, True)["performed"], False)
+        self.assertIs(
+            self.with_performed({"found": True, "ready": False}, True)["performed"], False)
+
+    def test_an_answer_carrying_neither_key_is_taken_at_its_word(self) -> None:
+        # create_human's answer has no found/ready: it either creates a
+        # character or raises, and a raise never reaches this function.
+        self.assertIs(self.with_performed({"object_name": "Human"}, True)["performed"], True)
 
 
 if __name__ == "__main__":

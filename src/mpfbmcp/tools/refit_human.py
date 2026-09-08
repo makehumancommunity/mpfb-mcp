@@ -90,10 +90,16 @@ def register(mcp: FastMCP) -> None:
         with the meta rig kept - is the user's to make in Blender. A basemesh
         left in edit mode answers with `ready: false` for the same reason the
         modeling tools do.
+
+        **Branch on `performed`.** Every mutating tool here reports that field
+        under the same name, a real boolean, true exactly when the character was
+        changed. Here it is set *from* `refit_performed`, so the two cannot
+        disagree.
         """
         code = codegen.assemble(
             "refit_human.py",
             bootstrap="raising",
+            shared=["performed.py"],
             params={"name": _validated_name(name)},
         )
         # `result` (built in codegen/payloads/refit_human.py) is plain JSON-safe

@@ -3,14 +3,18 @@ Payload for ``mpfb_refit_human``: MPFB's ``HumanService.refit()``, plus the
 one failure it cannot report to a caller that is not an operator.
 
 Not a module of this package - this file is never imported here. It is read as
-a resource and executed inside Blender, on top of the raising bootstrap (see
-``mpfbmcp.codegen.assemble``). A linter will flag three names as undefined
-because the assembler binds them ahead of this file:
+a resource and executed inside Blender, on top of the raising bootstrap and the
+``performed.py`` shared fragment (see ``mpfbmcp.codegen.assemble``). A linter
+will flag four names as undefined because the assembler binds them ahead of
+this file:
 
 - ``PARAMS`` - the tool's arguments as plain JSON data: ``name``, which is None
   when the caller wants whatever object is currently active.
 - ``_MPFB_SERVICES`` - MPFB's SERVICES dict, from the raising bootstrap.
 - ``sys`` - already imported by that bootstrap.
+- ``with_performed()`` - from the shared fragment ``performed.py``, named by
+  every mutating payload. It stamps the uniform ``performed`` flag onto the
+  finished answer, in the last line of this file.
 
 ``refit()`` raises ``ValueError`` when it cannot find a basemesh; the basemesh is
 resolved here first so that this comes back as an ordinary "no" rather than as a
@@ -167,3 +171,9 @@ else:
         refit_incomplete_reason=refit_incomplete_reason,
         message="".join(message_parts),
     )
+
+
+# "refit_performed" already means exactly this, so the uniform flag is set from
+# it rather than beside it - the two cannot then disagree about the generated-
+# Rigify-rig-with-no-meta-rig case. See codegen/shared/performed.py.
+result = with_performed(result, result.get("refit_performed", False))

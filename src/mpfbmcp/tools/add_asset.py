@@ -234,6 +234,11 @@ def register(mcp: FastMCP) -> None:
         subdir for the type, so a fragment cannot be resolved
         (`no_asset_subdir`); and anything not in OBJECT mode
         (`not_object_mode`).
+
+        **Branch on `performed`.** Every mutating tool here reports that field
+        under the same name, a real boolean, true exactly when the character was
+        changed. It equals `added` for this tool: read `added` for the sentence,
+        `performed` for the branch.
         """
         checked_path, checked_fragment = _validated_source(path, fragment)
         code = codegen.assemble(
@@ -259,7 +264,7 @@ def register(mcp: FastMCP) -> None:
             # back to an asset subdir is the only way to resolve the second, and
             # two implementations of that table would make a just-listed asset
             # look uninstalled here.
-            shared=["asset_sections.py"],
+            shared=["asset_sections.py", "performed.py"],
         )
         # `result` (built in codegen/payloads/add_asset.py) is plain JSON-safe
         # data, so strict_json=True surfaces a clear error if that ever stops

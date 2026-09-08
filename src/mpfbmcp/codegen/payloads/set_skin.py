@@ -3,7 +3,7 @@ Payload for ``mpfb_set_skin``: apply a skin, and say what it destroyed on the wa
 
 Not a module of this package - this file is never imported here. It is read as
 a resource and executed inside Blender, on top of the raising bootstrap (see
-``mpfbmcp.codegen.assemble``). A linter will flag three names as undefined
+``mpfbmcp.codegen.assemble``). A linter will flag four names as undefined
 because the assembler binds them ahead of this file:
 
 - ``PARAMS`` - the tool's arguments as plain JSON data: ``name``, ``path``,
@@ -12,6 +12,9 @@ because the assembler binds them ahead of this file:
 - ``sys`` - already imported by that bootstrap, and used here to reach
   ``GeneralObjectProperties`` and ``HumanObjectProperties``, which MPFB keeps at
   module level rather than on a service.
+- ``with_performed()`` - from the shared fragment ``performed.py``, named by
+  every mutating payload. It stamps the uniform ``performed`` flag onto the
+  finished answer, in the last line of this file.
 
 ...and a further set because they come from the shared fragment
 ``asset_sections.py``, concatenated ahead of this file: ``AssetService``,
@@ -516,3 +519,7 @@ else:
             scale_assumption=scale_assumption,
             message="".join(message_parts),
         )
+
+
+# The verb is "applied". See codegen/shared/performed.py.
+result = with_performed(result, result.get("applied", False))

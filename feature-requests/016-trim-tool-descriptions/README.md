@@ -34,13 +34,19 @@ worse than what exists.
 **Explicitly not a goal:** removing the surprising facts. Every warning that exists because MPFB
 does something unexpected stays, in full.
 
+**The 66.7 KB baseline is now about 68.2 KB.** [FR 014](../done/014-uniform-performed-flag/README.md)
+added a short paragraph to each of the eleven mutating tools' docstrings, saying to branch on
+`performed` and read the tool's own verb. That is the second goal above arriving early — a response
+field named rather than described — so the addition stays and the budget is measured against the
+new figure.
+
 ## Functional requirements
 
 - **FR-1.** Each of the four largest descriptions is reduced, with the removed rationale moved to
   [specifications/](../../specifications/) rather than deleted, and cross-referenced from the
   docstring in one line rather than restated.
 - **FR-2.** Every tool's description names the response fields a caller branches on — at minimum
-  the success flag (see [FR 014](../014-uniform-performed-flag/README.md)), the subject name, and
+  the success flag (see [FR 014](../done/014-uniform-performed-flag/README.md)), the subject name, and
   the field carrying the thing the tool produced.
 - **FR-3.** The total is measured before and after, by the same script that measured it here, and
   the number is recorded.

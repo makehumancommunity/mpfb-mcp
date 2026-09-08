@@ -93,7 +93,7 @@ class GeneratedCodeTests(MeshAssetTestCase):
         added = self.run_payload(
             "add_asset.py", arguments,
             scene_objects=self.objects, all_objects=self.objects, active=self.basemesh,
-            shared=["asset_sections.py"])
+            shared=["asset_sections.py", "performed.py"])
         self.objects = list(StubObjectService.all_objects)
         return added["asset_object_name"]
 
@@ -155,7 +155,8 @@ class GeneratedCodeTests(MeshAssetTestCase):
             "set_asset_material.py",
             {"name": equipped, "path": self.fedora_red, "fragment": None,
              "restore_default": False},
-            scene_objects=self.objects, all_objects=self.objects, active=self.basemesh)
+            scene_objects=self.objects, all_objects=self.objects,
+            active=self.basemesh, shared=["performed.py"])
         result = self.run_list(equipped)
 
         self.assertEqual(result["current_alternative_material"], "fedora/red.mhmat")

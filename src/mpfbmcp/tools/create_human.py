@@ -60,6 +60,12 @@ def register(mcp: FastMCP) -> None:
         Returns the blender_mcp add-on's response envelope: `status` ("ok" or
         "error"), and on success `result` with `object_name`, `vertex_count`,
         `location` and the `macro_detail_dict` that was applied.
+
+        **Branch on `performed`.** Every mutating tool here reports that field
+        under the same name, a real boolean, true exactly when the character was
+        changed. This one has no separate verb of its own: creation either
+        succeeds or raises, so `status: "ok"` and `performed: true` arrive
+        together.
         """
         macro_detail_dict = {
             "gender": _clamp01("gender", gender),
@@ -80,6 +86,7 @@ def register(mcp: FastMCP) -> None:
         code = codegen.assemble(
             "create_human.py",
             bootstrap="raising",
+            shared=["performed.py"],
             params={"macro_detail_dict": macro_detail_dict, "scale": scale},
         )
         # `result` (built in codegen/payloads/create_human.py) is always plain

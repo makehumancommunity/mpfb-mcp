@@ -149,7 +149,7 @@ class GeneratedCodeTests(MeshAssetTestCase):
             scene_objects=self.objects,
             all_objects=self.objects,
             active=self.basemesh,
-            shared=["asset_sections.py"])
+            shared=["asset_sections.py", "performed.py"])
 
     # --- the happy path ---------------------------------------------------
 
@@ -452,7 +452,7 @@ class GeneratedCodeTests(MeshAssetTestCase):
             {"name": None, "path": self.young_skin, "fragment": None,
              "skin_type": "MAKESKIN", "material_instances": True},
             scene_objects=self.objects, all_objects=self.objects, active=None,
-            shared=["asset_sections.py"])
+            shared=["asset_sections.py", "performed.py"])
         self.assertEqual(result["blocked_by"], "subject_not_found")
         self.assertEqual(result["subject_resolved_by"], "active")
 
@@ -492,7 +492,7 @@ class GeneratedCodeTests(MeshAssetTestCase):
             {"name": None, "path": self.young_skin, "fragment": None,
              "skin_type": "MAKESKIN", "material_instances": True},
             scene_objects=self.objects, all_objects=self.objects, active=self.basemesh,
-            shared=["asset_sections.py"], context_mode="POSE")
+            shared=["asset_sections.py", "performed.py"], context_mode="POSE")
         self.assertEqual(result["blocked_by"], "not_object_mode")
 
     # --- a failed skin is not a no-op --------------------------------------
@@ -521,7 +521,7 @@ class GeneratedCodeTests(MeshAssetTestCase):
             {"name": "Human", "path": self.young_skin, "fragment": None,
              "skin_type": "MAKESKIN", "material_instances": True},
             scene_objects=self.objects, all_objects=self.objects, active=self.rig,
-            shared=["asset_sections.py"])
+            shared=["asset_sections.py", "performed.py"])
 
         self.assertIs(self.last_bpy.context.view_layer.objects.active, self.rig)
         self.assertFalse(self.basemesh.select_get())
@@ -534,10 +534,24 @@ class GeneratedCodeTests(MeshAssetTestCase):
             {"name": "Human", "path": self.young_skin, "fragment": None,
              "skin_type": "MAKESKIN", "material_instances": True},
             scene_objects=self.objects, all_objects=self.objects, active=self.rig,
-            shared=["asset_sections.py"])
+            shared=["asset_sections.py", "performed.py"])
 
         self.assertIs(self.last_bpy.context.view_layer.objects.active, self.rig)
         self.assertFalse(self.basemesh.select_get())
+
+    # --- the uniform "it happened" flag -------------------------------------
+
+    def test_performed_tracks_applied(self):
+        self.build_character()
+
+        applied = self.run_set_skin(path=self.young_skin)
+        self.assertIs(applied["performed"], True)
+        self.assertEqual(applied["performed"], applied["applied"])
+
+        refused = self.run_set_skin(name="Nope", path=self.young_skin)
+        self.assertEqual(refused["blocked_by"], "subject_not_found")
+        self.assertIs(refused["performed"], False)
+        self.assertEqual(refused["performed"], refused["applied"])
 
 
 if __name__ == "__main__":

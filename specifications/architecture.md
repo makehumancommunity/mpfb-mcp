@@ -208,13 +208,15 @@ above, a **parameter prelude**, and a per-tool **payload** — plus, optionally,
 A **fragment** is a fourth, optional part: an ordinary `.py` file under
 `src/mpfbmcp/codegen/shared/`, named by a tool module in `assemble(..., shared=[...])` and
 concatenated between the prelude and the payload. It exists for a *concept* two or more payloads
-model identically. There are three: `target_categories.py` rebuilds MPFB's `target.json` category
+model identically. There are four: `target_categories.py` rebuilds MPFB's `target.json` category
 table, which `mpfb_get_target_stack`, `mpfb_set_targets` and `mpfb_symmetrize_targets` all need in
 the same shape and none of them can import; `rig_lookup.py` answers "which rig file would MPFB
 load for this identifier, and whose weights would come with it", which `mpfb_list_rigs` and
-`mpfb_add_rig` need to answer *identically*; and `asset_sections.py` holds MPFB's
+`mpfb_add_rig` need to answer *identically*; `asset_sections.py` holds MPFB's
 `ASSET_LIBRARY_SECTIONS` table and what it maps between, which `mpfb_list_assets` reports *from* and
-`mpfb_add_asset` resolves *with*.
+`mpfb_add_asset` resolves *with*; and `performed.py` stamps the uniform
+[`performed` flag](mutating-tools.md#the-flag-a-caller-branches-on-is-called-performed) onto the
+answer of every one of the eleven mutating payloads.
 
 - **A fragment is warranted by duplication that must not drift, not by size.** Three copies of a
   hundred-line scan of the user's target directories are three chances for two tools to disagree
@@ -236,6 +238,13 @@ load for this identifier, and whose weights would come with it", which `mpfb_lis
   `AssetService.find_asset_absolute_path()` takes a subdir rather than a type. Two copies of that
   table disagreeing would not produce a wrong answer — it would produce "not installed" for an asset
   the catalogue had just listed, which is the one failure a caller cannot diagnose.
+- **A convention eleven payloads must agree about is the same case as a table three must.**
+  `performed.py` is the smallest fragment by far — one function, no MPFB, nothing read from the
+  bootstrap — and it clears the bar on consequence rather than size, like `rig_lookup.py`: the whole
+  reason the flag exists is that eleven tools disagreed about what to call it, so eleven
+  implementations of it would be the original problem in a new spelling. It also has no
+  dependencies, which is what lets it be concatenated ahead of any payload without pulling anything
+  in with it.
 - **Opting in is the payload's business, not the assembler's.** `assemble()` takes the list; there
   is no table here mapping payloads to fragments. So the rule above still holds unchanged: adding
   an ordinary tool is still a tool module, a payload and a `register()` call, and a tool that wants

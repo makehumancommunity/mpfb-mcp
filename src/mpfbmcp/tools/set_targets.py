@@ -229,11 +229,17 @@ def register(mcp: FastMCP) -> None:
         Two situations answer rather than fail: a subject that cannot be resolved
         to a basemesh (`found: false`), and a basemesh in edit mode or with no
         shape keys (`ready: false`, `blocked_by` naming which).
+
+        **Branch on `performed`.** Every mutating tool here reports that field
+        under the same name, a real boolean, true exactly when the character was
+        changed. It is false whenever `applied` is empty - including the
+        all-or-nothing resolution failure, where the batch was understood and
+        none of it was written.
         """
         code = codegen.assemble(
             "set_targets.py",
             bootstrap="raising",
-            shared=["target_categories.py"],
+            shared=["target_categories.py", "performed.py"],
             params={
                 "name": _validated_name(name),
                 "modifiers": _validated_modifiers(modifiers),

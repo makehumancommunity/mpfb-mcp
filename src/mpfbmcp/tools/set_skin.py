@@ -240,6 +240,11 @@ def register(mcp: FastMCP) -> None:
         (`not_object_mode`); and a failure inside MPFB itself
         (`skin_failed`), which is reported rather than raised precisely because
         the materials are already gone by then.
+
+        **Branch on `performed`.** Every mutating tool here reports that field
+        under the same name, a real boolean, true exactly when the character was
+        changed. It equals `applied` for this tool: read `applied` for the
+        sentence, `performed` for the branch.
         """
         checked_skin_type = _validated_skin_type(skin_type)
         checked_path, checked_fragment = _validated_source(path, fragment, checked_skin_type)
@@ -259,7 +264,7 @@ def register(mcp: FastMCP) -> None:
             # maps that type back to the "skins" asset subdir a fragment is
             # resolved against is MPFB's section table, and a second copy of it
             # here would make a just-listed skin look uninstalled.
-            shared=["asset_sections.py"],
+            shared=["asset_sections.py", "performed.py"],
         )
         # `result` (built in codegen/payloads/set_skin.py) is plain JSON-safe
         # data, so strict_json=True surfaces a clear error if that ever stops

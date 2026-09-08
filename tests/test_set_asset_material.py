@@ -75,12 +75,16 @@ class ArgumentValidationTests(unittest.TestCase):
             {"name": "Human.fedora", "path": "/assets/fedora/red.mhmat",
              "fragment": None, "restore_default": False})
 
-    def test_no_shared_fragment_is_named(self):
+    def test_performed_py_is_the_only_shared_fragment_named(self):
         # The asset subdir here is MPFB's own str(object_type).lower(), the same
         # derivation payloads/get_object_info.py makes when it resolves this
-        # property back to a file - not asset_sections.py's section table.
-        self.assertNotIn("# --- shared:", self._sent_source(
-            name="Human.fedora", path="/assets/fedora/red.mhmat"))
+        # property back to a file - not asset_sections.py's section table. The
+        # one fragment that is named is the uniform "it happened" flag every
+        # mutating tool carries.
+        source = self._sent_source(
+            name="Human.fedora", path="/assets/fedora/red.mhmat")
+        self.assertIn("# --- shared: performed.py ---", source)
+        self.assertEqual(source.count("# --- shared:"), 1)
 
     def test_name_is_required_and_has_no_active_object_fallback(self):
         with mock.patch.object(set_asset_material, "send_code") as send_code:
@@ -144,7 +148,7 @@ class GeneratedCodeTests(MeshAssetTestCase):
         added = self.run_payload(
             "add_asset.py", arguments,
             scene_objects=self.objects, all_objects=self.objects, active=self.basemesh,
-            shared=["asset_sections.py"])
+            shared=["asset_sections.py", "performed.py"])
         self.objects = list(StubObjectService.all_objects)
         return added["asset_object_name"]
 
@@ -153,7 +157,8 @@ class GeneratedCodeTests(MeshAssetTestCase):
         arguments.update(params)
         return self.run_payload(
             "set_asset_material.py", arguments,
-            scene_objects=self.objects, all_objects=self.objects, active=self.basemesh)
+            scene_objects=self.objects, all_objects=self.objects,
+            active=self.basemesh, shared=["performed.py"])
 
     def object_named(self, name):
         for blender_object in self.objects:
@@ -394,10 +399,26 @@ class GeneratedCodeTests(MeshAssetTestCase):
             "set_asset_material.py",
             {"name": equipped, "path": self.fedora_red, "fragment": None,
              "restore_default": False},
-            scene_objects=self.objects, all_objects=self.objects, active=self.basemesh)
+            scene_objects=self.objects, all_objects=self.objects,
+            active=self.basemesh, shared=["performed.py"])
 
         self.assertIs(self.last_bpy.context.view_layer.objects.active, self.basemesh)
         self.assertFalse(asset.select_get())
+
+    # --- the uniform "it happened" flag -------------------------------------
+
+    def test_performed_tracks_applied(self):
+        self.build_character()
+        equipped = self.equip()
+
+        applied = self.run_set(equipped, path=self.fedora_red)
+        self.assertIs(applied["performed"], True)
+        self.assertEqual(applied["performed"], applied["applied"])
+
+        refused = self.run_set("Nope", path=self.fedora_red)
+        self.assertFalse(refused["found"])
+        self.assertIs(refused["performed"], False)
+        self.assertEqual(refused["performed"], refused["applied"])
 
 
 if __name__ == "__main__":

@@ -2,15 +2,19 @@
 Payload for ``mpfb_set_macro_details``: write the sliders, rebuild the shape.
 
 Not a module of this package - this file is never imported here. It is read as
-a resource and executed inside Blender, on top of the raising bootstrap (see
-``mpfbmcp.codegen.assemble``). A linter will flag three names as undefined
-because the assembler binds them ahead of this file:
+a resource and executed inside Blender, on top of the raising bootstrap and the
+``performed.py`` shared fragment (see ``mpfbmcp.codegen.assemble``). A linter
+will flag four names as undefined because the assembler binds them ahead of
+this file:
 
 - ``PARAMS`` - the tool's arguments as plain JSON data: ``name``, ``changes``
   (a list of argument/property/value dicts, empty when the caller named no
   slider), ``prune`` and ``refit``.
 - ``_MPFB_SERVICES`` - MPFB's SERVICES dict, from the raising bootstrap.
 - ``sys`` - already imported by that bootstrap.
+- ``with_performed()`` - from the shared fragment ``performed.py``, named by
+  every mutating payload. It stamps the uniform ``performed`` flag onto the
+  finished answer, in the last line of this file.
 
 Writing a macro property is only the first of two steps: it changes a number and
 nothing moves until ``TargetService.reapply_macro_details()`` recomputes the
@@ -336,3 +340,8 @@ else:
             ),
             message="".join(message_parts),
         )
+
+
+# The verb is "recalculated", which is false in every refusal and in the no-op
+# call that named no slider. See codegen/shared/performed.py.
+result = with_performed(result, result.get("recalculated", False))

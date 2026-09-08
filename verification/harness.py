@@ -44,12 +44,14 @@ from __future__ import annotations
 
 __all__ = (
     "DATABLOCK_COLLECTIONS",
+    "MUTATING_VERBS",
     "Report",
     "SCRATCH_SCENE",
     "cleanup_scratch_scene",
     "diff_snapshots",
     "ensure_scratch_scene",
     "context_is_clean",
+    "performed_disagreements",
     "probe",
     "results_directory",
     "snapshot",
@@ -87,6 +89,84 @@ DATABLOCK_COLLECTIONS = (
 
 SCRATCH_SCENE = "MPFBMCP_VERIFY"
 
+# The verb each mutating tool reports beside the uniform ``performed`` flag
+# (FR 014). ``None`` is mpfb_create_human, which has no verb of its own: it
+# creates a character or comes back as an error envelope.
+#
+# This is not a second opinion about what "performed" means - the payloads
+# decide that, on the far side of the socket. It is the audit that would catch
+# a payload stamping the flag from the wrong variable, which is the one mistake
+# the unit tests can miss, because there the verb and the flag are read out of
+# the same stub run. Here they are read out of a real Blender.
+MUTATING_VERBS = {
+    "mpfb_create_human": None,
+    "mpfb_set_macro_details": "recalculated",
+    "mpfb_refit_human": "refit_performed",
+    "mpfb_set_targets": "applied",
+    "mpfb_symmetrize_targets": "changed",
+    "mpfb_add_rig": "added",
+    "mpfb_generate_rigify_rig": "generated",
+    "mpfb_add_asset": "added",
+    "mpfb_remove_asset": "removed",
+    "mpfb_set_skin": "applied",
+    "mpfb_set_asset_material": "applied",
+}
+
+# Filled by the wrappers ``tools()`` puts around the mutating tools, and drained
+# by Report.summary(). A list rather than a raised exception because a
+# disagreement is a finding to report, not a reason to abandon the checklist
+# that found it.
+_PERFORMED_DISAGREEMENTS = []
+
+
+def _performed_disagreement(tool_name, envelope):
+    """Why ``performed`` and this tool's verb disagree in one answer, or None."""
+    if not isinstance(envelope, dict) or envelope.get("status") != "ok":
+        return None
+    result = envelope.get("result")
+    if not isinstance(result, dict):
+        return None
+    if "performed" not in result:
+        return "{}: no 'performed' in the answer".format(tool_name)
+    performed = result["performed"]
+    if not isinstance(performed, bool):
+        return "{}: 'performed' is {!r}, not a bool".format(tool_name, performed)
+    verb = MUTATING_VERBS[tool_name]
+    if verb is None:
+        return None
+    if verb not in result:
+        # Every refusal carries the verb too, so its absence is itself a finding.
+        return "{}: no {!r} in the answer beside 'performed'".format(tool_name, verb)
+    expected = bool(result[verb])
+    if tool_name == "mpfb_symmetrize_targets" and result.get("dry_run"):
+        # The one tool whose verb is deliberately not the flag: a dry run lists
+        # the changes it would make and writes none of them.
+        expected = False
+    if performed != expected:
+        return "{}: performed={!r} but {}={!r} (dry_run={!r})".format(
+            tool_name, performed, verb, result[verb], result.get("dry_run"))
+    return None
+
+
+def performed_disagreements():
+    """Everything the audit has seen since it was last drained."""
+    drained = list(_PERFORMED_DISAGREEMENTS)
+    del _PERFORMED_DISAGREEMENTS[:]
+    return drained
+
+
+def _audited(tool_name, function):
+    """Wrap one mutating tool so every answer it gives is audited in passing."""
+    def audited(*args, **keywords):
+        envelope = function(*args, **keywords)
+        disagreement = _performed_disagreement(tool_name, envelope)
+        if disagreement is not None:
+            _PERFORMED_DISAGREEMENTS.append(disagreement)
+        return envelope
+    audited.__name__ = getattr(function, "__name__", tool_name)
+    audited.__doc__ = getattr(function, "__doc__", None)
+    return audited
+
 
 def tools() -> dict:
     """Every MCP tool, by name, as the plain callable behind the coroutine.
@@ -94,6 +174,10 @@ def tools() -> dict:
     This is the same route ``tests/`` takes into a tool. Registering all twenty
     on one server rather than one per check also means a checklist pays the
     registration cost once.
+
+    Every mutating tool comes back wrapped in the ``performed`` audit, so a
+    checklist gets that check on every call it already makes without writing
+    one - and Report.summary() reports what the audit saw.
     """
     mcp = FastMCP("mpfb-mcp-verification")
     from mpfbmcp.tools import (  # pylint: disable=import-outside-toplevel
@@ -107,7 +191,9 @@ def tools() -> dict:
             list_objects, list_rigs, list_targets, refit_human, remove_asset, set_asset_material,
             set_macro_details, set_skin, set_targets, symmetrize_targets):
         module.register(mcp)
-    return {name: tool.fn for name, tool in mcp._tool_manager._tools.items()}  # noqa: SLF001
+    resolved = {name: tool.fn for name, tool in mcp._tool_manager._tools.items()}  # noqa: SLF001
+    return {name: _audited(name, function) if name in MUTATING_VERBS else function
+            for name, function in resolved.items()}
 
 
 def probe(label: str, code: str, **params: object) -> dict:
@@ -342,6 +428,16 @@ class Report:
         print("    . {}".format(text), flush=True)
 
     def summary(self) -> dict:
+        # FR 014's audit, drained here rather than checked at each call site:
+        # every mutating call this checklist made has already been compared
+        # against its own verb, and this is where the comparison is reported.
+        # An item on every checklist, so a checklist that calls no mutating tool
+        # says so rather than staying silent about it.
+        disagreements = performed_disagreements()
+        self.check("'performed' agreed with each tool's own verb on every call",
+                   not disagreements,
+                   "; ".join(disagreements) if disagreements else None)
+
         counts = dict(passed=0, failed=0, skipped=0)
         for result in self.results:
             counts["passed" if result["outcome"] == "pass" else

@@ -131,7 +131,7 @@ class AddRigGeneratedCodeTests(RigTestCase):
             {"name": name, "identifier": identifier, "import_weights": import_weights},
             scene_objects=self.objects,
             active=self.basemesh if active is _UNSET else active,
-            shared=["rig_lookup.py"],
+            shared=["rig_lookup.py", "performed.py"],
         )
 
     # -- the ordinary path --------------------------------------------------
@@ -439,7 +439,8 @@ class AddRigGeneratedCodeTests(RigTestCase):
         result = self.run_payload(
             "add_rig.py",
             {"name": None, "identifier": "default", "import_weights": True},
-            scene_objects=self.objects, active=self.basemesh, shared=["rig_lookup.py"],
+            scene_objects=self.objects, active=self.basemesh,
+            shared=["rig_lookup.py", "performed.py"],
             context_mode="EDIT_MESH")
 
         self.assertEqual(result["blocked_by"], "not_object_mode")
@@ -462,6 +463,21 @@ class AddRigGeneratedCodeTests(RigTestCase):
         self.assertIs(
             StubObjectService.bpy.context.view_layer.objects.active, self.basemesh)
 
+    # --- the uniform "it happened" flag -------------------------------------
+
+    def test_performed_tracks_added(self):
+        # The refusal first: it changes nothing, so the same character can then
+        # be rigged for real.
+        self.build_character()
+
+        refused = self.run_add_rig("no_such_rig")
+        self.assertEqual(refused["blocked_by"], "unknown_identifier")
+        self.assertIs(refused["performed"], False)
+        self.assertEqual(refused["performed"], refused["added"])
+
+        added = self.run_add_rig("default")
+        self.assertIs(added["performed"], True)
+        self.assertEqual(added["performed"], added["added"])
 
 class PayloadSourceTests(unittest.TestCase):
     """Two rules the payload has to keep that are easiest to assert on source."""

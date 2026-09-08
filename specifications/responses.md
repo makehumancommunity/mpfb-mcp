@@ -37,6 +37,12 @@ The same test applies to a *filter*. A field that answers "which of these is the
 looking for?" must not include entries that are certainly not, however honestly they belong to
 the collection it was read from.
 
+**A field that means the same thing in two tools is spelled the same way in both.** `found`,
+`ready` and `blocked_by` were, and were never mis-read; the success flag was not, and was — see
+[the uniform success flag](mutating-tools.md#the-flag-a-caller-branches-on-is-called-performed)
+for what a mutating tool reports and why the tool's own verb is kept beside it rather than
+replaced.
+
 ## How tools report the asset behind an object
 
 MPFB records what an object was made from as a short *fragment* — `"fedora/fedora.mhclo"`, one
