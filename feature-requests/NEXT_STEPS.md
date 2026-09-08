@@ -142,7 +142,7 @@ the payloads and `codegen/` untouched. Not yet scoped into a numbered request.
 
 Six requests, written while [FR 013](done/013-live-verification/README.md)'s findings were fresh and
 deliberately kept out of it: folding a refactor into a bug hunt makes every finding ambiguous about
-which change caused it. Each is grounded in something the run measured or observed. **Two have
+which change caused it. Each is grounded in something the run measured or observed. **Three have
 landed**: [FR 014](done/014-uniform-performed-flag/README.md) gave every mutating tool a uniform
 `performed` flag beside its own verb, as `codegen/shared/performed.py`, and
 [FR 015](done/015-fourth-shared-fragment/README.md) added the fifth and sixth fragments —
@@ -150,9 +150,9 @@ landed**: [FR 014](done/014-uniform-performed-flag/README.md) gave every mutatin
 [verification/census.py](../verification/census.py). See their
 [entries in HISTORY.md](HISTORY.md). **FR 015's live re-verification is still outstanding**: the
 two checklists whose programs changed have not been re-run against a Blender, which its status
-line records. Four remain.
-- **[FR 016](016-trim-tool-descriptions/README.md)** — trim the tool descriptions from 66.7 KB
-  toward ~45 KB by moving rationale into the specifications, and put the response *field names* in.
+line records. And [FR 016](done/016-trim-tool-descriptions/README.md) took the tool descriptions
+from 70.4 KB to 47.5 KB and left `tests/test_description_budget.py` behind, so the next drift is a
+failing test rather than a discovery. Three remain.
 - **[FR 017](017-category-table-cost/README.md)** — the largest uncosted thing in the package: the
   three tools sharing `target_categories.py` rebuild MPFB's category table from disk on every call,
   at ~1.5-2 s each. Carries the `list_targets` migration below, since both touch that file.

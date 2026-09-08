@@ -13,6 +13,41 @@ The counterpart document is [responses.md](responses.md), which covers what come
 [mutating-tools.md](mutating-tools.md) covers the extra obligations of a tool that changes
 something, including how it resolves its subject.
 
+## A tool description is call-time instruction with a budget
+
+A tool's description is not documentation about the tool — it is the instruction the caller
+reasons from, and an MCP client downloads all twenty of them before any work happens. That makes
+it the one piece of prose in this repository with a **cost per session**, and it is measured:
+[FR 013](../feature-requests/done/013-live-verification/review.md#does-the-tool-surface-fit-its-consumer)
+found 66.7 KB of descriptions against an estimate of 58.5 KB, having grown unnoticed across five
+requests because nothing counted it. `tests/test_description_budget.py` counts it now, against a
+ceiling, so the next drift is a failing test rather than a discovery.
+
+- **The test to apply to a sentence: would a caller with no access to this repository act
+  differently for having read it?** If not, it is specification text, and it belongs here or in
+  the module or payload docstring — where the maintainer who needs it is already standing. Why
+  MPFB's label collision happens explains; *check `total_count` before concluding an asset is
+  absent* instructs.
+- **Surprising facts are instruction, and they stay in full.** That `asset_type` is required
+  because MPFB's own default mislabels six of eight types, that `skin_type` follows the settings
+  panel rather than the function signature, that exactly one of `path` and `fragment` may be
+  given: each of these changes what a caller passes, and each is needed *because* the answer is
+  surprising. Trimming is for rationale, never for these.
+- **Name the response fields a caller branches on** — at minimum the success flag, the subject
+  name, and the field carrying the thing the tool produced. FR 013's harness, written with the
+  source open, cost itself a round trip on each of three tools whose description named the
+  concept and not the key (`objects_removed`, `rig_object_name`, `asset_info.material_source`).
+  A shorter description a caller has to guess against is worse than a long one.
+- **What every tool would otherwise repeat belongs in the server instructions**, which are sent
+  once rather than twenty times: the response envelope, the `name`/active-object subject
+  convention, that a refusal is an answer carrying `found`, `ready` and `blocked_by`, the uniform
+  `performed` flag, and that a capped listing always reports `truncated` and `total_count`. A
+  tool then says only where it differs from the convention — which is the part worth reading.
+- **The docstring crosses the wire verbatim**, indentation included: FastMCP takes `fn.__doc__`
+  as it is written. `mpfbmcp.build_server()` dedents every description once, after registration,
+  because eight spaces per line across twenty tools is ten kilobytes of whitespace an agent pays
+  for and nobody reads.
+
 ## Validate before crossing the socket
 
 Where a tool takes structured input (e.g. macro-detail sliders, which are only meaningful in

@@ -101,50 +101,42 @@ def register(mcp: FastMCP) -> None:
         copying one side's modeling onto the other.
 
         **MPFB itself cannot do this.** Its `symmetry` setting only mirrors
-        changes made while it is on and explicitly leaves previously set values
-        alone, so a character that has already drifted asymmetric has no repair
-        path in MPFB's UI. Call `mpfb_get_target_stack` first: its `asymmetries`
-        field lists exactly which categories differ and by how much.
+        changes made while it is on and leaves previously set values alone, so
+        a character that has already drifted asymmetric has no repair path in
+        MPFB's UI. Call `mpfb_get_target_stack` first: its `asymmetries` field
+        lists which categories differ and by how much.
 
         **This is destructive and there is no undo across the socket.** It
         overwrites values the user may have set on purpose. `direction` is
         required - `"left_to_right"` or `"right_to_left"` - because which half
-        of a face is the good one is not something a tool can guess, and
-        guessing wrong destroys work. **Run it with `dry_run: true` first**: the
-        answer lists exactly the changes a real run would make, and writes
-        nothing.
-
-        `name` is any object in the character's family - the basemesh, its rig,
-        or a garment fitted to it. Omit it to use the active object.
+        of a face is the good one is not something a tool can guess. **Run it
+        with `dry_run: true` first**: the answer lists exactly the changes a
+        real run would make, and writes nothing.
 
         `section` restricts the operation to one `target.json` section, so
         "make the eyes symmetric" does not also flatten deliberate asymmetry in
-        the hands. Omit it to cover every section.
+        the hands; omit it to cover every section. Only categories with
+        `has_left_and_right: true` are considered, paired through
+        `target.json`'s `opposites` table rather than by matching `l-`/`r-`
+        name prefixes, which would be a guess.
 
-        `prune` (default true, MPFB's own) deletes a target's shape key once its
-        value reaches zero. `refit` (default false, MPFB's own) re-fits clothes
-        and the rig afterwards; read `assets_possibly_stale` and call
+        `prune` (default true, MPFB's own) deletes a target's shape key once
+        its value reaches zero. `refit` (default false, MPFB's own) re-fits
+        clothes and the rig afterwards; read `assets_possibly_stale` and call
         `mpfb_refit_human` when the modeling is done.
 
-        Only categories with `has_left_and_right: true` are considered - the
-        pairing comes from `target.json`'s `opposites` table, never from
-        matching `l-`/`r-` name prefixes, which would be a guess.
+        `result` carries `changed` - per category, both sides' values before,
+        the value after, and every target file touched, with `targets` being
+        `null` rather than `[]` under `dry_run: true`, because which files a
+        write would touch is only knowable by doing the write - plus
+        `already_symmetric`, `basemesh_name`, and `skipped` for a category
+        whose target file could not be found, since one unreachable target is
+        reported rather than abandoning the rest of the body.
 
-        Returns blender_mcp's response envelope. `result` carries `changed` (per
-        category: both sides' values before, the value after, and every target
-        file touched - `targets` is `null` rather than `[]` under
-        `dry_run: true`, because which files a write would touch is only
-        knowable by doing the write), `already_symmetric`, and `skipped` for a
-        category whose
-        target file could not be found - one unreachable target is reported
-        rather than abandoning the rest of the body. A subject that cannot be
-        resolved (`found: false`) and a basemesh in edit mode or without shape
-        keys (`ready: false`) are answers, not errors.
-
-        **Branch on `performed`.** Every mutating tool here reports that field
-        under the same name, a real boolean, true exactly when the character was
-        changed. Under `dry_run: true` it is false even though `changed` has
-        entries in it: those are the writes that *would* happen.
+        Under `dry_run: true`, `performed` is false even though `changed` has
+        entries in it: those are the writes that *would* happen. A subject that
+        cannot be resolved (`found: false`) and a basemesh in edit mode or
+        without shape keys (`ready: false`) are answers, not errors.
         """
         code = codegen.assemble(
             "symmetrize_targets.py",

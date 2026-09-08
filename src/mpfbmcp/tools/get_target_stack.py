@@ -94,55 +94,50 @@ def register(mcp: FastMCP) -> None:
                               offset: int = 0) -> dict[str, object]:
         """
         Read the modeling targets currently applied to a MakeHuman character -
-        every shape key on its basemesh, and the modeling sliders they add up to.
+        every shape key on its basemesh, and the modeling sliders they add up
+        to. Changes nothing.
 
-        `name` is any object in the character's family - the basemesh, its rig,
-        or a garment fitted to it. Omit it to use the active object.
-        `basemesh_name` names the object the stack was actually read from.
+        **`result` has two views of the same facts, addressed differently.**
 
-        **The answer has two views of the same facts, and they are addressed
-        differently.**
-
-        - `targets` - one entry per shape key: `shapekey_name` (the raw Blender
-          name, and the address `mpfb_set_targets`' `targets` list takes),
-          `decoded_name` (readable; a name over 60 characters is stored encoded,
-          and only the raw one works as an address), `value`, `kind`
-          (`macro`/`expression`/`detail`/`unknown`), and where the target sits in
-          MPFB's own index: `section`, `category`, `side`, `polarity`,
-          `listed_in_target_json`. Those are `null` for a user target that
-          belongs to no category.
-        - `modifiers` - the same information rolled up per `target.json`
-          category, each `{section, category, side, value}` with `value` in
-          -1.0..+1.0. This is the view MPFB's own sliders show, and the view that
-          feeds straight back into `mpfb_set_targets`' `modifiers` list. Only
-          categories with a non-zero reading appear. It is never paged and never
-          filtered by `name_contains`.
+          - `targets` - one entry per shape key: `shapekey_name` (the raw
+            Blender name, and the address `mpfb_set_targets`' `targets` list
+            takes), `decoded_name` (readable; a name over 60 characters is
+            stored encoded, and only the raw one works as an address), `value`,
+            `kind` (`macro`/`expression`/`detail`/`unknown`), and where the
+            target sits in MPFB's index: `section`, `category`, `side`,
+            `polarity`, `listed_in_target_json`, all null for a user target
+            belonging to no category.
+          - `modifiers` - the same information rolled up per `target.json`
+            category, each `{section, category, side, value}` with `value` in
+            -1.0..+1.0. This is the view MPFB's own sliders show and the one
+            that feeds straight back into `mpfb_set_targets`' `modifiers` list.
+            Only categories with a non-zero reading appear; never paged, never
+            filtered by `name_contains`.
 
         `asymmetries` lists the left/right categories whose two sides differ -
         which MPFB's own UI does not surface anywhere - and is what makes
-        `mpfb_symmetrize_targets` an informed operation rather than a blind one.
+        `mpfb_symmetrize_targets` an informed operation rather than a blind
+        one. `basemesh_name` names the object the stack was read from.
 
-        `include_macro` (default false) adds the `$md-` phenotype shape keys;
-        they are `mpfb_get_macro_details`' subject and there are typically a
-        dozen of them. `include_expressions` (default false) adds the `!ex-`
-        expression shape keys. `counts_by_kind` reports both counts whether or
-        not they were included.
+        `include_macro` (default false) adds the `$md-` phenotype shape keys,
+        which are `mpfb_get_macro_details`' subject; `include_expressions`
+        (default false) adds the `!ex-` expression ones. `counts_by_kind`
+        reports both counts whether or not they were included.
 
         **The answer is capped.** `limit` defaults to 200 and cannot exceed
         1000. Read `truncated` and `total_count` before concluding a target is
         not on this character, and narrow with `name_contains` rather than
         paging blindly; `counts_by_section` says where the entries are.
 
-        **This tool sees one thing MPFB itself cannot.** MPFB excludes any shape
-        key whose name *contains* "basis", not merely equals it, so a user target
-        called `basis-nose-widen` is real, is deforming the mesh, and is
-        invisible to every MPFB read and write. It is listed here with
+        **This tool sees one thing MPFB itself cannot.** MPFB excludes any
+        shape key whose name *contains* "basis", not merely equals it, so a
+        user target called `basis-nose-widen` is real, is deforming the mesh,
+        and is invisible to every MPFB read and write. It is listed here with
         `visible_to_targetservice: false`, and it cannot be changed through
         `mpfb_set_targets` either.
 
-        Returns blender_mcp's response envelope. A subject that cannot be
-        resolved to a basemesh is an answer, `found: false` with a sentence, not
-        an error. Changes nothing: in particular a character whose macro numbers
+        A subject that cannot be resolved to a basemesh is an answer, `found:
+        false` with a sentence, not an error. A character whose macro numbers
         and macro shape keys have drifted apart is reported as it is, not
         repaired.
         """

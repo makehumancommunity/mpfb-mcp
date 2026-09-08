@@ -154,91 +154,58 @@ def register(mcp: FastMCP) -> None:
     ) -> dict[str, object]:
         """
         Equip a MakeHuman character with one MHCLO asset - clothes, hair, eyes,
-        eyebrows, eyelashes, teeth, tongue or a topology proxy - with the same
-        result MPFB's own asset library panel produces.
+        eyebrows, eyelashes, teeth, tongue or a topology proxy.
 
-        **Rig the character before dressing it.** MPFB rigs a garment only if a
-        rig is present at the moment the garment is attached, and nothing rigs
-        it retroactively - not `mpfb_refit_human` either. This tool attaches the
-        asset either way and tells you which happened: `rigged_to` names the
-        armature, or is null with `parented_to` naming the basemesh instead.
-        Call `mpfb_add_rig` first, and for a Rigify character finish with
-        `mpfb_generate_rigify_rig` **after** the last asset.
+        **Rig the character before dressing it**: MPFB rigs a garment only if a
+        rig is present when the garment is attached, and nothing rigs it
+        retroactively. The asset is attached either way, and `rigged_to` names
+        the armature or is null with `parented_to` naming the basemesh.
 
         `asset_type` is **required**, and is exactly the `object_type`
         `mpfb_list_assets` reports for the entry: `Clothes`, `Proxymeshes`,
-        `Eyes`, `Eyebrows`, `Eyelashes`, `Hair`, `Teeth` or `Tongue`. MPFB's own
-        function defaults it to `"Clothes"`, which mislabels a body part
-        silently and permanently - wrong colour, wrong delete-group handling,
-        and a wrong `object_type` on the object from then on - so there is no
-        default here. `object_type_recorded` echoes what was actually stored,
-        since MPFB normalises the value.
+        `Eyes`, `Eyebrows`, `Eyelashes`, `Hair`, `Teeth` or `Tongue`. MPFB's
+        own function defaults it to `"Clothes"`, which mislabels a body part
+        silently and permanently, so there is no default here;
+        `object_type_recorded` echoes what was stored.
 
-        Name the asset with **either** `path` **or** `fragment`, never both -
-        both are reported for every entry by `mpfb_list_assets`. `path` is the
-        absolute file and is used as given. `fragment` (e.g.
-        `"fedora/fedora.mhclo"`) is portable across machines but is resolved by
-        **basename**, preferring a match whose directory also matches and
-        otherwise taking the first hit - so two packs shipping `hat.mhclo`
-        resolve to a coin toss. `resolved_path` always reports which file was
-        actually loaded; check it when `resolved_by` is `"fragment"`.
+        Name the asset with **either** `path` **or** `fragment`, never both;
+        `mpfb_list_assets` reports both. A `fragment` (`"fedora/fedora.mhclo"`)
+        is portable but is resolved by **basename**, so two packs shipping
+        `hat.mhclo` resolve to a coin toss - check `resolved_path` when
+        `resolved_by` is `"fragment"`.
 
         `material_type` is `MAKESKIN`, `GAMEENGINE`, `PROCEDURAL_EYES` or
-        `NONE`, and is best left unset: it then follows MPFB's own settings
-        panel per asset type - `NONE` for `Proxymeshes`, `MAKESKIN` for
-        everything else - and `material_type_used` reports the choice.
-        `PROCEDURAL_EYES` is accepted only for `Eyes`. **`NONE` deletes the
-        imported mesh's materials** and creates nothing, even when the MHCLO
-        names one; `material_created` and `warnings` say when that happened.
+        `NONE`, and is best left unset: it then follows MPFB's settings panel
+        per asset type - `NONE` for `Proxymeshes`, `MAKESKIN` for everything
+        else - and `material_type_used` reports the choice. `PROCEDURAL_EYES`
+        is accepted only for `Eyes`. **`NONE` deletes the imported mesh's
+        materials** and creates nothing, even when the MHCLO names one;
+        `material_created` and `warnings` say when that happened.
 
         `subdiv_levels` (default 1, MPFB's own) sets the subdivision modifier's
-        *render* level, with the viewport level at 0; `0` adds no modifier at
-        all. `set_up_rigging`, `interpolate_weights`, `import_subrig` and
-        `import_weights` are MPFB's own flags at MPFB's own defaults and are
-        passed straight through.
+        *render* level, viewport level 0; `0` adds no modifier.
+        `set_up_rigging`, `interpolate_weights`, `import_subrig` and
+        `import_weights` are MPFB's own flags at MPFB's own defaults. Fitting
+        to the body and the delete group are unconditional, so neither has an
+        argument, and an alternative material is chosen afterwards with
+        `mpfb_set_asset_material`.
 
-        `name` is any object in the character's family - the basemesh, its rig,
-        another garment, anything `mpfb_list_objects` reports. Omit it to use the
-        active object. `basemesh_name` names the character actually dressed.
-
-        **Two things MPFB's service function cannot do**, whatever its panel
-        offers: the fit to the body and the delete group are unconditional -
-        there is no `fit_to_body` or `mask_base_mesh` argument to expose - and
-        an alternative material chosen by uuid is not reachable here (change it
-        afterwards instead).
-
-        **Proxymeshes follow MPFB's `.mhm` loading path, not its proxy library
-        panel.** MPFB has three implementations of "add a proxy" and they
-        disagree; this one reproduces `HumanService._check_add_proxy()`, so the
-        basemesh also gets its "Hide base mesh" mask, the scale factor is
-        copied, the proxy's extra vertex groups are created and the corrective
-        pass is run. `proxy_extras` reports each of those four.
-
-        Returns blender_mcp's response envelope. On `status: "ok"` and
-        `added: true`, `result` carries `asset_object_name` (read off the created
-        object - Blender uniquifies a name already in use, so a second copy of
-        one garment becomes `...hat.001`; this is the address
-        `mpfb_remove_asset` needs), `resolved_path`/`resolved_by`/`asset_source`,
+        On `added: true`, `result` carries `asset_object_name` - read off the
+        created object, since Blender uniquifies a name already in use, and the
+        address `mpfb_remove_asset` and `mpfb_set_asset_material` need - plus
+        `basemesh_name`, `resolved_path`/`resolved_by`/`asset_source`,
         `object_type_recorded`, `material_type_used`,
         `material_created`/`material_name`, `rigged_to` or `parented_to`,
-        `subrig_object_name`, `delete_group_name` and `delete_group_applied_to`,
-        `subdiv_modifier_added`, `proxy_extras`, and `warnings` for the things
-        MPFB only logs.
+        `subrig_object_name`, `delete_group_name` and
+        `delete_group_applied_to`, `subdiv_modifier_added`, `warnings` for what
+        MPFB only logs, and `proxy_extras` - the four things a `Proxymeshes`
+        asset gets from MPFB's `.mhm` loading path, which this follows rather
+        than its proxy library panel.
 
-        Six situations answer with `added: false` and a `blocked_by` naming
-        which, rather than failing: the subject resolves to no basemesh
-        (`subject_not_found`); `path` names no file or `fragment` resolves to
-        nothing (`asset_not_found`); `asset_type` is not one MPFB knows
-        (`unknown_asset_type`, with `known_asset_types`); `material_type` is not
-        valid for that type (`invalid_material_type`); the section table has no
-        subdir for the type, so a fragment cannot be resolved
-        (`no_asset_subdir`); and anything not in OBJECT mode
-        (`not_object_mode`).
-
-        **Branch on `performed`.** Every mutating tool here reports that field
-        under the same name, a real boolean, true exactly when the character was
-        changed. It equals `added` for this tool: read `added` for the sentence,
-        `performed` for the branch.
+        Refusals come back as `added: false` (and so `performed: false`) with a
+        `blocked_by` and a sentence: `subject_not_found`, `asset_not_found`,
+        `unknown_asset_type` (with `known_asset_types`),
+        `invalid_material_type`, `no_asset_subdir` and `not_object_mode`.
         """
         checked_path, checked_fragment = _validated_source(path, fragment)
         code = codegen.assemble(

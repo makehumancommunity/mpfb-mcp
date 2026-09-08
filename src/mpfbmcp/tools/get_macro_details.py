@@ -67,51 +67,40 @@ def register(mcp: FastMCP) -> None:
 
         Call this before `mpfb_set_macro_details`: that tool leaves unnamed
         sliders alone, so knowing the current values is what makes a relative
-        change ("a bit older") possible.
+        change ("a bit older") possible. An unresolvable name, nothing active,
+        or an object with no basemesh among its relatives each come back as
+        `found: false` with a `message`, not as an error.
 
-        `name` is any object in the character's family - the basemesh, its rig,
-        or a garment fitted to it - as reported by `mpfb_list_objects`. The
-        basemesh is resolved from it, and `basemesh_name` says which object was
-        actually read. Omit `name` to use the active object. An unresolvable
-        name, nothing active, or an object with no basemesh among its relatives
-        each come back as `found: false` with a `message`, not as an error.
+        `result` carries:
 
-        Returns blender_mcp's response envelope. On `status: "ok"` and
-        `found: true`, `result` carries:
-
-          - `macro_details`: the current values, in MPFB's own nested shape
+          - `macro_details`: the current values in MPFB's own nested shape
             (`gender`, `age`, ..., plus `race` holding `asian`, `caucasian` and
-            `african`). `mpfb_set_macro_details` returns the same shape, but
+            `african`). `mpfb_set_macro_details` returns the same shape but
             takes its arguments flat: `race.asian` is set as `race_asian`.
           - `default_macro_details`: what MPFB considers neutral - every slider
             0.5, every race weight 0.33.
           - `race_sum` and `race_normalized`: **the three race weights are
             independent 0.0-1.0 properties and MPFB does not normalize them.**
             The default sums to 0.99; setting `race_asian` to 1.0 and leaving
-            the others alone gives a character built from weights summing to
-            1.66, which is legal and probably not what was wanted.
+            the others alone builds a character from weights summing to 1.66,
+            which is legal and probably not what was wanted.
           - `macro_target_stack` and `macro_target_count`: what those values
             mean in target terms, each entry carrying the `target_fragment`
             MPFB loads from disk and the `shapekey_name` it becomes. **Neither
             is a name any tool accepts as input**; they explain the shape, they
             do not address it.
-          - `current_macro_shapekeys`: the macro shape keys actually on the mesh
-            now, under the names they are stored with - which is the same
+          - `current_macro_shapekeys`: the macro shape keys actually on the
+            mesh now, under the names they are stored with - the same
             vocabulary as `macro_target_stack`'s `shapekey_name`, so the two
-            can be compared directly. If they disagree, the properties have been
-            changed without a recalculation, and `mpfb_set_macro_details` will
+            can be compared directly. If they disagree, the properties were
+            changed without a recalculation and `mpfb_set_macro_details` will
             repair it. `current_macro_shapekeys_decoded` is the same list in
-            MPFB's readable form (`macrodetail-asian-female-young` rather than
-            `$md-$as-$fe-$yn`); it is for reading, not for comparing.
+            MPFB's readable form, for reading rather than comparing.
           - `has_shapekeys` and `is_human_project`: a mesh tagged as a basemesh
             but never built by MPFB reads back a full set of macro properties
             that mean nothing. These two are how that is told apart.
-          - `basemesh_name`, `subject_name` and `subject_resolved_by`
-            ("name" or "active").
-
-        The answer describes one character at one moment. Re-read rather than
-        cache it, and note that an active-object answer is stale as soon as the
-        user clicks elsewhere.
+          - `basemesh_name`, `subject_name` and `subject_resolved_by` ("name"
+            or "active").
         """
         code = codegen.assemble(
             "get_macro_details.py",

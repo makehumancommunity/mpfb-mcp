@@ -123,6 +123,39 @@ the path and `json.load()` it. Where a tool has to read a bundled data file, thr
   itself. Reporting the path, an overview, and a way to page through the contents is strictly more
   useful than truncating the file.
 
+## MPFB caches what it scans, and a tool says what that costs and what it hides
+
+Three of MPFB's own caches sit under this package's catalogue tools, and each one changes what an
+answer means rather than merely how fast it arrives.
+
+- **The asset list.** The first scan of a subdir loads a Blender preview image for every
+  thumbnailed asset — the slow, memory-hungry part of `mpfb_list_assets`, paid once per subdir per
+  Blender session, and shared with MPFB's own asset panels, so a session where those were opened
+  has already paid it. Worse, the cache is keyed by a *label* derived from the filename alone, so
+  two assets whose filenames differ only in case or underscores collapse into one entry: a count
+  from here can under-report, and one of the two is missing entirely rather than merely
+  mislabelled. That is a limitation of MPFB's cache and not of the filters, and it is why a
+  listing count may disagree with a count of files on disk.
+- **The custom rig list**, cached for the lifetime of the Blender session, so a rig installed after
+  Blender started does not appear until something rescans.
+- **The alternative materials of one asset**, cached per `(asset_source, asset_subdir)` — the case
+  where [the tool is the stale one](responses.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show).
+
+What follows for a tool:
+
+- **A rescan is opt-in, never the default.** `refresh` writes MPFB's caches — the asset one
+  rescans the *whole* library and invalidates the alternative-material and pack metadata along the
+  way — and those are the same caches MPFB's own panels read. A default that rescanned would make
+  a catalogue call a side effect on the user's UI.
+- **Say in the docstring what the first call costs and what a rescan does**, since neither is
+  visible from the response and both are surprising for a tool that changes nothing in the scene.
+- **Where a cache cannot be refreshed at all, say that too.** A caller who cannot tell staleness
+  from absence will read a missing asset as a missing file. FR 013 found that
+  `AssetService.invalidate_alternative_materials_cache()` *does* exist and clears both dicts —
+  nothing calls it — which is what makes
+  [FR 018](../feature-requests/018-alternative-material-refresh/README.md) possible; until it
+  lands, the tool says so.
+
 ## When mpfb-mcp models a concept MPFB's UI has but its services do not
 
 Not every concept a tool needs is a service concept. A modeling *modifier* — a slider from -1.0 to

@@ -60,72 +60,54 @@ def register(mcp: FastMCP) -> None:
         `name` is a Blender object name, typically one from
         `mpfb_list_objects`. **Omit it to ask about the currently active
         object** - what the user just created or clicked. Not resolving a
-        subject is a normal answer, not an error: `found` is false, and
-        `message` says whether no such object exists or nothing is active.
+        subject is a normal answer: `found` is false and `message` says whether
+        no such object exists or nothing is active.
 
-        Returns blender_mcp's response envelope. On `status: "ok"`, `result`
-        always carries `found`, `resolved_from` ("name" or "active_object") and
-        `message`. When `found` is true it also carries:
+        `result` always carries `found`, `resolved_from` ("name" or
+        "active_object") and `message`. When `found` is true it also carries:
 
-          - `name`: the resolved object's name. This is the point of the
-            active-object form - carry this forward to later tools rather than
+          - `name`: the resolved object's name. Carry this forward rather than
             re-deriving from the active object, which changes as the user
             clicks.
-          - `in_current_scene`: object names are unique across the whole .blend,
-            so a name can resolve to an object `mpfb_list_objects` does not
-            list. False here is not a contradiction between the two tools.
+          - `in_current_scene`: object names are unique across the whole
+            .blend, so a name can resolve to an object `mpfb_list_objects` does
+            not list. False here is not a contradiction between the two tools.
           - `object_type` (MPFB's type, or null for a plain Blender object),
             `blender_type`, `is_makehuman_object`.
-          - `rigify_role`: "generated_rig", "metarig", or null for anything that
-            is neither. Reported whatever the object's type, because MPFB tags
-            the rig it generates through Rigify as a `Skeleton` - so a null
-            `object_type` is not what identifies one. Read alongside
-            `asset_info.rig_type`, which asks the same question of the bone
-            names rather than of Rigify's own marker.
+          - `rigify_role`: "generated_rig", "metarig", or null - reported
+            whatever the object's type, because MPFB tags the rig it generates
+            through Rigify as a `Skeleton`.
           - `asset_info`: what the object was made from, or null when it has no
             MPFB type. **Its keys depend on the object type** - a skeleton has
-            no mhclo, so it has no `mhclo_path` key rather than a null one:
-            - `Skeleton`/`Subrig`: `rig_type`, `rig_definition_path`.
-            - mesh assets (`Clothes`, `Eyes`, `Hair`, `Proxymeshes`, ...):
-              `asset_source`, `mhclo_path`, `material_type`, `material_source`,
-              `mhmat_path`.
-            - `Basemesh`: `material_type`, `material_source`, `mhmat_path`.
-            An unrecognized MakeHuman type gets an empty dict.
+            no mhclo, so it has no `mhclo_path` key rather than a null one.
+            `Skeleton`/`Subrig` carry `rig_type` and `rig_definition_path`; a
+            mesh asset (`Clothes`, `Eyes`, `Hair`, `Proxymeshes`, ...) carries
+            `asset_source`, `mhclo_path`, `material_type`, `material_source`
+            and `mhmat_path`; a `Basemesh` carries the last three. An
+            unrecognized MakeHuman type gets an empty dict.
           - `related_objects`: the MakeHuman objects among this one's parents,
             children and siblings - "what belongs with this character" - each
             with the same fields plus its own `asset_info`, excluding the
             subject. A flat list, not a tree; call this tool again on a name to
             walk the structure.
           - `other_related_objects`: relatives carrying no MPFB type, each with
-            a `rigify_role` of "generated_rig", "metarig" or null. This is where
-            a Rigify rig built outside MPFB shows up - it is attached to the
-            character and drives it, but carries none of MPFB's properties, so
-            it appears in no other list this server returns.
+            a `rigify_role`. This is where a Rigify rig built outside MPFB
+            shows up: it drives the character but appears in no other list this
+            server returns.
 
-        Reading `asset_info` correctly:
-
-          - Every `*_path` is an absolute path or null; the `*_source` fields
-            beside them are MPFB's short fragments ("fedora/fedora.mhclo") and
-            are **not** paths - do not pass one to a file-opening tool. The
-            pairing is also how two different situations stay apart: a null
-            fragment means nothing was recorded, while a fragment with a null
-            path means the asset is recorded but is not installed under any
-            asset root this Blender can see.
-          - A null `material_source` on a mesh asset is the ordinary case and
-            means the object uses the default material named inside its mhclo -
-            not that the material is unknown. That default is deliberately not
-            resolved here; derive it from `mhclo_path` if you need it.
-          - `rig_type` and `material_type` are identified from the object as it
-            is now (bone names, material nodes); the `*_source` fragments record
-            what was *loaded*, and nothing rewrites them if the object is later
-            edited by hand. Where the two disagree, the identified value
-            describes reality. Both are heuristics, not authorities.
-          - `mhclo_path` may point at a file with a `.proxy` extension rather
-            than `.mhclo`; do not match on the suffix to decide what it is.
-
-        The result describes one scene at one moment and is not cacheable - the
-        active-object form especially, since its subject changes when the user
-        clicks elsewhere in the viewport.
+        Reading `asset_info` correctly: every `*_path` is an absolute path or
+        null, while the `*_source` fields beside them are MPFB's short
+        fragments and are **not** paths. The pair keeps two situations apart -
+        a null fragment means nothing was recorded, a fragment with a null path
+        means the asset is recorded but is not installed under any asset root
+        this Blender can see. A null `material_source` on a mesh asset is
+        ordinary: the object uses the default material named inside its mhclo,
+        deliberately not resolved here. `rig_type` and `material_type` are
+        identified from the object as it is now, while the `*_source` fragments
+        record what was loaded and are never rewritten when the object is
+        edited by hand; where they disagree, the identified value describes
+        reality. And `mhclo_path` may point at a `.proxy` file, so do not
+        decide what something is from the suffix.
         """
         # `result` (built in codegen/payloads/get_object_info.py) is always
         # plain JSON-safe data, so strict_json=True to surface a clear error if

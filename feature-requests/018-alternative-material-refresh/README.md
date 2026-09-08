@@ -51,6 +51,12 @@ The tool is `src/mpfbmcp/tools/list_asset_materials.py` and its payload
 `AssetService`, which is already in the `SERVICES` dict, so no module-level read is needed — unlike
 the cache dicts themselves, which are module-level in `assetservice.py`.
 
+**The docstring has a budget.** [FR 016](../done/016-trim-tool-descriptions/README.md) brought the
+twenty descriptions to 47,759 B against a 48,500 B ceiling asserted by
+`tests/test_description_budget.py`, so FR-3's rewrite has about 700 B of room. It should not need
+any: the paragraph it replaces is longer than "`refresh` rescans; it clears the cache for every
+asset, and `cache_invalidated` says so" is.
+
 **Pitfall: `exclude_default` is still dead.** The same function accepts and never reads it, which
 [FR 013](../done/013-live-verification/README.md) also confirmed. `mpfb_list_asset_materials` flags the
 asset's own material rather than removing it, and that stays: removing it would be this package
@@ -60,9 +66,14 @@ inventing a behaviour MPFB does not have.
 
 - **[specifications/responses.md](../../specifications/responses.md)** —
   [How tools bound a large answer](../../specifications/responses.md#how-tools-bound-a-large-answer)
-  is where `refresh` is described for the other two catalogue tools.
-- **[specifications/vision.md](../../specifications/vision.md)** — `mpfb_list_asset_materials`' catalog
-  entry.
+  is where `refresh` is described for the other two catalogue tools, and
+  [A tool may report a fact MPFB's own UI does not show](../../specifications/responses.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)
+  carries the "the tool is the stale one" clause this change makes conditional.
+- **[specifications/mpfb-integration.md](../../specifications/mpfb-integration.md)** —
+  [MPFB caches what it scans](../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides),
+  added by [FR 016](../done/016-trim-tool-descriptions/README.md), lists this cache as the one with no
+  caller for its invalidator and names this request as the fix. Its last bullet — "until it lands,
+  the tool says so" — is what stops being true here.
 
 ## Tests
 

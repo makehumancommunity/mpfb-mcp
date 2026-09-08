@@ -846,7 +846,7 @@ subject.
 
 The eleven tool docstrings gained a short paragraph saying to branch on `performed` and read the
 verb — about 1.5 KB against the description budget
-[FR 016](016-trim-tool-descriptions/README.md) wants to shrink, which is the trade that request
+[FR 016](done/016-trim-tool-descriptions/README.md) wants to shrink, which is the trade that request
 already names: rationale out, field names in.
 
 ## [FR 015](done/015-fourth-shared-fragment/README.md) — the two duplications that would have drifted silently, and the census that keeps the question cheap
@@ -906,6 +906,70 @@ candidate: `list_targets.py` defines `files_matching()` and `read_target_json()`
 The census also shows this effort's own effect: `modifier_value()` is gone from the list, and
 `rig_refit_blocker()` is 4 copies in **2** variants — which is now the deliberate tense split
 rather than drift, and is the one entry a future reader should not "fix".
+
+## [FR 016](done/016-trim-tool-descriptions/README.md) — the tool descriptions trimmed, and the budget that keeps them trimmed
+
+**70,352 B of descriptions to 47,759 B**, with the parameter schemas untouched at 8,105 B: an MCP
+client now preloads 55,864 B where it preloaded 78,457 B, before a single call is made.
+`mpfb_list_assets` went 6,246 → 3,309, `mpfb_add_asset` 5,407 → 2,893, and `mpfb_create_human`
+*grew* 1,259 → 2,064, because the entry point was the one description that said nothing about how
+it relates to `mpfb_set_macro_details`.
+
+The request's own framing was that a third of the four largest descriptions was rationale rather
+than instruction, and that is what came out. But **half the saving was in three things the request
+had not identified**, and the first of them is the one worth remembering:
+
+**10 KB of the 70 was whitespace.** `Tool.from_function()` takes `fn.__doc__` verbatim, so every
+line of every description crossed the wire carrying the eight spaces it is indented by in the
+source file — about 500 bytes per tool that no reader of the source, and no reader of the
+response, ever saw. `build_server()` dedents each description once after registration. It is the
+kind of cost that only exists because nobody had measured the thing.
+
+**The conventions twenty tools were each repeating moved to the server instructions**, which are
+sent once: the response envelope, the `name`/active-object subject convention, that a refusal is
+an answer carrying `found`/`ready`/`blocked_by`, the uniform `performed` flag from
+[FR 014](done/014-uniform-performed-flag/README.md), and that a capped listing always reports
+`truncated` and `total_count`. The instructions grew 1.2 KB and about 6 KB came out of the
+descriptions. A tool now says only where it *differs* from the convention — `mpfb_symmetrize_targets`
+returning `performed: false` under `dry_run` with a populated `changed`, `mpfb_refit_human` deriving
+the flag from `refit_performed` — which is the part a caller actually needs.
+
+**And a strict application of the request's own test** — would a caller with no access to this
+repository act differently for having read this sentence? — took most of the rest. The six-line
+refusal enumerations became one sentence naming the codes and keeping only the surprising ones
+(`already_rigged`, because MPFB cannot swap a rig; `not_a_mesh_asset`, because the underlying
+function would delete a basemesh; `skin_failed`, because the materials are gone by then).
+
+**FR-3 asked for "the same script that measured it here", and there was none.** FR 013 measured by
+hand — which is exactly how the figure had drifted from an estimated 58.5 KB to a measured 66.7 KB
+without anyone noticing. The measurement is now
+[tests/test_description_budget.py](../tests/test_description_budget.py), a ceiling the suite
+asserts and a per-tool table when the module is run as a script. It measures the server
+`mpfbmcp.build_server()` actually builds rather than a list of its own, which is why the server's
+construction is now split out of `main()`: a tool registered without being thought about lands
+inside the budget rather than outside it. The ceiling is 48,500, which leaves about a paragraph of
+room: enough that a real addition fits, and not enough for a habit.
+
+**It stopped at 47,759 rather than the ~45,000 the request aimed at.** What remained at that point
+was instruction: response field names, argument vocabularies, and the surprising facts the request
+explicitly protects. Trimming further would have been compressing instruction, which the request
+rules out in its own goals.
+
+**What the trim nearly cost.** Paragraph-by-paragraph editing across twenty docstrings deleted
+three whole response-field bullet lists — `mpfb_get_object_info`'s, `mpfb_list_rigs`',
+`mpfb_get_macro_details`' — each time by replacing a bullet *list* where a bullet was meant, and
+six mutating tools lost the word `performed` that FR 014 had put there. All nine were caught by
+diffing every backtick-quoted identifier in each docstring against its version in `HEAD`, which is
+the check any future pass over these files should repeat: the budget test can see that a
+description shrank, and cannot see that it lost the field a caller branches on.
+
+Two standing specifications gained a section, both for rationale that came out of a description
+and had nowhere else to live:
+[A tool description is call-time instruction with a budget](../specifications/tool-interface.md#a-tool-description-is-call-time-instruction-with-a-budget),
+which states the test, the budget and where a repeated convention belongs; and
+[MPFB caches what it scans](../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides),
+which collects the three MPFB caches under the catalogue tools — the asset list keyed by label, the
+session-lifetime custom rig list, and the alternative materials with no invalidator anyone calls.
 
 ## [FR 020](done/020-trim-claude-md/README.md) — the root CLAUDE.md trimmed, and the rule that keeps it trimmed
 

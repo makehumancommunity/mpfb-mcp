@@ -63,34 +63,29 @@ def register(mcp: FastMCP) -> None:
         `object_type` is one of MPFB's own type names (`"Basemesh"`,
         `"Skeleton"`, `"Subrig"`, `"Proxymeshes"`, `"Clothes"`, `"Eyes"`,
         `"Eyelashes"`, `"Eyebrows"`, `"Teeth"`, `"Tongue"`, `"Hair"`); omit it
-        to get every MakeHuman object. **Matching is MPFB's own, which is a
+        to get every MakeHuman object. **Matching is MPFB's own, a
         case-insensitive substring test rather than equality**: `"rig"` matches
         `Subrig`, and `"mesh"` matches both `Basemesh` and `Proxymeshes`. That
-        is deliberate on MPFB's side and is not a bug in this tool.
+        is deliberate on MPFB's side and is not a bug here.
 
         Only the current scene is searched, so results match what the user is
         looking at. An object that exists in the .blend without being linked
-        into the scene is not listed here - `mpfb_get_object_info` will still
-        resolve it by name and say that this is the case.
+        into the scene is not listed - `mpfb_get_object_info` will still
+        resolve it by name and say so.
 
-        Returns blender_mcp's response envelope. On `status: "ok"`, `result`
-        carries:
+        `result` carries `objects`, one entry per match with `name` (the
+        Blender object name, which is how every other tool addresses it),
+        `object_type` (MPFB's type) and `blender_type` ("MESH", "ARMATURE",
+        ...); `count`; `requested_type`, the filter as given or null;
+        `type_recognized`, whether it matched a type MPFB knows - **check this
+        before concluding anything from an empty list**, since "no basemeshes
+        in this scene" and "you asked for `Basemseh`" are otherwise the same
+        answer; and `known_types`, MPFB's full type vocabulary read from MPFB
+        itself, so a misspelling can be corrected from this same response.
 
-          - `objects`: one entry per match, each with `name` (the Blender object
-            name, which is how every other tool addresses it), `object_type`
-            (MPFB's type) and `blender_type` ("MESH", "ARMATURE", ...).
-          - `count`: how many.
-          - `requested_type`: the filter as given, or null.
-          - `type_recognized`: whether `requested_type` matched a type MPFB
-            knows. **Check this before concluding anything from an empty
-            list**: "no basemeshes in this scene" and "you asked for `Basemseh`"
-            are otherwise the same empty list.
-          - `known_types`: MPFB's full type vocabulary, read from MPFB itself,
-            so a misspelling can be corrected from this same response.
-
-        The result describes one scene at one moment and is an address other
-        tools will act on. Re-call rather than cache: loading another .blend, or
-        the user deleting an object, invalidates it entirely.
+        The result is an address other tools will act on. Re-call rather than
+        cache: loading another .blend, or the user deleting an object,
+        invalidates it entirely.
         """
         # `result` (built in codegen/payloads/list_objects.py) is always plain
         # JSON-safe data, so strict_json=True to surface a clear error if that

@@ -122,61 +122,48 @@ def register(mcp: FastMCP) -> None:
         alternatives that ship beside it - a hat in another colour - or put the
         asset's own material back.
 
-        `name` is **required** and is the **asset's** own Blender object name, as
-        `mpfb_list_objects` reports it or as `mpfb_add_asset` returned it in
+        `name` is **required** and is the **asset's** own Blender object name,
+        as `mpfb_list_objects` reports it or as `mpfb_add_asset` returned it in
         `asset_object_name` - not the character's. There is no active-object
         fallback: this destroys that object's current material.
 
-        Name the material with **either** `path` **or** `fragment`, never both;
-        both are reported for every entry by `mpfb_list_asset_materials`, which
-        is the catalogue this tool consumes and the only place those files are
-        listed - alternative materials are *not* part of `mpfb_list_assets`'
-        answer, because they do not live in an asset library section. They sit in
-        the asset's own directory.
+        Name the material with **either** `path` **or** `fragment`, never both.
+        Both come from `mpfb_list_asset_materials`, the only catalogue for
+        them: alternative materials sit in the asset's own directory rather
+        than in an asset library section, so `mpfb_list_assets` does not know
+        about them.
 
-        `restore_default` (default false) instead puts back the material named by
-        the asset's own MHCLO and clears the recorded `alternative_material`. It
-        cannot be combined with `path` or `fragment`.
+        `restore_default` (default false) instead puts back the material named
+        by the asset's own MHCLO and clears the recorded
+        `alternative_material`. It cannot be combined with `path` or
+        `fragment`.
 
-        **What this reproduces is a UI operator, not a service function.** MPFB
-        has no service-level "set an alternative material"; the logic exists only
-        in its asset library panel, and this payload reimplements it from
-        services rather than importing it. Two of its quirks are reproduced
-        deliberately rather than tidied up, because tidying them would make the
-        result differ from what the panel produces: the new material is **always
-        a MakeSkin material named `makeskinmaterial`**, whatever kind the asset
-        had before, and the slots are popped rather than deleted, so node groups
-        from the previous material survive.
+        MPFB has no service-level "set an alternative material" - the logic
+        exists only in its asset library panel - and two of that panel's quirks
+        are reproduced here rather than tidied up, because tidying them would
+        make the result differ from what a user gets from the panel: the new
+        material is **always a MakeSkin material named `makeskinmaterial`**,
+        whatever the asset had before, and the slots are popped rather than
+        deleted, so node groups from the previous material survive. The
+        viewport display colour comes from MPFB's per-type table keyed on the
+        asset's `object_type`, so an asset mislabelled when it was equipped
+        gets the wrong colour here too; `diffuse_color_from` reports which type
+        was used and is null when the neutral grey fallback applied.
 
-        The object's viewport display colour is taken from MPFB's per-type table,
-        keyed on the asset's `object_type` - so an asset mislabelled when it was
-        equipped gets the wrong colour here too. `diffuse_color_from` reports
-        which type was used, and is `null` when the type was not in the table and
-        the neutral grey fallback applied.
+        On `applied: true`, `result` carries `asset_object_name`,
+        `object_type`, `asset_subdir`, `resolved_by`/`resolved_path`,
+        `alternative_material` (the fragment now recorded on the object, empty
+        when the default was restored) beside `previous_alternative_material`,
+        `materials_destroyed`, `material_name` and `diffuse_color_from`.
 
-        Returns blender_mcp's response envelope. On `status: "ok"` and
-        `applied: true`, `result` carries `asset_object_name`, `object_type`,
-        `asset_subdir`, `resolved_by`/`resolved_path`, `alternative_material`
-        (the fragment now recorded on the object - empty when the default was
-        restored) beside `previous_alternative_material`, `materials_destroyed`,
-        `material_name` and `diffuse_color_from`.
-
-        Six situations answer with `applied: false` and a `blocked_by` naming
-        which, rather than failing: no object by that name (`not_found`); the
-        object carries no MPFB `object_type` (`not_an_mpfb_object`); it is a
-        `Basemesh`, `Proxymeshes` or `Skeleton` (`type_not_supported` - MPFB's
-        own panel refuses all three, and the first two have a skin rather than an
-        asset material, which is `mpfb_set_skin`'s job); `restore_default` on an
-        object that records no `asset_source`, so its own MHCLO cannot be found
-        (`asset_source_missing`); the default material cannot be resolved, either
-        because the MHCLO names none or because the file it names is not on disk
-        (`default_material_not_found`); and the requested file does not exist
-        (`material_not_found`). Edit mode answers with `not_object_mode`.
-
-        **Branch on `performed`.** Every mutating tool here reports that field
-        under the same name, a real boolean, true exactly when the character was
-        changed. It equals `applied` for this tool: read `applied` for the
-        sentence, `performed` for the branch.
+        Refusals come back as `applied: false` (and so `performed: false`) with
+        a `blocked_by` and a sentence: `not_found`, `not_an_mpfb_object`,
+        `material_not_found`, `not_object_mode`, `asset_source_missing` and
+        `default_material_not_found` (both for `restore_default` on an asset
+        whose own MHCLO cannot be found or names no material on disk), and
+        `type_not_supported` for a `Basemesh`, `Proxymeshes` or `Skeleton` -
+        MPFB's own panel refuses all three, and the first two have a skin
+        rather than an asset material, which is `mpfb_set_skin`'s job.
         """
         checked_restore = _validated_flag("restore_default", restore_default)
         checked_path, checked_fragment = _validated_request(

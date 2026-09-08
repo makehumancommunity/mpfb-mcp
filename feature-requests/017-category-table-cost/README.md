@@ -107,8 +107,13 @@ parse or the shape-key enumeration — a payload printing its own timings into t
   decision about whether generated code may hold state inside Blender between calls, which is new
   and belongs beside
   [Reading module-level names MPFB does not publish](../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish).
-- **[specifications/vision.md](../../specifications/vision.md)** — `mpfb_list_targets`' catalog entry,
-  if it gains `refresh`.
+- **[specifications/mpfb-integration.md](../../specifications/mpfb-integration.md)** —
+  [MPFB caches what it scans](../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides)
+  is where the three caches a tool already has to explain are collected, and a cache of *ours*
+  inside Blender is the first one that is not MPFB's. FR-2's `refresh` and FR-3's visible staleness
+  are the same obligations stated there. If a tool's description grows to say so, note that
+  [FR 016](../done/016-trim-tool-descriptions/README.md) left about 700 B of room under the ceiling
+  `tests/test_description_budget.py` asserts.
 
 ## Tests
 

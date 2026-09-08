@@ -169,72 +169,58 @@ def register(mcp: FastMCP) -> None:
                          prune: bool = True,
                          refit: bool = False) -> dict[str, object]:
         """
-        Change a MakeHuman character's detail targets - one modeling slider, one
-        raw target, or fifty of them in a single call - with the same result
-        MPFB's own modeling sliders produce.
+        Change a MakeHuman character's detail targets - one modeling slider,
+        one raw target, or fifty of them in a single call.
 
-        **Send the whole change as one call.** A round trip costs about a second
-        and the work inside costs milliseconds, so thirty separate calls would be
-        half a minute of waiting.
+        **Send the whole change as one call.** A round trip costs about half a
+        second and the work inside costs milliseconds.
 
-        `name` is any object in the character's family - the basemesh, its rig,
-        or a garment fitted to it. Omit it to use the active object.
-        `basemesh_name` names the object that was actually modified.
+        **`modifiers` is the level to use normally.** Each entry is `{section,
+        category, value, side}`, naming a `target.json` section and one of its
+        categories exactly as `mpfb_list_targets` reports them:
 
-        **`modifiers` is the level to use normally.** Each entry is
-        `{section, category, value, side}`, naming a `target.json` section and
-        one of its categories exactly as `mpfb_list_targets` reports them:
-
-        - `value` runs -1.0..+1.0 for a category that has `opposites` (the sign
-          picks which of the opposing pair is loaded; the other is driven to
-          zero), and 0.0..1.0 for one that does not.
-        - `side` is `"left"`, `"right"` or `"unsided"`. It is **required** for a
-          category with `has_left_and_right: true` and must be omitted or
-          `"unsided"` for one without - defaulting a sided category to one side
-          would be a coin flip.
+          - `value` runs -1.0..+1.0 for a category that has `opposites` - the
+            sign picks which of the opposing pair is loaded, and the other is
+            driven to zero - and 0.0..1.0 for one that does not.
+          - `side` is `"left"`, `"right"` or `"unsided"`. **Required** for a
+            category with `has_left_and_right: true`, and omitted or
+            `"unsided"` for one without.
 
         **`targets` is the escape hatch**, for a user-installed target that
         belongs to no category. Each entry is `{shapekey_name, value}` with
-        `value` in 0.0..1.0 (Blender clamps a shape key to that range). Use the
-        `shapekey_name` `mpfb_list_targets` reports, **not** the filename: above
-        60 characters MPFB encodes the name, and a filename then addresses
-        nothing at all, silently.
+        `value` in 0.0..1.0, the range Blender clamps a shape key to. Use the
+        `shapekey_name` `mpfb_list_targets` reports, **not** the filename:
+        above 60 characters MPFB encodes the name, and a filename then
+        addresses nothing at all, silently.
 
         Both lists are optional and either may be empty; a call naming neither
         does nothing and says so.
 
-        **Nothing is applied unless everything resolves.** Every entry is checked
-        inside Blender first - the section and category exist, the side fits the
-        category, the value is in that category's range, the target file can be
-        found - and if any entry fails, `resolution_errors` explains which and
-        **zero changes are made**. Fix the entries and resend the whole batch.
-        `known_sections` and `known_categories_in_section` come back with the
-        error, so a misspelling can be corrected from the same response.
+        **Nothing is applied unless everything resolves.** Every entry is
+        checked inside Blender first - the section and category exist, the side
+        fits the category, the value is in that category's range, the target
+        file can be found - and if any entry fails, `resolution_errors` names
+        which and **zero changes are made**. Fix them and resend the whole
+        batch; `known_sections` and `known_categories_in_section` come back
+        with the error.
 
-        `symmetry` (default false, MPFB's own) also applies a sided change to the
-        other side, so one entry touches up to four shape keys.
-        `prune` (default true, MPFB's own) deletes a target's shape key once its
-        value reaches zero. `refit` (default false, MPFB's own) re-fits clothes
-        and the rig afterwards; **the default is false because a refit is
-        expensive, not because it is unnecessary** - read `assets_possibly_stale`
-        and call `mpfb_refit_human` once when the modeling is done.
+        `symmetry` (default false, MPFB's own) also applies a sided change to
+        the other side, so one entry touches up to four shape keys. `prune`
+        (default true, MPFB's own) deletes a target's shape key once its value
+        reaches zero. `refit` (default false, MPFB's own) re-fits clothes and
+        the rig afterwards; leave it false, read `assets_possibly_stale`, and
+        call `mpfb_refit_human` once when the modeling is done.
 
-        Returns blender_mcp's response envelope. On success `result` carries
-        `applied` - one entry per requested change, in request order, each
-        listing every target file touched with `present_before`,
+
+        `result` carries `applied` - one entry per requested change, in request
+        order, each listing every target file touched with `present_before`,
         `previous_value`, `new_value`, `loaded_from` (set when the target was
         read off disk on this call) and `pruned` - plus `shapekeys_added` and
-        `shapekeys_removed`, `refit_performed` and `basemesh_name`.
-
-        Two situations answer rather than fail: a subject that cannot be resolved
-        to a basemesh (`found: false`), and a basemesh in edit mode or with no
-        shape keys (`ready: false`, `blocked_by` naming which).
-
-        **Branch on `performed`.** Every mutating tool here reports that field
-        under the same name, a real boolean, true exactly when the character was
-        changed. It is false whenever `applied` is empty - including the
-        all-or-nothing resolution failure, where the batch was understood and
-        none of it was written.
+        `shapekeys_removed`, `refit_performed`, `assets_possibly_stale` and
+        `basemesh_name`. An unresolvable subject answers `found: false`, and a
+        basemesh in edit mode or without shape keys `ready: false` with
+        `blocked_by`. `performed` is false whenever `applied` is empty, the
+        all-or-nothing resolution failure included.
         """
         code = codegen.assemble(
             "set_targets.py",

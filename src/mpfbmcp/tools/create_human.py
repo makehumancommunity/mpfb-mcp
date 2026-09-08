@@ -45,27 +45,44 @@ def register(mcp: FastMCP) -> None:
         scale: float = _DEFAULT_SCALE,
     ) -> dict[str, object]:
         """
-        Create a new MakeHuman character via MPFB's HumanService.create_human().
+        Create a new MakeHuman character - a basemesh with a phenotype -
+        through MPFB's `HumanService.create_human()`. The starting point for
+        building a character: shape it further with `mpfb_set_targets`, rig it
+        with `mpfb_add_rig` **before** dressing it with `mpfb_add_asset`, and
+        give it a skin with `mpfb_set_skin`, without which it stays grey.
 
-        All macro-detail sliders (gender, age, muscle, weight, proportions,
-        height, cupsize, firmness, race_*) are 0.0-1.0, matching MPFB's own
-        macro target range; 0.5 is neutral/average, matching MPFB's default.
-        `scale` is the basemesh scale factor (0.1 = decimeters, MPFB's default).
+        The eleven macro sliders (`gender`, `age`, `muscle`, `weight`,
+        `proportions`, `height`, `cupsize`, `firmness`, `race_asian`,
+        `race_caucasian`, `race_african`) are 0.0-1.0 and are **the same
+        sliders under the same names** as `mpfb_set_macro_details` takes, so a
+        character can be created and then adjusted without relearning the
+        vocabulary. The two differ in what an omitted slider means: here every
+        one has a default and the character is built from the full set, while
+        there an omitted slider is left alone. Set the phenotype in this call
+        when you know it; use `mpfb_set_macro_details` to change one
+        afterwards.
 
-        Requires the blender_mcp add-on server to be running inside Blender,
-        with the MPFB extension installed and enabled. Uses `create_human()`'s
-        own defaults for mask_helpers, detailed_helpers, extra_vertex_groups
-        and feet_on_ground - this proof-of-concept does not expose them.
+        0.5 is neutral for every slider except the three race weights, whose
+        neutral is 0.33 each. `age` runs 0.0 = baby, 0.1875 = child, 0.5 =
+        young adult, 1.0 = old; `gender` 0.0 = fully female, 1.0 = fully male.
+        **The three race weights are independent and MPFB does not normalize
+        them**, so the defaults sum to 0.99 and setting one to 1.0 does not
+        reduce the other two.
 
-        Returns the blender_mcp add-on's response envelope: `status` ("ok" or
-        "error"), and on success `result` with `object_name`, `vertex_count`,
-        `location` and the `macro_detail_dict` that was applied.
+        `scale` is the basemesh scale factor (0.1 = decimeters, MPFB's own
+        default). Change it only deliberately: `mpfb_set_skin`'s enhanced skin
+        types read it to pick subsurface radii.
 
-        **Branch on `performed`.** Every mutating tool here reports that field
-        under the same name, a real boolean, true exactly when the character was
-        changed. This one has no separate verb of its own: creation either
-        succeeds or raises, so `status: "ok"` and `performed: true` arrive
-        together.
+        `create_human()`'s own defaults are used for `mask_helpers`,
+        `detailed_helpers`, `extra_vertex_groups` and `feet_on_ground`; this
+        proof-of-concept does not expose them.
+
+        On `status: "ok"`, `result` carries `object_name` - the Blender object
+        name of the new basemesh, and the address every later tool needs, since
+        Blender uniquifies a name already in use - plus `vertex_count`,
+        `location` and the `macro_detail_dict` that was applied, in MPFB's own
+        nested shape. `performed` is true: creation either succeeds or raises,
+        so this tool has no separate verb of its own.
         """
         macro_detail_dict = {
             "gender": _clamp01("gender", gender),

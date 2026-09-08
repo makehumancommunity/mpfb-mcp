@@ -61,43 +61,39 @@ def register(mcp: FastMCP) -> None:
     )
     def mpfb_list_asset_materials(name: str) -> dict[str, object]:
         """
-        List the alternative materials that ship beside one equipped MHCLO asset
-        - the other colours of a hat - and name the one it is wearing now.
+        List the alternative materials that ship beside one equipped MHCLO
+        asset - the other colours of a hat - and name the one it is wearing
+        now. Changes nothing.
 
         **These are not in `mpfb_list_assets`' answer.** That tool lists MPFB's
-        asset library sections; alternative materials do not live in a section,
-        they live in the asset's own directory. This is the only catalogue for
-        them, and it is what `mpfb_set_asset_material` consumes.
+        asset library sections; alternative materials live in the asset's own
+        directory instead. This is the only catalogue for them, and it is what
+        `mpfb_set_asset_material` consumes.
 
         `name` is the **asset's** own Blender object name, as
         `mpfb_list_objects` reports it or as `mpfb_add_asset` returned it in
         `asset_object_name`.
 
-        **The answer is a snapshot.** MPFB caches this scan per asset in a
-        module-level dict with no invalidation, so a material added to the
-        asset's directory after the first call for that asset - in this Blender
-        session - will not appear, and there is no refresh argument that could
-        make it. Restart Blender if a newly installed material is missing. This
-        is the opposite of `mpfb_list_targets`, where MPFB's panels are the stale
-        ones.
+        **The answer is a snapshot.** MPFB caches this scan per asset with no
+        invalidation, so a material added to the asset's directory after the
+        first call for that asset - in this Blender session - will not appear,
+        and no refresh argument could change that. Restart Blender if a newly
+        installed material is missing.
 
-        Changes nothing, and always answers: an object that is not an asset comes
-        back as `found: false` or with an empty list and an explanation, never as
-        an error.
+        `result` carries `asset_object_name`, `object_type`, `asset_source` and
+        the `asset_subdir` searched; `default_material`, the absolute path the
+        asset's own MHCLO names, with `exists` saying whether that file is
+        there, or null with `default_material_reason` saying why not;
+        `current_alternative_material`, the fragment recorded on the object
+        now; `materials`, one entry per alternative with `path`, `fragment`,
+        `name` and `is_default` - MPFB does **not** filter the asset's own
+        material out of this scan, so the default usually appears and is
+        flagged rather than removed; `count`; and `search_roots`, the
+        directories actually scanned, so "this hat has no other colours" is
+        distinguishable from "the hat's asset source no longer resolves".
 
-        Returns blender_mcp's response envelope. `result` carries
-        `asset_object_name`, `object_type`, `asset_source` and the `asset_subdir`
-        it was searched under; `default_material` - the absolute path the asset's
-        own MHCLO names, with `exists` saying whether that file is actually there,
-        or `null` with `default_material_reason` saying why not;
-        `current_alternative_material`, the fragment recorded on the object now;
-        `materials`, one entry per alternative with `path`, `fragment`, `name`
-        and `is_default` (MPFB does **not** filter the asset's own material out of
-        this scan, despite its function taking an `exclude_default` argument, so
-        the default usually appears in the list and is flagged rather than
-        removed); `count`; and `search_roots`, the directories actually scanned -
-        so "this hat has no other colours" is distinguishable from "the hat's
-        asset source no longer resolves".
+        An object that is not an asset comes back as `found: false`, or with an
+        empty list and an explanation, never as an error.
         """
         code = codegen.assemble(
             "list_asset_materials.py",

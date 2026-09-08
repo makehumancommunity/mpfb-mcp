@@ -102,59 +102,48 @@ def register(mcp: FastMCP) -> None:
         meta_rig_action: str = "hide",
     ) -> dict[str, object]:
         """
-        Turn a character's Rigify **meta rig** into a generated, poseable Rigify
-        rig - the second step of the two `mpfb_add_rig` starts when it is given
-        a `rigify.*` identifier.
+        Turn a character's Rigify **meta rig** into a generated, poseable
+        Rigify rig - the second step of the two `mpfb_add_rig` starts when
+        given a `rigify.*` identifier.
 
         **Attach the character's clothes and other mesh assets before calling
         this.** Generation re-parents and re-weights whatever is on the
         character at the moment it runs, and nothing handles an asset added
         afterwards. `mesh_assets_present` reports what was there.
 
-        `name` is any object in the character's family - the basemesh, the meta
-        rig itself, a garment. Omit it to use the active object. Unlike the
-        other character tools this resolves to the **meta rig** rather than the
-        basemesh, and `metarig_name` says which armature was used.
-
-        `rig_name` is the generated rig's basename. Omit it for MPFB's own
-        fallback, which derives a unique name from the meta rig's.
+        Unlike the other character tools, `name` resolves to the **meta rig**
+        rather than to the basemesh, and `metarig_name` says which armature was
+        used. `rig_name` is the generated rig's basename; omit it for MPFB's
+        own fallback, which derives a unique name from the meta rig's.
 
         `meta_rig_action` (default `"hide"`, MPFB's own) is what becomes of the
         meta rig afterwards: `"keep"` leaves it visible, `"hide"` keeps it in
-        the scene but out of the viewport and renders, `"delete"` removes it.
+        the scene but out of viewport and renders, `"delete"` removes it.
         **Prefer `"hide"`.** Deleting the meta rig makes the character
         permanently unrefittable: `mpfb_refit_human` can only refit a generated
         Rigify rig through its meta rig, and with none in the scene it refits
-        the clothes, leaves the rig behind and says nothing. The response
-        reports `refit_will_be_possible` either way.
+        the clothes, leaves the rig behind and says nothing.
+        `refit_will_be_possible` reports this either way.
 
         **This tool is not undoable and cannot restore your selection.**
         Generation's own last act is to select and activate the rig it made, so
         `active_object_after` reports what is active now instead.
 
-        Returns blender_mcp's response envelope. On `status: "ok"` and
-        `generated: true`, `result` carries `rig_object_name`, `metarig_name`,
-        `metarig_disposition` (`kept`/`hidden`/`deleted`),
+        On `generated: true`, `result` carries `rig_object_name`,
+        `metarig_name`, `metarig_disposition` (`kept`/`hidden`/`deleted`),
         `refit_will_be_possible`, `mesh_assets_present` and
         `active_object_after`.
 
-        **`generated: false` does not mean nothing happened.** When Rigify
-        judges the meta rig invalid it returns after MPFB has already deselected
-        everything, activated the meta rig and possibly renamed it or run
-        Rigify's face upgrade. That case reports `metarig_renamed` and
-        `metarig_name_after` beside the refusal.
-
-        Other situations answer with `generated: false` and a `blocked_by`:
-        `subject_not_found`; `no_armature_found`; `not_a_metarig` (the character
-        is rigged, but not with a Rigify meta rig); `already_generated` (this
-        character is already on a generated rig - generation moved it there, so
-        its meta rig is no longer among its relatives); `rigify_unavailable`;
-        and `not_object_mode`.
-
-        **Branch on `performed`.** Every mutating tool here reports that field
-        under the same name, a real boolean, true exactly when the character was
-        changed. It equals `generated` here - and as above, `generated: false`
-        still does not mean nothing happened to the scene.
+        **`generated: false` does not mean nothing happened**, though
+        `performed` follows it. When Rigify judges the meta rig invalid it
+        returns after MPFB has already deselected everything, activated the
+        meta rig and possibly renamed it or run Rigify's face upgrade; that
+        case reports `metarig_renamed` and `metarig_name_after` beside the
+        refusal. Other refusals carry a `blocked_by`: `subject_not_found`,
+        `no_armature_found`, `not_a_metarig` (rigged, but not with a Rigify
+        meta rig), `already_generated` (generation moved this character onto
+        its generated rig, so its meta rig is no longer among its relatives),
+        `rigify_unavailable` and `not_object_mode`.
         """
         code = codegen.assemble(
             "generate_rigify_rig.py",

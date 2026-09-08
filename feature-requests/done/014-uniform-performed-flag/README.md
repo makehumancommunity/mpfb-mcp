@@ -156,6 +156,6 @@ setup cost that dwarfs transport. The repo's standing choice to
 [keep comments and docstrings in generated code](../../../specifications/architecture.md#readability-and-developer-experience-are-prioritized)
 is what makes the fragment mostly prose, and that choice is unchanged here.
 - **A paragraph in each of the eleven tool docstrings** saying to branch on `performed` and read the
-  verb. This grows the description budget [FR 016](../../016-trim-tool-descriptions/README.md) wants to
+  verb. This grows the description budget [FR 016](../016-trim-tool-descriptions/README.md) wants to
   shrink, by roughly 1.5 KB across the eleven — which is the trade that request already names: it
   wants rationale out and *field names* in.

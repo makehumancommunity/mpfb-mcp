@@ -163,5 +163,5 @@ is left dangling; each fact in the residue list above appears in the new CLAUDE.
   `git show <commit>:CLAUDE.md | wc -l` per commit.
 - [FR 013](../013-live-verification/README.md) — the source of the `Hide helpers` evidence
   for the stub-fidelity rule that moves into `testing.md`.
-- [FR 016](../../016-trim-tool-descriptions/README.md) — the same problem one level down: prose
+- [FR 016](../016-trim-tool-descriptions/README.md) — the same problem one level down: prose
   that grew past the point where a reader benefits from it.

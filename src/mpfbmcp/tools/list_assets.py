@@ -12,6 +12,12 @@ capped. That makes the response a subset by design, which is the one thing it
 must never be mistaken for the library itself; ``truncated``, ``total_count``,
 ``subdir_recognized`` and ``pack_recognized`` all exist for that.
 
+What the tool description no longer carries lives one link away: the two
+costs of MPFB's asset cache are
+[MPFB caches what it scans](../../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides),
+and the pack attribution is
+[How tools report a derived rather than recorded fact](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact).
+
 Nothing here validates a subdir or pack name. The installed library is the
 authority on both and is only readable from inside Blender; a vocabulary kept on
 this side would drift from it silently.
@@ -96,103 +102,68 @@ def register(mcp: FastMCP) -> None:
                          refresh: bool = False) -> dict[str, object]:
         """
         Find the MakeHuman assets installed in this Blender - clothes, hair,
-        eyes, skins, poses and the rest - narrowed by subdir, by a keyword in
-        the name, and by asset pack. Adds nothing to the scene.
-
-        Use this to answer "what could I put on this character": it is the
-        forward counterpart of `mpfb_get_object_info`, which says what an
-        existing object was made from.
+        eyes, eyebrows, eyelashes, teeth, tongue, topology proxies, skins,
+        poses - narrowed by subdir, by a keyword in the name, and by asset
+        pack. Adds nothing to the scene. The forward counterpart of
+        `mpfb_get_object_info`, which says what an existing object was made
+        from.
 
         **The answer is capped and is usually a subset.** Check `truncated`
-        before concluding an asset is not installed: `true` means entries
-        matched that this page did not return, and `total_count` says how many
-        matched in total. Narrow with `name_contains` or page with
-        `offset`/`limit` rather than assuming a short list is the whole library.
+        before concluding an asset is not installed; `total_count` says how
+        many matched. The first call for a subdir is the slow one: MPFB loads a
+        preview image per asset, once per subdir per Blender session.
 
         Arguments, all optional and combining with AND:
 
-          - `asset_subdir` - one of MPFB's asset subdirs (`"clothes"`, `"hair"`,
-            `"eyes"`, `"eyebrows"`, `"eyelashes"`, `"teeth"`, `"tongue"`,
-            `"proxymeshes"`, `"skins"`, `"poses"`, `"ink_layers"`). Matched
-            exactly, case-insensitively. Omit it to search every subdir - which
-            is the slow call, and the one whose `counts_by_subdir` tells you
-            which subdir to ask about next.
+          - `asset_subdir` - one of `"clothes"`, `"hair"`, `"eyes"`,
+            `"eyebrows"`, `"eyelashes"`, `"teeth"`, `"tongue"`,
+            `"proxymeshes"`, `"skins"`, `"poses"`, `"ink_layers"`, matched
+            exactly and case-insensitively. Omit it to search every subdir,
+            then read `counts_by_subdir` to pick a narrower one.
           - `name_contains` - case-insensitive substring of the asset's name or
             label.
-          - `pack` - matched against installed pack names by substring, MPFB's
-            own semantics, so `"hair03"` finds the pack `hair03_ccby`.
+          - `pack` - substring of an installed pack's name, so `"hair03"` finds
+            `hair03_ccby`.
           - `limit` (default 200, max 1000) and `offset` - paging over the
-            matched set, which is sorted by subdir then name so that two pages
-            of one query neither skip nor repeat.
-          - `refresh` - rescan before answering. Opt-in because it rescans the
-            **whole** library rather than the requested subdir, and writes
-            MPFB's caches, invalidating its alternative-material and pack
-            metadata along the way. Needed only when assets were installed
-            after Blender started; the default path scans only a subdir nothing
-            has scanned yet.
+            matched set, sorted by subdir then name.
+          - `refresh` - rescan first. Needed only when assets were installed
+            after Blender started; it rescans the **whole** library and writes
+            MPFB's caches.
 
-        Returns blender_mcp's response envelope. On `status: "ok"`, `result`
-        carries:
+        `result` carries:
 
-          - `assets`: the matched entries for this page, each with `name`
-            (the filename without extension), `label` (MPFB's display text),
-            `fragment`, `path`, `object_type`, `asset_subdir`, `file_type`,
-            `pack`, `pack_ambiguous` and `thumb_path`.
-          - `count`, `total_count`, `truncated`, `offset`, `limit`.
+          - `assets`: this page's entries, each with `name` (filename without
+            extension), `label` (MPFB's display text), `fragment`, `path`,
+            `object_type`, `asset_subdir`, `file_type`, `pack`,
+            `pack_ambiguous` and `thumb_path`.
           - `counts_by_subdir`: how many assets each scanned subdir holds,
             ignoring `name_contains`, `pack` and the cap.
           - `requested_subdir`/`subdir_recognized`/`known_subdirs` and
             `requested_pack`/`pack_recognized`/`known_packs`, so a misspelling
-            is distinguishable from an empty subdir or an empty pack.
+            is distinguishable from an empty subdir or pack.
           - `asset_roots_searched`: per subdir, the directories actually
-            scanned. A configured data root that does not contain that subdir is
-            not searched, which is the usual explanation for "I installed it and
-            it is not listed".
+            scanned. A configured data root that does not hold that subdir is
+            not searched, which is the usual explanation for "I installed it
+            and it is not listed".
+          - `count`, `total_count`, `truncated`, `offset`, `limit`.
 
-        **How to name an asset when applying it.** `path` is the absolute file,
-        and it is what `HumanService.add_mhclo_asset()` (clothes, hair, eyes,
-        eyebrows, eyelashes, teeth, tongue, proxymeshes) and
-        `set_character_skin()` (skins) actually take - the two are not
-        interchangeable, a skin is a material rather than a mesh asset. For the
-        subdirs `add_mhclo_asset()` handles, `object_type` is not decoration
-        either: it is exactly the string that function's `asset_type` argument
-        wants, and it defaults to `"Clothes"`, so hair added without it becomes
-        clothes. For `skins`, `poses` and `ink_layers` the `object_type`
+        **How to name an asset when applying it.** Pass an entry's `path`
+        (absolute) or its `fragment` (`"fedora/fedora.mhclo"`, what MPFB
+        records on the resulting object and what survives a move to another
+        machine) to `mpfb_add_asset`, together with its `object_type`, which is
+        exactly that tool's required `asset_type`. Assets in `skins` are
+        materials rather than meshes and go to `mpfb_set_skin` instead. A
+        fragment is **not** a path; handing one to a file-opening tool fails
+        confusingly. For `skins`, `poses` and `ink_layers` the `object_type`
         (`"Material"`, `"Pose"`, `"Other"`) says what the asset is rather than
-        naming an argument - those are not added by `add_mhclo_asset()` at all.
+        naming an argument.
 
-        `fragment` (`"fedora/fedora.mhclo"`) is the portable identifier: it is
-        exactly what MPFB records on the resulting object as its `asset_source`,
-        what `AssetService.find_asset_absolute_path()` resolves back to a path,
-        and what stays valid across machines whose asset roots differ. Prefer
-        the fragment when storing or passing an asset around, and note it is
-        **not** a path - handing it to a file-opening tool fails confusingly.
-
-        **`pack` is derived, not recorded.** MPFB stores no link from a file
-        back to the pack that installed it. This matches the name of the asset's
-        containing directory against the asset names in the installed packs'
-        metadata, which is a naming convention rather than a record. So: an
-        asset installed by hand matches nothing and gets `pack: null`, which is
-        ordinary; an asset claimed by more than one pack gets
-        `pack_ambiguous: true`, with `pack` holding the first alphabetically
-        while the `pack` filter still matches on any of them; and pack metadata
-        exists only under the user data root, so an asset under another root
-        cannot be attributed even when it did come from a pack.
-
-        **Two costs, both real.** The first call for a subdir populates MPFB's
-        asset cache, which loads a Blender preview image for every asset that
-        has a thumbnail. That is the slow, memory-hungry part, it is paid once
-        per subdir per Blender session, and it is the same cache MPFB's own
-        asset panels fill - a session where those were opened has already paid
-        it. Rescanning afterwards, `refresh` included, does not reload a
-        preview it already holds.
-
-        The second cost is that the cache is keyed by *label*, derived from the
-        filename alone, so two assets whose filenames differ only in case or
-        underscores collapse into one entry: `total_count` can under-report, and
-        one of the two is missing entirely rather than merely mislabelled. That
-        is a limitation of MPFB's cache, not of the filters here, and it is why
-        a listing count can disagree with a count of files on disk.
+        **`pack` is derived from a directory-name convention, not recorded by
+        MPFB.** `pack: null` is ordinary for a hand-installed asset, and
+        `pack_ambiguous: true` means two packs claim the name and the reported
+        one is a coin toss. `total_count` can under-report too: MPFB's cache is
+        keyed by a label derived from the filename alone, so two assets whose
+        filenames differ only in case or underscores collapse into one entry.
         """
         # `result` (built in codegen/payloads/list_assets.py) is always plain
         # JSON-safe data - notably the cached items' `thumb` preview object is

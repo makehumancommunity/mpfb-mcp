@@ -56,50 +56,41 @@ def register(mcp: FastMCP) -> None:
     def mpfb_remove_asset(name: str) -> dict[str, object]:
         """
         Take one MHCLO asset - a garment, a body part or a topology proxy - off
-        a MakeHuman character and clean up after it, the way MPFB's own "unload"
-        does.
+        a MakeHuman character and clean up after it, the way MPFB's own
+        "unload" does.
 
         **Use this rather than deleting the object.** MPFB hides the body under
         a garment with a mask modifier on the basemesh (and on the body proxy,
         for clothes), and a garment may have brought a sub-rig of its own.
-        Deleting the object through a generic Blender tool leaves both behind,
-        and the character keeps a hole in it with nothing visible to explain it.
+        Deleting the object with a generic Blender tool leaves both behind, and
+        the character keeps a hole in it with nothing visible to explain it.
 
         `name` is **required** and is the asset object's own Blender name, as
         `mpfb_list_objects` reports it or as `mpfb_add_asset` returned it in
-        `asset_object_name`. There is no active-object fallback: this deletes an
-        object. Note that equipping two copies of one asset gives `...hat` and
-        `...hat.001`, so check which you are naming.
+        `asset_object_name`. There is no active-object fallback: this deletes
+        an object. Equipping two copies of one asset gives `...hat` and
+        `...hat.001`, so check which you are naming. **This is not undoable
+        across the socket**: the object and its mesh data are gone when the
+        call returns.
 
-        **This is not undoable across the socket.** The object and its mesh data
-        are gone when the call returns.
+        On `removed: true`, `result` carries `asset_object_name`, `object_type`
+        and `asset_source` - all read *before* the deletion - plus
+        `basemesh_name`, `objects_removed` naming everything the call deleted,
+        `mask_modifiers_removed` naming the objects and modifiers that went,
+        `subrig_removed`, and two things MPFB leaves behind and never mentions:
+        `vertex_groups_left_behind` (the `Delete.<name>` groups themselves;
+        only the modifiers referencing them are removed) and
+        `mesh_data_orphaned` (the mesh datablock, which keeps no users until
+        the file is saved and reloaded). Both are harmless and both are
+        invisible unless reported.
 
-        Returns blender_mcp's response envelope. On `status: "ok"` and
-        `removed: true`, `result` carries `asset_object_name`, `object_type` and
-        `asset_source` (all read *before* the deletion, since the object no
-        longer exists afterwards), `basemesh_name`, `mask_modifiers_removed`
-        naming the objects and modifiers that went, `subrig_removed`, and two
-        things MPFB leaves behind and never mentions: `vertex_groups_left_behind`
-        (the `Delete.<name>` groups themselves - only the modifiers referencing
-        them are removed) and `mesh_data_orphaned` (the mesh datablock, which
-        keeps no users until the file is saved and reloaded). Both are harmless
-        and both are invisible unless reported.
-
-        Five situations answer with `removed: false` and a `blocked_by` naming
-        which, rather than failing: no object by that name (`not_found`); the
-        object is not an MHCLO mesh asset (`not_a_mesh_asset` - a basemesh and a
-        skeleton are refused outright, because the underlying function would
-        happily delete either); no basemesh among its relatives
-        (`basemesh_not_found`, which matters because the mask cleanup needs it);
-        the object records no `asset_source`, so the mask modifier cannot be
-        identified and removal would be silently partial
-        (`asset_source_missing`); and anything not in OBJECT mode
-        (`not_object_mode`).
-
-        **Branch on `performed`.** Every mutating tool here reports that field
-        under the same name, a real boolean, true exactly when the character was
-        changed. It equals `removed` for this tool: read `removed` for the
-        sentence, `performed` for the branch.
+        Refusals come back as `removed: false` (and so `performed: false`) with
+        a `blocked_by` and a sentence: `not_found`, `basemesh_not_found`,
+        `not_object_mode`, `asset_source_missing` - without it the mask
+        modifier cannot be identified and removal would be silently partial -
+        and `not_a_mesh_asset`, which refuses a basemesh or a skeleton
+        outright, because the underlying MPFB function would happily delete
+        either.
         """
         code = codegen.assemble(
             "remove_asset.py",

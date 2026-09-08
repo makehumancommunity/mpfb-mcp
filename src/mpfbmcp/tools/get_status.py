@@ -40,18 +40,16 @@ def register(mcp: FastMCP) -> None:
         tools fail with a bare error when MPFB is missing or broken, and this
         one tells the two apart.
 
-        Returns blender_mcp's response envelope. On `status: "ok"`, `result`
-        always carries:
+        `result` always carries:
 
-          - `state`: "absent" (MPFB not loaded), "not_initialized" (loaded but
-            registration did not complete - installed, but broken or
-            half-registered) or "ok" (loaded and usable). All three are normal
-            answers, not errors.
+          - `state`: "absent" (MPFB not loaded), "not_initialized" (loaded, but
+            registration did not complete - installed and broken, or
+            half-registered) or "ok". All three are normal answers, not errors.
           - `message`: one sentence naming the state and the likely next step,
             suitable for showing to a user verbatim.
           - `candidate_modules`: every loaded module name ending in "mpfb".
             Normally one; two or more means MPFB is installed twice, which
-            explains erratic behavior from other MPFB tools.
+            explains erratic behavior from the other MPFB tools.
           - `package`, `enabled`, `blender.version`.
 
         With `state` "not_initialized" or "ok" it also carries `version` and
@@ -61,9 +59,9 @@ def register(mcp: FastMCP) -> None:
         `rigify_available`, and `blender.platform` /
         `blender.meets_mpfb_minimum` / `blender.mpfb_minimum_version`.
 
-        The result describes one Blender process at one moment, and parts of it
-        (`paths.second_root` and anything derived from it) are scene-scoped and
-        change when a different .blend is loaded. Re-call rather than cache.
+        Parts of the result (`paths.second_root` and anything derived from it)
+        are scene-scoped and change when a different .blend is loaded. Re-call
+        rather than cache.
         """
         # `result` (built in codegen/payloads/get_status.py) is always plain
         # JSON-safe data, so strict_json=True to surface a clear error if that

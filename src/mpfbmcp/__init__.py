@@ -15,13 +15,49 @@ This requires:
 from __future__ import annotations
 
 __all__ = (
+    "build_server",
     "main",
 )
+
+import inspect
 
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 
 
-def main() -> int:
+def _shipped_without_source_indentation(mcp: FastMCP) -> None:
+    """Send the docstrings the way a reader of the source sees them.
+
+    ``Tool.from_function()`` takes ``fn.__doc__`` verbatim, so every line of
+    every tool description would otherwise cross the wire carrying the eight
+    spaces it is indented by in the file: about 500 bytes per tool, 10 KB across
+    the twenty, of whitespace an MCP client downloads before any work happens.
+    ``inspect.cleandoc`` is what ``help()`` shows and what the docstrings are
+    written to look like.
+
+    Guarded rather than assumed, because it is the one place in this package
+    that reaches into FastMCP's tool manager. If a future mcp release moves it,
+    descriptions merely arrive indented again - and
+    ``tests/test_description_budget.py`` is what fails, rather than a user's
+    server at startup.
+    """
+    manager = getattr(mcp, "_tool_manager", None)
+    list_tools = getattr(manager, "list_tools", None)
+    if list_tools is None:
+        return
+    for tool in list_tools():
+        if tool.description:
+            tool.description = inspect.cleandoc(tool.description)
+
+
+def build_server() -> FastMCP:
+    """The configured server, built but not run.
+
+    Separate from ``main()`` so that the tool surface can be inspected without
+    starting a stdio transport: ``tests/test_description_budget.py`` measures
+    what an MCP client downloads before any work happens, and measuring the real
+    server rather than a list of its own is what keeps a newly registered tool
+    inside the budget rather than outside it.
+    """
     mcp = FastMCP(
         "mpfb-mcp",
         instructions=(
@@ -70,7 +106,24 @@ def main() -> int:
             "with dry_run first. "
             "Changing a body's shape moves it out from under everything fitted "
             "to it, so finish a series of modeling changes with one call to "
-            "mpfb_refit_human."
+            "mpfb_refit_human. "
+            "Conventions every tool here shares, so that no single tool's "
+            "description repeats them. Each returns blender_mcp's envelope: "
+            "check `status` (\"ok\" or \"error\"), then read `result`. A tool "
+            "acting on an existing character takes `name` - any object in that "
+            "character's family, the basemesh, its rig or a garment fitted to "
+            "it - or omit `name` to use whatever is active in Blender, and the "
+            "response names the object actually worked on. A tool that cannot "
+            "do what was asked answers rather than failing, so read `found` "
+            "(the subject could not be resolved), `ready` and `blocked_by` (the "
+            "world was not in a fit state, and which way) before concluding a "
+            "call went wrong. Every tool that changes a character reports "
+            "`performed`, a real boolean, true exactly when something changed; "
+            "each keeps its own verb beside it (`added`, `applied`, `removed`, "
+            "`generated`, `recalculated`, `refit_performed`) for the sentence, "
+            "and the tool says where the two can differ. A capped listing "
+            "always reports `truncated`, `total_count`, `offset` and `limit`: "
+            "check `truncated` before concluding something is not installed."
         ),
     )
 
@@ -100,5 +153,10 @@ def main() -> int:
     set_targets.register(mcp)
     symmetrize_targets.register(mcp)
 
-    mcp.run(transport="stdio")
+    _shipped_without_source_indentation(mcp)
+    return mcp
+
+
+def main() -> int:
+    build_server().run(transport="stdio")
     return 0

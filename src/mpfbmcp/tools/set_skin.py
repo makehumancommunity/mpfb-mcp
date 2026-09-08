@@ -166,85 +166,62 @@ def register(mcp: FastMCP) -> None:
         material_instances: bool = True,
     ) -> dict[str, object]:
         """
-        Give a MakeHuman character a skin, with the same result MPFB's own skin
-        library panel produces.
+        Give a MakeHuman character a skin, the way MPFB's own skin library
+        panel does.
 
-        **This destroys every material already on the character.** MPFB opens by
-        deleting all materials on the basemesh *and* on the body proxy, node
-        groups included, before building the new one. A hand-built material on
-        the body is gone and there is no undo across the socket.
-        `materials_destroyed` names what went, per object.
+        **This destroys every material already on the character.** MPFB deletes
+        all materials on the basemesh *and* on the body proxy, node groups
+        included, before building the new one, and there is no undo across the
+        socket. `materials_destroyed` names what went, per object.
 
-        Name the skin with **either** `path` **or** `fragment`, never both -
-        both are reported by `mpfb_list_assets` for every entry whose
-        `object_type` is `Material` (the `skins` subdir). `fragment` is resolved
-        by **basename**, preferring a match whose directory also matches and
-        otherwise taking the first hit, so `resolved_path` always reports which
-        file was actually loaded. Give **neither** only with
-        `skin_type="LAYERED"`, which is the one type that builds a material from
-        nothing.
+        Name the skin with **either** `path` **or** `fragment`, never both;
+        `mpfb_list_assets` reports both for every entry whose `object_type` is
+        `Material` (the `skins` subdir). A fragment is resolved by
+        **basename**, so `resolved_path` always reports which file was actually
+        loaded. Give **neither** only with `skin_type="LAYERED"`, the one type
+        that builds a material from nothing.
 
         `skin_type` is `MAKESKIN` (default), `GAMEENGINE`, `ENHANCED`,
-        `ENHANCED_SSS` or `LAYERED`. They are five entirely different node trees
-        built from the same MHMAT: a plain PBR material for export, MakeSkin's,
-        the enhanced one with and without subsurface scattering, and the
-        multilayered one. All five cost about the same to *build* - measured
-        within 33 ms of each other - so pick on the look you want, not on speed;
-        MPFB's warning that `LAYERED` is unsuitable for animation is about
-        render cost. **The default follows MPFB's settings panel, not
+        `ENHANCED_SSS` or `LAYERED`: five entirely different node trees built
+        from the same MHMAT - MakeSkin's own, a plain PBR material for export,
+        the enhanced one without and with subsurface scattering, and the
+        multilayered one, which MPFB warns is expensive to *render* rather than
+        to build. All five cost about the same to build, so pick on the look
+        you want. **The default follows MPFB's settings panel, not
         `set_character_skin()`'s own signature**, which defaults to
-        `ENHANCED_SSS` - so what this tool produces by default is what the panel
-        produces by default.
+        `ENHANCED_SSS`.
 
         `material_instances` (default true) asks for the per-vertex-group
         material slots - fingernails, lips, ears, nipples, toenails, genitals.
         **MPFB's UI forces it off for `LAYERED`, `GAMEENGINE` and `MAKESKIN`,
-        and so does this tool**, which means the default call creates no
-        instances at all. The response reports `material_instances_requested`
-        beside `material_instances_used`, with a sentence when they differ; a
-        silent coercion would read as a bug.
+        and so does this tool**, so the default call creates no instances at
+        all. `material_instances_requested` comes back beside
+        `material_instances_used`, with a sentence when they differ.
 
-        `name` is any object in the character's family - the basemesh, its rig,
-        a garment, anything `mpfb_list_objects` reports. Omit it to use the
-        active object. `basemesh_name` names the character actually changed, and
-        `bodyproxy_name` names the second object that was changed with it: MPFB
-        applies the skin to the body proxy too, and nothing else would tell you.
-
-        Returns blender_mcp's response envelope. On `status: "ok"` and
-        `applied: true`, `result` carries `resolved_path` and `material_source`
-        (the fragment MPFB recorded - note it is written **only** when an MHMAT
-        was given, so a `LAYERED` skin with no file leaves the previous value in
-        place, which `material_source_before` makes visible), `skin_type_used`,
+        On `applied: true`, `result` carries `basemesh_name` and
+        `bodyproxy_name` - MPFB applies the skin to the body proxy too, and
+        nothing else would tell you - plus `resolved_path`, `material_source`
+        (the fragment MPFB recorded, written **only** when an MHMAT was given,
+        so a `LAYERED` skin with no file leaves the previous value in place,
+        which `material_source_before` makes visible), `skin_type_used`,
         `material_instances_requested`/`_used`, `materials_destroyed`,
-        `material_slots` (per object, which is how instancing differs
-        observably), `material_identified_as`, `active_body_slot`, and two facts
-        nothing in Blender would show you: `settings_file_created`, true when
-        the enhanced skin types copied `enhanced_settings.default.json` into
-        your user config directory - the only file mpfb-mcp ever writes outside
-        the `.blend` - and `scale_assumption` (`METER`/`DECIMETER`/`CENTIMETER`),
-        which the enhanced types derive from the character's `scale_factor` and
-        which changes the subsurface radii. `scale_assumption` is null for the
-        three types that do not use it. Note where the bands fall: the
-        `scale_factor` property *declares* a default of 1.0, but
-        `create_human()` writes 0.1 onto every character it makes, so an
-        ordinary MPFB character reports `METER`. `DECIMETER` needs a
-        `scale_factor` above 0.9 and `CENTIMETER` one above 9.
+        `material_slots` per object, `material_identified_as`,
+        `active_body_slot`, and two facts nothing in Blender would show you:
+        `settings_file_created`, true when the enhanced skin types copied
+        `enhanced_settings.default.json` into your user config directory - the
+        only file mpfb-mcp ever writes outside the `.blend` - and
+        `scale_assumption` (`METER`/`DECIMETER`/`CENTIMETER`), which the
+        enhanced types derive from the character's `scale_factor` and which
+        changes the subsurface radii. It is null for the three types that do
+        not use it, and `METER` for an ordinary MPFB character.
 
-        Six situations answer with `applied: false` and a `blocked_by` naming
-        which, rather than failing, and change nothing on the way to finding
-        out: the subject resolves to no basemesh (`subject_not_found`);
-        `skin_type` is not one of the five (`unknown_skin_type`, with
-        `known_skin_types`); no `path` or `fragment` was given for a type that
-        needs one (`no_material_given`); the file does not exist or the fragment
-        resolved to nothing (`skin_not_found`); anything not in OBJECT mode
-        (`not_object_mode`); and a failure inside MPFB itself
-        (`skin_failed`), which is reported rather than raised precisely because
-        the materials are already gone by then.
-
-        **Branch on `performed`.** Every mutating tool here reports that field
-        under the same name, a real boolean, true exactly when the character was
-        changed. It equals `applied` for this tool: read `applied` for the
-        sentence, `performed` for the branch.
+        Refusals come back as `applied: false` (and so `performed: false`) with
+        a `blocked_by` and a sentence, and change nothing on the way to finding
+        out: `subject_not_found`, `unknown_skin_type` (with
+        `known_skin_types`), `no_material_given`, `skin_not_found`,
+        `not_object_mode`, and `skin_failed` for a failure inside MPFB itself -
+        reported rather than raised precisely because the materials are already
+        gone by then.
         """
         checked_skin_type = _validated_skin_type(skin_type)
         checked_path, checked_fragment = _validated_source(path, fragment, checked_skin_type)

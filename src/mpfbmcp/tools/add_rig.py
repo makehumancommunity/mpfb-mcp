@@ -87,67 +87,50 @@ def register(mcp: FastMCP) -> None:
         import_weights: bool = True,
     ) -> dict[str, object]:
         """
-        Attach a rig to an existing MakeHuman character, with the same result
-        MPFB's own "Add standard rig" / "Add rigify rig" / "Add custom rig"
-        buttons produce.
+        Attach a rig to an existing MakeHuman character - MPFB's "Add standard
+        rig" / "Add rigify rig" / "Add custom rig".
 
         **Rig the character before dressing it.** MPFB rigs a garment only if a
-        rig is present at the moment the garment is attached, and nothing rigs
-        it retroactively - not `mpfb_refit_human` either. This tool does not
-        refuse to rig a dressed character, because decorative clothes are a
-        legitimate thing to have, but it reports every asset it just failed to
-        rig in `mesh_assets_not_rigged`. Treat a non-empty list as a mistake
+        rig is present when the garment is attached, and nothing rigs it
+        retroactively. This tool does not refuse to rig a dressed character -
+        decorative clothes are legitimate - but `mesh_assets_not_rigged` names
+        every asset it just failed to rig, and a non-empty list is a mistake
         unless you meant it.
 
         `identifier` is exactly what `mpfb_list_rigs` reports in its
-        `identifier` field, never the `name` beside it and never a filename: a
-        bare name for a standard rig (`"default_no_toes"`), `"rigify.human"` for
-        a Rigify one, `"custom.my_rig"` for a user one. The prefix is what
-        selects which of MPFB's two non-interchangeable adding functions runs,
-        and this tool dispatches on it - `add_function_used` in the response
-        says which was taken, so you can see the identifier was read the way you
-        meant it.
+        `identifier` field, never the `name` beside it and never a filename:
+        `"default_no_toes"` for a standard rig, `"rigify.human"` for a Rigify
+        one, `"custom.my_rig"` for a user one. The prefix selects which of
+        MPFB's two non-interchangeable adding functions runs, and
+        `add_function_used` says which was taken.
 
-        `name` is any object in the character's family - the basemesh, a
-        garment, anything `mpfb_list_objects` reports. Omit it to use the active
-        object. The basemesh is resolved from it and `basemesh_name` names the
-        object that was actually rigged.
-
-        `import_weights` (default true, MPFB's own) loads the vertex weights and
-        adds the armature modifier. With it false the mesh is parented to the
-        armature but not deformed by it.
+        `import_weights` (default true, MPFB's own) loads the vertex weights
+        and adds the armature modifier. With it false the mesh is parented to
+        the armature but not deformed by it.
 
         **A `rigify.*` identifier produces a meta rig, not a finished rig.**
         `is_metarig: true` comes back with a `next_step`: attach the clothes
         first, then call `mpfb_generate_rigify_rig`. A meta rig deforms nothing
         on its own.
 
-        Returns blender_mcp's response envelope. On `status: "ok"` and
-        `added: true`, `result` carries `rig_object_name` (read off the created
-        object, since Blender uniquifies a name already in use),
-        `add_function_used` and `family`, `is_metarig`/`next_step`,
-        `weights_loaded` with `weights_from` and `weights_path` - **MPFB
+        On `added: true`, `result` carries `rig_object_name` - read off the
+        created object, since Blender uniquifies a name already in use, and the
+        address other tools need for the rig - plus `basemesh_name`,
+        `add_function_used`, `family`, `is_metarig`/`next_step`,
+        `weights_loaded` with `weights_from` and `weights_path` (**MPFB
         resolves weights through a fallback table, so a rig legitimately
-        borrowing another's is normal and `weights_loaded: false` is not** -
+        borrowing another's is normal and `weights_loaded: false` is not**),
         `armature_modifier_added`, `basemesh_location_before` with
-        `basemesh_moved_to_origin` and `rig_location` (both adding functions
+        `basemesh_moved_to_origin` and `rig_location` - both adding functions
         move the basemesh to the origin and give the armature its old location,
-        which visibly moves a character standing anywhere else), and
+        which visibly moves a character standing anywhere else - and
         `mesh_assets_not_rigged` / `subrigs_not_rigged`.
 
-        Five situations answer with `added: false` and a `blocked_by` naming
-        which, rather than failing: the subject resolves to no basemesh
-        (`subject_not_found`); the identifier names no rig
-        (`unknown_identifier`, with `known_identifiers` for the family you
-        addressed); the character **already has a rig** (`already_rigged` - MPFB
-        cannot swap one, so delete the existing rig first); a `rigify.*`
-        identifier with Rigify not enabled (`rigify_unavailable`); and anything
-        not in OBJECT mode (`not_object_mode`).
-
-        **Branch on `performed`.** Every mutating tool here reports that field
-        under the same name, a real boolean, true exactly when the character was
-        changed. It equals `added` for this tool: read `added` for the sentence,
-        `performed` for the branch.
+        Refusals come back as `added: false` (and so `performed: false`) with a
+        `blocked_by` and a sentence: `subject_not_found`, `unknown_identifier`
+        (with `known_identifiers` for the family you addressed),
+        `rigify_unavailable`, `not_object_mode`, and `already_rigged` - **MPFB
+        cannot swap a rig**, so an existing one has to be deleted first.
         """
         code = codegen.assemble(
             "add_rig.py",

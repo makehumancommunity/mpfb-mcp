@@ -121,54 +121,40 @@ def register(mcp: FastMCP) -> None:
         **Every slider is optional and an omitted one is left alone**, so a
         relative change is one call: read the character with
         `mpfb_get_macro_details`, then pass only what should differ. Passing a
-        slider its current value is not the same as omitting it - it is reported
-        in `changed` with `previous == new`.
+        slider its current value is not the same as omitting it - it is
+        reported in `changed` with `previous == new`.
 
-        `name` is any object in the character's family - the basemesh, its rig,
-        or a garment fitted to it. Omit it to use the active object. The
-        basemesh is resolved from it and `basemesh_name` names the object that
-        was actually modified.
-
-        Sliders are 0.0-1.0, and the scale is not always linear or obvious:
-        `age` runs 0.0 = baby, 0.1875 = child, 0.5 = young adult, 1.0 = old;
-        `gender` 0.0 = fully female, 1.0 = fully male; `weight`, `muscle`,
-        `height`, `proportions`, `cupsize` and `firmness` all run minimum to
-        maximum with 0.5 in the middle.
-
-        **The three race weights are independent, and MPFB does not normalize
-        them.** Setting `race_asian` to 1.0 does not reduce the other two, and
-        the default 0.33 each sums to 0.99. Set all three when changing one, or
+        Sliders are 0.0-1.0, and 0.5 is neutral for all but the three race
+        weights, whose neutral is 0.33 each. `age` runs 0.0 = baby, 0.1875 =
+        child, 0.5 = young adult, 1.0 = old; `gender` 0.0 = fully female, 1.0 =
+        fully male. **The three race weights are independent and MPFB does not
+        normalize them**: setting `race_asian` to 1.0 does not reduce the other
+        two, and the default sums to 0.99. Set all three when changing one, or
         read `race_sum` in the response and decide.
 
-        `prune` (default true, MPFB's own) deletes macro shape keys whose weight
-        falls to zero, keeping the shape key list from growing as sliders move.
-        `refit` (default false, MPFB's own) re-fits clothes and the rig to the
-        new body shape. **The default is false because a refit is expensive, not
-        because it is unnecessary**: changing the shape moves the body under
-        everything fitted to it. When `refit` is false the response reports
-        `assets_possibly_stale`; act on it by calling `mpfb_refit_human` once
-        after a series of changes rather than paying for a refit per slider.
+        `prune` (default true, MPFB's own) deletes macro shape keys whose
+        weight falls to zero, keeping the shape key list from growing as
+        sliders move. `refit` (default false, MPFB's own) re-fits clothes and
+        the rig to the new body shape. **The default is false because a refit
+        is expensive, not because it is unnecessary**: leave it false, read
+        `assets_possibly_stale`, and call `mpfb_refit_human` once after a
+        series of changes rather than paying for a refit per slider.
 
-        Returns blender_mcp's response envelope. On `status: "ok"` and
-        `found: true`, `result` carries `changed` (one `{name, previous, new}`
-        per slider named), the full `macro_details` after the change,
-        `race_sum`, `macro_shapekeys_before`/`_after` with `shapekeys_removed`
-        and `shapekeys_added` - all four naming shape keys as the mesh stores
-        them (`$md-$as-$fe-$yn`), so a name from here can be looked up rather
-        than only read - `refit_performed`, and `basemesh_name`.
+        `result` carries `changed` (one `{name, previous, new}` per slider
+        named), the full `macro_details` after the change, `race_sum`,
+        `macro_shapekeys_before`/`_after` with `shapekeys_removed` and
+        `shapekeys_added` - all four naming shape keys as the mesh stores them
+        (`$md-$as-$fe-$yn`), so a name from here can be looked up rather than
+        only read - plus `recalculated`, `refit_performed`,
+        `assets_possibly_stale` and `basemesh_name`.
 
         Two situations answer rather than fail, both with `changed: []`: a
-        subject that cannot be resolved to a basemesh (`found: false`), and a
-        basemesh that is not ready to be modified - left in edit mode, or with
-        no shape keys at all (`ready: false`, with `blocked_by` naming which).
-        A call that names no slider at all also does nothing, deliberately: it
-        answers immediately instead of paying for a full shape rebuild that
-        would change nothing.
-
-        **Branch on `performed`.** Every mutating tool here reports that field
-        under the same name, a real boolean, true exactly when the character was
-        changed. Here it equals `recalculated`, so the no-op call above comes
-        back `performed: false`.
+        subject that resolves to no basemesh (`found: false`), and a basemesh
+        that is not ready to be modified - left in edit mode, or with no shape
+        keys at all (`ready: false`, `blocked_by` naming which). A call that
+        names no slider also does nothing, deliberately, rather than paying for
+        a shape rebuild that would change nothing; it comes back `performed:
+        false`.
         """
         supplied = (
             gender, age, muscle, weight, proportions, height, cupsize, firmness,
