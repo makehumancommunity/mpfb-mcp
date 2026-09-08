@@ -99,7 +99,7 @@ def register(mcp: FastMCP) -> None:
         code = codegen.assemble(
             "refit_human.py",
             bootstrap="raising",
-            shared=["performed.py"],
+            shared=["refit_blocker.py", "performed.py"],
             params={"name": _validated_name(name)},
         )
         # `result` (built in codegen/payloads/refit_human.py) is plain JSON-safe

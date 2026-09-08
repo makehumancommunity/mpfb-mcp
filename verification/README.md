@@ -34,6 +34,9 @@ PYTHONPATH=. python3 verification/measure.py
 
 # The confirmed and refuted MPFB defects, provoked against this install.
 PYTHONPATH=. python3 verification/check_mpfb_issues.py
+
+# The duplication census. The one script here that needs no Blender at all.
+PYTHONPATH=. python3 verification/census.py
 ```
 
 `MPFB_MCP_RECORD_DIR` is optional but wanted: with it, every call leaves the exact program, the
@@ -71,6 +74,7 @@ writes its full result - the printed lines are capped, the file is not - into
 | `check_fr0NN.py` | One script per checklist, each self-sufficient |
 | `measure.py` | FR-8's four measurements |
 | `check_mpfb_issues.py` | The MPFB defects, provoked rather than described. Its assertions are written so that a **fixed** MPFB makes them fail |
+| `census.py` | Which helpers the payloads repeat, and whether any two copies have drifted. An instrument rather than a check: it needs no Blender, asserts nothing, and a divergence it reports may be the right answer |
 | `run_all.py` | The sequence, and the install gate |
 
 ## A note on what the checks compare against

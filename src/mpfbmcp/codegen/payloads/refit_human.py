@@ -4,9 +4,9 @@ one failure it cannot report to a caller that is not an operator.
 
 Not a module of this package - this file is never imported here. It is read as
 a resource and executed inside Blender, on top of the raising bootstrap and the
-``performed.py`` shared fragment (see ``mpfbmcp.codegen.assemble``). A linter
-will flag four names as undefined because the assembler binds them ahead of
-this file:
+``refit_blocker.py`` and ``performed.py`` shared fragments (see
+``mpfbmcp.codegen.assemble``). A linter will flag five names as undefined
+because the assembler binds them ahead of this file:
 
 - ``PARAMS`` - the tool's arguments as plain JSON data: ``name``, which is None
   when the caller wants whatever object is currently active.
@@ -15,6 +15,10 @@ this file:
 - ``with_performed()`` - from the shared fragment ``performed.py``, named by
   every mutating payload. It stamps the uniform ``performed`` flag onto the
   finished answer, in the last line of this file.
+- ``rig_refit_is_blocked()`` - from the shared fragment ``refit_blocker.py``,
+  named by every payload that refits. It answers whether
+  ``HumanService.refit()`` would leave the rig untouched; the sentence saying
+  so is written here, since this tool's tense is not the others'.
 
 ``refit()`` raises ``ValueError`` when it cannot find a basemesh; the basemesh is
 resolved here first so that this comes back as an ordinary "no" rather than as a
@@ -35,18 +39,14 @@ HumanService = _MPFB_SERVICES["HumanService"]
 def rig_refit_blocker(rig):
     """Why refit() would leave this rig untouched, or None.
 
-    A generated Rigify rig can only be refitted through its meta rig. With no
-    meta rig left in the scene, refit() logs a warning, tries to report through
-    an ``operator`` it was not given, and returns - having refitted the mesh
-    assets, which happen first, but not the rig. Detecting the condition here is
-    what keeps this tool from answering refit_performed: true over a rig it
+    The condition is ``rig_refit_is_blocked()`` from the shared fragment, which
+    the three tools that refit after a change ask as well; the wording is this
+    tool's own, because this is the one place where the refit has already been
+    attempted and the mesh assets really were refitted. Answering it at all is
+    what keeps this tool from reporting refit_performed: true over a rig it
     never touched.
     """
-    if rig is None:
-        return None
-    if not ObjectService.object_is_generated_rigify_rig(rig):
-        return None
-    if ObjectService.find_rigify_metarig_by_rig(rig) is not None:
+    if not rig_refit_is_blocked(rig):
         return None
     return ("The rig '" + rig.name + "' is a generated Rigify rig and no meta rig is left in the "
             "scene, so it could not be refitted. Its mesh assets were. Regenerate the rig with "

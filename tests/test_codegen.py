@@ -40,6 +40,27 @@ MUTATING_PAYLOADS = (
     "symmetrize_targets.py",
 )
 
+# Every payload that refits, and therefore every payload that has to know when
+# HumanService.refit() would silently leave the rig behind. Written out for the
+# same reason as the list above: a fifth refitting payload that re-derives the
+# condition should fail here rather than agree with the other four until one of
+# them is edited.
+REFITTING_PAYLOADS = (
+    "refit_human.py",
+    "set_macro_details.py",
+    "set_targets.py",
+    "symmetrize_targets.py",
+)
+
+# The two payloads that read a modeling category's slider value: one reports it,
+# the other acts on it. That they agree is asserted against a real fixture in
+# tests/test_symmetrize_targets.py; that neither has a second implementation to
+# disagree with is asserted here.
+CATEGORY_READING_PAYLOADS = (
+    "get_target_stack.py",
+    "symmetrize_targets.py",
+)
+
 
 class PayloadFileTests(unittest.TestCase):
     def test_there_is_a_payload_for_each_implemented_tool(self) -> None:
@@ -58,8 +79,8 @@ class PayloadFileTests(unittest.TestCase):
         # seam is being used for ordinary tool code.
         self.assertEqual(
             codegen.shared_names(),
-            ["asset_sections.py", "performed.py", "rig_lookup.py",
-             "target_categories.py"])
+            ["asset_sections.py", "modifier_reading.py", "performed.py",
+             "refit_blocker.py", "rig_lookup.py", "target_categories.py"])
 
     def test_every_mutating_payload_stamps_the_performed_flag(self) -> None:
         # The uniform "it happened" flag is the one thing every mutating tool
@@ -136,11 +157,14 @@ class AssembleTests(unittest.TestCase):
             ("generate_rigify_rig.py", "raising", ()),
             ("list_targets.py", "raising", ()),
             ("get_macro_details.py", "raising", ()),
-            ("set_macro_details.py", "raising", ()),
-            ("refit_human.py", "raising", ()),
-            ("get_target_stack.py", "raising", ("target_categories.py",)),
-            ("set_targets.py", "raising", ("target_categories.py",)),
-            ("symmetrize_targets.py", "raising", ("target_categories.py",)),
+            ("set_macro_details.py", "raising", ("refit_blocker.py",)),
+            ("refit_human.py", "raising", ("refit_blocker.py",)),
+            ("get_target_stack.py", "raising",
+             ("target_categories.py", "modifier_reading.py")),
+            ("set_targets.py", "raising",
+             ("target_categories.py", "refit_blocker.py")),
+            ("symmetrize_targets.py", "raising",
+             ("target_categories.py", "modifier_reading.py", "refit_blocker.py")),
             ("add_asset.py", "raising", ("asset_sections.py",)),
             ("remove_asset.py", "raising", ()),
             ("set_skin.py", "raising", ("asset_sections.py",)),
@@ -286,6 +310,157 @@ class PerformedFragmentTests(unittest.TestCase):
         # create_human's answer has no found/ready: it either creates a
         # character or raises, and a raise never reaches this function.
         self.assertIs(self.with_performed({"object_name": "Human"}, True)["performed"], True)
+
+
+class RefitBlockerFragmentTests(unittest.TestCase):
+    """``rig_refit_is_blocked()`` from codegen/shared/refit_blocker.py.
+
+    Executed directly, with a stub standing in for ObjectService: the function
+    asks MPFB two questions and combines the answers, so a stub that can answer
+    them is the whole of the Blender it needs.
+
+    The four payloads that refit each phrase their own sentence about this
+    condition - one reports a refit that has happened, three predict one that
+    has not - so what has to be pinned centrally is that all four *ask* rather
+    than decide, which the delegation test below does. Each payload's own tests
+    still cover its wording and its behaviour.
+    """
+
+    def setUp(self) -> None:
+        test = self
+
+        class StubObjectService:
+            @staticmethod
+            def object_is_generated_rigify_rig(rig):
+                # Rigify's own answer is its rig_id string rather than a bool,
+                # which is why only its truthiness may be relied on.
+                return rig.get("rig_id")
+
+            @staticmethod
+            def find_rigify_metarig_by_rig(rig):
+                test.metarig_lookups.append(rig)
+                return rig.get("metarig")
+
+        self.metarig_lookups: list = []
+        namespace: dict = {"_MPFB_SERVICES": {"ObjectService": StubObjectService}}
+        exec(codegen.read_shared("refit_blocker.py"), namespace)  # noqa: S102
+        self.rig_refit_is_blocked = namespace["rig_refit_is_blocked"]
+
+    def test_an_unrigged_character_is_not_blocked(self) -> None:
+        # The ordinary case, and the reason every call site may ask before it
+        # has established that there is a rig at all.
+        self.assertIs(self.rig_refit_is_blocked(None), False)
+        self.assertEqual(self.metarig_lookups, [])
+
+    def test_an_ordinary_rig_is_never_mistaken_for_a_generated_one(self) -> None:
+        self.assertIs(self.rig_refit_is_blocked({"name": "Human.rig"}), False)
+        self.assertEqual(self.metarig_lookups, [])
+
+    def test_a_generated_rigify_rig_with_a_metarig_is_not_blocked(self) -> None:
+        rig = {"name": "RIG-human", "rig_id": "abc123", "metarig": {"name": "metarig"}}
+        self.assertIs(self.rig_refit_is_blocked(rig), False)
+
+    def test_a_generated_rigify_rig_without_a_metarig_is_blocked(self) -> None:
+        rig = {"name": "RIG-human", "rig_id": "abc123", "metarig": None}
+        self.assertIs(self.rig_refit_is_blocked(rig), True)
+
+    def test_every_refitting_payload_asks_rather_than_decides(self) -> None:
+        # The drift check. A payload that tests object_is_generated_rigify_rig()
+        # itself has a second copy of the condition, which is the failure the
+        # fragment exists to prevent: one tool reporting a refit that another
+        # tool, over the same character, reports as impossible.
+        for name in REFITTING_PAYLOADS:
+            with self.subTest(payload=name):
+                source = codegen.read_payload(name)
+                self.assertIn("rig_refit_is_blocked(rig)", source)
+                self.assertNotIn("object_is_generated_rigify_rig", source)
+                self.assertNotIn("find_rigify_metarig_by_rig", source)
+
+
+class ModifierReadingFragmentTests(unittest.TestCase):
+    """``modifier_reading()`` from codegen/shared/modifier_reading.py.
+
+    Executed directly over a hand-written category and a dict of shape keys.
+    What it gets from the caller is the pair of lookups, so the interesting
+    cases are the ones where the two answers differ from each other: an opposed
+    category reads its negative target back negated, and a target that is on the
+    mesh under an encoded name is found by ``present`` and by ``value_of`` alike
+    or not at all.
+    """
+
+    def setUp(self) -> None:
+        namespace: dict = {
+            "category_is_opposed": lambda category: bool(category.get("opposed")),
+            "target_names_for": lambda category, side, polarity: category.get(
+                side + "-" + polarity, ""),
+        }
+        exec(codegen.read_shared("modifier_reading.py"), namespace)  # noqa: S102
+        self.modifier_reading = namespace["modifier_reading"]
+
+    def reading(self, category, side, stack):
+        return self.modifier_reading(
+            category, side,
+            lambda name: bool(name) and name in stack,
+            lambda name: stack.get(name, 0.0))
+
+    def test_an_opposed_category_reads_its_negative_target_negated(self) -> None:
+        category = {"opposed": True,
+                    "left-positive": "l-arm-incr", "left-negative": "l-arm-decr"}
+        self.assertEqual(self.reading(category, "left", {"l-arm-incr": 0.4}), 0.4)
+        self.assertEqual(self.reading(category, "left", {"l-arm-decr": 0.25}), -0.25)
+
+    def test_the_positive_target_wins_when_both_are_somehow_present(self) -> None:
+        # _get_opposed_modifier_value()'s rule. Both present at once is a state
+        # MPFB's own writes never produce, but a hand-edited .blend can.
+        category = {"opposed": True,
+                    "left-positive": "l-arm-incr", "left-negative": "l-arm-decr"}
+        self.assertEqual(
+            self.reading(category, "left", {"l-arm-incr": 0.4, "l-arm-decr": 0.25}), 0.4)
+
+    def test_a_category_with_neither_target_on_the_mesh_reads_zero(self) -> None:
+        # The ordinary case for all but a handful of several hundred categories.
+        category = {"opposed": True,
+                    "left-positive": "l-arm-incr", "left-negative": "l-arm-decr"}
+        self.assertEqual(self.reading(category, "left", {}), 0.0)
+
+    def test_an_unopposed_category_reads_its_one_target(self) -> None:
+        category = {"opposed": False, "unsided-positive": "chin-triangle"}
+        self.assertEqual(
+            self.reading(category, "unsided", {"chin-triangle": 0.7}), 0.7)
+        self.assertEqual(self.reading(category, "unsided", {}), 0.0)
+
+    def test_a_category_naming_no_target_for_this_side_reads_zero(self) -> None:
+        # target_names_for() answers "" for a side a category does not have,
+        # and an empty name must never be looked up as if it were one.
+        category = {"opposed": True, "left-positive": "", "left-negative": ""}
+        self.assertEqual(self.reading(category, "left", {"": 0.9}), 0.0)
+
+    def test_both_readers_are_the_callers_own(self) -> None:
+        # The reconciliation itself: the rule is here, finding a value is not.
+        # mpfb_get_target_stack answers from a snapshot and
+        # mpfb_symmetrize_targets from key_blocks as they stand, and the rule
+        # cannot tell the difference.
+        category = {"opposed": True,
+                    "left-positive": "l-arm-incr", "left-negative": "l-arm-decr"}
+        asked: list = []
+        value = self.modifier_reading(
+            category, "left",
+            lambda name: asked.append(("present", name)) or name == "l-arm-decr",
+            lambda name: asked.append(("value_of", name)) or 0.25)
+
+        self.assertEqual(value, -0.25)
+        self.assertEqual(asked, [("present", "l-arm-incr"), ("present", "l-arm-decr"),
+                                 ("value_of", "l-arm-decr")])
+
+    def test_neither_reading_payload_keeps_an_implementation_of_its_own(self) -> None:
+        # The drift check, on the rule's signature move: reading a negative
+        # target back negated is what a second implementation would get subtly
+        # wrong, and a payload that still does it here has one.
+        for name in CATEGORY_READING_PAYLOADS:
+            with self.subTest(payload=name):
+                source = codegen.read_payload(name)
+                self.assertIn("modifier_reading(", source)
+                self.assertNotIn("return -", source)
 
 
 if __name__ == "__main__":

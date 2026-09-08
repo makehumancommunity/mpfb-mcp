@@ -131,7 +131,8 @@ class GeneratedSymmetrizeTargetsTests(DetailTargetTestCase):
             {"name": name, "direction": direction, "section": section,
              "dry_run": dry_run, "prune": prune, "refit": refit},
             scene_objects=self.objects, active=active,
-            shared=["target_categories.py", "performed.py"])
+            shared=["target_categories.py", "modifier_reading.py",
+                    "refit_blocker.py", "performed.py"])
 
     def asymmetric_character(self):
         """Left arm at +0.4, right arm at -0.25, plus an unsided target."""
@@ -423,6 +424,53 @@ class GeneratedSymmetrizeTargetsTests(DetailTargetTestCase):
 
         self.assertFalse(result["refit_performed"])
         self.assertIn("generated Rigify rig", result["refit_incomplete_reason"])
+
+    def test_every_reading_matches_what_get_target_stack_reports(self):
+        # Not decoration, and the reason codegen/shared/modifier_reading.py
+        # exists: mpfb_get_target_stack reports these numbers and this tool acts
+        # on them, so two implementations of the reading would leave a character
+        # symmetric in one tool and asymmetric in the other, with nothing in
+        # either answer to say which is right. Both payloads are run over one
+        # character on purpose - agreement asserted over two fixtures would not
+        # be agreement.
+        self.asymmetric_character()
+
+        stack = self.run_payload(
+            "get_target_stack.py",
+            {"name": "Human", "include_macro": False, "include_expressions": False,
+             "name_contains": None, "limit": 500, "offset": 0},
+            scene_objects=self.objects,
+            shared=["target_categories.py", "modifier_reading.py"])
+        # A dry run: it measures every sided category the same way a real one
+        # does, and writes nothing between the two readings being compared.
+        planned = self.run_symmetrize(dry_run=True)
+
+        reported = dict(
+            ((entry["section"], entry["category"], entry["side"]), entry["value"])
+            for entry in stack["modifiers"])
+        entries = planned["changed"] + planned["already_symmetric"] + planned["skipped"]
+        self.assertTrue(entries, "the fixture must exercise at least one sided category")
+        compared = 0
+        for entry in entries:
+            for side_key, value_key in (("source_side", "source_value"),
+                                        ("destination_side", "destination_value_before")):
+                with self.subTest(category=entry["category"], side=entry[side_key]):
+                    # 0.0 where the catalogue lists nothing: mpfb_get_target_stack
+                    # reports only the categories with a reading above MPFB's own
+                    # epsilon, while this tool measures every sided one.
+                    self.assertEqual(
+                        entry[value_key],
+                        reported.get(
+                            (entry["section"], entry["category"], entry[side_key]), 0.0))
+                    compared += 1
+        self.assertGreater(compared, 0)
+        # The asymmetric pair specifically, so that this passes for a reason
+        # rather than because both answers were empty: +0.4 against -0.25, the
+        # negative side read back negated by both payloads.
+        arm = [entry for entry in stack["asymmetries"]
+               if entry["category"] == "lowerarm-scale-depth-decr-incr"]
+        self.assertEqual(len(arm), 1)
+        self.assertEqual((arm[0]["left"], arm[0]["right"]), (0.4, -0.25))
 
     def test_a_character_that_needs_no_change_is_not_refitted(self):
         # Nothing moved, so nothing is stale - and refit() is not called for

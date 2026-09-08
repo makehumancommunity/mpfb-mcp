@@ -185,7 +185,8 @@ class GeneratedSetMacroDetailsTests(GeneratedCodeTestCase):
         return self.run_payload(
             "set_macro_details.py",
             {"name": name, "changes": list(changes), "prune": prune, "refit": refit},
-            scene_objects=self.objects, active=active, shared=["performed.py"])
+            scene_objects=self.objects, active=active,
+            shared=["refit_blocker.py", "performed.py"])
 
     @staticmethod
     def change(argument, prop, value):
@@ -480,9 +481,12 @@ class GeneratedSetMacroDetailsTests(GeneratedCodeTestCase):
 
 def _params_in(code: str) -> dict:
     """The PARAMS the generated source will bind, by executing its prelude."""
-    prelude, _sep, _payload = code.partition("# --- payload:")
-    # The prelude sits behind the raising bootstrap, which would fail here with
-    # no MPFB loaded, so run only the two lines that bind PARAMS.
+    # Cut at whichever comes first: a shared fragment or the payload. The
+    # prelude sits behind the raising bootstrap, and a fragment resolves MPFB
+    # services of its own, so both would fail here with no MPFB loaded - and
+    # only the two lines binding PARAMS are wanted.
+    prelude, _sep, _rest = code.partition("# --- shared:")
+    prelude, _sep, _payload = prelude.partition("# --- payload:")
     namespace: dict = {}
     exec(prelude[prelude.index("import json"):], namespace)  # noqa: S102
     return namespace["PARAMS"]

@@ -134,7 +134,7 @@ class GeneratedGetTargetStackTests(DetailTargetTestCase):
              "include_expressions": include_expressions, "name_contains": name_contains,
              "limit": limit, "offset": offset},
             scene_objects=self.objects, active=active,
-            shared=["target_categories.py"])
+            shared=["target_categories.py", "modifier_reading.py"])
 
     def entry(self, result, shapekey_name):
         for entry in result["targets"]:

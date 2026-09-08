@@ -208,15 +208,18 @@ above, a **parameter prelude**, and a per-tool **payload** — plus, optionally,
 A **fragment** is a fourth, optional part: an ordinary `.py` file under
 `src/mpfbmcp/codegen/shared/`, named by a tool module in `assemble(..., shared=[...])` and
 concatenated between the prelude and the payload. It exists for a *concept* two or more payloads
-model identically. There are four: `target_categories.py` rebuilds MPFB's `target.json` category
+model identically. There are six: `target_categories.py` rebuilds MPFB's `target.json` category
 table, which `mpfb_get_target_stack`, `mpfb_set_targets` and `mpfb_symmetrize_targets` all need in
 the same shape and none of them can import; `rig_lookup.py` answers "which rig file would MPFB
 load for this identifier, and whose weights would come with it", which `mpfb_list_rigs` and
 `mpfb_add_rig` need to answer *identically*; `asset_sections.py` holds MPFB's
 `ASSET_LIBRARY_SECTIONS` table and what it maps between, which `mpfb_list_assets` reports *from* and
-`mpfb_add_asset` resolves *with*; and `performed.py` stamps the uniform
+`mpfb_add_asset` resolves *with*; `performed.py` stamps the uniform
 [`performed` flag](mutating-tools.md#the-flag-a-caller-branches-on-is-called-performed) onto the
-answer of every one of the eleven mutating payloads.
+answer of every one of the eleven mutating payloads; `modifier_reading.py` computes what one
+modeling category's slider reads, which `mpfb_get_target_stack` reports and
+`mpfb_symmetrize_targets` acts on; and `refit_blocker.py` answers whether `HumanService.refit()`
+would silently leave the rig behind, which all four refitting payloads have to know.
 
 - **A fragment is warranted by duplication that must not drift, not by size.** Three copies of a
   hundred-line scan of the user's target directories are three chances for two tools to disagree
@@ -245,6 +248,35 @@ answer of every one of the eleven mutating payloads.
   implementations of it would be the original problem in a new spelling. It also has no
   dependencies, which is what lets it be concatenated ahead of any payload without pulling anything
   in with it.
+- **Where two tools report and act on one number, the number has one implementation.**
+  `modifier_reading.py` is that case. A modeling category's slider value is computed from one or two
+  shape keys, and an opposed category's negative target reads back *negated*; `mpfb_get_target_stack`
+  reports that number and `mpfb_symmetrize_targets` decides what to copy from it. Two
+  implementations disagreeing would not look like a bug in either tool — it would look like a
+  character that is symmetric in one and asymmetric in the other, with nothing in either answer to
+  say which to believe. The reconciliation is worth noting because the two copies differed in
+  *shape* and not merely in text: one answered from a snapshot read once, the other from `key_blocks`
+  on every question, because it writes between readings. What is shared is the rule; the pair of
+  lookups is passed in, and the difference between them is stated where it is decided.
+- **A fragment may share the condition and leave the wording alone.** `refit_blocker.py` is that
+  case: `HumanService.refit()` cannot refit a generated Rigify rig with no meta rig left in the
+  scene, reports it only through an `operator` no MCP tool has one of, and returns having refitted
+  the mesh assets. Four payloads must detect that or claim a refit they did not perform — but
+  `mpfb_refit_human` reports one that has already happened and the other three predict one they are
+  about to attempt, so the sentences differ by tense and both are right for their call site. The
+  fragment therefore exposes a predicate and each payload keeps a `rig_refit_blocker()` of its own
+  that phrases the answer. Four copies of the condition is the `rig_lookup.py` failure exactly; four
+  copies of the message is at worst four sentences that read slightly differently.
+- **Being identical is not by itself a reason to merge.** A census of every function defined at
+  module level in more than one payload — docstrings stripped, normalised through `ast.unparse` —
+  found nineteen such names, of which sixteen were byte-identical and had not drifted at all. Only
+  the two above were made into fragments. `blocked()`'s six variants were left alone deliberately:
+  they are one convention applied six times, differing only in which of that tool's own fields each
+  nulls out, and a mechanism for "this tool's null response" would be larger than the six copies.
+  The census is kept as [verification/census.py](../verification/census.py) so that the question
+  "have these drifted?" stays a command rather than an afternoon; it also reports a payload that
+  redefines a name from a fragment *it names*, which is a real defect, since the fragment is
+  concatenated first and its copy would be silently dead.
 - **Opting in is the payload's business, not the assembler's.** `assemble()` takes the list; there
   is no table here mapping payloads to fragments. So the rule above still holds unchanged: adding
   an ordinary tool is still a tool module, a payload and a `register()` call, and a tool that wants

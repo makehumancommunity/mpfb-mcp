@@ -149,7 +149,8 @@ def register(mcp: FastMCP) -> None:
         code = codegen.assemble(
             "symmetrize_targets.py",
             bootstrap="raising",
-            shared=["target_categories.py", "performed.py"],
+            shared=["target_categories.py", "modifier_reading.py",
+                    "refit_blocker.py", "performed.py"],
             params={
                 "name": _validated_name(name),
                 "direction": _validated_direction(direction),

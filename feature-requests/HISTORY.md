@@ -849,6 +849,64 @@ verb — about 1.5 KB against the description budget
 [FR 016](016-trim-tool-descriptions/README.md) wants to shrink, which is the trade that request
 already names: rationale out, field names in.
 
+## [FR 015](done/015-fourth-shared-fragment/README.md) — the two duplications that would have drifted silently, and the census that keeps the question cheap
+
+**Status: the code and the census landed; the two live checklists have not been re-run.** See
+the request's own status line.
+
+[FR 013's review](done/013-live-verification/review.md#is-the-duplication-a-risk-or-an-economy) had
+already done the counting: nineteen module-level helpers with two or more copies across the twenty
+payloads, **sixteen byte-identical** after normalisation, nothing drifted. This effort merged
+**two**, and the interesting part is which two and why the other seventeen were left alone.
+
+`codegen/shared/refit_blocker.py` holds the condition four payloads need: a generated Rigify rig
+with no meta rig left cannot be refitted, and `HumanService.refit()` says so only through an
+`operator` no MCP tool has one of. The fragment exposes a **predicate**, not a message. Each
+payload keeps a `rig_refit_blocker()` that phrases the answer, because `mpfb_refit_human` reports
+a refit that already happened and the other three predict one they are about to attempt — a
+fragment taking a tense argument would have been worse than four sentences written where they are
+read. Four copies of the *condition* is the `rig_lookup.py` failure exactly; four copies of the
+*message* is at worst four sentences that read slightly differently.
+
+`codegen/shared/modifier_reading.py` holds one modeling category's slider reading, which
+`mpfb_get_target_stack` reports and `mpfb_symmetrize_targets` acts on. This was a genuine
+reconciliation rather than a copy-paste removal: the two implementations differed in **shape**,
+one answering from a snapshot read once and the other from `key_blocks` on every question, because
+it writes between readings. The rule is now shared and the *lookup* is the parameter — a
+`present`/`value_of` pair, two callables rather than one because MPFB's `has_target()` matches the
+encoded name and `get_target_value()` does not. Both payloads keep the lookup that suits them, and
+neither can read a category differently from the other.
+
+The agreement is asserted the way `rig_lookup.py`'s is: one test runs both payloads over **one**
+character in `DetailTargetTestCase` and compares every category reading, including the asymmetric
+pair at +0.4 against -0.25 where the negative side reads back negated. It was checked by making
+one of the two diverge on purpose and watching it fail. `test_codegen.py` gained a class per
+fragment — run directly, against a namespace holding the handful of names each binds — plus a
+**drift check per fragment** asserting no payload keeps an implementation of its own: no refitting
+payload calls `object_is_generated_rigify_rig()`, neither reading payload negates a value. 701
+tests to 714.
+
+**What was deliberately not merged**, and the reason it is worth recording: `blocked()`'s six
+variants, which the census reports as six copies in six variants — one convention applied six
+times, differing only in which of that tool's own fields each nulls out, where a mechanism for
+"this tool's null response" would be bigger than the six copies. Being identical is likewise not a
+reason: `property_value()`'s six copies and `as_path()`'s four are harmless and stayed.
+
+The census is now [verification/census.py](../verification/census.py), the one script there that
+needs no Blender. It gained something the hand-run version did not have: it reads which fragments
+each payload is actually assembled with out of the `assemble(..., shared=[...])` calls in the tool
+modules, so it can separate a payload that **shadows** a fragment it names — a real defect, since
+the fragment is concatenated first and its copy is then dead — from one that merely defines the
+same name without using that fragment. The first pass, before the pairings were read, reported
+five shadowings and every one was a false alarm. What the weaker signal does show is a migration
+candidate: `list_targets.py` defines `files_matching()` and `read_target_json()` that
+`target_categories.py` already has, which is the
+[migration](NEXT_STEPS.md#modeling) FR 017 carries.
+
+The census also shows this effort's own effect: `modifier_value()` is gone from the list, and
+`rig_refit_blocker()` is 4 copies in **2** variants — which is now the deliberate tense split
+rather than drift, and is the one entry a future reader should not "fix".
+
 ## [FR 020](done/020-trim-claude-md/README.md) — the root CLAUDE.md trimmed, and the rule that keeps it trimmed
 
 The second effort that adds no tool. The root [CLAUDE.md](../CLAUDE.md) had reached **704 lines**

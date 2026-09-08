@@ -117,7 +117,25 @@ Some fixtures need both — the detail-target and mesh-asset cases walk the disk
 stub character — which is what the shared `TestCase` subclasses in `blender_stubs.py` are for.
 A fixture is shared rather than copied when two tools must agree about it: `RigTestCase` exists
 so that one test can run `mpfb_list_rigs` and `mpfb_add_rig` against the same disk and assert
-their weights answers are equal, which means nothing if it is two trees.
+their weights answers are equal, which means nothing if it is two trees. `DetailTargetTestCase`
+now carries the same shape for [`modifier_reading.py`](architecture.md#shared-fragments): one test
+runs `mpfb_get_target_stack` and `mpfb_symmetrize_targets` over *one* character and asserts every
+category reading matches, and it was checked by making one of the two diverge on purpose and
+watching it fail.
+
+**Every shared fragment owes the suite two things**, since a fragment exists precisely so that two
+payloads cannot disagree:
+
+- The fragment run **directly**, where it can be — `performed.py`, `refit_blocker.py` and
+  `modifier_reading.py` are executed in `tests/test_codegen.py` against a namespace holding the
+  handful of names each binds, rather than reached through a payload inside a stub Blender. A
+  fragment that reads MPFB tables or the disk (`target_categories.py`, `rig_lookup.py`,
+  `asset_sections.py`) is exercised through its payloads instead.
+- A **drift check** that no payload keeps an implementation of its own — the thing the fragment
+  was created to prevent, asserted against the payload source rather than trusted. Whichever line
+  is the rule's signature move is the one to look for: for `refit_blocker.py` it is that no
+  refitting payload calls `object_is_generated_rigify_rig()` itself, and for
+  `modifier_reading.py` that neither reading payload negates a value.
 
 ## Two mechanics every stub-executing module inherits
 

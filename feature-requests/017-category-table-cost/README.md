@@ -54,6 +54,12 @@ that is the point.
 - **FR-4.** `payloads/list_targets.py` is migrated onto the fragment, and the shape difference is
   reconciled rather than papered over: its scan is a flat user-target listing carrying
   `listed_in_mpfb_ui`, with no synthesized categories at all.
+  [verification/census.py](../../verification/census.py) names the two functions this closes —
+  `files_matching()` and `read_target_json()`, reported under REIMPLEMENTED against
+  `target_categories.py` — and running it afterwards is how FR-4 is shown to be done.
+  [FR 015](../done/015-fourth-shared-fragment/README.md) landed **without touching
+  `target_categories.py`**, so the concern that the two efforts would collide over that file is
+  settled: this one owns it.
 - **FR-5.** The four affected checklists are re-run and their records updated.
 - **FR-6.** The cost is re-measured with
   [verification/measure.py](../../verification/measure.py) and the before/after recorded.

@@ -3,9 +3,9 @@ Payload for ``mpfb_set_targets``: resolve the whole batch, then apply it.
 
 Not a module of this package - this file is never imported here. It is read as
 a resource and executed inside Blender, on top of the raising bootstrap and the
-``target_categories.py`` shared fragment (see ``mpfbmcp.codegen.assemble``). A
-linter will flag several names as undefined because the assembler binds them
-ahead of this file:
+``target_categories.py``, ``refit_blocker.py`` and ``performed.py`` shared
+fragments (see ``mpfbmcp.codegen.assemble``). A linter will flag several names
+as undefined because the assembler binds them ahead of this file:
 
 - ``PARAMS`` - the tool's arguments as plain JSON data: ``name``, ``modifiers``,
   ``targets``, ``symmetry``, ``prune`` and ``refit``.
@@ -17,6 +17,10 @@ ahead of this file:
 - ``with_performed()`` - from the shared fragment ``performed.py``, named by
   every mutating payload. It stamps the uniform ``performed`` flag onto the
   finished answer, in the last line of this file.
+- ``rig_refit_is_blocked()`` - from the shared fragment ``refit_blocker.py``,
+  named by every payload that refits. It answers whether
+  ``HumanService.refit()`` would leave the rig untouched; the sentence saying
+  so is written here, since this tool's tense is not the others'.
 
 **Two phases, and the split is the point.** Everything is resolved first -
 sections, categories, sides, ranges and the file each target would be loaded
@@ -418,17 +422,13 @@ def mesh_assets_of(basemesh):
 def rig_refit_blocker(rig):
     """Why HumanService.refit() would leave this rig untouched, or None.
 
-    refit() reports this case through an ``operator`` it will not be given here,
-    and otherwise returns having refitted the mesh assets but not the rig. So
-    the condition is detected on this side instead - a generated Rigify rig with
-    no meta rig left in the scene - and reported, rather than letting the tool
-    claim a refit it did not perform.
+    The condition is ``rig_refit_is_blocked()`` from the shared fragment, which
+    every tool that refits asks; the wording is this tool's own, because here
+    the refit has not happened yet and the sentence is a prediction rather than
+    a report. Asking at all is what keeps the tool from claiming a refit it did
+    not perform.
     """
-    if rig is None:
-        return None
-    if not ObjectService.object_is_generated_rigify_rig(rig):
-        return None
-    if ObjectService.find_rigify_metarig_by_rig(rig) is not None:
+    if not rig_refit_is_blocked(rig):
         return None
     return ("The rig '" + rig.name + "' is a generated Rigify rig and no meta rig is left in the "
             "scene, so it cannot be refitted to the new body shape. Set the Rigify sub-panel's "

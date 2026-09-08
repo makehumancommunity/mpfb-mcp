@@ -239,7 +239,7 @@ def register(mcp: FastMCP) -> None:
         code = codegen.assemble(
             "set_targets.py",
             bootstrap="raising",
-            shared=["target_categories.py", "performed.py"],
+            shared=["target_categories.py", "refit_blocker.py", "performed.py"],
             params={
                 "name": _validated_name(name),
                 "modifiers": _validated_modifiers(modifiers),

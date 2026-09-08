@@ -197,7 +197,7 @@ class GeneratedSetTargetsTests(DetailTargetTestCase):
             {"name": name, "modifiers": list(modifiers), "targets": list(targets),
              "symmetry": symmetry, "prune": prune, "refit": refit},
             scene_objects=self.objects, active=active,
-            shared=["target_categories.py", "performed.py"])
+            shared=["target_categories.py", "refit_blocker.py", "performed.py"])
 
     @staticmethod
     def modifier(section, category, value, side=None):

@@ -184,7 +184,7 @@ def register(mcp: FastMCP) -> None:
         code = codegen.assemble(
             "set_macro_details.py",
             bootstrap="raising",
-            shared=["performed.py"],
+            shared=["refit_blocker.py", "performed.py"],
             params={
                 "name": _validated_name(name),
                 "changes": changes,

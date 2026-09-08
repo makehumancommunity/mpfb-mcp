@@ -149,7 +149,7 @@ def register(mcp: FastMCP) -> None:
         code = codegen.assemble(
             "get_target_stack.py",
             bootstrap="raising",
-            shared=["target_categories.py"],
+            shared=["target_categories.py", "modifier_reading.py"],
             params={
                 "name": _validated_text(
                     name, "name", "omit it to use the active object"),

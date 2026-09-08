@@ -3,9 +3,9 @@ Payload for ``mpfb_get_target_stack``: what is actually on this character.
 
 Not a module of this package - this file is never imported here. It is read as
 a resource and executed inside Blender, on top of the raising bootstrap and the
-``target_categories.py`` shared fragment (see ``mpfbmcp.codegen.assemble``). A
-linter will flag several names as undefined because the assembler binds them
-ahead of this file:
+``target_categories.py`` and ``modifier_reading.py`` shared fragments (see
+``mpfbmcp.codegen.assemble``). A linter will flag several names as undefined
+because the assembler binds them ahead of this file:
 
 - ``PARAMS`` - the tool's arguments as plain JSON data: ``name``,
   ``include_macro``, ``include_expressions``, ``name_contains``, ``limit`` and
@@ -14,6 +14,9 @@ ahead of this file:
 - ``TARGET_SECTIONS``, ``KNOWN_SECTIONS``, ``TARGET_INDEX``, ``find_category``,
   ``target_names_for``, ``category_is_opposed`` - from the shared fragment,
   whose docstring explains what a category is and why it is rebuilt here.
+- ``modifier_reading()`` - from the shared fragment ``modifier_reading.py``,
+  shared with ``mpfb_symmetrize_targets`` so that the number reported here is
+  the number that tool acts on.
 
 Changes nothing. In particular it never calls ``reapply_macro_details()`` or
 ``reapply_all_details()``: a character whose numbers and whose shape have
@@ -34,8 +37,10 @@ The answer has two views of the same facts. ``targets`` is one entry per shape
 key, which is what ``mpfb_set_targets``' raw ``targets`` list addresses.
 ``modifiers`` rolls those up into the ``target.json`` categories MPFB's own
 sliders manipulate, computed the way ``_get_opposed_modifier_value()`` computes
-them, which is the view that round-trips back into ``mpfb_set_targets``'
-``modifiers`` list and the view that matches what the user sees in the panel.
+them - by the shared fragment, so ``mpfb_symmetrize_targets`` cannot read a
+category differently - which is the view that round-trips back into
+``mpfb_set_targets``' ``modifiers`` list and the view that matches what the
+user sees in the panel.
 """
 
 import bpy
@@ -126,22 +131,6 @@ def value_lookup(values):
     return (present, value_of)
 
 
-def modifier_value(category, side, present, value_of):
-    """One category's slider reading, as MPFB's own getters compute it."""
-    if category_is_opposed(category):
-        # _get_opposed_modifier_value(): the positive target wins when both are
-        # somehow present, and the negative one is reported negated.
-        positive = target_names_for(category, side, "positive")
-        negative = target_names_for(category, side, "negative")
-        if present(positive):
-            return value_of(positive)
-        if present(negative):
-            return -value_of(negative)
-        return 0.0
-    # _get_simple_modifier_value().
-    return value_of(target_names_for(category, side, "positive"))
-
-
 def sides_of(category):
     if category.get("has_left_and_right"):
         return ("left", "right")
@@ -157,7 +146,7 @@ def build_modifiers(present, value_of):
         for category in section["categories"]:
             readings = dict()
             for side in sides_of(category):
-                readings[side] = modifier_value(category, side, present, value_of)
+                readings[side] = modifier_reading(category, side, present, value_of)
             for side in sides_of(category):
                 if abs(readings[side]) > EPSILON:
                     modifiers.append({
