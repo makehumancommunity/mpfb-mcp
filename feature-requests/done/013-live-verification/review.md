@@ -67,7 +67,7 @@ Both are the same rule, and it is
 [FR 006](../006-list-targets/README.md)'s: `[]` means "none of them" and `null` means "not
 known". It survived twelve tools' worth of review and broke twice in practice, which is an
 argument for stating it in
-[Response shape](../../../specifications/architecture.md#response-shape) rather than leaving it as
+[Response shape](../../../specifications/responses.md#response-shape) rather than leaving it as
 a habit. **Fixed here**, in the specification as well as in the code.
 
 ## Does the response shape work in practice?
@@ -269,7 +269,7 @@ The decision that rested on this survives, and for a better reason than it had: 
 following `_check_add_proxy()` load-bearing is not that three paths disagree but that the *obvious*
 implementation — the service function whose name matches the operation — is the one that produces
 a different character. That is a stronger argument, and
-[Where MPFB's own code paths disagree](../../../specifications/architecture.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
+[Where MPFB's own code paths disagree](../../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
 is corrected to say it. **Fixed here**, in the specification.
 
 The proxy-operator duplication is still worth filing, as duplication rather than as divergence:
@@ -379,7 +379,7 @@ makes it *more* forceful, not less. Reading target files off disk is **174 ms** 
 so the disk is a rounding error here too.
 
 **Decision holds**, and
-[A batched mutating tool resolves before it writes](../../../specifications/architecture.md#a-batched-mutating-tool-resolves-before-it-writes)
+[A batched mutating tool resolves before it writes](../../../specifications/mutating-tools.md#a-batched-mutating-tool-resolves-before-it-writes)
 now has a measured reason.
 
 ### Per skin type
@@ -442,7 +442,7 @@ finding ambiguous about which change caused it.
 | 4 | `mask_modifiers_present` names modifiers a caller must not delete | **Fixed here** |
 | 5 | `scale_assumption` for an ordinary character is `METER`, not `DECIMETER` | **Fixed here** (four places) |
 | 6 | "Three disagreeing proxy code paths" is two | **Fixed here** (specification) |
-| 7 | `null` vs `[]` stated in [Response shape](../../../specifications/architecture.md#response-shape) | **Fixed here** (specification) |
+| 7 | `null` vs `[]` stated in [Response shape](../../../specifications/responses.md#response-shape) | **Fixed here** (specification) |
 | 8 | A candidate MPFB defect must be confirmed before it is filed | **Fixed here** (specification) |
 | 9 | `asset_info.material_source` is one key from two properties | **Fixed here** (docstring) |
 | 10 | `LAYERED` is not slower to build than the other four | **Fixed here** (docstring) |

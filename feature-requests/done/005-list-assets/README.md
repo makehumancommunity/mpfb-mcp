@@ -66,7 +66,7 @@ Filters combine with AND.
   - `fragment` — `"<dirname>/<filename>"`, e.g. `"fedora/fedora.mhclo"`. **The value a later tool
     needs**, and the same form MPFB stores in an object's `asset_source` / `material_source` and
     accepts in `AssetService.find_asset_absolute_path()`. It is not a path; see the fragment rule in
-    [architecture.md](../../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object).
+    [architecture.md](../../../specifications/responses.md#how-tools-report-the-asset-behind-an-object).
   - `path` — the absolute path. Absolute or `null`, never a fragment.
   - `object_type` — the MakeHuman type from MPFB's own table (`"Hair"`, `"Clothes"`,
     `"Proxymeshes"`, and note `"Material"` for skins and `"Pose"` for poses, which are *not* object
@@ -201,7 +201,7 @@ character, which is FR 003's and `mpfb_get_human_summary`'s question.
   `LocationService.get_mpfb_root()` has been caught returning one despite its annotation. Coerce
   every path with `str()` where it enters the response.
 - Input validation, per
-  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket):
+  [Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket):
   reject a non-string or empty/whitespace-only `asset_subdir`, `name_contains` or `pack`; reject a
   `limit`/`offset` that is not a non-negative int, and a `limit` above the maximum. Do **not**
   validate `asset_subdir` or `pack` against a vocabulary held here — `subdir_recognized` and
@@ -218,7 +218,7 @@ character, which is FR 003's and `mpfb_get_human_summary`'s question.
 - [architecture.md](../../../specifications/architecture.md) — one convention to *follow* and two
   candidate additions.
   - **Already standing, since [FR 004](../004-list-rigs/README.md) landed:**
-    [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added).
+    [How tools name things that can be added](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added).
     `fragment` is this tool's identifier under that convention, and `mpfb_add_asset` /
     `mpfb_set_skin` are the functions that consume it. Follow it rather than restate it; the only
     thing left to check is its "say which function consumes it when there is more than one" clause,
@@ -232,7 +232,7 @@ character, which is FR 003's and `mpfb_get_human_summary`'s question.
     convention. FR 003 already drew the line between *identified* and *recorded* values for
     `rig_type` and `material_type`; this adds a third category, and the same rule applies — say in
     the docstring which it is, and give the caller a way to see when the derivation is unsafe.
-- The [fragment/path convention](../../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object)
+- The [fragment/path convention](../../../specifications/responses.md#how-tools-report-the-asset-behind-an-object)
   needs no change: this effort is its first use in the *forward* direction (naming an asset to be
   applied) rather than the backward one (naming what an object was made from), which is a
   confirmation of the convention rather than a modification.
@@ -375,7 +375,7 @@ the listing had reported for it.
 handles, the `object_type` this tool reports is exactly the string that function's `asset_type`
 argument wants — and that argument defaults to `"Clothes"`, so hair added without it becomes
 clothes. That makes `object_type` a second identifier under
-[How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added),
+[How tools name things that can be added](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added),
 which this request did not anticipate, and it is now in the docstring. It does *not* generalise:
 `"Material"`, `"Pose"` and `"Other"` name what a skin, a pose and an ink layer are, and none of the
 three is added by `add_mhclo_asset()`.

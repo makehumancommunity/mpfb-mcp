@@ -55,7 +55,7 @@ Arguments:
   pulling whole sections to grep them.
 - `limit` (optional int, default `200`, max `1000`) and `offset` (optional int, default `0`) — the
   paging convention [FR 005](../005-list-assets/README.md) established, now standing as
-  [How tools bound a large answer](../../../specifications/architecture.md#how-tools-bound-a-large-answer).
+  [How tools bound a large answer](../../../specifications/responses.md#how-tools-bound-a-large-answer).
   Follow it rather than re-deciding it: `total_count` counted before the cap, `truncated` always
   present, `offset`/`limit` echoed, and the listing sorted before it is paged.
 
@@ -190,7 +190,7 @@ target file contents, which are vertex-offset data of no use to a caller.
   asset items — so this is the most likely place in the three new tools for a `Path` to reach
   `strict_json` and take the response down.
 - Input validation, per
-  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket):
+  [Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket):
   reject a non-string or empty/whitespace-only `section` or `name_contains`, and a `limit`/`offset`
   that is not a non-negative int. Do **not** validate `section` against a vocabulary held here —
   the sections are partly synthesized from the user's own directories and cannot be known on this
@@ -207,19 +207,19 @@ target file contents, which are vertex-offset data of no use to a caller.
 - [architecture.md](../../../specifications/architecture.md) — one convention to *follow* and two
   candidate additions.
   - **Already standing, since [FR 004](../004-list-rigs/README.md) landed:**
-    [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added).
+    [How tools name things that can be added](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added).
     `shapekey_name` is this tool's identifier under that convention, consumed by
     `mpfb_set_target_value`. Its last clause is the one to read closely here: a catalogue vocabulary
     and an identification vocabulary overlap without matching, which is exactly the relationship
     between a target's `shapekey_name` and its filename.
   - **The capped-and-paged response convention. Decided and already standing**, since
     [FR 005](../005-list-assets/README.md) landed first:
-    [How tools bound a large answer](../../../specifications/architecture.md#how-tools-bound-a-large-answer).
+    [How tools bound a large answer](../../../specifications/responses.md#how-tools-bound-a-large-answer).
     Follow it; nothing about it needs restating here. Note its "a filtered call still reports what
     it filtered out of" clause, which for this tool means the per-section counts rather than
     FR 005's `counts_by_subdir`.
   - **Also standing since FR 005:**
-    [How tools report a derived rather than recorded fact](../../../specifications/architecture.md#how-tools-report-a-derived-rather-than-recorded-fact).
+    [How tools report a derived rather than recorded fact](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact).
     Worth reading against `shapekey_name`, which is derived from a filename by a convention rather
     than recorded anywhere, and against `listed_in_mpfb_ui`.
   - **Reading MPFB's data files directly.** This is the first tool to read a bundled *data* file

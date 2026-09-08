@@ -58,8 +58,8 @@ inventing a behaviour MPFB does not have.
 
 ## Affected specifications
 
-- **[specifications/architecture.md](../../specifications/architecture.md)** —
-  [How tools bound a large answer](../../specifications/architecture.md#how-tools-bound-a-large-answer)
+- **[specifications/responses.md](../../specifications/responses.md)** —
+  [How tools bound a large answer](../../specifications/responses.md#how-tools-bound-a-large-answer)
   is where `refresh` is described for the other two catalogue tools.
 - **[specifications/vision.md](../../specifications/vision.md)** — `mpfb_list_asset_materials`' catalog
   entry.

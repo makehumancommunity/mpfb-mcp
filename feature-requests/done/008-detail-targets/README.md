@@ -53,7 +53,7 @@ Read-only, always answers. Arguments:
   Same reasoning; they are neither macro nor modeling targets and belong to a future expressions
   effort.
 - `name_contains`, `limit`, `offset` — the filter-and-page convention from
-  [How tools bound a large answer](../../../specifications/architecture.md#how-tools-bound-a-large-answer).
+  [How tools bound a large answer](../../../specifications/responses.md#how-tools-bound-a-large-answer).
 
 `result` carries `basemesh_name`, `subject_resolved_by`, `found`, `message`, the paging fields, and:
 
@@ -123,7 +123,7 @@ saying so rather than doing anything.
   requirements).
 - `known_sections` / `known_categories_in_section` when a name was not recognized — the
   self-correction machinery from
-  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket),
+  [Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket),
   scoped to what the caller got wrong rather than dumping the whole vocabulary.
 - `refit_performed`, `assets_possibly_stale` — as in FR 007.
 
@@ -272,7 +272,7 @@ be rebuilt here; and creating new target *files*.
   category explicitly, and a category with `has_left_and_right: false` has no partner at all. Walk
   the categories, not the shape keys.
 - Input validation per
-  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket):
+  [Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket):
   validate the *shape* of every list entry locally — that it is a dict, that its keys are known,
   that `value` is a real number in the right range, that `side` is one of three strings, that
   `direction` is one of two — and **not** the vocabulary of sections, categories or shape key names,
@@ -291,19 +291,19 @@ be rebuilt here; and creating new target *files*.
 - [architecture.md](../../../specifications/architecture.md) — conventions to follow, and two
   candidates.
   - **To follow:**
-    [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added)
+    [How tools name things that can be added](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added)
     (this is the tool that consumes FR 006's identifiers, and is where that convention is finally
     tested),
-    [How tools bound a large answer](../../../specifications/architecture.md#how-tools-bound-a-large-answer)
+    [How tools bound a large answer](../../../specifications/responses.md#how-tools-bound-a-large-answer)
     for the stack listing, and
-    [A tool may report a fact MPFB's own UI does not show](../../../specifications/architecture.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)
+    [A tool may report a fact MPFB's own UI does not show](../../../specifications/responses.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)
     for `asymmetries` and for the `"basis"` blind spot.
   - **Plus the three conventions [FR 007](../007-macro-details/README.md) landed**, which this
     request now *follows* rather than proposes, since that one went first:
-    [How a mutating tool takes its subject](../../../specifications/architecture.md#how-a-mutating-tool-takes-its-subject),
-    [A mutating tool reports before and after](../../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
+    [How a mutating tool takes its subject](../../../specifications/mutating-tools.md#how-a-mutating-tool-takes-its-subject),
+    [A mutating tool reports before and after](../../../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after)
     and
-    [Preconditions are answers](../../../specifications/architecture.md#preconditions-are-answers).
+    [Preconditions are answers](../../../specifications/mutating-tools.md#preconditions-are-answers).
     Note that FR 007's `refit` reporting has a shape worth copying exactly rather than reinventing:
     `refit_performed`, `refit_incomplete_reason` and `assets_possibly_stale`.
   - **New — a batched mutating tool resolves everything before it writes anything.** The

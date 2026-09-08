@@ -28,7 +28,7 @@ different material and have nothing to explain it:
 
 ``skin_type`` is the one place in this package where a *vocabulary* is checked
 on this side of the socket as well as inside Blender, against
-[Validate before crossing the socket](../../specifications/architecture.md#validate-before-crossing-the-socket)'s
+[Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket)'s
 usual rule. The reason is specific: ``set_character_skin()`` tests its five
 types with five separate ``if`` statements, having already deleted every
 material on the character - so an unrecognised value destroys the skin, builds
@@ -117,7 +117,7 @@ def _validated_source(
     """Exactly one of the catalogue's two identifiers - or neither, for LAYERED.
 
     The exactly-one rule is
-    [An acting tool accepts every identifier its catalogue reports](../../specifications/architecture.md#an-acting-tool-accepts-every-identifier-its-catalogue-reports).
+    [An acting tool accepts every identifier its catalogue reports](../../../specifications/tool-interface.md#an-acting-tool-accepts-every-identifier-its-catalogue-reports).
     The exception is not a relaxation of it: ``LAYERED`` is the single skin type
     that has a material to build when handed no file at all, so "neither" is a
     meaningful request there and a mistake everywhere else.

@@ -81,8 +81,8 @@ MPFB data directory should be held to the same rule.
 
 ## Affected specifications
 
-- **[specifications/architecture.md](../../specifications/architecture.md)** —
-  [Where MPFB's own code paths disagree](../../specifications/architecture.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
+- **[specifications/mpfb-integration.md](../../specifications/mpfb-integration.md)** —
+  [Where MPFB's own code paths disagree](../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
   already carries FR 013's correction that a candidate defect must be confirmed before it is filed.
   Expect no further change unless FR-4 finds a stale citation.
 

@@ -69,7 +69,7 @@ tool should get its own feature request when scoped.
   **Implemented.** Takes no required arguments and always answers, listing MPFB's bundled
   standard and Rigify rigs alongside the custom rigs found in the user's data roots. Each entry
   carries the `identifier` an adding function takes and the `add_function` that takes it (see
-  [How tools name things that can be added](architecture.md#how-tools-name-things-that-can-be-added)),
+  [How tools name things that can be added](tool-interface.md#how-tools-name-things-that-can-be-added)),
   plus what adding it would do about weights — MPFB resolves those through a fallback table
   rather than by filename, so two rigs legitimately borrow another's. Reports `rigify_available`,
   the directories scanned and the files MPFB silently refused, so an absent rig is explainable
@@ -83,7 +83,7 @@ tool should get its own feature request when scoped.
   adder does not deliver.
 - `mpfb_get_macro_details` — what is this character's phenotype? **Implemented.** Reads the
   eleven macro sliders off a character named by *any* object in its family (see
-  [How a mutating tool takes its subject](architecture.md#how-a-mutating-tool-takes-its-subject),
+  [How a mutating tool takes its subject](mutating-tools.md#how-a-mutating-tool-takes-its-subject),
   which the read half follows too), and reports the values in MPFB's own nested shape beside
   the defaults, so a deliberately average character is distinguishable from an untouched one.
   Reports the three race weights raw with their `race_sum`, since MPFB treats them as
@@ -103,13 +103,13 @@ tool should get its own feature request when scoped.
   table — proxymeshes, skins, ink layers, eyes, eyebrows, eyelashes, hair, teeth, tongue,
   clothes and poses — filtered by subdir, by a substring of the name or label, and by asset
   pack, then capped and paged (see
-  [How tools bound a large answer](architecture.md#how-tools-bound-a-large-answer)): the
+  [How tools bound a large answer](responses.md#how-tools-bound-a-large-answer)): the
   library runs to hundreds of entries on an ordinary install, so the answer is a subset by
   design and `truncated` says so. Each entry carries the absolute `path` the adding functions
   take, the portable `fragment` MPFB records on the resulting object, and the `object_type`
   that doubles as `add_mhclo_asset()`'s `asset_type` argument. `pack` is **derived from a
   directory-name convention, not recorded** (see
-  [How tools report a derived rather than recorded fact](architecture.md#how-tools-report-a-derived-rather-than-recorded-fact)),
+  [How tools report a derived rather than recorded fact](responses.md#how-tools-report-a-derived-rather-than-recorded-fact)),
   hence `pack_ambiguous` beside it. Two costs are documented rather than hidden: the first
   call for a subdir loads a Blender preview per thumbnailed asset, and MPFB's cache is keyed
   by label, so same-named assets in different directories collapse into one entry. Its three
@@ -140,7 +140,7 @@ tool should get its own feature request when scoped.
   per call. Each user target carries the `shapekey_name` `mpfb_set_targets` must be given —
   derived by MPFB from the filename, and **not** equal to it once a name passes 60 characters,
   where a caller using the filename addresses nothing at all. Capped and paged (see
-  [How tools bound a large answer](architecture.md#how-tools-bound-a-large-answer)). Reports what
+  [How tools bound a large answer](responses.md#how-tools-bound-a-large-answer)). Reports what
   the index leaves out (`unindexed_system_target_dirs`), which directories were scanned, and two
   facts MPFB's own UI does not show: a target installed since Blender started, and a `*.target.gz`
   in a user targets directory, which MPFB's scan there does not match (`listed_in_mpfb_ui`). A
@@ -161,10 +161,10 @@ tool should get its own feature request when scoped.
   categories whose two sides differ — a fact MPFB's own UI surfaces nowhere, and what makes
   `mpfb_symmetrize_targets` an informed operation. Macro and expression shape keys are excluded by
   default but always counted. Capped and paged (see
-  [How tools bound a large answer](architecture.md#how-tools-bound-a-large-answer)). Reads
+  [How tools bound a large answer](responses.md#how-tools-bound-a-large-answer)). Reads
   `key_blocks` directly rather than through `TargetService`, so it can see a shape key whose name
   contains "basis" — which MPFB itself can neither read nor change (see
-  [A tool may report a fact MPFB's own UI does not show](architecture.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)).
+  [A tool may report a fact MPFB's own UI does not show](responses.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)).
   Changes nothing, and in particular does not repair a stack it reports as drifted.
 
 **Creation and modification**
@@ -177,10 +177,10 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   `mask_helpers`/`detailed_helpers`/`extra_vertex_groups`/`feet_on_ground`). It takes the macro
   detail as eleven flat sliders and assembles MPFB's nested dict itself; whether it should take
   the dict directly instead is **settled: it should not**, for the reasons under
-  [Validate before crossing the socket](architecture.md#validate-before-crossing-the-socket).
+  [Validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket).
 - `mpfb_set_macro_details` — change a character's phenotype in place. **Implemented.** Takes the
   same eleven flat sliders as `mpfb_create_human` (see
-  [Validate before crossing the socket](architecture.md#validate-before-crossing-the-socket) for
+  [Validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket) for
   why they are flat rather than a nested dict), with every one optional and an omitted one meaning
   "leave unchanged" — which is what makes a relative change a single call. Writes every named
   property, then recalculates the macro target stack **once** through
@@ -190,10 +190,10 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   panel's own slider produces.
   Reports the prior value beside the new one per slider, the shape keys removed and added, and —
   when `refit` was left at MPFB's own default of false — what is now fitted to the old shape (see
-  [A mutating tool reports before and after](architecture.md#a-mutating-tool-reports-before-and-after)).
+  [A mutating tool reports before and after](mutating-tools.md#a-mutating-tool-reports-before-and-after)).
   A call that names no slider recalculates nothing, and a basemesh in edit mode or without shape
   keys comes back as a sentence rather than an assertion (see
-  [Preconditions are answers](architecture.md#preconditions-are-answers)).
+  [Preconditions are answers](mutating-tools.md#preconditions-are-answers)).
 - `mpfb_refit_human` — re-fit everything on a character to the current shape of its basemesh.
   **Implemented.** Wraps `HumanService.refit()`, and exists because `refit` defaults to *false* on
   every modeling tool here, as it does in MPFB's own model panel: a refit is expensive enough that
@@ -215,10 +215,10 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   thirty modifier changes cost 3.6 s in one call and 98.4 s in thirty, of which only 7.5 s is
   transport — most of the rest is thirty rebuilds of MPFB's category table. **All-or-nothing**: everything is resolved before anything is
   written, and one bad entry applies none of them (see
-  [A batched mutating tool resolves before it writes](architecture.md#a-batched-mutating-tool-resolves-before-it-writes)).
+  [A batched mutating tool resolves before it writes](mutating-tools.md#a-batched-mutating-tool-resolves-before-it-writes)).
   Follows `_set_opposed_modifier_value()` statement for statement, including its ordering, so the
   value reads back on MPFB's own slider (see
-  [When mpfb-mcp models a concept MPFB's UI has but its services do not](architecture.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not)).
+  [When mpfb-mcp models a concept MPFB's UI has but its services do not](mpfb-integration.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not)).
   `symmetry`, `prune` and `refit` inherit MPFB's own defaults, and the response reports what is now
   stale the same way `mpfb_set_macro_details` does.
 - `mpfb_symmetrize_targets` — make an already-asymmetric detail stack symmetric, in a named
@@ -235,7 +235,7 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   `Proxymeshes`, `Eyes`, `Eyebrows`, `Eyelashes`, `Hair`, `Teeth` and `Tongue`. Takes its `path`
   **or** its `fragment` from `mpfb_list_assets` — exactly one, both accepted, and `resolved_path`
   always reported, because resolving a fragment matches on basename and is lossy (see
-  [An acting tool accepts every identifier its catalogue reports](architecture.md#an-acting-tool-accepts-every-identifier-its-catalogue-reports)).
+  [An acting tool accepts every identifier its catalogue reports](tool-interface.md#an-acting-tool-accepts-every-identifier-its-catalogue-reports)).
   Its `asset_type` is **required**, taken from that catalogue's `object_type`: MPFB's own default of
   `"Clothes"` is wrong for six of the eight and mislabels a body part permanently and silently, and
   a defaulted argument that changes what the character *is* must not be defaulted. `material_type`
@@ -248,12 +248,12 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   whether a material was built at all, the sub-rig, and a `warnings` list for the four things MPFB
   only logs. **Verified live**: a garment equipped this way is identical to one equipped through
   MPFB's asset library panel down to the vertex positions, and all eight asset types were added. It is the other end of
-  [A tool reports an ordering constraint it cannot enforce](architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
+  [A tool reports an ordering constraint it cannot enforce](mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
   from `mpfb_add_rig`: `rigged_to` is `null` with `parented_to` beside it when the character had no
   rig at the moment of attachment. For a `Proxymeshes` asset it follows `_check_add_proxy()` — the
   `.mhm` loading path — rather than the proxy library operator, reporting the four extras in
   `proxy_extras` and naming the divergence (see
-  [Where MPFB's own code paths disagree, mpfb-mcp picks one and names it](architecture.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)).
+  [Where MPFB's own code paths disagree, mpfb-mcp picks one and names it](mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)).
 - `mpfb_remove_asset` — take one MHCLO asset off a character via `unload_mhclo_asset()`.
   **Implemented**, and in scope alongside adding for one reason: without it an agent that equips the
   wrong garment has no correct way to take it off, since deleting the object leaves the body's mask
@@ -267,7 +267,7 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
 - `mpfb_set_skin` — via `set_character_skin()`. **Implemented.** Takes its `path` **or** its
   `fragment` from `mpfb_list_assets`' `skins` subdir — exactly one, both accepted, and
   `resolved_path` always reported, per
-  [An acting tool accepts every identifier its catalogue reports](architecture.md#an-acting-tool-accepts-every-identifier-its-catalogue-reports).
+  [An acting tool accepts every identifier its catalogue reports](tool-interface.md#an-acting-tool-accepts-every-identifier-its-catalogue-reports).
   A skin is a *material* rather than a mesh asset, so it is not `mpfb_add_asset`'s job: it is
   applied to objects that already exist, and to two of them, since MPFB gives the body proxy the
   same skin and nothing else would tell the caller a second object changed. The dimension the
@@ -278,7 +278,7 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   all five build within 33 ms of each other, and MPFB's warning that `LAYERED` is unsuitable for
   animation is about render time. Two of MPFB's defaults are followed
   from its **settings panel rather than the function signature**, per
-  [Where MPFB's UI coerces or re-defaults a service argument](architecture.md#where-mpfbs-ui-coerces-or-re-defaults-a-service-argument-mpfb-mcp-does-the-same-and-reports-both):
+  [Where MPFB's UI coerces or re-defaults a service argument](mpfb-integration.md#where-mpfbs-ui-coerces-or-re-defaults-a-service-argument-mpfb-mcp-does-the-same-and-reports-both):
   `skin_type` defaults to `MAKESKIN` and not `ENHANCED_SSS`, and `material_instances` is coerced
   off for three of the five types — so `material_instances_requested` and `_used` are both reported.
   `LAYERED` is the one type that may name no file at all. Three things are reported that nothing in
@@ -292,7 +292,7 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   beside it, or put its own back. **Implemented**, and the one tool here with **no service function
   to wrap**: the mechanism lives entirely in MPFB's asset library operator, so both of its helpers
   are reimplemented from services and its quirks reproduced rather than tidied up (see
-  [Where MPFB's own code paths disagree](architecture.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)).
+  [Where MPFB's own code paths disagree](mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)).
   `name` is **required** and is the asset's own object name — no active-object fallback, because
   this destroys that object's material — and it refuses a `Basemesh`, a `Proxymeshes` and a
   `Skeleton`, exactly as MPFB's own panel does; the first two carry a skin, which is
@@ -309,10 +309,10 @@ the way `mpfb_list_objects` and `mpfb_get_object_info` report it.
   file was actually used and whose it was, whether an armature modifier was added, and that both
   adding functions **move the basemesh to the origin** and hand the armature its old location. Its
   five refusals are answers rather than exceptions (see
-  [Preconditions are answers](architecture.md#preconditions-are-answers)) — most importantly a
+  [Preconditions are answers](mutating-tools.md#preconditions-are-answers)) — most importantly a
   character that already has a rig, since MPFB has no way to swap one and adding a second silently
   orphans the first. And it is the first consumer of
-  [A tool reports an ordering constraint it cannot enforce](architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce):
+  [A tool reports an ordering constraint it cannot enforce](mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce):
   it rigs a dressed character without complaint but names, in `mesh_assets_not_rigged`, every asset
   it has just failed to rig.
 - `mpfb_generate_rigify_rig` — turn a Rigify meta rig into a generated rig. **Implemented.** A tool

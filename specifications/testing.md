@@ -18,8 +18,34 @@ There are two kinds of check, and they answer different questions:
   the right thing with the answers it gets back?"* It runs anywhere, in about nine seconds, and
   it is what a change is expected to keep green.
 - The **live harness** ([verification/](../verification/)) answers *"does MPFB do what we read
-  in its source?"* It needs a running Blender. See
-  [verification/README.md](../verification/README.md); it is not restated here.
+  in its source?"* It needs a running Blender, and it is described below.
+
+## The live harness is named and re-runnable, not a session
+
+Exercising a tool against real MPFB requires a running Blender with MPFB and blender_mcp
+installed and enabled. That is a verification step outside the unit suite — but a **named and
+re-runnable** one, not a manual session. It lives in [verification/](../verification/): a
+snapshot/compare helper over twelve datablock collections, a fixture builder, and one script per
+checklist, each driving the real tool callables the way an MCP client would and each printing one
+pass/fail/skipped line per item with the observed value beside it. Re-running a whole checklist
+after a code fix is one command.
+
+That distinction is not cosmetic. Five consecutive requests reached `Done` without their live
+check, each postponement justified by the cost of a session nothing of which survived to make the
+next one cheaper — which is exactly the defect a re-runnable harness removes. The harness lives
+outside `src/`, is not discovered by `unittest discover -s tests`, and is not shipped; nothing in
+it may be imported by the package.
+
+Two properties of it are load-bearing rather than incidental. **Checks go through the tool
+callables**, not through hand-assembled `send_code()` calls, or what is verified is a program no
+client will ever send — a large part of what is under test is the tool module's own validation
+and defaulting. And **a comparison against "what MPFB's own panel produces" is a diff, not a
+screenshot**: MPFB's panels are thin, so driving the scene property behind a slider or calling
+the operator behind a button *is* pressing it, and the two results can be compared field by field
+in one file.
+
+What it changes outside the `.blend` and puts back, what it cannot put back, and how to run it
+are in [verification/README.md](../verification/README.md).
 
 ## The unit suite is two layers
 
@@ -34,7 +60,7 @@ Stdlib `unittest`, no pytest. Each tool's test module exercises the same tool tw
    precondition handling, write ordering.
 
 Both layers are needed because the interesting logic is split across them by design (see
-[Validate before crossing the socket](architecture.md#validate-before-crossing-the-socket)):
+[Validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket)):
 the tool module knows shapes, the payload knows MPFB.
 
 ## Stubs reproduce MPFB's behaviour, never convenient values
@@ -117,7 +143,7 @@ architecture and not of any one test:
   added through `mpfb_add_rig` matches one from the rig panel.
 - **No stub has geometry.** Nothing establishes that rigging after dressing leaves the clothes
   unrigged — the claim
-  [A tool reports an ordering constraint it cannot enforce](architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
+  [A tool reports an ordering constraint it cannot enforce](mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
   rests on.
 
 Every item on that list is `verification/`'s job, and a feature request whose primary goal lands

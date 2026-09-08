@@ -177,7 +177,7 @@ and it is worth stating in the file rather than leaving a developer to work it o
     bootstrap, per-tool payload file, data-based parameter injection, and the rule that adding a
     tool must not require editing shared code-generation modules. This sits naturally beside the
     existing [One module per tool](../../../specifications/architecture.md#one-module-per-tool) and
-    [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket)
+    [Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket)
     sections.
 - [vision.md](../../../specifications/vision.md) — no change. No tool is added, removed or altered.
 

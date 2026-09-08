@@ -4,13 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 repository.
 
 **This file is a map, not a manual.** It carries the concrete layout, the commands, and the
-handful of facts that live nowhere else. Rationale lives in three other places, each of which is
-maintained and none of which is summarized here:
+handful of facts that live nowhere else. Rationale lives elsewhere, in places that are maintained
+and none of which is summarized here:
 
 | For | Read |
 |-----|------|
 | Why a tool is written the way it is | that tool's module docstring in [tools/](src/mpfbmcp/tools), and its payload's in [payloads/](src/mpfbmcp/codegen/payloads) |
-| Standing principles a new tool must follow | [specifications/architecture.md](specifications/architecture.md) |
+| How a tool must take its input and name things | [specifications/tool-interface.md](specifications/tool-interface.md) |
+| What a tool's response must contain | [specifications/responses.md](specifications/responses.md) |
+| What a tool that *changes* a character owes its caller | [specifications/mutating-tools.md](specifications/mutating-tools.md) |
+| What to do when MPFB is inconsistent or wrong | [specifications/mpfb-integration.md](specifications/mpfb-integration.md) |
+| How the system is structured | [specifications/architecture.md](specifications/architecture.md) |
 | Why a test or a stub is written the way it is | that module's docstring, and [specifications/testing.md](specifications/testing.md) |
 | What an effort decided, and what it found | [feature-requests/HISTORY.md](feature-requests/HISTORY.md) |
 
@@ -20,8 +24,10 @@ The [specifications directory](specifications/) describes the system. **These sp
 visionary** — they describe the *desired end state*, not necessarily how it is built today. Where
 the code diverges, the specs express the intent. For how the system *currently* works, rely on the
 code and the [Architecture](#architecture) section below. [vision.md](specifications/vision.md) is
-the entry point; [architecture.md](specifications/architecture.md) holds the standing principles;
-[testing.md](specifications/testing.md) holds the test discipline.
+the entry point, and [specifications/README.md](specifications/README.md) indexes the seven
+documents: `architecture.md` for the machine, `tool-interface.md` / `responses.md` /
+`mutating-tools.md` for what a tool takes, says and changes, `mpfb-integration.md` for coping with
+MPFB, `observability.md` for diagnostics, and `testing.md` for how all of it is checked.
 
 The [feature-requests directory](feature-requests) describes planned and completed development
 efforts. **Before starting any non-trivial change, read
@@ -127,12 +133,12 @@ mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP
 
 The principles behind this layout are in
 [specifications/architecture.md](specifications/architecture.md); the table below is the concrete
-map, and carries only what is not stated there.
+map, and carries only what is not stated there or in its sibling specifications.
 
 | Module | What it is, and the local detail |
 |--------|----------------------------------|
 | [connection.py](src/mpfbmcp/connection.py) | The wire client: JSON request + NUL-delimiter framing, `BLENDER_MCP_HOST`/`BLENDER_MCP_PORT`. A deliberate standalone **duplicate** of blender_mcp's protocol, not an import of it, so mpfb-mcp installs without a blender_mcp checkout. **If blender_mcp's wire protocol changes, this must be updated to match by hand.** ([rationale](specifications/architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp)) |
-| [observability.py](src/mpfbmcp/observability.py) | The per-call record and this package's logger. Hangs off `send_code()` and nowhere else. The program is written to disk **before** the socket call, so a call that hangs, times out or takes Blender down still leaves the program that did it. **Never write to stdout from anywhere in this package** — it is the JSON-RPC channel. ([rationale](specifications/architecture.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program)) |
+| [observability.py](src/mpfbmcp/observability.py) | The per-call record and this package's logger. Hangs off `send_code()` and nowhere else. The program is written to disk **before** the socket call, so a call that hangs, times out or takes Blender down still leaves the program that did it. **Never write to stdout from anywhere in this package** — it is the JSON-RPC channel. ([rationale](specifications/observability.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program)) |
 | [codegen/](src/mpfbmcp/codegen) | Assembles the source executed inside Blender, in a fixed order: bootstrap, parameter prelude, optional shared fragments, payload. One entry point: `codegen.assemble("create_human.py", bootstrap="raising", params={...}, shared=["rig_lookup.py"])`. ([rationale](specifications/architecture.md#code-generation-layout)) |
 | [codegen/bootstrap.py](src/mpfbmcp/codegen/bootstrap.py) | The only shared part still written as a string. `_MPFB_MODULE_SCAN` is the `sys.modules` scan that finds MPFB whatever extension repo it was installed from; `MPFB_BOOTSTRAP` raises unless MPFB is fully initialized, `MPFB_STATUS_BOOTSTRAP` never raises and classifies the install instead. Reuse one of the two for any new tool; **never resolve a service by importing an MPFB submodule.** ([rationale](specifications/architecture.md#resolving-mpfb-from-generated-code)) |
 | [codegen/payloads/](src/mpfbmcp/codegen/payloads) | One ordinary `.py` per tool, named for its tool module. Not modules of this package, never imported here, read as package resources — the directory has no `__init__.py` and `pyproject.toml` declares them as package data *and* sets `namespaces = false`. Each payload's docstring names the assembler-bound names it relies on, since a linter flags those as undefined. ([rationale](specifications/architecture.md#code-generation-layout)) |
@@ -176,7 +182,7 @@ docstring is where the reasoning lives**; the line below is only enough to find 
 
 ### What is validated on this side of the socket
 
-The rule is [validate the shape, never the vocabulary](specifications/architecture.md#validate-before-crossing-the-socket).
+The rule is [validate the shape, never the vocabulary](specifications/tool-interface.md#validate-before-crossing-the-socket).
 These are the specific local checks, and each exists because the alternative fails silently:
 
 - **`refresh`, `prune` and `refit` must be a real `bool`**, not merely truthy. `refresh="false"`
@@ -197,7 +203,7 @@ These are the specific local checks, and each exists because the alternative fai
 - **Two vocabularies are checked locally**, both narrow exceptions:
   `mpfb_set_skin`'s `skin_type` and `mpfb_generate_rigify_rig`'s `meta_rig_action`. The
   authoritative check stays in the payload either way; see
-  [the exception in architecture.md](specifications/architecture.md#validate-before-crossing-the-socket)
+  [the exception in architecture.md](specifications/tool-interface.md#validate-before-crossing-the-socket)
   for what earns one.
 
 ## Tests

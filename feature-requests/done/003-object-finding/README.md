@@ -322,7 +322,7 @@ Two rules across all three shapes:
   `None.name`. Note the asymmetry this creates with the rest of the tool: an active object is
   always in the current scene, so `in_current_scene` can only be `false` in the by-name form.
 - Input validation, per
-  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket):
+  [Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket):
   reject a non-string or empty/whitespace-only `name` locally — but only when one was *given*, since
   omitting it now means "use the active object". An explicitly empty string is still a caller error
   and must not be silently treated as omission: the two arise from different mistakes, and quietly

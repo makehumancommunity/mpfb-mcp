@@ -59,7 +59,7 @@ bad trade.
     Rigify one, `"custom.my_rig"` for a custom one.
   - `family` — `"standard"`, `"rigify"` or `"custom"`.
   - `path` — absolute path of the rig definition JSON. Always absolute or `null`, per
-    [architecture.md](../../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object).
+    [architecture.md](../../../specifications/responses.md#how-tools-report-the-asset-behind-an-object).
   - `label` / `description` — human-readable text from MPFB's own UI enums where there is any,
     `null` otherwise (custom rigs have none). This is what lets an agent map "the game engine rig"
     onto `game_engine` without a hardcoded table here.
@@ -168,7 +168,7 @@ errors.
 - **`rigify_available` is `SystemService.check_for_rigify()`.** The same check
   `add_builtin_rig()` makes before raising `NotImplementedError`. Coerce to a real bool.
 - Input validation, per
-  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket):
+  [Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket):
   `refresh` must be a real bool, rejected locally otherwise. There is no vocabulary to validate.
 - Response envelope unchanged: return `send_code(...)` as-is with `strict_json=True`.
 
@@ -185,7 +185,7 @@ errors.
   caller must transform, and say which function consumes it when there is more than one. FR 005 and
   FR 006 both follow the same rule with `fragment` and `shapekey_name`, which is what makes it a
   convention rather than a local choice. **Decided: added**, as
-  [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added),
+  [How tools name things that can be added](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added),
   with two clauses this request did not anticipate — report what acting on an entry would do where
   the entry does not imply it (the weights fallback), and say explicitly where a catalogue
   vocabulary overlaps an identification vocabulary without matching it.

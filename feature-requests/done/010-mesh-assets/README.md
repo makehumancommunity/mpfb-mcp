@@ -74,7 +74,7 @@ Arguments:
   it is the address `mpfb_remove_asset` and every later tool will need.
 - `resolved_path` and `asset_source` — the absolute path that was loaded and the fragment MPFB
   recorded on the object, per
-  [How tools report the asset behind an object](../../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object).
+  [How tools report the asset behind an object](../../../specifications/responses.md#how-tools-report-the-asset-behind-an-object).
   When the caller passed a `fragment`, `resolved_by: "fragment"` and the path it resolved to, because
   `find_asset_absolute_path()` matches on **basename only** and falls back to the first match when
   several files share a name — a real ambiguity the response must expose rather than absorb.
@@ -164,7 +164,7 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
   [FR 008](../008-detail-targets/README.md) established: `mpfb_remove_asset` deletes objects,
   and `mpfb_add_asset` with `material_type: "NONE"` deletes materials. Note that FR 008's
   all-or-nothing rule is now standing as
-  [A batched mutating tool resolves before it writes](../../../specifications/architecture.md#a-batched-mutating-tool-resolves-before-it-writes),
+  [A batched mutating tool resolves before it writes](../../../specifications/mutating-tools.md#a-batched-mutating-tool-resolves-before-it-writes),
   and that its last bullet names this request as the case where the batching argument does *not*
   carry over.
 - **Preconditions are answers**, per [FR 007](../007-macro-details/README.md).
@@ -234,7 +234,7 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
   whose `asset_source` property was never set, or was edited, leaves its mask modifier behind. Detect
   the empty-property case up front and report it instead of silently half-removing.
 - Input validation per
-  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket):
+  [Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket):
   shape only — strings non-empty, `subdiv_levels` a non-`bool` int ≥ 0, the four flags real bools,
   exactly one of `path`/`fragment`. The `asset_type` and `material_type` **vocabularies** are checked
   inside Blender against MPFB's own table, not against a list kept here.
@@ -249,18 +249,18 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
   entry should gain a line naming which of its three identifiers feeds which argument here.
 - [architecture.md](../../../specifications/architecture.md) — conventions to follow, and two candidates.
   - **To follow:**
-    [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added)
+    [How tools name things that can be added](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added)
     and
-    [How tools report the asset behind an object](../../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object),
+    [How tools report the asset behind an object](../../../specifications/responses.md#how-tools-report-the-asset-behind-an-object),
     which this tool both consumes and produces — it is handed a `path`/`fragment` pair and records the
     fragment that a later `mpfb_get_object_info` reads back.
   - **Plus the three conventions [FR 007](../007-macro-details/README.md) landed** —
-    [How a mutating tool takes its subject](../../../specifications/architecture.md#how-a-mutating-tool-takes-its-subject),
-    [A mutating tool reports before and after](../../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
+    [How a mutating tool takes its subject](../../../specifications/mutating-tools.md#how-a-mutating-tool-takes-its-subject),
+    [A mutating tool reports before and after](../../../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after)
     and
-    [Preconditions are answers](../../../specifications/architecture.md#preconditions-are-answers) —
+    [Preconditions are answers](../../../specifications/mutating-tools.md#preconditions-are-answers) —
     and — now that [FR 009](../009-add-rig/README.md) has landed it as a standing convention —
-    [A tool reports an ordering constraint it cannot enforce](../../../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce),
+    [A tool reports an ordering constraint it cannot enforce](../../../specifications/mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce),
     which this request **follows** rather than proposes. Note what that convention already says about
     this tool: report, do not refuse; name the objects rather than the rule; and observe *before*
     acting, so the claim is about what was true when the asset was attached.
@@ -275,7 +275,7 @@ for a tool argument than a dict keyed by a uuid the caller has no way to know.
     the docstring, and to record the divergence as a candidate mpfb2 issue rather than silently
     inheriting whichever was read first. Related to, but sharper than, the convention
     [FR 008](../008-detail-targets/README.md) landed as
-    [When mpfb-mcp models a concept MPFB's UI has but its services do not](../../../specifications/architecture.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not),
+    [When mpfb-mcp models a concept MPFB's UI has but its services do not](../../../specifications/mpfb-integration.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not),
     whose last clause — document the divergence rather than normalizing it away — this would
     generalize from "UI versus services" to "any two MPFB code paths".
 
@@ -384,7 +384,7 @@ vertex-group count, materials, scale factor, object type, `asset_source`, correc
 The operator is a duplicated implementation, not a divergent one. The decision to follow
 `_check_add_proxy()` survives with a better reason: the path that differs is the *obvious* one, the
 service function whose name matches the operation.
-[The specification](../../../specifications/architecture.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
+[The specification](../../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
 is corrected to say so. The third path this request named — a `.mhm` load — *is*
 `_check_add_proxy()`, which `deserialize_from_dict()` calls, so it was never a separate column.
 

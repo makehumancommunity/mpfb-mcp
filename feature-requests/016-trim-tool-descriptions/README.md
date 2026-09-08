@@ -73,9 +73,11 @@ descriptions.
 
 - **[specifications/vision.md](../../specifications/vision.md)** — the natural destination for the
   per-tool rationale, whose catalog entries already carry much of it in shorter form.
-- **[specifications/architecture.md](../../specifications/architecture.md)** — the destination for
-  rationale that is really a convention, and a new note that a tool description is a call-time
-  instrument with a measured budget.
+- **[specifications/tool-interface.md](../../specifications/tool-interface.md)** — the destination
+  for rationale that is really an input convention, and the natural home for a new note that a tool
+  description is a call-time instrument with a measured budget. Rationale that turns out to be a
+  *response* convention belongs in [responses.md](../../specifications/responses.md) instead; the
+  split into per-topic specifications happened after this request was written.
 
 ## Tests
 

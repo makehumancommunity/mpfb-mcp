@@ -74,13 +74,13 @@ it turns out to bite.
 afterwards; Rigify generation has to come after the garments. MPFB's own character builder documents
 this in comments. None of the tools can enforce it, so each reports when it can see the caller
 violating it. [FR 009](done/009-add-rig/README.md) landed that as a standing convention —
-[A tool reports an ordering constraint it cannot enforce](../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
+[A tool reports an ordering constraint it cannot enforce](../specifications/mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
 — and [FR 010](done/010-mesh-assets/README.md) followed it from the other end, reporting
 `rigged_to: null` beside `parented_to` for a garment attached to a character that had no rig at that
 moment. [FR 011](done/011-skin-and-materials/README.md) turned out to add no ordering constraint of
 its own — a skin can be applied at any point — but it did add the mirror image of one, and it is now
 a standing convention:
-[Where MPFB's UI coerces or re-defaults a service argument](../specifications/architecture.md#where-mpfbs-ui-coerces-or-re-defaults-a-service-argument-mpfb-mcp-does-the-same-and-reports-both).
+[Where MPFB's UI coerces or re-defaults a service argument](../specifications/mpfb-integration.md#where-mpfbs-ui-coerces-or-re-defaults-a-service-argument-mpfb-mcp-does-the-same-and-reports-both).
 
 **Adding is one asset per call**, not batched like
 [FR 008](done/008-detail-targets/README.md)'s target setting: loading an MHCLO is seconds of mesh

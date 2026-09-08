@@ -94,7 +94,7 @@ Build two:
   Rigify generation, skin. This is the character FR 007, FR 008, FR 010 and FR 011 check against.
 - **Character B**, in the wrong order — clothes first, then the rig — for one purpose only: to
   observe that the garments are not rigged. That claim is what
-  [A tool reports an ordering constraint it cannot enforce](../../../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
+  [A tool reports an ordering constraint it cannot enforce](../../../specifications/mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
   is built on, and it is currently a reading of MPFB's source.
 
 State the install the run needs, and check it before starting rather than discovering it halfway:
@@ -332,9 +332,9 @@ behavior recorded as the reason. That is the same test `rig_lookup.py` passed an
   currently says live verification is "a manual/integration verification step"; with a harness it
   becomes a named, re-runnable one. Expect edits wherever the run contradicts a standing convention
   — the likely candidates are
-  [Preconditions are answers](../../../specifications/architecture.md#preconditions-are-answers),
-  [A mutating tool reports before and after](../../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
-  and [Response shape](../../../specifications/architecture.md#response-shape), all three of which were
+  [Preconditions are answers](../../../specifications/mutating-tools.md#preconditions-are-answers),
+  [A mutating tool reports before and after](../../../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after)
+  and [Response shape](../../../specifications/responses.md#response-shape), all three of which were
   written from source rather than from observation.
 - **[specifications/vision.md](../../../specifications/vision.md)** — the catalog entries for the twelve
   character-modifying tools carry claims phrased as fact ("the result matches what MPFB's three

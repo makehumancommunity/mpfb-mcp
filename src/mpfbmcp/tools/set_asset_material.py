@@ -11,7 +11,7 @@ it, and stayed with it.
 in ``mpfb/ui/apply_assets/assetlibrary/operators/loadlibrarymaterial.py``, as two
 module-level helpers - ``_apply_mhmat()`` and ``_find_default_material()`` - and
 importing an MPFB submodule is forbidden
-([architecture.md](../../specifications/architecture.md#never-import-mpfb-submodules-directly)),
+([architecture.md](../../../specifications/architecture.md#never-import-mpfb-submodules-directly)),
 with a UI operator module the worst case of it. Both are reimplemented from
 services in the payload, the way FR 006 and FR 008 reimplement the modeling
 panels, and the payload says so.

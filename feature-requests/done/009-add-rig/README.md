@@ -85,7 +85,7 @@ Preconditions come back as answers with `added: false`, never as tracebacks:
 - `identifier` names no rig. With `operator=None` — which is what generated code has — MPFB raises
   `IOError` for a missing built-in rig file and `ValueError` for an unknown custom rig. Check first,
   and answer with `known_identifiers` for the family that was addressed, per
-  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket).
+  [Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket).
 - `identifier` starts with `rigify.` and Rigify is not enabled. `add_builtin_rig()` raises
   `NotImplementedError` rather than degrading; `SystemService.check_for_rigify()` is the same check
   `mpfb_list_rigs` already reports as `rigify_available`.
@@ -164,7 +164,7 @@ with clothing, which are [FR 010](../010-mesh-assets/README.md)'s `import_subrig
 - **Dispatch on the prefix, never let the caller choose the function.** `identifier.startswith("custom.")`
   selects `add_custom_rig()`; everything else goes to `add_builtin_rig()`, which handles the
   `rigify.` prefix itself. Crossing the two does not fail legibly, and
-  [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added)
+  [How tools name things that can be added](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added)
   records why: `add_builtin_rig("custom.my_rig")` looks for `rig.custom.my_rig.json`, and
   `add_custom_rig()` strips the first seven characters of whatever it is given.
 - **Pre-check existence the way the two functions resolve it**, so a bad identifier is an answer and
@@ -219,15 +219,15 @@ with clothing, which are [FR 010](../010-mesh-assets/README.md)'s `import_subrig
 - [architecture.md](../../../specifications/architecture.md) — conventions to follow, and one candidate
   addition.
   - **To follow:**
-    [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added),
+    [How tools name things that can be added](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added),
     which this tool is the first consumer of, and
-    [How generated code addresses objects](../../../specifications/architecture.md#how-generated-code-addresses-objects).
+    [How generated code addresses objects](../../../specifications/tool-interface.md#how-generated-code-addresses-objects).
   - **Plus the three conventions [FR 007](../007-macro-details/README.md) landed**, which this
     request now *follows* rather than proposes:
-    [How a mutating tool takes its subject](../../../specifications/architecture.md#how-a-mutating-tool-takes-its-subject),
-    [A mutating tool reports before and after](../../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
+    [How a mutating tool takes its subject](../../../specifications/mutating-tools.md#how-a-mutating-tool-takes-its-subject),
+    [A mutating tool reports before and after](../../../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after)
     and
-    [Preconditions are answers](../../../specifications/architecture.md#preconditions-are-answers).
+    [Preconditions are answers](../../../specifications/mutating-tools.md#preconditions-are-answers).
   - **New — a tool reports an ordering constraint it cannot enforce.** MPFB's services have implicit
     sequencing (rig before assets, assets before Rigify generation, and see
     [FR 010](../010-mesh-assets/README.md) for the same problem with proxies and clothes) which no
@@ -309,7 +309,7 @@ garment on the wrongly-ordered character has **no armature modifier and 0 weight
 correctly-ordered one has an `Armature` modifier and **285 weighted vertices**. That claim — that
 MPFB rigs a garment only if a rig exists at the moment it is attached, and nothing rigs it
 afterwards — is what
-[A tool reports an ordering constraint it cannot enforce](../../../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
+[A tool reports an ordering constraint it cannot enforce](../../../specifications/mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
 is built on, and until now it was a reading of MPFB's source. It is now an observation. Recorded
 from the other end in [FR 010's status](../010-mesh-assets/README.md#verification-status) too,
 since that is the checklist that produced the fixture.

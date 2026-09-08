@@ -44,7 +44,7 @@ Three tools.
 Read-only, always answers. Arguments:
 
 - `name` (optional string) — a Blender object name. Omitted means the active object, per
-  [How generated code addresses objects](../../../specifications/architecture.md#how-generated-code-addresses-objects).
+  [How generated code addresses objects](../../../specifications/tool-interface.md#how-generated-code-addresses-objects).
 
 `result` carries:
 
@@ -185,7 +185,7 @@ keys), which are neither macro nor modeling targets; randomization, which MPFB n
   "Basemesh")` — the same call MPFB's own panels make. This is what lets a caller pass the name of
   the rig or of a shirt, which is what `mpfb_list_objects` will have shown them. Resolve the active
   object as `bpy.context.view_layer.objects.active`, per
-  [How generated code addresses objects](../../../specifications/architecture.md#how-generated-code-addresses-objects),
+  [How generated code addresses objects](../../../specifications/tool-interface.md#how-generated-code-addresses-objects),
   and treat `None` as an ordinary answer.
 - **Validate the sliders locally, because MPFB does not.** The property definitions in
   `entities/objectproperties/humanproperties/*.json` carry a `default` but **no `min`/`max`**, and
@@ -194,7 +194,7 @@ keys), which are neither macro nor modeling targets; randomization, which MPFB n
   `_macrosubpanel.py` that carries `min=0.0, max=1.0`. A value of 5.0 will be stored happily and
   produce an interpolation the macro table has no corner cases for. Reject outside 0.0–1.0 in the
   tool module, as `mpfb_create_human` already does, per
-  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket).
+  [Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket).
 - **The race weights are not normalized, and must not be normalized here.** MPFB treats `asian`,
   `caucasian` and `african` as three independent 0–1 properties — the default is 0.33 each, summing
   to 0.99, and `calculate_target_stack_from_macro_info_dict()` multiplies each race's raw value
@@ -236,7 +236,7 @@ keys), which are neither macro nor modeling targets; randomization, which MPFB n
   `macrodetail_filename_to_shapekey_name(name, encode_name=True)`, e.g. `$md-$ca-$fe-$yn`. Report
   both, and never present the fragment as something `mpfb_set_target_value` could be given — the
   distinction is the one
-  [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added)
+  [How tools name things that can be added](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added)
   exists for.
 - Response envelope unchanged: return `send_code(...)` as-is with `strict_json=True`.
 
@@ -255,7 +255,7 @@ return the full nested `macro_details` dict in `TargetService`'s own shape, so a
 character, hand the dict to something else, and map it back onto flat arguments mechanically.
 
 This decision should be folded into
-[architecture.md](../../../specifications/architecture.md#validate-before-crossing-the-socket) when the
+[architecture.md](../../../specifications/tool-interface.md#validate-before-crossing-the-socket) when the
 work lands, since it is a general statement about tool signatures rather than about macro details.
 
 ## Affected specifications
@@ -268,9 +268,9 @@ work lands, since it is a general statement about tool signatures rather than ab
 - [architecture.md](../../../specifications/architecture.md) — one convention to follow and three
   candidate additions.
   - **To follow:**
-    [How generated code addresses objects](../../../specifications/architecture.md#how-generated-code-addresses-objects)
+    [How generated code addresses objects](../../../specifications/tool-interface.md#how-generated-code-addresses-objects)
     and
-    [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket).
+    [Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket).
   - **New — how a mutating tool takes its subject.** Everything so far has been read-only. The rule
     worth recording: a mutating tool accepts any object in the character's family and resolves to
     the object it will actually modify through
@@ -287,7 +287,7 @@ work lands, since it is a general statement about tool signatures rather than ab
     [FR 001](../001-mpfb-get-status/README.md)'s "absence is an answer": here the *request* is
     well-formed and the *world* is not ready.
   - The flat-parameters-over-dicts decision above, probably as a clause under
-    [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket).
+    [Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket).
 
 ## Tests
 

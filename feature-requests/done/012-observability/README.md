@@ -95,7 +95,7 @@ The reason to do it at all is that the person reading the failure is usually an 
 person who set the environment variable, and a failure that does not say where its own evidence
 landed wastes the record. The reason to keep it this narrow is that a field which appears only
 sometimes is exactly the kind of thing
-[Response shape](../../../specifications/architecture.md#response-shape) exists to discipline. If the
+[Response shape](../../../specifications/responses.md#response-shape) exists to discipline. If the
 tension cannot be resolved in favour of the narrow version, the correct outcome is to add nothing
 and say so.
 

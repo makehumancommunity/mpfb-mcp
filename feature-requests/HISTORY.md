@@ -87,12 +87,12 @@ Three standing conventions were recorded in
 reading module-level names MPFB does not publish — now covering non-`SERVICES` *entities* such as
 `GeneralObjectProperties`, not only constants — via `sys.modules[Service.__module__]`, never a
 fresh import, always with a fallback;
-[how generated code addresses objects](../specifications/architecture.md#how-generated-code-addresses-objects),
+[how generated code addresses objects](../specifications/tool-interface.md#how-generated-code-addresses-objects),
 by Blender object name, listing scoped to the scene while resolution is scoped to the file, with
 "exists elsewhere" a distinct answer; and
-[how tools report the asset behind an object](../specifications/architecture.md#how-tools-report-the-asset-behind-an-object),
+[how tools report the asset behind an object](../specifications/responses.md#how-tools-report-the-asset-behind-an-object),
 the fragment-plus-absolute-path pairing and the type-varying rather than unioned shape.
-[Validate before crossing the socket](../specifications/architecture.md#validate-before-crossing-the-socket)
+[Validate before crossing the socket](../specifications/tool-interface.md#validate-before-crossing-the-socket)
 gained the distinction this effort turned on: validate a string argument's *shape* locally, never
 its *vocabulary*.
 
@@ -149,7 +149,7 @@ through `rigify_available`, the directories actually scanned, and the files `get
 silently refused.
 
 The convention behind all of that is now standing, as
-[How tools name things that can be added](../specifications/architecture.md#how-tools-name-things-that-can-be-added)
+[How tools name things that can be added](../specifications/tool-interface.md#how-tools-name-things-that-can-be-added)
 — the catalogue counterpart to FR 003's rules for naming an object, which FR 005 and FR 006 inherit.
 
 Three files added and three shared ones touched, as
@@ -182,7 +182,7 @@ was verified against holds 730 assets, and an unfiltered listing is not somethin
 afford to read. So the answer is capped, paged and deterministically ordered, and reports
 `total_count` and an always-present `truncated` beside `counts_by_subdir`, which is what turns an
 over-broad call from merely truncated into a map of where to look next. That is now standing as
-[How tools bound a large answer](../specifications/architecture.md#how-tools-bound-a-large-answer),
+[How tools bound a large answer](../specifications/responses.md#how-tools-bound-a-large-answer),
 the convention [FR 006](done/006-list-targets/README.md) inherits.
 
 Each entry names the asset three ways, and the live pass sharpened what each is for: `path` is what
@@ -190,13 +190,13 @@ Each entry names the asset three ways, and the live pass sharpened what each is 
 MPFB writes onto the resulting object as `asset_source` — confirmed string-equal for every asset
 added — and `object_type` doubles as `add_mhclo_asset()`'s `asset_type` argument, which defaults to
 `"Clothes"` and so silently turns hair into clothes when omitted. FR 004's
-[naming convention](../specifications/architecture.md#how-tools-name-things-that-can-be-added) grew
+[naming convention](../specifications/tool-interface.md#how-tools-name-things-that-can-be-added) grew
 a clause for that.
 
 `pack` is the project's first *derived* field: MPFB records no link from an installed file back to
 the pack that installed it, so the attribution is a match of the asset's containing directory name
 against the installed packs' metadata. That earned the second new convention,
-[How tools report a derived rather than recorded fact](../specifications/architecture.md#how-tools-report-a-derived-rather-than-recorded-fact),
+[How tools report a derived rather than recorded fact](../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact),
 and the live numbers are why: 9% of this install's assets are claimed by more than one pack, so
 `pack_ambiguous` is ordinary rather than rare, and the packs' own `type` metadata cannot break the
 tie.
@@ -235,7 +235,7 @@ Blender's limit. The live pass pinned this end to end — a 76-character target 
 `$yn-$fe-$av-$ca-$un-$pr-$wg-$hg-experiment`, that name read back the value that had been set, and
 the same target addressed by its **filename** read back `0.0`. Silently. That failure is why the
 identifier is its own field, and it sharpened
-[How tools name things that can be added](../specifications/architecture.md#how-tools-name-things-that-can-be-added)
+[How tools name things that can be added](../specifications/tool-interface.md#how-tools-name-things-that-can-be-added)
 with a clause about identifiers that usually equal something the caller already has.
 
 The one thing the request had wrong was sections. It assumed a section is either a `target.json` one
@@ -245,10 +245,10 @@ So `source` took a third value, `"both"`, and asking for such a section returns 
 categories *and* that directory's user targets.
 
 Two conventions were folded back, both new:
-[Reading MPFB's data files directly](../specifications/architecture.md#reading-mpfbs-data-files-directly)
+[Reading MPFB's data files directly](../specifications/mpfb-integration.md#reading-mpfbs-data-files-directly)
 — locate through `LocationService`, guard the read, treat a missing file as an answer, and report
 where a large file is rather than what is in it — and
-[A tool may report a fact MPFB's own UI does not show](../specifications/architecture.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show),
+[A tool may report a fact MPFB's own UI does not show](../specifications/responses.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show),
 which this tool does twice over: it scans per call, so it sees a target installed since Blender
 started that MPFB's import-time snapshot cannot, and it reports a `*.target.gz` in a user targets
 directory that MPFB's `*.target`-only scan there does not match. Both are real, both were observed
@@ -298,21 +298,21 @@ silently load a different target.
 Three conventions were folded into
 [architecture.md](../specifications/architecture.md), all new and all about mutation rather than
 reading:
-[how a mutating tool takes its subject](../specifications/architecture.md#how-a-mutating-tool-takes-its-subject)
+[how a mutating tool takes its subject](../specifications/mutating-tools.md#how-a-mutating-tool-takes-its-subject)
 — it accepts any object in the character's family and names the one it actually modified, because
 an agent that got a name out of `mpfb_list_objects` has no way to know which member owns a given
 property;
-[a mutating tool reports before and after](../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
+[a mutating tool reports before and after](../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after)
 — the mutation-side counterpart of "an empty answer must never be ambiguous", covering the prior
 values, the shape keys pruning removed, and what is now fitted to the old shape; and
-[preconditions are answers](../specifications/architecture.md#preconditions-are-answers) — edit
+[preconditions are answers](../specifications/mutating-tools.md#preconditions-are-answers) — edit
 mode and a mesh with no shape keys are ordinary situations, and MPFB meets the first with a bare
 `assert` and the second with a log line saying it is "somewhat surprising".
 
 A fourth clause settles a question `NEXT_STEPS.md` had carried since the start: whether
 `mpfb_create_human` should take a macro-detail dict instead of eleven flat sliders. **It should
 not**, and the reasoning is general enough to sit under
-[Validate before crossing the socket](../specifications/architecture.md#validate-before-crossing-the-socket)
+[Validate before crossing the socket](../specifications/tool-interface.md#validate-before-crossing-the-socket)
 rather than in the request: a flat scalar is what an MCP schema validates and a client fills in
 reliably, and only flat arguments can express "leave this one alone". Round-tripping is preserved
 on the output side, where both macro tools return MPFB's nested dict.
@@ -359,28 +359,28 @@ which reported identifier feeds which level — is the whole contract between th
 setter, and it is now written down in both.
 
 Two conventions were folded into
-[architecture.md](../specifications/architecture.md#a-batched-mutating-tool-resolves-before-it-writes),
+[architecture.md](../specifications/mutating-tools.md#a-batched-mutating-tool-resolves-before-it-writes),
 both new.
-[A batched mutating tool resolves before it writes](../specifications/architecture.md#a-batched-mutating-tool-resolves-before-it-writes):
+[A batched mutating tool resolves before it writes](../specifications/mutating-tools.md#a-batched-mutating-tool-resolves-before-it-writes):
 a batch of thirty changes with one typo in it applies **zero** of them, because a half-applied batch
 leaves a character in a state neither the agent nor the user can describe and the response format
 cannot usefully say which half landed. Batching itself is not a preference — a socket round trip
 costs about a second while setting a target costs milliseconds — and the convention names
 [FR 010](done/010-mesh-assets/README.md) as the case where that argument does *not* carry over, since
 loading an MHCLO is seconds of real work.
-[When mpfb-mcp models a concept MPFB's UI has but its services do not](../specifications/architecture.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not):
+[When mpfb-mcp models a concept MPFB's UI has but its services do not](../specifications/mpfb-integration.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not):
 a modifier is not a `TargetService` idea at all, it lives in `target.json` and in a UI module, and
 when a tool lifts one out of the UI the mechanics are reproduced statement for statement rather than
 reinvented — `_set_opposed_modifier_value()` zeroes the opposing target *first*, and doing it the
 other way deletes the wrong half of a pair when pruning is on.
 
 Two existing conventions were amended.
-[Validate before crossing the socket](../specifications/architecture.md#validate-before-crossing-the-socket)
+[Validate before crossing the socket](../specifications/tool-interface.md#validate-before-crossing-the-socket)
 gained the one exception to its "flat scalars, not a nested dict" clause: a batch is irreducibly a
 list, and what compensates for a shape no schema checks is per-entry validation in the tool module —
 including rejecting an unknown key, which is the commonest way a caller gets a dict-shaped argument
 wrong and is otherwise silent — plus a per-entry `resolution_errors` channel in the response.
-[A tool may report a fact MPFB's own UI does not show](../specifications/architecture.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)
+[A tool may report a fact MPFB's own UI does not show](../specifications/responses.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)
 gained a third and sharper case: `TargetService.get_target_stack()` excludes any shape key whose
 name *contains* `"basis"`, not merely equals it, so a user target called `basis-nose-widen` is on
 the mesh, is deforming it, and is invisible to every read and write MPFB can perform.
@@ -450,7 +450,7 @@ moment the garment is attached, and nothing re-rigs it afterwards — `refit()` 
 agent that dresses a character and then rigs it gets clothes that do not follow the armature and
 finds out when someone moves a bone. No call can validate a sequence, so the standing rule recorded
 in
-[A tool reports an ordering constraint it cannot enforce](../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
+[A tool reports an ordering constraint it cannot enforce](../specifications/mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
 is that a tool which can *observe* the violation reports it, naming the objects — `mpfb_add_rig`
 rigs a dressed character without complaint and returns `mesh_assets_not_rigged`. Splitting
 generation out into its own tool rather than making it a flag is part of the same decision: the
@@ -469,10 +469,10 @@ now records that sharper rule, and one test asserts it directly by running both 
 same rig tree and comparing their answers.
 
 Three conventions were extended rather than added.
-[How a mutating tool takes its subject](../specifications/architecture.md#how-a-mutating-tool-takes-its-subject)
+[How a mutating tool takes its subject](../specifications/mutating-tools.md#how-a-mutating-tool-takes-its-subject)
 gained the case where the resolved object is *not* the basemesh — `mpfb_generate_rigify_rig`
 narrows to the character's `Skeleton` — and the case where the whole set is needed rather than the
-first match. [A mutating tool reports before and after](../specifications/architecture.md#a-mutating-tool-reports-before-and-after)'s
+first match. [A mutating tool reports before and after](../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after)'s
 "restore what was borrowed" gained its one honest exception: `generate_rigify_rig()`'s own final act
 is to select and activate its result, so there is no state to restore to and the response says what
 the selection now is.
@@ -599,7 +599,7 @@ have forced to `False`. Passing the signature's values would produce characters 
 reproduced through MPFB's own UI** — the same bar [FR 007](done/007-macro-details/README.md) sets
 for macro details. So the tool follows the panel both times and reports
 `material_instances_requested` beside `material_instances_used`, which is the new standing
-convention in [architecture.md](../specifications/architecture.md#where-mpfbs-ui-coerces-or-re-defaults-a-service-argument-mpfb-mcp-does-the-same-and-reports-both):
+convention in [architecture.md](../specifications/mpfb-integration.md#where-mpfbs-ui-coerces-or-re-defaults-a-service-argument-mpfb-mcp-does-the-same-and-reports-both):
 where MPFB's UI coerces or re-defaults a service argument, mpfb-mcp coerces the same way and reports
 both values, because a silent coercion is indistinguishable from a bug.
 
@@ -625,7 +625,7 @@ every material on the character** — so an unrecognised `skin_type` destroys th
 nothing, and raises from a function that never saw the bad argument. That is why the vocabulary is
 checked in the payload before anything is destroyed and, uniquely in this package, in the tool
 module as well; it is now recorded as the one exception to
-[validate the shape, never the vocabulary](../specifications/architecture.md#validate-before-crossing-the-socket).
+[validate the shape, never the vocabulary](../specifications/tool-interface.md#validate-before-crossing-the-socket).
 **The enhanced-settings file copy is gated on `material_instances`, not on the skin type**, so the
 default call writes nothing outside the `.blend` at all. And **`scale_factor` defaults to `1.0`
 while the first threshold is `> 0.9`**, so an ordinary character is treated as decimetre-scaled —
@@ -685,7 +685,7 @@ default" true in letter and false in effect; the per-call line is gated on this 
 variable instead, and propagation is off while its own handler is attached, or each line prints
 twice. mcp's handler turns out to be a `RichHandler` on a `Console(stderr=True)`, so the transport
 was never actually at risk — but the margin was one library default, which is why
-[Stdout belongs to the transport](../specifications/architecture.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program)
+[Stdout belongs to the transport](../specifications/observability.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program)
 is now a standing rule rather than a warning in one docstring.
 
 The one caller-visible change is deliberately narrow, and was the request's own open question: an
@@ -725,7 +725,7 @@ values as one built on MPFB's own phenotype slider. A garment equipped through `
 identical to one equipped through MPFB's asset library panel down to the vertex positions. And
 rigging after dressing really does leave the clothes unrigged — 0 weighted vertices against 285 —
 which is the claim
-[A tool reports an ordering constraint it cannot enforce](../specifications/architecture.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
+[A tool reports an ordering constraint it cannot enforce](../specifications/mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
 rests on. None of the three needed a screenshot: MPFB's panels are thin enough that driving the
 scene property behind a slider or calling the operator behind a button *is* pressing it, so each
 comparison is a diff of two objects in one file.
@@ -835,3 +835,54 @@ the root CLAUDE.md — durable decisions go to `specifications/`, the story come
 reasoning goes in its docstring, and CLAUDE.md is edited only when the layout, the commands or the
 conventions actually change. A new tool is one row in each table. Step 1 also gained a sentence
 this effort earned: **check the claim you are replacing**, rather than only adding beside it.
+
+## [FR 021](done/021-split-architecture-spec/README.md) — architecture.md split into per-topic specifications
+
+FR 020's sibling, one level down. [architecture.md](../specifications/architecture.md) had reached
+870 lines across 24 top-level sections, of which six were about the system's structure and
+eighteen were standing conventions about how a tool behaves — how it takes its input, what it must
+say back, what it owes a caller when it changes a character, what to do when MPFB is inconsistent.
+All real decisions; none of them architecture; all of them filed under a title that said they were.
+
+Two measurements made that a finding rather than an opinion. The document **already delegated
+twice** — its preamble sent readers to CLAUDE.md for the module layout, and 24 of the 37 lines of
+its "No direct dependency" section described the test suite and the live harness, which
+[FR 020](done/020-trim-claude-md/README.md) had just made
+[testing.md](../specifications/testing.md)'s subject and which testing.md declined to restate
+*because that copy existed*. And **the citations were already section-level**: 195 anchored inbound
+links across 27 files, three of them Python modules under `src/`, against 41 anchorless ones.
+Nobody was linking to "the architecture"; they were linking to `#preconditions-are-answers`. The
+document was being used as five documents and had no way to say so.
+
+It is now seven. `architecture.md` is **221 lines** and describes only the machine — the two
+boundaries, resolving MPFB from generated code, the code-generation layout, one module per tool.
+[tool-interface.md](../specifications/tool-interface.md) holds what a tool accepts and how a
+catalogue's identifiers bind the tool that consumes them;
+[responses.md](../specifications/responses.md) what it says back, including `null` versus `[]`;
+[mutating-tools.md](../specifications/mutating-tools.md) the extra obligations of changing a
+character; [mpfb-integration.md](../specifications/mpfb-integration.md) coping with MPFB's
+disagreeing code paths and UI coercions; and
+[observability.md](../specifications/observability.md) where diagnostics attach — its own document
+because FR 012 was a whole effort about exactly it. None exceeds 180 lines.
+
+**Section text moved verbatim.** One mapping table drove both the split and the link rewrite, and
+the move is checkable rather than asserted: all 24 sections parse out on both sides with identical
+bodies once link targets are normalized away, and all 29 headings anything ever cited resolve in
+exactly one document. The only prose that changed is the section that was deliberately shortened.
+
+Two pitfalls are recorded in the request because both were hit. The **21 intra-document
+`](#anchor)` references** do not look like file links, and a rewrite that only handles
+`architecture.md#…` misses every one of them. And **`specifications/` must not be exempted from the
+rewrite** to protect the freshly-split files: `vision.md` had 21 links in that directory and
+`testing.md` two, and the first pass skipped both.
+
+The link checker grew to cover `.py` files, and immediately earned it. FR 020's version scanned
+`.md` only — so four markdown links inside `src/mpfbmcp/tools/` docstrings had pointed at
+`../../specifications/`, one directory level too shallow, since [FR 011](done/011-skin-and-materials/README.md),
+and nothing had ever looked. It now checks 805 links across 125 files, markdown links and the
+repo-root-relative prose mentions `.py` docstrings use alike.
+
+Three open requests were retargeted, as lifecycle step 5 requires: FR 014 to `mutating-tools.md`
+and `responses.md`, FR 018 to `responses.md`, FR 019 to `mpfb-integration.md`. FR 016 named
+`architecture.md` without an anchor and now names `tool-interface.md`, with a note that the split
+happened after it was written. FR 015 and FR 017 cite sections that stayed and needed no change.

@@ -12,7 +12,7 @@ Read-only, and it always answers. An asset with no alternatives and an asset
 whose recorded source no longer resolves are different situations, so the
 response reports the roots that were actually searched and the ``asset_source``
 they were searched for, per
-[How tools name things that can be added](../../specifications/architecture.md#how-tools-name-things-that-can-be-added).
+[How tools name things that can be added](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added).
 
 One caution belongs in the tool docstring rather than only here:
 ``AssetService.alternative_materials_for_asset()`` **caches per**

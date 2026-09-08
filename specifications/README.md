@@ -29,5 +29,10 @@ not as documentation of the running server.
 | Document | Purpose |
 |----------|---------|
 | [vision.md](vision.md) | Why this project exists, its goals, and the target tool catalog. |
-| [architecture.md](architecture.md) | Standing architectural principles: the piggyback transport, code-generation approach, and conventions new tools should follow. |
-| [testing.md](testing.md) | How this system is tested: the two-layer unit suite, the stub-fidelity rule, and what only a running Blender can establish. |
+| [architecture.md](architecture.md) | The machine: the piggyback transport and its boundaries, resolving MPFB from generated code, the code-generation layout, and the module structure. |
+| [tool-interface.md](tool-interface.md) | What a tool accepts: validating before the socket, addressing an object, and the contract between a catalogue and the tool that acts on its identifiers. |
+| [responses.md](responses.md) | What a tool says back: the envelope, `null` versus `[]`, bounding a large answer, and reporting a derived or unrecorded fact. |
+| [mutating-tools.md](mutating-tools.md) | The extra obligations of a tool that changes a character: its subject, its preconditions, before-and-after reporting, ordering, and batching. |
+| [mpfb-integration.md](mpfb-integration.md) | Coping with MPFB: UI coercions, disagreeing code paths, reading its data files, and modelling a concept its services lack. |
+| [observability.md](observability.md) | Where diagnostics attach, and what they may and may not do. |
+| [testing.md](testing.md) | How this system is tested: the two-layer unit suite, the stub-fidelity rule, the live harness, and what only a running Blender can establish. |

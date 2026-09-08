@@ -49,7 +49,7 @@ Mutating. Wraps `HumanService.set_character_skin()`. Arguments:
 - `path` (optional string) / `fragment` (optional string) — the MHMAT, addressed either way, exactly
   as in [FR 010](../010-mesh-assets/README.md); resolved against the `skins` subdir. This is now
   the standing rule
-  [An acting tool accepts every identifier its catalogue reports](../../../specifications/architecture.md#an-acting-tool-accepts-every-identifier-its-catalogue-reports),
+  [An acting tool accepts every identifier its catalogue reports](../../../specifications/tool-interface.md#an-acting-tool-accepts-every-identifier-its-catalogue-reports),
   so follow it rather than restate it — including its third clause: always report `resolved_path`,
   since `find_asset_absolute_path()` matches on basename and a skin resolved from a fragment can
   land on a different file than the caller meant. Exactly one, and
@@ -68,7 +68,7 @@ Mutating. Wraps `HumanService.set_character_skin()`. Arguments:
 `result` carries `basemesh_name`, `subject_resolved_by`, `found`, `message`, and:
 
 - `resolved_path` and `material_source` — the file loaded and the fragment MPFB recorded, per
-  [How tools report the asset behind an object](../../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object).
+  [How tools report the asset behind an object](../../../specifications/responses.md#how-tools-report-the-asset-behind-an-object).
   Note that `set_character_skin()` records `material_source` **only when an MHMAT was given**, so a
   `LAYERED` skin with no file leaves the property at whatever it was — an inconsistency worth
   reporting rather than papering over.
@@ -132,7 +132,7 @@ asset type's roots for `*.mhmat` whose path contains the asset's parent director
 `default_material` (path and whether it exists on disk); `current_alternative_material`; `materials` —
 one entry per alternative, each with `path`, `fragment` and `name`; `count`; and `search_roots`, so an
 asset with no alternatives is explainable rather than merely empty, per
-[How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added).
+[How tools name things that can be added](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added).
 
 **Not in scope.** Ink layers, which are in `mpfb_list_assets`' answer and are a different mechanism
 again — `MaterialService.load_ink_layer()` adds a UV map and a layer to an existing MakeSkin or
@@ -214,7 +214,7 @@ uuid-keyed dict `add_mhclo_asset()` accepts.
   `mpfb_list_targets` reports where MPFB's own view is stale — this is the same convention seen from
   the other side, since here it is *mpfb-mcp* that would be stale.
 - Input validation per
-  [Validate before crossing the socket](../../../specifications/architecture.md#validate-before-crossing-the-socket):
+  [Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket):
   shape only — non-empty strings, real bools, the mutual exclusions. `skin_type`'s vocabulary is small
   and stable enough to check locally *as well*, but the authoritative check stays inside Blender, and
   the response reports `known_skin_types` on a miss.
@@ -230,21 +230,21 @@ uuid-keyed dict `add_mhclo_asset()` accepts.
   its answer and where they are instead, since that gap is invisible from the catalogue.
 - [architecture.md](../../../specifications/architecture.md) — conventions to follow, and one candidate.
   - **To follow:**
-    [How tools report the asset behind an object](../../../specifications/architecture.md#how-tools-report-the-asset-behind-an-object)
+    [How tools report the asset behind an object](../../../specifications/responses.md#how-tools-report-the-asset-behind-an-object)
     (`material_source` and `alternative_material` are exactly the recorded-fragment case it describes),
-    [How tools name things that can be added](../../../specifications/architecture.md#how-tools-name-things-that-can-be-added)
+    [How tools name things that can be added](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added)
     for the small catalogue, and
-    [A tool may report a fact MPFB's own UI does not show](../../../specifications/architecture.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)
+    [A tool may report a fact MPFB's own UI does not show](../../../specifications/responses.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show)
     for `materials_destroyed` and `scale_assumption`.
   - **Plus the three conventions [FR 007](../007-macro-details/README.md) landed** —
-    [How a mutating tool takes its subject](../../../specifications/architecture.md#how-a-mutating-tool-takes-its-subject),
-    [A mutating tool reports before and after](../../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
+    [How a mutating tool takes its subject](../../../specifications/mutating-tools.md#how-a-mutating-tool-takes-its-subject),
+    [A mutating tool reports before and after](../../../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after)
     and
-    [Preconditions are answers](../../../specifications/architecture.md#preconditions-are-answers) —
+    [Preconditions are answers](../../../specifications/mutating-tools.md#preconditions-are-answers) —
     and — now that [FR 010](../010-mesh-assets/README.md) has landed it as a standing convention —
-    [An acting tool accepts every identifier its catalogue reports](../../../specifications/architecture.md#an-acting-tool-accepts-every-identifier-its-catalogue-reports),
+    [An acting tool accepts every identifier its catalogue reports](../../../specifications/tool-interface.md#an-acting-tool-accepts-every-identifier-its-catalogue-reports),
     which this request **follows** rather than proposes. Note also
-    [Where MPFB's own code paths disagree, mpfb-mcp picks one and names it](../../../specifications/architecture.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it),
+    [Where MPFB's own code paths disagree, mpfb-mcp picks one and names it](../../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it),
     which FR 010 landed for the proxy case and which the alternative-material half of this request
     is a candidate for: that mechanism lives entirely in a UI operator and has no service function
     at all.
@@ -532,7 +532,7 @@ Ten things the request did not know, all now reflected in the code and in the do
   that never saw the bad argument, after damage nothing can undo. This is why the vocabulary is
   checked before the call and, uniquely in this package, in the tool module as well; it is now
   recorded in
-  [architecture.md](../../../specifications/architecture.md#preconditions-are-answers).
+  [architecture.md](../../../specifications/mutating-tools.md#preconditions-are-answers).
 - **`material_source` is written *before* the deletion**, and built inline as
   `basename(dirname(path)) + "/" + basename(path)` rather than through
   `AssetService.path_to_fragment()`. The tool reads the property back rather than recomputing it.
@@ -543,7 +543,7 @@ Ten things the request did not know, all now reflected in the code and in the do
 - **The `MAKESKIN` half of the `material_instances` coercion is the UI's alone.** The service's own
   guard names only `LAYERED` and `GAMEENGINE`. Following the panel is still the right call, and it
   is now a standing convention rather than a decision of this request:
-  [Where MPFB's UI coerces or re-defaults a service argument](../../../specifications/architecture.md#where-mpfbs-ui-coerces-or-re-defaults-a-service-argument-mpfb-mcp-does-the-same-and-reports-both).
+  [Where MPFB's UI coerces or re-defaults a service argument](../../../specifications/mpfb-integration.md#where-mpfbs-ui-coerces-or-re-defaults-a-service-argument-mpfb-mcp-does-the-same-and-reports-both).
 - **`scale_factor` defaults to `1.0` and the first threshold is `> 0.9`**, so an ordinary character
   is treated as **decimetre**-scaled, not metre-scaled. A caller expecting `METER` from a default
   character would read the field as wrong; the docstring says so.

@@ -26,7 +26,7 @@ tool.** Additive — each tool keeps its own verb, because `added: true` beside 
 reads better than `performed: true` does and the docstrings are written around it.
 
 **Secondary: state the convention** in
-[A mutating tool reports before and after](../../specifications/architecture.md#a-mutating-tool-reports-before-and-after),
+[A mutating tool reports before and after](../../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after),
 so the thirteenth mutating tool does not invent a seventh name.
 
 ## Functional requirements
@@ -69,10 +69,11 @@ having recalculated nothing. Both are the cases that make this a request rather 
 
 ## Affected specifications
 
-- **[specifications/architecture.md](../../specifications/architecture.md)** —
-  [A mutating tool reports before and after](../../specifications/architecture.md#a-mutating-tool-reports-before-and-after)
-  gains the convention, and
-  [Response shape](../../specifications/architecture.md#response-shape) gains a sentence pointing at
+- **[specifications/mutating-tools.md](../../specifications/mutating-tools.md)** —
+  [A mutating tool reports before and after](../../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after)
+  gains the convention.
+- **[specifications/responses.md](../../specifications/responses.md)** —
+  [Response shape](../../specifications/responses.md#response-shape) gains a sentence pointing at
   it.
 - **[specifications/vision.md](../../specifications/vision.md)** — the catalog entries do not name
   these fields individually, so no change is expected.
