@@ -289,12 +289,23 @@ authoritatively, reporting alongside the result both whether the value was recog
 valid values actually are — so a caller can correct itself from the same response rather than
 needing a second tool or a hardcoded list.
 
-There is exactly one exception, and it is narrow: a vocabulary that is small, closed, MPFB's own
-enum rather than anything derived from the user's disk, **and** validated by MPFB only after it has
-destroyed something. `mpfb_set_skin`'s `skin_type` is the only current case; see
-[Preconditions are answers](#preconditions-are-answers) for why. Even there the authoritative check
-stays in the payload and the response still reports `known_skin_types`; the local check only means
-a typo never travels.
+There is one narrow exception: a vocabulary that is small, closed, MPFB's own enum rather than
+anything derived from the user's disk, **and** which MPFB itself checks only after the damage is
+done. There are two current cases:
+
+- **`mpfb_set_skin`'s `skin_type`.** `set_character_skin()` deletes every material on the
+  character *before* testing the value, and tests it with five separate `if` statements rather
+  than a chain with an `else` — so an unrecognized value destroys the skin, builds nothing, and
+  surfaces as a `ValueError` from a function that never saw the bad argument. See
+  [Preconditions are answers](#preconditions-are-answers).
+- **`mpfb_generate_rigify_rig`'s `meta_rig_action`.** `generate_rigify_rig()` silently falls back
+  to `"hide"` for anything it does not recognize, which would make a typo indistinguishable from a
+  choice — on the one argument (`"delete"`) whose wrong value cannot be undone.
+
+In both cases the authoritative check stays in the payload, ahead of anything destructive, and the
+response still reports the valid values; the local check only means a typo never travels. Adding a
+third case needs the same argument: naming the enum is not enough, the damage must precede the
+check.
 
 **Structured input is taken as flat scalar arguments, not as a nested dict.** `mpfb_create_human`
 takes eleven separate macro sliders rather than the `macro_detail_dict` MPFB's own
@@ -794,9 +805,13 @@ is written, and if any entry fails, none of them are applied.**
 - **Report per entry once application starts**, in request order, including what changed as a
   consequence — one sided change with `symmetry` on touches up to four shape keys, and the response
   has to be able to say so.
-- **Batch because latency dominates, not on principle.** A socket round trip costs about a second
-  while setting a modeling target costs milliseconds, so thirty calls would be half a minute of
-  waiting for a fraction of a second of work. Where the work inside the call is itself expensive —
+- **Batch because per-call cost dominates, not on principle.** A socket round trip costs about
+  250 ms — measured by [FR 013](../feature-requests/done/013-live-verification/README.md), which
+  also retired the ~1.0 s figure this decision was originally argued against — while setting a
+  modeling target costs milliseconds. Transport alone would make thirty calls 7.5 s of waiting for
+  a fraction of a second of work. The measured gap is far larger: thirty modifier changes cost
+  3.6 s in one call and 98.4 s in thirty, and the 95 s difference is mostly *not* transport but
+  per-call setup the payload redoes each time. Where the work inside the call is itself expensive —
   loading an MHCLO asset is seconds of mesh import and vertex fitting — the argument does not carry
   over, and one-per-call is the better shape.
 

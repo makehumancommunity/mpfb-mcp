@@ -784,3 +784,54 @@ The lifecycle changed too, since this effort is the one with standing to propose
 [a `Done` whose live verification is outstanding must say so on the status line](CLAUDE.md#sections-inside-the-readmemd-file),
 not only in a section further down. That is how five requests reached `Done` without anyone
 noticing the debt compounding.
+
+## [FR 020](done/020-trim-claude-md/README.md) — the root CLAUDE.md trimmed, and the rule that keeps it trimmed
+
+The second effort that adds no tool. The root [CLAUDE.md](../CLAUDE.md) had reached **704 lines**
+from 92 at the proof of concept, growing once per landed request and never shrinking — 214 after
+FR 003, 316 after FR 007, 451 after FR 009, 586 after FR 011, 704 after FR 013, about +65 per
+effort. Six requests were open, so it would have passed 1000 lines around FR 018.
+
+Length was the symptom. The finding was that the file had become **a second copy of documentation
+that exists elsewhere, and the copies had begun to disagree** — five times, each error surviving
+for the same reason:
+
+- **The shared-fragment count.** CLAUDE.md said "There is exactly one so far", then described two.
+  Three exist; [architecture.md](../specifications/architecture.md#shared-fragments) said three and
+  carried a bullet on `asset_sections.py` that CLAUDE.md's `shared/` bullet lacked entirely.
+- **A three-way contradiction about local vocabulary validation.** CLAUDE.md called
+  `generate_rigify_rig.py` "the only tool here that validates a vocabulary locally" and, eighty
+  lines later, said the same of `set_skin.py`; architecture.md said `mpfb_set_skin`'s `skin_type`
+  was "the only current case". The code settles it — both validate locally — so the standing
+  specification was wrong too, and is now corrected to name **two** cases with the criterion that
+  earns one: the damage must precede MPFB's own check.
+- **The root [README.md](../README.md) still said twelve tools were unverified.** FR 013 updated
+  CLAUDE.md's claim and left README.md's, so the repository's two front doors disagreed about the
+  single fact a reader arrives wanting.
+- **A retired measurement lived on in one of the two copies.** FR 013 measured the socket round
+  trip at 250 ms; architecture.md's batching argument still read "about a second", the very figure
+  FR 013 retired. It now carries FR 013's real numbers, which make the argument stronger than the
+  guess did.
+- **The standing test discipline had no home under `specifications/`** at all.
+
+That last gap is now [specifications/testing.md](../specifications/testing.md): the two-layer unit
+suite, the rule that **stubs reproduce MPFB's real behaviour rather than convenient values** —
+carrying FR 013's `Hide helpers` evidence, which is the strongest argument for it that exists —
+what the suite can *never* establish, and the two mechanics every stub-executing module inherits
+that until now were only comments in `blender_stubs.py`.
+
+CLAUDE.md is now **268 lines** and a map rather than a manual: the pipeline diagram, a
+module-layout table, a twenty-row tool table, a twenty-row test table, and the residue of facts
+that live in no other file — the strict-`bool` rules, `set_targets`' two value ranges, the three
+bootstrap identifier names, the `assemble()` signature, that the observability record writes the
+program *before* the socket call. Twenty-nine such facts were enumerated before the rewrite and
+checked afterwards; nothing was lost. Everything else became a pointer to the copy that is
+maintained: a tool's reasoning to its own module docstring, an effort's story to this file, a
+principle to architecture.md.
+
+The lifecycle changed, because a trim that FR 021-025 undo is not worth doing.
+[Step 2](CLAUDE.md#lifecycle) now says a finished effort does **not** add a narrative paragraph to
+the root CLAUDE.md — durable decisions go to `specifications/`, the story comes here, a tool's
+reasoning goes in its docstring, and CLAUDE.md is edited only when the layout, the commands or the
+conventions actually change. A new tool is one row in each table. Step 1 also gained a sentence
+this effort earned: **check the claim you are replacing**, rather than only adding beside it.

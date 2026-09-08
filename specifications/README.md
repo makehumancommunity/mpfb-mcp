@@ -30,3 +30,4 @@ not as documentation of the running server.
 |----------|---------|
 | [vision.md](vision.md) | Why this project exists, its goals, and the target tool catalog. |
 | [architecture.md](architecture.md) | Standing architectural principles: the piggyback transport, code-generation approach, and conventions new tools should follow. |
+| [testing.md](testing.md) | How this system is tested: the two-layer unit suite, the stub-fidelity rule, and what only a running Blender can establish. |

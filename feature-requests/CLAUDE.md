@@ -105,8 +105,22 @@ A feature request moves through its status values as work proceeds. When the eff
    [specifications/](../specifications/). A decision folded in should say what it rests on:
    FR 013 found two standing decisions justified by readings of MPFB's source that the running
    install did not support, and a decision whose stated reason is wrong is harder to revisit
-   than one that never gave a reason.
-2. Set the request's status line to `**Status:** Done` and **move the subdir into
+   than one that never gave a reason. And **check the claim you are replacing** rather than
+   only adding beside it. [FR 020](done/020-trim-claude-md/README.md) found five factual errors
+   in the documentation, every one of which survived because two documents said the same thing
+   and only one of them was updated.
+2. **Do not add a narrative paragraph to the root [CLAUDE.md](../CLAUDE.md).** There is a place
+   for each kind of prose an effort produces, and none of them is that file: a durable decision
+   goes to [specifications/](../specifications/) (step 1), the effort's own story goes to
+   [HISTORY.md](HISTORY.md) (step 4), and a tool's or a test's reasoning goes in its own module
+   docstring, which is the copy a reader is standing next to when they need it. The root
+   CLAUDE.md is a *map*: it is edited when the **layout, the commands or the conventions**
+   actually change, and a new tool means one row added to its tool table and one to its test
+   table. This rule exists because the file grew from 92 lines to 704 across thirteen requests,
+   roughly +65 per request, purely by accumulating paragraphs that already existed elsewhere —
+   until five of those copies had drifted out of agreement with their originals (see
+   [FR 020](done/020-trim-claude-md/README.md)).
+3. Set the request's status line to `**Status:** Done` and **move the subdir into
    `feature-requests/done/`** (keeping its number and slug). The subdir is **kept**, not
    deleted: it stays as a record of what was planned and decided. Because `done/` is one
    directory level deeper, re-point the moved README's relative links so they still resolve —
@@ -115,14 +129,14 @@ A feature request moves through its status values as work proceeds. When the eff
    standing [specifications/](../specifications/) remain the source of truth for current
    behavior; a finished feature request is a historical artifact, not a description of the
    system as it is now.
-3. If the effort is listed in [NEXT_STEPS.md](NEXT_STEPS.md), **move it out of
+4. If the effort is listed in [NEXT_STEPS.md](NEXT_STEPS.md), **move it out of
    NEXT_STEPS.md and into [HISTORY.md](HISTORY.md)**. NEXT_STEPS.md tracks only the
    remaining/active efforts; HISTORY.md is the running log of completed ones. Add an entry to
    HISTORY.md describing what actually landed (ordered by feature-request number), remove the
    effort from NEXT_STEPS.md, and keep the two files cross-linked. If only part of a broader
    effort finished, record the finished feature request in HISTORY.md and leave the remaining
    work in NEXT_STEPS.md, cross-linking between them.
-4. Read through the feature requests which are in status "Proposed" or "Accepted". Check if
+5. Read through the feature requests which are in status "Proposed" or "Accepted". Check if
    anything needs to be adjusted in the text of these feature requests in consequence of
    the implemented change.
 
