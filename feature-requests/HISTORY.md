@@ -886,3 +886,48 @@ Three open requests were retargeted, as lifecycle step 5 requires: FR 014 to `mu
 and `responses.md`, FR 018 to `responses.md`, FR 019 to `mpfb-integration.md`. FR 016 named
 `architecture.md` without an anchor and now names `tool-interface.md`, with a note that the split
 happened after it was written. FR 015 and FR 017 cite sections that stayed and needed no change.
+
+## [FR 022](done/022-trim-vision/README.md) — vision.md made about the vision
+
+The third and last of the documentation efforts, and the one where the pathology is clearest.
+[vision.md](../specifications/vision.md) was 374 lines, of which **296 were the "Target tool
+catalog"** — 79% of a document whose subject is why the project exists.
+
+The catalog had been kept scrupulously up to date, which was the problem rather than the defence.
+**21 of its 23 entries were marked Implemented**, each grown from a one-line intention into a
+paragraph naming the tool's response fields: `mpfb_set_skin` at 25 lines describing
+`material_instances_requested`, `settings_file_created` and `scale_assumption`; `mpfb_add_asset`
+at 25 lines explaining `proxy_extras` and Blender's `.001` uniquifying. That is reference
+documentation, and it was the **third** copy — checked before anything was deleted: all **50**
+identifiers named in the catalog appear in at least two other files, the tool's own module and
+the feature request that added it, and every live measurement quoted was also in
+[FR 013's review](done/013-live-verification/review.md) and in this file.
+
+A forward-looking document that is 91% backward-looking cannot do its job. The two tools that
+genuinely do not exist — `mpfb_get_human_summary` and `mpfb_search_docs` — were four lines buried
+at 96 and 332.
+
+vision.md is now **137 lines**. The catalog states four capability areas and what an agent must
+be able to do in each, which does not need editing when a tool ships, and then names only what is
+still missing and why it is worth having. The `## Target tool catalog` heading is kept
+deliberately: 15 links point at that slug, 14 of them from finished requests.
+
+Two things were rescued rather than cut. **What makes something a tool** is a new section, and it
+is the part of the old catalog that was genuinely vision — a tool is named for a user intent
+rather than a service function; a catalogue and its acting tool are designed as a pair; MPFB's
+own UI is the fidelity bar; a concept MPFB's UI has but its services lack can still be a tool; a
+tool may report what MPFB shows nowhere, since an agent cannot look at the viewport; splitting a
+tool can be what makes an order expressible. And the Goal section gained the sentence the whole
+project turns on: an agent with a generic code-execution tool can already do anything, so the
+measure is not how much of MPFB is reachable but **how few round trips, and how little
+source-reading, a competent agent needs to get a character right**.
+
+The backend section was split along the same line the two previous efforts used. The *decision* —
+support both, blender lab's stays the reference — is vision and stayed; the adapter's design is
+[Supporting a second backend](../specifications/architecture.md#supporting-a-second-backend) in
+architecture.md, because "the seam goes below `send_code()`, so tools, payloads and `codegen/`
+stay unchanged" is a claim about structure. Its slug is kept too.
+
+Across FR 020-022 the three documents that had become append-targets went from 704, 870 and 374
+lines to 268, 256 and 137, and the standing specifications went from two documents to eight, each
+named for its subject.

@@ -58,6 +58,41 @@ nothing beyond it; anything that depends on what MPFB actually does is checked a
 Blender by a separate, re-runnable harness. That split, and the discipline it imposes on both
 halves, is [testing.md](testing.md).
 
+## Supporting a second backend
+
+There are two unrelated projects called "blender mcp", and supporting both as backends is a goal
+(see [vision.md](vision.md#resolved-which-blender-mcp-both) for the decision and why). What
+follows is where the seam goes, which is the architectural half of that.
+
+The two add-ons differ in the request shape and framing (`{"type": "execute", ...,
+"strict_json": bool}` with NUL delimiters, against `{"type": "execute_code", "params": {...}}`
+framed by parsing until the JSON is complete), in the envelope they answer with, and — the
+difference that matters — in the **result channel**: blender lab's add-on serializes the `result`
+dict left in the exec namespace, while the community one discards the namespace and returns only
+what the code printed to stdout.
+
+- **The seam is an adapter *below* `send_code()`, not a second connection module each tool picks
+  between.** Backend choice must not be visible above the socket boundary: tools, payloads and
+  `codegen/` stay unchanged, and [Response shape](responses.md#response-shape)'s rule that a tool
+  returns blender_mcp's envelope as-is holds on both. If supporting a backend requires editing a
+  tool, the seam is in the wrong place — the same test
+  [Diagnostics attach at the socket boundary](observability.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program)
+  applies to observability.
+- **The adapter translates the transport and the result channel together.** On the community
+  backend it wraps the assembled program so the payload's `result` is printed as JSON between
+  sentinel markers, and parses it back out into blender lab's envelope shape. The markers are
+  required rather than defensive: MPFB's own `LogService` prints to stdout and would otherwise
+  land inside the answer.
+- **Backend selection is explicit configuration, never autodetection.** Both add-ons default to
+  port 9876, so the address distinguishes nothing, and no single probe distinguishes them either
+  — a NUL-terminated ping leaves the community add-on's parser waiting for the rest of a message,
+  while an unterminated one leaves blender lab's doing the same.
+- **Two things are known to be worse on the community backend, and are accepted rather than
+  solved.** `strict_json` becomes a client-side check inside the wrapper instead of an add-on
+  one, and stderr is lost, since its `execute_code` redirects only stdout. Error text is
+  recovered by the wrapper, which formats the traceback itself rather than accepting the bare
+  `str(e)` the add-on would report.
+
 ## Resolving MPFB from generated code
 
 MPFB is a Blender *extension* with no stable, guessable absolute import path — the top-level
