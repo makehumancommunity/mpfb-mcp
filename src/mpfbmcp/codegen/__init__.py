@@ -8,7 +8,10 @@ A generated program is assembled in this fixed order:
    literal;
 3. zero or more **shared fragments** - files under ``shared/``, each modelling
    one concept that several payloads need identically;
-4. a **payload** - one ordinary ``.py`` file per tool, under ``payloads/``.
+4. zero or more **cached shared fragments** - the same files, sent once per
+   Blender session rather than once per call, behind the loader in
+   ``shared_loader`` (see ``assemble``'s ``cached_shared``);
+5. a **payload** - one ordinary ``.py`` file per tool, under ``payloads/``.
 
 The payload is the tool-specific part, and it is a plain file so that it can be
 edited as Python is normally edited: with syntax highlighting, working
@@ -49,14 +52,18 @@ __all__ = (
     "assemble",
     "payload_names",
     "read_payload",
+    "shared_fingerprint",
+    "shared_key",
     "shared_names",
     "read_shared",
 )
 
+import hashlib
 import importlib.resources
 import json
 
 from mpfbmcp.codegen.bootstrap import MPFB_BOOTSTRAP, MPFB_STATUS_BOOTSTRAP
+from mpfbmcp.codegen.shared_loader import SHARED_SOURCE_LOADER
 
 # The two variants documented in specifications/architecture.md, under the
 # names used there. "raising" is the default: a tool that does not care whether
@@ -107,9 +114,27 @@ def read_shared(name: str) -> str:
     return _read_in(_SHARED_DIRECTORY, name)
 
 
+def shared_fingerprint(name: str) -> str:
+    """A short digest of one fragment's source, which is its cache key.
+
+    A hash rather than a version number, because a version number is a thing
+    somebody has to remember to change and the consequence of forgetting is a
+    Blender running one copy of a fragment while the tool believes it is running
+    another.
+    """
+    return hashlib.sha256(read_shared(name).encode("utf-8")).hexdigest()[:12]
+
+
+def shared_key(name: str) -> str:
+    """How the session cache inside Blender addresses one fragment."""
+    return "{}@{}".format(name, shared_fingerprint(name))
+
+
 def assemble(payload: str, *, bootstrap: str = "raising",
              params: dict[str, object] | None = None,
-             shared: list[str] | None = None) -> str:
+             shared: list[str] | None = None,
+             cached_shared: list[str] | None = None,
+             carry_sources: bool = True) -> str:
     """
     Build the Python source to send to blender_mcp, for one tool.
 
@@ -122,6 +147,16 @@ def assemble(payload: str, *, bootstrap: str = "raising",
     ``shared`` names files under ``shared/`` to concatenate ahead of the
     payload, in the order given, each behind its own seam comment. A payload
     that names one may call its functions directly.
+
+    ``cached_shared`` names fragments to send through the session source cache
+    instead (see ``shared_loader``): each is either carried with its source or
+    referred to by name and fingerprint, according to ``carry_sources``, and
+    either way it is executed into the program's own globals - so a payload
+    cannot tell the difference. Fragments named here run after any named in
+    ``shared``. ``carry_sources=False`` produces a program that fails, with a
+    recognisable marker, against a Blender that does not already hold them;
+    ``mpfbmcp.shared_cache`` is what decides which to ask for and what to do
+    with that failure.
     """
     if bootstrap not in _BOOTSTRAPS:
         raise ValueError("Unknown bootstrap {!r}, expected one of {}".format(
@@ -142,6 +177,28 @@ def assemble(payload: str, *, bootstrap: str = "raising",
     parts = ["{}\n{}\n".format(_BOOTSTRAPS[bootstrap], prelude)]
     for fragment in shared or []:
         parts.append("# --- shared: {} ---\n{}\n".format(fragment, read_shared(fragment)))
+    if cached_shared:
+        parts.append("# --- shared loader ---\n{}\n".format(SHARED_SOURCE_LOADER))
+        for fragment in cached_shared:
+            parts.append(_cached_shared_call(fragment, carry_sources))
     parts.append("# --- payload: {} ---\n{}".format(payload, read_payload(payload)))
 
     return "".join(parts)
+
+
+def _cached_shared_call(fragment: str, carry_source: bool) -> str:
+    """One line asking Blender to run a fragment, with or without its source.
+
+    The source is embedded as a raw triple-single-quoted string so that the
+    record FR 012 keeps stays readable Python rather than one enormous escaped
+    line, and so that line numbers inside the fragment are the file's own. Both
+    depend on the fragment containing no ``'''`` and not ending in a backslash,
+    which tests/test_codegen.py asserts of every fragment rather than leaving to
+    the day one does.
+    """
+    marker = "# --- cached shared: {} ({}) ---\n".format(
+        shared_key(fragment), "carried" if carry_source else "reused")
+    call = '_mpfb_mcp_shared("{}", "{}", '.format(fragment, shared_fingerprint(fragment))
+    if not carry_source:
+        return marker + call + "None)\n"
+    return marker + call + "r'''" + read_shared(fragment) + "''')\n"

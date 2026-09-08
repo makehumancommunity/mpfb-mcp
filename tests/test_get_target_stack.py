@@ -29,6 +29,7 @@ from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
 
+from mpfbmcp import codegen, shared_cache
 from mpfbmcp.tools import get_target_stack
 
 from tests.blender_stubs import DetailTargetTestCase, LONG_USER_TARGET, StubObject
@@ -48,7 +49,7 @@ class ArgumentValidationTests(unittest.TestCase):
         self.tool = _tool_callable()
 
     def test_default_call_sends_the_documented_defaults(self):
-        with mock.patch.object(get_target_stack, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool()
         source = send_code.call_args[0][0]
@@ -60,13 +61,14 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_the_shared_category_table_is_assembled_in(self):
         # Without it the payload cannot place a shape key back into a category,
         # and would fail on an undefined name rather than answer wrongly.
-        with mock.patch.object(get_target_stack, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool()
-        self.assertIn("# --- shared: target_categories.py ---", send_code.call_args[0][0])
+        self.assertIn("# --- cached shared: " + codegen.shared_key("target_categories.py"),
+                      send_code.call_args[0][0])
 
     def test_arguments_are_carried_across_unchanged(self):
-        with mock.patch.object(get_target_stack, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(name="Human.rig", include_macro=True, include_expressions=True,
                       name_contains="nose", limit=5, offset=10)
@@ -77,12 +79,12 @@ class ArgumentValidationTests(unittest.TestCase):
 
     def test_response_envelope_is_returned_unchanged(self):
         envelope = {"status": "error", "message": "no MPFB"}
-        with mock.patch.object(get_target_stack, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = envelope
             self.assertIs(self.tool(), envelope)
 
     def test_strict_json_is_requested(self):
-        with mock.patch.object(get_target_stack, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool()
         self.assertIs(send_code.call_args[1]["strict_json"], True)
@@ -91,7 +93,7 @@ class ArgumentValidationTests(unittest.TestCase):
         for argument in ("name", "name_contains"):
             for bad in (1, True, [], object(), "", "   ", "\t"):
                 with self.subTest(argument=argument, value=bad):
-                    with mock.patch.object(get_target_stack, "send_code") as send_code:
+                    with mock.patch.object(shared_cache, "send_code") as send_code:
                         with self.assertRaises(ValueError):
                             self.tool(**{argument: bad})
                     send_code.assert_not_called()
@@ -102,7 +104,7 @@ class ArgumentValidationTests(unittest.TestCase):
         for argument in ("include_macro", "include_expressions"):
             for bad in ("false", "true", 0, 1, None, []):
                 with self.subTest(argument=argument, value=bad):
-                    with mock.patch.object(get_target_stack, "send_code") as send_code:
+                    with mock.patch.object(shared_cache, "send_code") as send_code:
                         with self.assertRaises(ValueError):
                             self.tool(**{argument: bad})
                     send_code.assert_not_called()
@@ -111,13 +113,13 @@ class ArgumentValidationTests(unittest.TestCase):
         for bad in (True, False, -1, "10", 1.5, None):
             for argument in ("limit", "offset"):
                 with self.subTest(argument=argument, value=bad):
-                    with mock.patch.object(get_target_stack, "send_code") as send_code:
+                    with mock.patch.object(shared_cache, "send_code") as send_code:
                         with self.assertRaises(ValueError):
                             self.tool(**{argument: bad})
                     send_code.assert_not_called()
 
     def test_limit_above_the_ceiling_is_rejected_locally(self):
-        with mock.patch.object(get_target_stack, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             with self.assertRaises(ValueError):
                 self.tool(limit=get_target_stack.MAX_LIMIT + 1)
         send_code.assert_not_called()

@@ -149,6 +149,14 @@ What follows for a tool:
   a catalogue call a side effect on the user's UI.
 - **Say in the docstring what the first call costs and what a rescan does**, since neither is
   visible from the response and both are surprising for a tool that changes nothing in the scene.
+- **mpfb-mcp adds no fourth cache of MPFB's data, and that was a decision.** The obvious place for
+  one is the modeling category table three tools rebuild on every call, and
+  [FR 017](../feature-requests/done/017-category-table-cost/README.md) set out to build it. What it
+  found on measuring was that the rebuild costs 4 ms and the *generated code describing it* costs
+  a second on the wire, so what is kept inside Blender is that code and not its answer (see
+  [Generated code may keep its own source inside Blender](architecture.md#generated-code-may-keep-its-own-source-inside-blender)).
+  Everything above therefore still describes every cache under these tools, all of them MPFB's own:
+  a tool answering from MPFB's data is answering from a scan it just did.
 - **Where a cache cannot be refreshed at all, say that too.** A caller who cannot tell staleness
   from absence will read a missing asset as a missing file. FR 013 found that
   `AssetService.invalidate_alternative_materials_cache()` *does* exist and clears both dicts —

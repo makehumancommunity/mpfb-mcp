@@ -30,6 +30,7 @@ from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
 
+from mpfbmcp import codegen, shared_cache
 from mpfbmcp.tools import set_targets
 
 from tests.blender_stubs import (
@@ -53,12 +54,12 @@ class ArgumentValidationTests(unittest.TestCase):
         self.tool = _tool_callable()
 
     def test_default_call_sends_the_documented_defaults(self):
-        with mock.patch.object(set_targets, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool()
         source = send_code.call_args[0][0]
         self.assertIn("# --- payload: set_targets.py ---", source)
-        self.assertIn("# --- shared: target_categories.py ---", source)
+        self.assertIn("# --- cached shared: " + codegen.shared_key("target_categories.py"), source)
         self.assertIn(json.dumps({
             "name": None, "modifiers": [], "targets": [],
             "symmetry": False, "prune": True, "refit": False}), source)
@@ -66,7 +67,7 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_entries_are_normalized_before_they_cross_the_socket(self):
         # An omitted side arrives as an explicit null, and an int value as a
         # float, so the payload never has to guess what a missing key meant.
-        with mock.patch.object(set_targets, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(modifiers=[{"section": "nose", "category": "c", "value": 1}],
                       targets=[{"shapekey_name": "vwide", "value": 0}])
@@ -79,12 +80,12 @@ class ArgumentValidationTests(unittest.TestCase):
 
     def test_response_envelope_is_returned_unchanged(self):
         envelope = {"status": "error", "message": "no MPFB"}
-        with mock.patch.object(set_targets, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = envelope
             self.assertIs(self.tool(), envelope)
 
     def test_strict_json_is_requested(self):
-        with mock.patch.object(set_targets, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool()
         self.assertIs(send_code.call_args[1]["strict_json"], True)
@@ -92,7 +93,7 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_a_bad_name_is_rejected_locally(self):
         for bad in (1, True, [], object(), "", "   "):
             with self.subTest(value=bad):
-                with mock.patch.object(set_targets, "send_code") as send_code:
+                with mock.patch.object(shared_cache, "send_code") as send_code:
                     with self.assertRaises(ValueError):
                         self.tool(name=bad)
                 send_code.assert_not_called()
@@ -101,7 +102,7 @@ class ArgumentValidationTests(unittest.TestCase):
         for argument in ("symmetry", "prune", "refit"):
             for bad in ("false", "true", 0, 1, None):
                 with self.subTest(argument=argument, value=bad):
-                    with mock.patch.object(set_targets, "send_code") as send_code:
+                    with mock.patch.object(shared_cache, "send_code") as send_code:
                         with self.assertRaises(ValueError):
                             self.tool(**{argument: bad})
                     send_code.assert_not_called()
@@ -109,7 +110,7 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_a_list_argument_must_be_a_list_of_objects(self):
         for bad in ("modifiers", {"section": "nose"}, 3, [1], ["x"], [None]):
             with self.subTest(value=bad):
-                with mock.patch.object(set_targets, "send_code") as send_code:
+                with mock.patch.object(shared_cache, "send_code") as send_code:
                     with self.assertRaises(ValueError):
                         self.tool(modifiers=bad)
                 send_code.assert_not_called()
@@ -117,7 +118,7 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_an_unknown_key_in_an_entry_is_rejected_locally(self):
         # A misspelled key is the commonest way a caller gets a dict-shaped
         # argument wrong, and it is silent unless it is checked.
-        with mock.patch.object(set_targets, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             with self.assertRaises(ValueError) as raised:
                 self.tool(modifiers=[
                     {"section": "nose", "catagory": "c", "value": 0.1}])
@@ -135,7 +136,7 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_a_modifier_value_must_be_a_number_in_minus_one_to_one(self):
         for bad in (True, False, "0.5", None, 1.5, -1.5, [0.5]):
             with self.subTest(value=bad):
-                with mock.patch.object(set_targets, "send_code") as send_code:
+                with mock.patch.object(shared_cache, "send_code") as send_code:
                     with self.assertRaises(ValueError):
                         self.tool(modifiers=[
                             {"section": "nose", "category": "c", "value": bad}])
@@ -146,7 +147,7 @@ class ArgumentValidationTests(unittest.TestCase):
         # value to 0.0-1.0, so a negative here would silently store 0.0.
         for bad in (-0.4, 1.5, True, "0.5", None):
             with self.subTest(value=bad):
-                with mock.patch.object(set_targets, "send_code") as send_code:
+                with mock.patch.object(shared_cache, "send_code") as send_code:
                     with self.assertRaises(ValueError):
                         self.tool(targets=[{"shapekey_name": "x", "value": bad}])
                 send_code.assert_not_called()
@@ -154,14 +155,14 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_a_side_must_be_one_of_three_strings_or_omitted(self):
         for bad in ("l", "Left", 1, True, ""):
             with self.subTest(value=bad):
-                with mock.patch.object(set_targets, "send_code") as send_code:
+                with mock.patch.object(shared_cache, "send_code") as send_code:
                     with self.assertRaises(ValueError):
                         self.tool(modifiers=[
                             {"section": "nose", "category": "c", "value": 0.1, "side": bad}])
                 send_code.assert_not_called()
 
     def test_empty_entry_strings_are_rejected_locally(self):
-        with mock.patch.object(set_targets, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             with self.assertRaises(ValueError):
                 self.tool(modifiers=[{"section": "  ", "category": "c", "value": 0.1}])
             with self.assertRaises(ValueError):
@@ -171,7 +172,7 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_a_batch_above_the_ceiling_is_rejected_locally(self):
         entries = [{"section": "nose", "category": "c", "value": 0.1}] * (
             set_targets.MAX_ENTRIES + 1)
-        with mock.patch.object(set_targets, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             with self.assertRaises(ValueError):
                 self.tool(modifiers=entries)
         send_code.assert_not_called()
@@ -179,7 +180,7 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_an_unknown_section_or_category_is_not_rejected_locally(self):
         # Half the sections are synthesized from the user's own directories, so
         # a vocabulary kept here could not be right even in principle.
-        with mock.patch.object(set_targets, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(modifiers=[
                 {"section": "no-such-section", "category": "no-such-category",

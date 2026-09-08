@@ -28,6 +28,11 @@ the socket could have caught, and — the part that matters for this file — re
 [review](done/013-live-verification/review.md). Six requests were scoped out of it and are listed
 below.
 
+The `list_targets` migration this section has flagged as a drift risk since FR 008 is also done:
+[FR 017](done/017-category-table-cost/README.md) pointed `payloads/list_targets.py` at
+`codegen/shared/target_categories.py`, so the catalogue and the three tools that act on it now read
+one scan of the user target directories rather than two.
+
 What remains unscoped in this area:
 
 - **Expressions and visemes**, the `!ex-` prefixed shape keys.
@@ -85,11 +90,18 @@ a standing convention:
 **Adding is one asset per call**, not batched like
 [FR 008](done/008-detail-targets/README.md)'s target setting: loading an MHCLO is seconds of mesh
 import and vertex fitting, so the socket round trip does not dominate and the argument that made
-batching mandatory there does not carry over. **Now measured**
-([FR 013](done/013-live-verification/README.md)): equipping one asset takes **2.78 s** against a
-round trip of **250 ms**, so the transport is 9% of the call and batching could save at most that.
-Note the corrected baseline — the ~1.0 s this decision was originally argued against was measured
-once, on one tool, and is four times too high; the decision survives on the real number.
+batching mandatory there does not carry over. **That reasoning is now known to be wrong, and the
+decision needs re-taking.** FR 013 measured one asset at **2.78 s** against a "round trip" of
+250 ms and concluded transport was 9% of the call.
+[FR 017](done/017-category-table-cost/README.md) then measured what a round trip actually is:
+250 ms per 4 KB of program against a busy Blender, 1 s per 4 KB against an idle one. The
+`mpfb_add_asset` program is 44.7 KB — eleven chunks, about 2.75 s busy — so the 2.78 s was
+**almost entirely transport**, and MPFB's mesh import and vertex fitting are a few hundred
+milliseconds of it at most. Batching two garments into one call would therefore save close to a
+whole call, not 9% of one. Nothing has been changed on the strength of this: it is a measurement
+that reopens a decision, and re-taking it is a request of its own — one that should also weigh
+sending `asset_sections.py` once per session, which is the cheaper half of the same saving and is
+[listed below](#scoped-out-of-fr-013).
 
 ### Still unscoped in this area
 
@@ -118,14 +130,46 @@ sent to blender, and the reponses that came back" — **landed as
 resolves against the dumped program — was the first thing
 [FR 013](done/013-live-verification/README.md) did, and it passed.
 
-One piece was explicitly *not* in FR 012 and is now **partly answered**: splitting a call's
-duration into transport, `exec`/compile and MPFB's own work. FR 012 refuses to let a diagnostic
-setting change the program that is sent, which is the property its record depends on, so FR 013 took
-the split ad hoc instead. The answer closed the question rather than opening a request: the socket
-round trip is **250 ms** and compiling the largest generated program is **3.7 ms**, about a
-thousandth of the call it belongs to. There is nothing left to instrument permanently. What the
-split *did* find is a third component nobody was looking for, and it is
-[FR 017](017-category-table-cost/README.md).
+One piece was explicitly *not* in FR 012 and is now **answered**: splitting a call's duration into
+transport, `exec`/compile and MPFB's own work. FR 012 refuses to let a diagnostic setting change the
+program that is sent, which is the property its record depends on, so FR 013 took the split ad hoc
+instead, and [FR 017](done/017-category-table-cost/README.md) finished it. Compiling the largest
+generated program is **3.7 ms**, about a thousandth of the call. Transport is not a constant at all:
+it is **250 ms per 4 KB of program** against a busy Blender and **1 s per 4 KB** against an idle one,
+because the add-on reads one 4 KB chunk per timer tick — so for most tools here it is not one
+component of the call but nearly all of it, and MPFB's own work is the small remainder. There is
+still nothing left to instrument permanently, for the same reason: the duration is predictable from
+`len(program)`, which the record already holds.
+
+## File the 4 KB chunked read against blender_mcp
+
+**The largest single cost in this package is one line in an add-on we do not own.**
+blender_mcp's `mcp_to_blender_server._service_clients()` does exactly one `conn.recv(4096)` per
+timer tick and then returns, so a request arrives at one 4 KB chunk per tick — 250 ms each while
+the add-on is busy, and 1 s each once five seconds have passed without a request *finishing*, since
+bytes arriving do not reset its idle countdown. A generated program therefore costs about 250 ms
+per 4 KB, or 1 s per 4 KB against the idle Blender an agent actually meets, **regardless of what
+the program does**: a 50 KB call is 3 s or 12 s of waiting before Blender has read the request.
+Measured, and predicted to within a few percent, by
+[verification/measure.py](../verification/measure.py)'s `transport_by_program_size`; the model and
+its consequences are in
+[architecture.md](../specifications/architecture.md#what-a-call-costs-is-the-size-of-its-program).
+
+Draining the socket in a loop until it would block, instead of reading once, would remove most of
+that from every tool here and from every other client of that add-on. It is not fixed here because
+blender_mcp is treated as external and unmodified (see
+[No direct dependency](../specifications/architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp)),
+so this is a bug report to write, with the measurement attached — the same shape as
+[FR 019](019-file-mpfb-defects/README.md), which files five MPFB defects with their reproductions
+rather than their descriptions. [FR 017](done/017-category-table-cost/README.md) worked around it
+where it could, by sending each shared fragment once per Blender session; the workaround stays
+worth having afterwards, an order of magnitude smaller.
+
+Worth doing at the same time: the same file's `_MAX_REQUEST_BYTES` and the add-on's
+`timer_interval_active` preference are the two other numbers a user can be told about today. Setting
+that preference to its module default of 0.05 s makes every call in this package four to five times
+faster, which is worth a sentence in [CLAUDE.md](../CLAUDE.md) whether or not the upstream fix
+lands.
 
 ## Second backend: the community "blender mcp"
 
@@ -148,17 +192,24 @@ landed**: [FR 014](done/014-uniform-performed-flag/README.md) gave every mutatin
 [FR 015](done/015-fourth-shared-fragment/README.md) added the fifth and sixth fragments —
 `refit_blocker.py` and `modifier_reading.py` — plus the drift census, now
 [verification/census.py](../verification/census.py). See their
-[entries in HISTORY.md](HISTORY.md). **FR 015's live re-verification is still outstanding**: the
-two checklists whose programs changed have not been re-run against a Blender, which its status
-line records. And [FR 016](done/016-trim-tool-descriptions/README.md) took the tool descriptions
-from 70.4 KB to 47.5 KB and left `tests/test_description_budget.py` behind, so the next drift is a
-failing test rather than a discovery. Three remain.
-- **[FR 017](017-category-table-cost/README.md)** — the largest uncosted thing in the package: the
-  three tools sharing `target_categories.py` rebuild MPFB's category table from disk on every call,
-  at ~1.5-2 s each. Carries the `list_targets` migration below, since both touch that file.
+[entries in HISTORY.md](HISTORY.md); and [FR 016](done/016-trim-tool-descriptions/README.md) took
+the tool descriptions from 70.4 KB to 47.5 KB and left `tests/test_description_budget.py` behind,
+so the next drift is a failing test rather than a discovery.
+
+**[FR 017](done/017-category-table-cost/README.md) has landed too**, and it did not find what it
+went looking for: MPFB's category table costs 4 ms to rebuild, and the 1.5-2 s it was blamed for is
+the *transport of the code describing it*, at 250 ms per 4 KB against a busy Blender and 1 s per
+4 KB against an idle one. What it built is a session cache of fragment **source** rather than of the
+table, which is why no tool gained a `refresh` and the description budget did not move. Its live run
+also cleared **FR 015's outstanding re-verification**. Two remain.
 - **[FR 018](018-alternative-material-refresh/README.md)** — `mpfb_list_asset_materials` should be
   able to rescan. The cache it documents as unfixable turns out to have an invalidator nobody calls.
 - **[FR 019](019-file-mpfb-defects/README.md)** — file the five confirmed MPFB defects against
   `../mpfb2`, with the reproductions rather than descriptions. Includes the one FR 013 found by
   accident and which is the worst of the set: a user target whose filename is over 56 characters
   prevents MPFB from loading at all.
+
+One follow-up FR 017 leaves behind, small and deliberately not done there: **only the four tools
+that share `target_categories.py` go through `shared_cache.send()`**. `mpfb_add_asset` and
+`mpfb_set_skin` carry `asset_sections.py` on every call, and the two rig tools carry
+`rig_lookup.py`; nothing about those is different in kind, and each is one line in a tool module.

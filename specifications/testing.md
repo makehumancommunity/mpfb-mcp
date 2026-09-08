@@ -131,6 +131,11 @@ payloads cannot disagree:
   handful of names each binds, rather than reached through a payload inside a stub Blender. A
   fragment that reads MPFB tables or the disk (`target_categories.py`, `rig_lookup.py`,
   `asset_sections.py`) is exercised through its payloads instead.
+- Each fragment is also **assembled both ways** — concatenated, and executed out of Blender's
+  session source cache — and asserted to compile in both, because a program that compiles
+  concatenated is not evidence that one compiles with the fragment embedded in a string literal.
+  The two constraints that embedding puts on a fragment (no `'''`, no trailing backslash) are
+  asserted of every fragment rather than of the ones that happen to be cached today.
 - A **drift check** that no payload keeps an implementation of its own — the thing the fragment
   was created to prevent, asserted against the payload source rather than trusted. Whichever line
   is the rule's signature move is the one to look for: for `refit_blocker.py` it is that no

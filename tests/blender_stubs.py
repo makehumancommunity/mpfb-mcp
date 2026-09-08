@@ -114,11 +114,13 @@ import re
 import shutil
 import sys
 import tempfile
+import traceback
 import types
 import unittest
 from unittest import mock
 
 from mpfbmcp import codegen
+from mpfbmcp.codegen import shared_loader
 
 # Neither may end in "mpfb", or the bootstrap's candidate scan would pick it up
 # as an MPFB install of its own.
@@ -2316,12 +2318,27 @@ def _make_bpy(scene_objects, all_objects, active, context_mode="OBJECT"):
     return bpy
 
 
+# Where generated code keeps shared fragment source inside Blender. Read off the
+# loader rather than repeated here, so a rename cannot leave these tests quietly
+# caching across one another.
+SESSION_MODULE = re.search(
+    r'MPFB_MCP_SESSION_MODULE = "([^"]+)"', shared_loader.SHARED_SOURCE_LOADER).group(1)
+
+
 class GeneratedCodeTestCase(unittest.TestCase):
     """Executes an assembled payload against the stubs above."""
 
     def setUp(self):
         stray = [name for name in list(sys.modules) if name.endswith("mpfb")]
         self.assertEqual(stray, [], "a real module ending in 'mpfb' would skew these tests")
+
+        # The shared-fragment source cache lives in a module generated code
+        # creates inside Blender. Dropped here and after, so every test starts
+        # against a Blender that holds nothing and leaves none of its own
+        # behind; a test that wants a warm one warms it, which is what
+        # tests/test_shared_cache.py does.
+        sys.modules.pop(SESSION_MODULE, None)
+        self.addCleanup(sys.modules.pop, SESSION_MODULE, None)
 
         StubAssetService.calls = []
         StubAssetService.resolutions = {}
@@ -2425,15 +2442,48 @@ class GeneratedCodeTestCase(unittest.TestCase):
         """Assemble and execute one payload, returning the ``result`` it bound.
 
         ``shared`` names the fragments the payload's own tool module passes, so
-        what is executed here is the same program the tool would send.
+        what is executed here is the same program the tool would send on its
+        first call to a Blender.
         ``context_mode`` is Blender's own mode rather than any object's, which
         is what every bpy.ops call polls on.
         """
+        code = codegen.assemble(
+            payload, bootstrap="raising", params=params,
+            # Named as the tool names them, and assembled as the tool assembles
+            # them: through the session source cache, carrying the sources,
+            # which is what a first call to a Blender sends. What the payload
+            # sees is identical either way - the fragment is executed into the
+            # program's own globals - and tests/test_shared_cache.py is where
+            # the second call, the one that carries nothing, is exercised.
+            cached_shared=shared, carry_sources=True)
+        return self.exec_program(
+            code, scene_objects=scene_objects, all_objects=all_objects, active=active,
+            context_mode=context_mode)["result"]
+
+    def execute_program(self, code, scene_objects=(), all_objects=None, active=None,
+                        context_mode="OBJECT"):
+        """``exec_program()``, but answering the way the add-on answers.
+
+        The add-on turns an exception out of ``exec`` into
+        ``{"status": "error", "message": <traceback>}``, so a test about what a
+        program does when it *raises* - which is how a program asks for a
+        fragment this Blender does not hold - needs the envelope rather than the
+        exception. Everything else wants the exception, so that is what
+        ``exec_program()`` and ``run_payload()`` still do.
+        """
+        try:
+            return self.exec_program(
+                code, scene_objects=scene_objects, all_objects=all_objects, active=active,
+                context_mode=context_mode)
+        except Exception:  # pylint: disable=broad-except
+            return {"status": "error", "message": traceback.format_exc()}
+
+    def exec_program(self, code, scene_objects=(), all_objects=None, active=None,
+                     context_mode="OBJECT"):
+        """Execute an already-assembled program against the stubs."""
         if all_objects is None:
             all_objects = scene_objects
         StubObjectService.all_objects = tuple(all_objects)
-        code = codegen.assemble(
-            payload, bootstrap="raising", params=params, shared=shared)
         namespace = {}
         bpy = _make_bpy(scene_objects, all_objects, active, context_mode=context_mode)
         # activate_blender_object() changes the active object for real, so the
@@ -2441,9 +2491,21 @@ class GeneratedCodeTestCase(unittest.TestCase):
         # and a test needs it afterwards, to see what the payload left behind.
         StubObjectService.bpy = bpy
         self.last_bpy = bpy
-        with mock.patch.dict(sys.modules, {"bpy": bpy}):
-            exec(code, namespace)  # noqa: S102
-        return namespace["result"]
+        session = None
+        try:
+            with mock.patch.dict(sys.modules, {"bpy": bpy}):
+                try:
+                    exec(code, namespace)  # noqa: S102
+                finally:
+                    # Read while the patch is still up and put back after it
+                    # lifts: mock.patch.dict restores sys.modules wholesale,
+                    # which would delete the session module the program created
+                    # inside Blender. A real Blender keeps it between requests.
+                    session = sys.modules.get(SESSION_MODULE)
+        finally:
+            if session is not None:
+                sys.modules[SESSION_MODULE] = session
+        return {"status": "ok", "result": namespace["result"]}
 
 
 # The trimmed target.json the three detail-target payloads run against. Its

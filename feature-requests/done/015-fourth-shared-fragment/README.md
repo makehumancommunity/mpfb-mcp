@@ -1,6 +1,6 @@
 # One more shared code-generation fragment, and the census that found it
 
-**Status:** Done (live verification outstanding)
+**Status:** Done
 
 [FR 013](../013-live-verification/README.md) asked the right question about the duplication in
 `codegen/payloads/`: not whether the code repeats — it does, in nineteen module-level helpers with
@@ -74,7 +74,7 @@ one touches no shared code-generation module. Note the packaging detail — a pa
 not descend, so `shared/` is a sibling of `payloads/` with a glob of its own.
 
 **Pitfall: `target_categories.py` is already large** (18 KB, 443 lines) and is assembled into three
-programs. [FR 017](../../017-category-table-cost/README.md) is about its *cost*; anything added here
+programs. [FR 017](../017-category-table-cost/README.md) is about its *cost*; anything added here
 should not make that worse, and the two efforts should agree on which one touches that file.
 
 **Pitfall: the payload brace rule**, enforced by `tests/test_codegen.py`.
@@ -126,34 +126,26 @@ Two census results are worth carrying forward. `rig_refit_blocker()` still shows
 2 variants** — that is now the deliberate tense split and not drift, and is the one entry a future
 reader should not "fix". And `list_targets.py`'s `files_matching()` and `read_target_json()` show
 up against `target_categories.py`, which is the migration
-[FR 017](../../017-category-table-cost/README.md) carries.
+[FR 017](../017-category-table-cost/README.md) carries.
 
 Nothing else was merged, as the request required: `blocked()`'s six variants and the sixteen
 byte-identical helpers were left alone.
 
 ## Verification status
 
-**Implemented and unit-tested (2026-09-08); the live re-verification FR-4 asks for is
-outstanding.** 714 tests, up from 701: one cross-consumer agreement test running both reading
-payloads over a single character (checked by making one diverge on purpose and watching it fail),
-and a class per new fragment in `test_codegen.py` — the fragment run directly, plus a drift check
-that no payload keeps an implementation of its own.
+**Implemented and unit-tested (2026-09-08).** 714 tests, up from 701: one cross-consumer agreement
+test running both reading payloads over a single character (checked by making one diverge on
+purpose and watching it fail), and a class per new fragment in `test_codegen.py` — the fragment run
+directly, plus a drift check that no payload keeps an implementation of its own.
 
-What is outstanding, and why it cannot be closed here: no Blender with MPFB and the blender_mcp
-add-on was reachable during this effort (nothing listening on the socket), and FR-4 is right that
-a refactor whose unit tests see no behaviour change still makes a live verification stale, because
-a *different program* is sent. Two checklists cover the five payloads whose assembled source
-changed:
-
-```bash
-MPFB_MCP_RECORD_DIR=~/mpfb-mcp-records PYTHONPATH=. python3 verification/check_fr007.py
-MPFB_MCP_RECORD_DIR=~/mpfb-mcp-records PYTHONPATH=. python3 verification/check_fr008.py
-```
-
-`check_fr007.py` covers `mpfb_set_macro_details` and `mpfb_refit_human`; `check_fr008.py` covers
-`mpfb_get_target_stack`, `mpfb_set_targets` and `mpfb_symmetrize_targets`. The effort that runs
-them rewrites this section rather than adding a second one, and clears the qualifier on the status
-line above.
+**The live re-verification FR-4 asks for has been run**, by
+[FR 017](../017-category-table-cost/README.md), which changed the assembled source of the same
+payloads and so had to run the same checklists. No Blender was reachable during *this* effort,
+which is why it landed with the qualifier on its status line; the qualifier is now cleared.
+`check_fr007.py` covers `mpfb_set_macro_details` and `mpfb_refit_human`, `check_fr008.py` covers
+`mpfb_get_target_stack`, `mpfb_set_targets` and `mpfb_symmetrize_targets`, and both passed in a
+full `run_all.py` session — 85 passed, 0 failed, 3 skipped, the three being the ones that need a
+Blender restarted with the probe targets already on disk.
 
 ## References
 

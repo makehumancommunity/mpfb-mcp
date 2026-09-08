@@ -2,14 +2,14 @@
 Payload for ``mpfb_list_targets``: which modeling targets this Blender could set.
 
 Not a module of this package - this file is never imported here. It is read as
-a resource and executed inside Blender, on top of the raising bootstrap (see
-``mpfbmcp.codegen.assemble``). A linter will flag three names as undefined
-because the assembler binds them ahead of this file:
-
-- ``PARAMS`` - the tool's arguments as plain JSON data: ``section``,
-  ``name_contains``, ``limit``, ``offset``.
-- ``_MPFB_SERVICES`` - MPFB's SERVICES dict, from the raising bootstrap.
-- ``sys`` - already imported by that bootstrap (unused here, but bound).
+a resource and executed inside Blender, on top of the raising bootstrap and the
+``target_categories.py`` shared fragment (see ``mpfbmcp.codegen.assemble``, and
+``mpfbmcp.target_table``, which is what assembles this one). A linter will flag
+as undefined both the assembler-bound names - ``PARAMS`` (``section``,
+``name_contains``, ``limit``, ``offset``) and ``sys`` - and the fragment-bound
+ones: ``TARGET_SECTIONS``, ``SYSTEM_TARGETS_DIR``, ``TARGET_JSON_PATH``,
+``TARGET_JSON_STATE``, ``SCANNED_TARGET_ROOTS``, ``MACRODETAILS_DIRECTORY``
+and ``as_path``.
 
 The field this exists for is ``shapekey_name``. A target is addressed by the
 name of the shape key it becomes, which is derived from its filename by
@@ -21,50 +21,40 @@ something that silently addresses nothing.
 Two sources, genuinely different in kind. ``target.json`` is a curated index of
 the bundled targets, too large to return and exactly the sort of file a caller
 can read for itself, so its *path* is reported and its sections are browsable
-one at a time. The user data directories have no index at all: they are scanned
-here, per call, which makes this deliberately more current than MPFB's own
-modeling panels - those scan at module import time and so only ever see what
-existed when Blender started.
+one at a time. The user data directories have no index at all: they are scanned,
+which makes this deliberately more current than MPFB's own modeling panels -
+those scan at module import time and so only ever see what existed when Blender
+started.
 
-This reimplements ``mpfb.ui.model._modelsubpanels``' scan rather than importing
-it, for both of those reasons: importing an MPFB submodule is forbidden (see
-specifications/architecture.md) precisely because of import-time work like that
-scan. The module remains the reference for *what* to scan.
+**The scan is the fragment's, not this payload's.** It used to be written out
+here a second time, by a different route than
+``codegen/shared/target_categories.py`` took, which was two chances to disagree
+about what is installed. What the fragment produces is a *category* table, and
+what this tool reports is a flat listing of user target files; the reconciliation
+is that a synthesized category is exactly one user target file, so the listing
+below is the fragment's synthesized categories turned back into files, and the
+bundled sections are the ones it did not synthesize. Two consequences are worth
+knowing: the ``custom`` section is now labelled as MPFB labels it ("Custom
+targets") rather than by its directory name, and a ``target.json`` category with
+no ``name`` is dropped rather than listed, since it could not be addressed.
 
-Nothing is loaded into the scene, no MPFB cache is populated and no preview is
-loaded: this is a handful of directory walks and one JSON read.
+Nothing is loaded into the scene and no MPFB cache is populated: this is a
+handful of directory walks and one JSON read, done on every call. What is
+cached between calls is the fragment's *source*, not its answer, so this stays
+as current as it was when it did its own scanning.
 """
 
-import json
 import os
 
-LocationService = _MPFB_SERVICES["LocationService"]
-AssetService = _MPFB_SERVICES["AssetService"]
-TargetService = _MPFB_SERVICES["TargetService"]
-
-# Bundled targets under here are driven by basemesh attributes rather than by
-# loading a target file, which is mpfb_set_macro_details' territory rather than
-# mpfb_set_target_value's. Excluded from the unindexed-directory report so that
-# it does not read as something to go and set.
-MACRODETAILS_DIRECTORY = "macrodetails"
-
-TARGET_EXTENSIONS = (".target", ".target.gz")
-
-
-def as_path(path):
-    # Coerce at the point a path enters the response.
-    # AssetService.find_asset_files_matching_pattern() returns pathlib.Path
-    # objects, and this payload handles those directly rather than through
-    # MPFB's cached asset items - so one uncoerced value here fails strict_json
-    # and takes the whole answer down with it.
-    if not path:
-        return None
-    return str(path)
+# Whether a directory below the bundled targets directory is one target.json
+# never mentions is answered by walking it, and that walk is this payload's
+# alone: nothing else needs it, so it is not in the fragment and is not cached.
+TARGET_EXTENSIONS_FOR_COUNTING = (".target", ".target.gz")
 
 
 def is_target_file(filename):
     lowered = str(filename).lower()
-    for extension in TARGET_EXTENSIONS:
+    for extension in TARGET_EXTENSIONS_FOR_COUNTING:
         if lowered.endswith(extension):
             return True
     return False
@@ -79,45 +69,15 @@ def target_file_type(filename):
 
 
 def strip_target_extension(basename):
-    # The display name only. The *addressable* name is shapekey_name, which
-    # comes from MPFB rather than from here.
+    # The display name only, and deliberately not MPFB's own category naming,
+    # which is a substring replace that leaves ".gz" behind. The *addressable*
+    # name is shapekey_name, which comes from MPFB rather than from here.
     name = str(basename)
     if name.lower().endswith(".target.gz"):
         return name[:-len(".target.gz")]
     if name.lower().endswith(".target"):
         return name[:-len(".target")]
     return name
-
-
-def shapekey_name_for(full_path):
-    # Never reimplemented here. filename_to_shapekey_name() strips .gz and
-    # .target/.ptarget case-insensitively and then encodes names over 60
-    # characters to fit Blender's shape key name limit, and it is the function
-    # that decides what the shape key is actually called. macrodetail=False is
-    # passed explicitly because macro details are out of scope for this tool;
-    # the argument is keyword-only.
-    try:
-        return str(TargetService.filename_to_shapekey_name(full_path, macrodetail=False))
-    except Exception:  # pylint: disable=broad-except
-        # A derivation that fails is reported as missing rather than guessed at:
-        # a plausible-looking name that addresses nothing is worse than none.
-        return None
-
-
-def read_target_json(target_json_path):
-    # Read directly rather than through a service - MPFB has no accessor for it,
-    # and its own consumers json.load() this same path. Guarded, so a missing or
-    # broken index is an answer rather than a failed call.
-    if not target_json_path or not os.path.isfile(target_json_path):
-        return (None, "not_found")
-    try:
-        with open(target_json_path, "r") as json_file:
-            sections = json.load(json_file)
-    except Exception:  # pylint: disable=broad-except
-        return (None, "unreadable")
-    if not isinstance(sections, dict):
-        return (None, "unreadable")
-    return (sections, "ok")
 
 
 def count_targets_below(directory):
@@ -158,110 +118,34 @@ def find_unindexed_dirs(system_targets_dir, indexed_names):
     return unindexed
 
 
-def files_matching(roots, pattern):
-    try:
-        return list(AssetService.find_asset_files_matching_pattern(roots, pattern) or [])
-    except Exception:  # pylint: disable=broad-except
-        return []
+def is_synthesized(category):
+    # The fragment's marker for "MPFB made this category out of one file on
+    # disk", which is precisely a user target rather than a bundled one.
+    return "full_path" in category
 
 
-def user_target_entry(found):
-    # Built only after the duplicates are gone, so shapekey_name_for() - the one
-    # call here that crosses into MPFB - happens once per target rather than
-    # once per way of reaching it.
-    full_path, section, listed_in_mpfb_ui = found
+def user_target_entry(section_name, category):
+    """One synthesized category, reported as the target file it was made from."""
+    full_path = str(category["full_path"])
     basename = os.path.basename(full_path)
     return {
         "name": strip_target_extension(basename),
-        "shapekey_name": shapekey_name_for(full_path),
+        "shapekey_name": category.get("shapekey_name"),
         "path": as_path(full_path),
-        "section": section,
+        "section": section_name,
         "file_type": target_file_type(basename),
         # False is a real MPFB scan asymmetry rather than anything decided here:
         # its user-targets scan matches only "*.target", so a gzipped target in
         # a user targets directory is on disk, loadable, and invisible in MPFB's
         # own modeling panels.
-        "listed_in_mpfb_ui": listed_in_mpfb_ui,
+        "listed_in_mpfb_ui": bool(category.get("listed_in_mpfb_ui")),
     }
 
 
-def scan_custom_targets():
-    # AssetService.get_asset_roots() spans *every* data root, the bundled MPFB
-    # one included, not just the user one - so both extensions from both places
-    # land in one synthesized "custom" section, exactly as MPFB's panel does it.
-    roots = []
-    for subdir in ("custom", "targets/custom"):
-        try:
-            roots.extend(AssetService.get_asset_roots(subdir) or [])
-        except Exception:  # pylint: disable=broad-except
-            continue
-    roots = [str(root) for root in roots]
-    found = []
-    for pattern in ("*.target", "*.target.gz"):
-        # MPFB matches both extensions here, so both are listed in its UI.
-        found.extend((str(path), "custom", True) for path in files_matching(roots, pattern))
-    return (roots, found)
-
-
-def scan_user_targets_dir():
-    # <user data>/targets/<section>/*.target, the section being the containing
-    # directory's basename. MPFB matches only "*.target" here; both extensions
-    # are reported, with the difference flagged rather than papered over.
-    try:
-        directory = as_path(LocationService.get_user_data("targets"))
-    except Exception:  # pylint: disable=broad-except
-        return ([], [])
-    if directory is None or not os.path.isdir(directory):
-        return ([], [])
-    found = []
-    for pattern, listed in (("*.target", True), ("*.target.gz", False)):
-        for path in files_matching([directory], pattern):
-            full_path = str(path)
-            section = str(os.path.basename(os.path.dirname(full_path)))
-            found.append((full_path, section, listed))
-    return ([directory], found)
-
-
-def scan_user_targets():
-    custom_roots, custom_found = scan_custom_targets()
-    targets_roots, targets_found = scan_user_targets_dir()
-    seen = set()
-    entries = []
-    # Deduped by path: the two scans overlap whenever a data root holds both
-    # locations, and the same file reported twice would inflate every count.
-    # The custom scan comes first, so a file reachable both ways keeps the
-    # section MPFB's own custom scan would have given it.
-    for found in custom_found + targets_found:
-        key = os.path.normpath(found[0])
-        if key in seen:
-            continue
-        seen.add(key)
-        entries.append(user_target_entry(found))
-    roots = []
-    for root in custom_roots + targets_roots:
-        if root not in roots:
-            roots.append(root)
-    return (roots, entries)
-
-
-def system_section_entries(sections):
-    # One entry per section in target.json, with its categories left as MPFB
-    # wrote them: the "opposites" table is what tells a caller that setting one
-    # target meaningfully means clearing its opposite, and rebuilding it here
-    # would only be a chance to get it wrong.
-    entries = dict()
-    for name, section in (sections or dict()).items():
-        if not isinstance(section, dict):
-            continue
-        categories = section.get("categories") or []
-        entries[str(name)] = {
-            "label": str(section.get("label") or name),
-            "categories": [category for category in categories if isinstance(category, dict)],
-        }
-    return entries
-
-
 def category_for_response(category):
+    # The "opposites" table is what tells a caller that setting one target
+    # meaningfully means clearing its opposite, and is passed through as MPFB
+    # wrote it rather than rebuilt.
     return {
         "name": str(category.get("name") or ""),
         "label": str(category.get("label") or ""),
@@ -300,48 +184,38 @@ offset = PARAMS["offset"]
 
 needle = name_contains.strip().lower() if name_contains is not None else None
 
-system_targets_dir = as_path(LocationService.get_mpfb_data("targets"))
-target_json_path = None
-if system_targets_dir is not None:
-    target_json_path = os.path.join(system_targets_dir, "target.json")
+# The fragment's merged table, split back into the two kinds this tool reports.
+# One entry per section *name*, not per source: a user directory can share its
+# name with a bundled section, and MPFB's own panel merges the two rather than
+# keeping them apart, which is what the fragment's "both" records.
+bundled_categories = dict()
+user_targets = []
+for section_name in sorted(TARGET_SECTIONS.keys()):
+    section = TARGET_SECTIONS[section_name]
+    bundled_categories[section_name] = [
+        category for category in section["categories"] if not is_synthesized(category)]
+    for category in section["categories"]:
+        if is_synthesized(category):
+            user_targets.append(user_target_entry(section_name, category))
 
-# Singular "target.json", inside the "targets" directory. The plural spelling is
-# an easy mistake whose failure mode is reporting the index as missing on a
-# perfectly good install.
-raw_sections, target_json_state = read_target_json(target_json_path)
-system_sections = system_section_entries(raw_sections)
-
-user_target_dirs, user_targets = scan_user_targets()
-
-user_counts = dict()
-for entry in user_targets:
-    user_counts[entry["section"]] = user_counts.get(entry["section"], 0) + 1
-
-# One entry per section *name*, not per source. A user directory can share its
-# name with a bundled section - and MPFB's own panel merges the two rather than
-# keeping them apart, appending user categories into the existing section - so a
-# name present in both is one section with source "both" rather than two
-# same-named entries a caller could not tell apart when asking for one.
-section_names = sorted(set(list(system_sections.keys()) + list(user_counts.keys())))
 sections_overview = []
-for name in section_names:
-    in_system = name in system_sections
-    in_user = name in user_counts
-    if in_system and in_user:
-        source = "both"
-    elif in_system:
-        source = "system"
-    else:
-        source = "user"
+for section_name in sorted(TARGET_SECTIONS.keys()):
+    section = TARGET_SECTIONS[section_name]
     sections_overview.append({
-        "name": name,
-        "label": system_sections[name]["label"] if in_system else name,
-        "source": source,
-        "category_count": len(system_sections[name]["categories"]) if in_system else 0,
-        "target_count": user_counts.get(name, 0),
+        "name": section_name,
+        "label": section["label"],
+        "source": section["source"],
+        "category_count": len(bundled_categories[section_name]),
+        "target_count": sum(1 for entry in user_targets if entry["section"] == section_name),
     })
 
 known_sections = [entry["name"] for entry in sections_overview]
+# The sections target.json itself carries, whether or not a user directory of
+# the same name was merged into them. A bundled section with no categories at
+# all - "measure" is one - still answers "that section has no matches" rather
+# than falling through to the user-target listing.
+bundled_section_names = [entry["name"] for entry in sections_overview
+                         if entry["source"] in ("system", "both")]
 
 section_recognized = True
 matched_section = None
@@ -367,10 +241,10 @@ listed_targets.sort(key=lambda entry: (entry["section"], entry["name"].lower(), 
 # only a user directory has none, which is not the same as having none that
 # matched.
 categories = None
-if matched_section is not None and matched_section in system_sections:
+if matched_section is not None and matched_section in bundled_section_names:
     categories = [
         category_for_response(category)
-        for category in system_sections[matched_section]["categories"]
+        for category in bundled_categories[matched_section]
         if category_matches(category, needle)
     ]
     categories.sort(key=lambda category: (category["name"].lower(), category["name"]))
@@ -387,21 +261,20 @@ else:
     listed_targets = listed_targets[offset:offset + limit]
     count = len(listed_targets)
 
-indexed_names = sorted(system_sections.keys())
-unindexed_system_target_dirs = find_unindexed_dirs(system_targets_dir, indexed_names)
+unindexed_system_target_dirs = find_unindexed_dirs(SYSTEM_TARGETS_DIR, bundled_section_names)
 
 message_parts = []
 if requested_section is not None and not section_recognized:
     message_parts.append(
         "No target section called '" + str(requested_section) + "'. See 'known_sections'.")
 else:
-    if target_json_state == "not_found":
+    if TARGET_JSON_STATE == "not_found":
         message_parts.append(
-            "No target.json at '" + str(target_json_path) + "', so no bundled sections are "
+            "No target.json at '" + str(TARGET_JSON_PATH) + "', so no bundled sections are "
             "reported; the user target directories were still scanned. ")
-    elif target_json_state == "unreadable":
+    elif TARGET_JSON_STATE == "unreadable":
         message_parts.append(
-            "target.json at '" + str(target_json_path) + "' could not be parsed, so no bundled "
+            "target.json at '" + str(TARGET_JSON_PATH) + "' could not be parsed, so no bundled "
             "sections are reported; the user target directories were still scanned. ")
     if categories is not None:
         message_parts.append(
@@ -417,14 +290,14 @@ else:
         "The bundled targets are indexed in target.json rather than listed here.")
 
 result = {
-    "target_json_path": as_path(target_json_path),
-    "target_json_exists": target_json_state == "ok",
-    "system_targets_dir": system_targets_dir,
+    "target_json_path": TARGET_JSON_PATH,
+    "target_json_exists": TARGET_JSON_STATE == "ok",
+    "system_targets_dir": SYSTEM_TARGETS_DIR,
     "sections": sections_overview,
     "categories": categories,
     "user_targets": listed_targets,
     "unindexed_system_target_dirs": unindexed_system_target_dirs,
-    "user_target_dirs": user_target_dirs,
+    "user_target_dirs": SCANNED_TARGET_ROOTS,
     "requested_section": requested_section,
     "section_recognized": section_recognized,
     "known_sections": known_sections,

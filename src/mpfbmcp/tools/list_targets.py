@@ -10,7 +10,9 @@ Two sources, answered differently. The bundled targets are indexed by a ~140 KB
 ``target.json`` that is far too large to return and exactly the sort of file a
 caller with the same filesystem can read for itself, so its path is reported and
 its sections are browsable one at a time. The user data directories have no index
-and are scanned per call.
+and are scanned per call - by ``codegen/shared/target_categories.py``, which is
+also where ``mpfb_set_targets`` and the other two get their vocabulary, so the
+catalogue and the tools that act on it cannot disagree about what is installed.
 
 Why the two divergences from MPFB's own panels are reported rather than
 suppressed is
@@ -30,8 +32,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import shared_cache
 
 # A page of 1000 entries is already more than an agent can usefully read; the
 # ceiling is here so that an over-broad call is capped rather than answered with
@@ -152,10 +153,10 @@ def register(mcp: FastMCP) -> None:
         # `result` (built in codegen/payloads/list_targets.py) is always plain
         # JSON-safe data - every path is coerced with str(), since
         # find_asset_files_matching_pattern() hands back pathlib.Path objects -
-        # so strict_json=True to surface a clear error if that stops being true.
-        code = codegen.assemble(
+        # which is what send() asks for on the way out.
+        return shared_cache.send(
             "list_targets.py",
-            bootstrap="raising",
+            shared=["target_categories.py"],
             params={
                 "section": _validated_text(
                     section, "section",
@@ -167,4 +168,3 @@ def register(mcp: FastMCP) -> None:
                 "offset": _validated_count(offset, "offset", None),
             },
         )
-        return send_code(code, strict_json=True)

@@ -28,8 +28,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import shared_cache
 
 # A dressed, heavily modeled character can carry several hundred shape keys, and
 # the macro stack alone is typically a dozen. The ceiling is here so that an
@@ -141,9 +140,11 @@ def register(mcp: FastMCP) -> None:
         and macro shape keys have drifted apart is reported as it is, not
         repaired.
         """
-        code = codegen.assemble(
+        # `result` (built in codegen/payloads/get_target_stack.py) is plain
+        # JSON-safe data - shape key values are coerced to float there - which
+        # is what send() asks for on the way out.
+        return shared_cache.send(
             "get_target_stack.py",
-            bootstrap="raising",
             shared=["target_categories.py", "modifier_reading.py"],
             params={
                 "name": _validated_text(
@@ -157,7 +158,3 @@ def register(mcp: FastMCP) -> None:
                 "offset": _validated_count(offset, "offset", None),
             },
         )
-        # `result` (built in codegen/payloads/get_target_stack.py) is plain
-        # JSON-safe data - shape key values are coerced to float there - so
-        # strict_json=True surfaces a clear error if that ever stops being true.
-        return send_code(code, strict_json=True)

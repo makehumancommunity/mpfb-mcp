@@ -28,8 +28,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import shared_cache
 
 _DIRECTIONS = ("left_to_right", "right_to_left")
 
@@ -138,9 +137,11 @@ def register(mcp: FastMCP) -> None:
         cannot be resolved (`found: false`) and a basemesh in edit mode or
         without shape keys (`ready: false`) are answers, not errors.
         """
-        code = codegen.assemble(
+        # `result` (built in codegen/payloads/symmetrize_targets.py) is plain
+        # JSON-safe data - values and paths are coerced there - which is what
+        # send() asks for on the way out.
+        return shared_cache.send(
             "symmetrize_targets.py",
-            bootstrap="raising",
             shared=["target_categories.py", "modifier_reading.py",
                     "refit_blocker.py", "performed.py"],
             params={
@@ -152,7 +153,3 @@ def register(mcp: FastMCP) -> None:
                 "refit": _validated_flag("refit", refit),
             },
         )
-        # `result` (built in codegen/payloads/symmetrize_targets.py) is plain
-        # JSON-safe data - values and paths are coerced there - so
-        # strict_json=True surfaces a clear error if that ever stops being true.
-        return send_code(code, strict_json=True)

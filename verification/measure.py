@@ -28,11 +28,12 @@ from __future__ import annotations
 __all__ = ("run",)
 
 import json
+import math
 import statistics
 import sys
 import time
 
-from mpfbmcp import codegen
+from mpfbmcp import codegen, shared_cache
 
 from verification import fixtures, harness
 from verification.harness import probe
@@ -47,6 +48,8 @@ def run() -> dict:
 
     measurements = dict(
         round_trip=_round_trip(tools),
+        transport_by_program_size=_transport_by_program_size(),
+        shared_source_cache=_shared_source_cache(tools),
         where_the_time_goes=_where_the_time_goes(),
         batching=_batching(tools),
         per_skin_type=_per_skin_type(tools),
@@ -99,7 +102,7 @@ def _where_the_time_goes() -> dict:
                                ("add_asset.py", "raising")):
         shared = []
         if payload == "set_targets.py":
-            shared = ["target_categories.py"]
+            shared = ["target_categories.py", "refit_blocker.py", "performed.py"]
         if payload == "add_asset.py":
             shared = ["asset_sections.py"]
         programs[payload] = codegen.assemble(
@@ -126,6 +129,126 @@ for payload in sorted(PARAMS["programs"]):
 
 result = dict(compile=results)
 '''
+
+
+# The add-on reads one chunk of this many bytes per timer tick, and its
+# preference for that tick is 0.25 s while busy and 1.0 s once five seconds have
+# passed without a request being *executed* - a transfer in progress does not
+# count as work. Named here rather than imported: blender_mcp is not a
+# dependency (see specifications/architecture.md), and a value that drifts out
+# of agreement with the add-on shows up as a failed prediction below rather than
+# as a silently wrong model.
+ADDON_RECV_BUFFER_SIZE = 4096
+ADDON_TICK_BUSY_MS = 250.0
+ADDON_TICK_IDLE_MS = 1000.0
+ADDON_IDLE_DELAY_S = 5.0
+
+
+def _filler_program(kilobytes: int) -> str:
+    """A program of a given size that does nothing, so only transport is timed."""
+    line = "# " + "x" * 78 + "\n"
+    return line * int(kilobytes * 1024 / 80) + "result = dict(ok=True)\n"
+
+
+def _transport_by_program_size() -> dict:
+    """What a byte of generated program costs, which is the whole of FR 017.
+
+    FR 013 measured "the round trip" as 250 ms on an empty program and four
+    decisions were argued against that number. It is not a round trip: it is one
+    timer tick, and the add-on reads one 4 KB chunk per tick. So the transport
+    cost of a program is its *size*, at about 250 ms per 4 KB against a Blender
+    that has been talked to recently and about 1 s per 4 KB against one that has
+    been quiet for five seconds. A 50 KB program costs 3 s or 12 s and it makes
+    no difference at all what it computes.
+
+    Both intervals are measured here, because the second is the one an agent
+    actually meets: it thinks between calls.
+    """
+    measurements = []
+    for kilobytes in (0, 5, 10, 20, 40, 60):
+        program = _filler_program(kilobytes)
+        chunks = max(1, math.ceil(len(program.encode("utf-8")) / ADDON_RECV_BUFFER_SIZE))
+        # Woken first, so this one is charged the busy interval.
+        probe("wake", "result = dict(ok=True)\n")
+        busy = _timed(lambda source=program: probe("filler", source))
+        time.sleep(ADDON_IDLE_DELAY_S + 1.0)
+        idle = _timed(lambda source=program: probe("filler", source))
+        measurements.append(dict(
+            kilobytes=kilobytes, bytes=len(program.encode("utf-8")), chunks=chunks,
+            busy_ms=busy, idle_ms=idle,
+            predicted_busy_ms=round(chunks * ADDON_TICK_BUSY_MS, 1),
+            predicted_idle_ms=round((chunks - 1) * ADDON_TICK_IDLE_MS, 1)))
+    return dict(
+        note="one recv({}) per timer tick, in blender_mcp's _service_clients()".format(
+            ADDON_RECV_BUFFER_SIZE),
+        measurements=measurements)
+
+
+def _shared_source_cache(tools: dict) -> dict:
+    """FR 017's own before/after: the four tools that carry shared fragments.
+
+    The program is measured beside the duration, because the duration is a
+    function of it and of nothing else that matters. "Cold" is the first call of
+    a Blender session, which carries the fragments' source; "warm" is every call
+    after it, which names them.
+
+    **Read the bytes, not the milliseconds.** A one-chunk probe precedes each
+    timing to try to charge it the add-on's busy interval, and it does not
+    reliably succeed: the add-on's idle countdown is global state this side
+    cannot see, so a run can come back with some timings at 250 ms per chunk and
+    others at 1 s per chunk, differing by four times for the same program. The
+    durable measurement here is ``cold_bytes`` and ``warm_bytes``; what a chunk
+    costs, in both intervals and against predictions, is
+    ``transport_by_program_size`` above, and the two multiply.
+    """
+    sizes = []
+    real_send_code = shared_cache.send_code
+
+    def spy(code, strict_json=True):
+        sizes.append(len(code.encode("utf-8")))
+        return real_send_code(code, strict_json=strict_json)
+
+    fixtures.fresh_human(tools, "TableCharacter")
+    # A real category off this install rather than a name written here, which
+    # would make the measurement fail as a resolution error the day MPFB renames
+    # one.
+    section, category = probe(
+        "one_category", _THIRTY_CATEGORIES_CODE, count=1)["categories"][0]
+    calls = (
+        ("mpfb_list_targets", lambda: tools["mpfb_list_targets"](limit=5)),
+        ("mpfb_get_target_stack", lambda: tools["mpfb_get_target_stack"](
+            name="TableCharacter", limit=5)),
+        ("mpfb_set_targets", lambda: tools["mpfb_set_targets"](
+            name="TableCharacter",
+            modifiers=[dict(section=section, category=category, value=0.3)])),
+        ("mpfb_symmetrize_targets", lambda: tools["mpfb_symmetrize_targets"](
+            name="TableCharacter", direction="left_to_right", dry_run=True)),
+    )
+
+    measured = dict()
+    shared_cache.send_code = spy
+    try:
+        for name, call in calls:
+            # Each tool is asked to go cold again, so the two halves are
+            # measured on the same call rather than across tools. Blender still
+            # holds the source; what is measured is what this process sends,
+            # which is what the memo decides.
+            shared_cache._PRIMED.clear()  # pylint: disable=protected-access
+            probe("wake", "result = dict(ok=True)\n")
+            cold_ms = _timed(call)
+            cold_bytes = sizes[-1]
+            probe("wake", "result = dict(ok=True)\n")
+            warm_ms = _timed(call)
+            warm_bytes = sizes[-1]
+            measured[name] = dict(
+                cold_ms=cold_ms, cold_bytes=cold_bytes,
+                warm_ms=warm_ms, warm_bytes=warm_bytes,
+                saved_bytes=cold_bytes - warm_bytes,
+                saved_ms=round(cold_ms - warm_ms, 1))
+    finally:
+        shared_cache.send_code = real_send_code
+    harness.cleanup_scratch_scene()
+    return measured
 
 
 def _batching(tools: dict) -> dict:

@@ -37,8 +37,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import shared_cache
 
 _MODIFIER_KEYS = ("section", "category", "value", "side")
 _TARGET_KEYS = ("shapekey_name", "value")
@@ -222,9 +221,11 @@ def register(mcp: FastMCP) -> None:
         `blocked_by`. `performed` is false whenever `applied` is empty, the
         all-or-nothing resolution failure included.
         """
-        code = codegen.assemble(
+        # `result` (built in codegen/payloads/set_targets.py) is plain
+        # JSON-safe data - shape key values and paths are coerced there - which
+        # is what send() asks for on the way out.
+        return shared_cache.send(
             "set_targets.py",
-            bootstrap="raising",
             shared=["target_categories.py", "refit_blocker.py", "performed.py"],
             params={
                 "name": _validated_name(name),
@@ -235,7 +236,3 @@ def register(mcp: FastMCP) -> None:
                 "refit": _validated_flag("refit", refit),
             },
         )
-        # `result` (built in codegen/payloads/set_targets.py) is plain JSON-safe
-        # data - shape key values and paths are coerced there - so
-        # strict_json=True surfaces a clear error if that ever stops being true.
-        return send_code(code, strict_json=True)

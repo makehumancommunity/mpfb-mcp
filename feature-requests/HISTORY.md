@@ -851,8 +851,9 @@ already names: rationale out, field names in.
 
 ## [FR 015](done/015-fourth-shared-fragment/README.md) — the two duplications that would have drifted silently, and the census that keeps the question cheap
 
-**Status: the code and the census landed; the two live checklists have not been re-run.** See
-the request's own status line.
+**Status: landed in full.** The two live checklists it left outstanding were re-run by
+[FR 017](done/017-category-table-cost/README.md), which changed the assembled source of the same
+payloads and had to run them anyway; the qualifier on its status line is cleared.
 
 [FR 013's review](done/013-live-verification/review.md#is-the-duplication-a-risk-or-an-economy) had
 already done the counting: nineteen module-level helpers with two or more copies across the twenty
@@ -970,6 +971,60 @@ which states the test, the budget and where a repeated convention belongs; and
 [MPFB caches what it scans](../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides),
 which collects the three MPFB caches under the catalogue tools — the asset list keyed by label, the
 session-lifetime custom rig list, and the alternative materials with no invalidator anyone calls.
+
+## [FR 017](done/017-category-table-cost/README.md) — what a call actually costs, and the fragment sent once per session
+
+**The request was wrong about where the time went, and finding that out is the result.** It was
+written against a solid observation — the three tools sharing `codegen/shared/target_categories.py`
+are the slowest non-import tools in the catalogue, and the fragment does rebuild MPFB's category
+table on every call — and a wrong inference from it. Timed inside Blender, that rebuild takes
+**4.0 ms**. The `os.walk` the request blamed takes 1.1 ms of it.
+
+What the 1,500 ms is, is **transport, charged by the byte**. blender_mcp's add-on reads exactly one
+`conn.recv(4096)` per timer tick and then returns, and its tick is 0.25 s while busy and 1.0 s once
+five seconds have passed without a request *finishing* — bytes arriving do not reset that countdown.
+So a program costs about **250 ms per 4 KB busy and 1 s per 4 KB idle, whatever it does**: an empty
+program 254 ms, 40 KB of comments 2,780 ms busy and 10,087 ms idle, predicted from the chunk count
+to within a few percent. This also corrects the figure four decisions in this package were argued
+against: "the round trip is 250 ms" is one tick, measured on a one-chunk program. FR 013 re-derived
+those decisions on real numbers and they stand, but the number means something else now.
+
+**So the thing worth caching was the code, not the answer.** `codegen/shared_loader.py` keeps a
+shared fragment's source inside Blender in a `sys.modules` module of ours, keyed by
+`<file>@<sha256[:12]>`; `mpfbmcp/shared_cache.py` decides whether a call carries that source or
+names it, and re-sends once if Blender turns out not to hold it. Steady-state programs, measured
+live: `mpfb_get_target_stack` 37.5 KB → **17.9 KB** (−1,519 ms), `mpfb_set_targets` 57.2 KB →
+**35.6 KB** (−1,533 ms), `mpfb_symmetrize_targets` 50.7 KB → **25.2 KB** (−1,775 ms),
+`mpfb_list_targets` 19.3 KB → **17.0 KB**. Against an idle Blender — the one an agent that thinks
+between calls actually meets — the same four saved **4.0 / 6.0 / 6.0 / 7.0 s** per call.
+
+A cache of the *table* was built first, complete with a directory-mtime signature, a `refresh`
+argument on four tools and a `category_table` field in four answers, and was thrown away when it
+was measured: the accessors and the cache machinery it needed on every call came to as many bytes
+as the scan it stopped sending. Caching source turned out to be both the larger saving and the
+safer one, and those are the same fact — **a cache of code keyed by a hash of that code cannot be
+stale**. The scan still runs on every call, so `mpfb_list_targets` still sees a target installed
+since Blender started, no tool gained an argument, and the description budget is unchanged at
+47,759 B. `tests/test_shared_cache.py` asserts the installed-between-two-calls case directly, which
+is the one thing the discarded design would have had to work to keep.
+
+The secondary goal landed too: `payloads/list_targets.py` takes its scan from the fragment, so the
+catalogue and the three tools that act on it read one implementation, and
+[verification/census.py](../verification/census.py) no longer reports `files_matching()` or
+`read_target_json()` against `target_categories.py`. Two shape differences were reconciled in the
+open — the `custom` section is now labelled as MPFB labels it, and a `target.json` category with no
+`name` is dropped rather than listed. The cost is that this one tool's *first* call carries 18 KB it
+never used to, which is stated rather than hidden.
+
+Live: `run_all.py` in full, **85 passed, 0 failed, 3 skipped** — which also clears FR 015's
+outstanding re-verification. [measure.py](../verification/measure.py) gained
+`transport_by_program_size`, the measurement this effort turned out to be about, and
+`shared_source_cache`, its before/after. The 4 KB chunk itself is a one-line defect in an add-on
+this project does not own, and removing it there would take most of this cost out of every tool at
+once: that is
+[in NEXT_STEPS.md](NEXT_STEPS.md#file-the-4-kb-chunked-read-against-blender_mcp), and meanwhile the
+add-on's `timer_interval_active` preference is a four-to-five-times speedup a user can apply today,
+which [CLAUDE.md](../CLAUDE.md#commands) now says.
 
 ## [FR 020](done/020-trim-claude-md/README.md) — the root CLAUDE.md trimmed, and the rule that keeps it trimmed
 

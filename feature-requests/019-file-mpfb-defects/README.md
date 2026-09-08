@@ -98,3 +98,9 @@ this repository should find out from a red line rather than from a changelog.
   was confirmed, what was refuted, and on what evidence.
 - [FR 008](../done/008-detail-targets/README.md#verification-status) — the gzip divergence and the
   registration failure, both observed there.
+- [NEXT_STEPS.md](../NEXT_STEPS.md#file-the-4-kb-chunked-read-against-blender_mcp) — a **sixth**
+  defect to report, in the same shape as these five and against a different project:
+  [FR 017](../done/017-category-table-cost/README.md) measured that blender_mcp's add-on reads one
+  4 KB chunk of a request per timer tick, which is the dominant cost of every tool here. It is kept
+  separate deliberately, since this request's scope is `../mpfb2`, but whoever writes these five is
+  the right person to write that one.

@@ -27,6 +27,14 @@ extra argument, since the seam marker of
   resolved against. Decomposing a round trip into transport, `exec`/compile and MPFB's own work is
   therefore *not* done this way; a payload can print its own timings into the envelope's `stdout`
   during a session that wants them.
+- **A retry leaves two records, and that is the point.** A call whose program refers to a shared
+  fragment Blender turns out not to hold comes back as an error envelope and is sent again with the
+  source in it (see
+  [Generated code may keep its own source inside Blender](architecture.md#generated-code-may-keep-its-own-source-inside-blender)).
+  Both crossings are recorded, in order, because both happened — and the first one's message names
+  the fragment, so a record showing that pair is showing a cold Blender rather than a defect.
+  Nothing here special-cases it, which is what keeps the record a record of the socket rather than
+  a narrative about it.
 - **mpfb-mcp's own settings carry an `MPFB_MCP_` prefix.** `BLENDER_MCP_HOST` / `BLENDER_MCP_PORT`
   are shared with blender_mcp deliberately, because both processes address the same add-on and have
   to agree; anything blender_mcp knows nothing about is mpfb-mcp's own and is named accordingly.

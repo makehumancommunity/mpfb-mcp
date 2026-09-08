@@ -18,7 +18,12 @@ Run with::
 
 __all__ = ()
 
+# The delimiter a cached fragment is embedded with, spelled without writing it
+# out - this module is itself read by the assertion below.
+Q3 = chr(39) * 3
+
 import unittest
+from unittest import mock
 
 from mpfbmcp import codegen
 
@@ -125,6 +130,17 @@ class PayloadFileTests(unittest.TestCase):
                 self.assertNotIn("{{", source)
                 self.assertNotIn("\\n", source)
 
+    def test_no_fragment_can_break_out_of_the_string_it_is_cached_in(self) -> None:
+        # A cached fragment is embedded as r'''...''', so a fragment containing
+        # that delimiter would end the literal early and a fragment ending in a
+        # backslash would escape the closing one. Neither does today; this is
+        # what makes that a property rather than a coincidence.
+        for name in codegen.shared_names():
+            with self.subTest(shared=name):
+                source = codegen.read_shared(name)
+                self.assertNotIn("'''", source)
+                self.assertFalse(source.endswith("\\"))
+
 
 class AssembleTests(unittest.TestCase):
     def test_raising_bootstrap_is_the_default(self) -> None:
@@ -155,7 +171,7 @@ class AssembleTests(unittest.TestCase):
             ("list_rigs.py", "raising", ("rig_lookup.py",)),
             ("add_rig.py", "raising", ("rig_lookup.py",)),
             ("generate_rigify_rig.py", "raising", ()),
-            ("list_targets.py", "raising", ()),
+            ("list_targets.py", "raising", ("target_categories.py",)),
             ("get_macro_details.py", "raising", ()),
             ("set_macro_details.py", "raising", ("refit_blocker.py",)),
             ("refit_human.py", "raising", ("refit_blocker.py",)),
@@ -176,6 +192,15 @@ class AssembleTests(unittest.TestCase):
                 compile(
                     codegen.assemble(name, bootstrap=bootstrap, shared=list(shared)),
                     "<generated>", "exec")
+                # And through the cache, in both of its forms: the fragment
+                # sources are embedded in a string literal there, so a program
+                # that compiles concatenated is not evidence that one compiles
+                # embedded.
+                for carry in (True, False):
+                    compile(
+                        codegen.assemble(name, bootstrap=bootstrap,
+                                         cached_shared=list(shared), carry_sources=carry),
+                        "<generated>", "exec")
 
     def test_seam_comment_names_the_payload_file(self) -> None:
         # What makes a line number reported from inside Blender traceable back
@@ -213,6 +238,67 @@ class AssembleTests(unittest.TestCase):
             shared=["target_categories.py", "target_categories.py"])
 
         self.assertEqual(source.count("# --- shared: target_categories.py ---"), 2)
+
+    def test_a_cached_fragment_is_embedded_verbatim_and_readable(self) -> None:
+        # The embedding is a raw triple-single-quoted literal rather than a JSON
+        # string so that the record FR 012 keeps stays readable Python. What it
+        # depends on is asserted in PayloadFileTests below, of every fragment.
+        source = codegen.assemble(
+            "list_targets.py", cached_shared=["target_categories.py"], carry_sources=True)
+        fragment = codegen.read_shared("target_categories.py")
+
+        embedded = "r" + Q3 + fragment + Q3 + ")"
+        self.assertIn(embedded, source)
+        self.assertIn("# --- shared loader ---", source)
+        self.assertIn(
+            "# --- cached shared: " + codegen.shared_key("target_categories.py")
+            + " (carried) ---", source)
+
+    def test_a_reused_fragment_names_it_without_sending_it(self) -> None:
+        source = codegen.assemble(
+            "list_targets.py", cached_shared=["target_categories.py"], carry_sources=False)
+
+        self.assertNotIn(codegen.read_shared("target_categories.py"), source)
+        self.assertIn(
+            '_mpfb_mcp_shared("target_categories.py", "'
+            + codegen.shared_fingerprint("target_categories.py") + '", None)', source)
+        self.assertIn(
+            "# --- cached shared: " + codegen.shared_key("target_categories.py")
+            + " (reused) ---", source)
+
+    def test_the_loader_is_emitted_once_however_many_fragments_go_through_it(self) -> None:
+        source = codegen.assemble(
+            "set_targets.py",
+            cached_shared=["target_categories.py", "refit_blocker.py", "performed.py"],
+            carry_sources=True)
+
+        self.assertEqual(source.count("# --- shared loader ---"), 1)
+        self.assertEqual(source.count("_mpfb_mcp_shared("), 4)  # one def, three calls
+
+    def test_a_fingerprint_follows_the_source_it_names(self) -> None:
+        # The whole safety argument for the cache: two copies of a fragment are
+        # two entries, so a Blender can never run one while a tool believes it
+        # is running the other.
+        before = codegen.shared_fingerprint("target_categories.py")
+        real = codegen.read_shared
+
+        with mock.patch.object(
+                codegen, "read_shared",
+                lambda name: real(name) + "\n# an edit\n"):
+            self.assertNotEqual(codegen.shared_fingerprint("target_categories.py"), before)
+        self.assertEqual(codegen.shared_fingerprint("target_categories.py"), before)
+
+    def test_cached_and_inline_fragments_can_be_assembled_side_by_side(self) -> None:
+        # Not a combination any tool uses, and asserted so that it stays a
+        # choice rather than a constraint: a tool migrating one fragment at a
+        # time is the case this would otherwise block.
+        source = codegen.assemble(
+            "set_targets.py", shared=["performed.py"],
+            cached_shared=["target_categories.py"], carry_sources=True)
+
+        self.assertLess(
+            source.index("# --- shared: performed.py ---"),
+            source.index("# --- shared loader ---"))
 
     def test_a_payload_with_no_fragments_is_assembled_exactly_as_before(self) -> None:
         # The seam machinery must not change what an existing tool sends.

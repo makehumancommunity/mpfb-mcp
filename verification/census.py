@@ -31,11 +31,15 @@ Four kinds of finding, printed most serious first:
   copy wins silently and the fragment's is dead code in that one program. A
   defect whatever the two bodies say, which is why the pairings are read out of
   the tool modules rather than guessed: which fragments a payload is assembled
-  with is decided there, in the ``assemble(..., shared=[...])`` call.
+  with is decided there, in the ``assemble(..., shared=[...])`` or
+  ``shared_cache.send(..., shared=[...])`` call.
 - **reimplemented**: a payload defines a name a fragment defines, without naming
   that fragment. Not a defect - the two may be unrelated functions that happen
-  to share a name - but it is where a migration candidate shows up, which is how
-  ``list_targets.py`` appears against ``target_categories.py``.
+  to share a name - but it is where a migration candidate shows up. This is how
+  ``list_targets.py``'s second copy of the user-target scan was found, and
+  [FR 017](../feature-requests/done/017-category-table-cost/README.md) closed it
+  by pointing that payload at ``target_categories.py``; running this afterwards
+  is how the closing was shown.
 - **differing**: two or more payloads define one name with different bodies.
   Worth reading; not necessarily worth merging.
 - **identical**: the ordinary case, listed last and counted rather than shown.
@@ -94,10 +98,14 @@ def _functions_in(source: str) -> dict[str, str]:
 def fragments_per_payload() -> dict[str, list[str]]:
     """Which fragments each payload is actually assembled with.
 
-    Read out of the ``codegen.assemble()`` call in each tool module, where every
-    argument is a literal. A payload whose tool module could not be read at all
-    comes back with no fragments, which under-reports rather than invents a
-    pairing that does not exist.
+    Read out of the ``codegen.assemble()`` or ``shared_cache.send()`` call in
+    each tool module, where every argument is a literal. Both spellings, because
+    a tool that goes through the session source cache calls the second and names
+    the same fragments in the same keyword; whether a fragment is concatenated
+    or executed out of the cache makes no difference at all to what it shadows.
+    A payload whose tool module could not be read at all comes back with no
+    fragments, which under-reports rather than invents a pairing that does not
+    exist.
     """
     pairings: dict[str, list[str]] = {}
     for path in sorted(_TOOLS_DIRECTORY.glob("*.py")):
@@ -108,7 +116,7 @@ def fragments_per_payload() -> dict[str, list[str]]:
             called = node.func
             name = called.attr if isinstance(called, ast.Attribute) else getattr(
                 called, "id", None)
-            if name != "assemble" or not node.args:
+            if name not in ("assemble", "send") or not node.args:
                 continue
             payload = getattr(node.args[0], "value", None)
             if not isinstance(payload, str):

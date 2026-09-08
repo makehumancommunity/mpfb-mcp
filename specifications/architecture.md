@@ -40,6 +40,45 @@ works, because it is the form the next developer copies.
 tool edits a module that all the other tools depend on does not scale past a handful of them; see
 [Code-generation layout](#code-generation-layout) for what this means concretely.
 
+## What a call costs is the size of its program
+
+**The add-on reads one 4 KB chunk of the request per timer tick, and does nothing else with that
+tick.** A generated program therefore costs about **250 ms per 4 KB** against a Blender that has
+been talked to in the last five seconds, and about **1 s per 4 KB** against one that has not —
+because blender_mcp drops to a one-second tick after five seconds without a request *finishing*,
+and bytes arriving do not count as work. A 50 KB program costs 3 s or 12 s, and it makes no
+difference at all what the program computes. Measured, and predicted to within a few percent, by
+[verification/measure.py](../verification/measure.py)'s `transport_by_program_size`.
+
+Three consequences, and they are not small:
+
+- **"The round trip is 250 ms" is wrong**, and four decisions in this package were argued against
+  it. It is one *tick*. The empty program that produced the figure was one chunk long. The
+  correction does not overturn those decisions —
+  [FR 013](../feature-requests/done/013-live-verification/review.md) re-derived them on the real
+  numbers — but it changes what the number is a measure of.
+- **The prose in generated code is not free.** It is the price of
+  [Readability and developer experience are prioritized](#readability-and-developer-experience-are-prioritized),
+  and that requirement stands: a payload is code the next developer reads, and the diagnostic
+  record [FR 012](../feature-requests/done/012-observability/README.md) keeps is only worth keeping
+  because it is legible. But the price is now known rather than assumed, and "this explanation is
+  worth 250 ms on every call that carries it" is the question to ask of a paragraph in a payload.
+- **Not sending something beats not doing it.** MPFB's modeling category table is the case that
+  established this. It was assumed to be the package's largest avoidable cost because three tools
+  rebuild it on every call; measured inside Blender, the rebuild takes **4 ms**, and the 18 KB of
+  generated code that describes how to do it takes **1.1 s busy, 4.4 s idle** to arrive. The saving
+  was never in the scan. See
+  [Generated code may keep its own source inside Blender](#generated-code-may-keep-its-own-source-inside-blender).
+
+**The 4 KB chunk is a defect in blender_mcp, not a law of nature.** Its `_service_clients()` reads
+once per tick instead of draining the socket, and a loop there would remove most of the cost
+described above from every tool in this package. It is not fixed here: blender_mcp is treated as
+external and unmodified (see [No direct dependency](#no-direct-dependency-on-mpfb-or-blender_mcp)),
+so the entry is
+[in NEXT_STEPS.md](../feature-requests/NEXT_STEPS.md#file-the-4-kb-chunked-read-against-blender_mcp)
+to be filed upstream. Everything above holds meanwhile, and would still hold, an order of
+magnitude smaller, afterwards.
+
 ## No direct dependency on MPFB or blender_mcp
 
 mpfb-mcp never imports MPFB or blender_mcp Python code directly, and is never run *inside*
@@ -169,39 +208,43 @@ read. These are reachable, under three rules:
   a stale local copy of the type vocabulary is a better answer than a failed call.
 - **Never as a substitute for a service.** If what is wanted is in `SERVICES`, take it from there.
 
-## Code-generation layout
+### Generated code may keep its own source inside Blender
 
-A generated program is assembled from three parts, in a fixed order: the shared **bootstrap**
-above, a **parameter prelude**, and a per-tool **payload** — plus, optionally, one or more
-**shared fragments** between the last two (see [Shared fragments](#shared-fragments)).
+The add-on `exec()`s each request in a **fresh namespace**, so nothing a program binds survives it.
+Generated code may nevertheless create a module of its own in `sys.modules` and keep things there —
+and what it keeps is **the source of shared fragments, never what they computed**.
 
-- **One payload file per tool**, `src/mpfbmcp/codegen/payloads/<tool>.py`, written as ordinary
-  Python containing no placeholders and no escaping. This is what makes the requirement in
-  [Readability and developer experience are prioritized](#readability-and-developer-experience-are-prioritized)
-  concrete for generated code. A payload reads its arguments from `PARAMS` and leaves `result`
-  bound.
-- **Parameters are injected as data, never as source.** The prelude binds a single name from a
-  JSON literal (`PARAMS = json.loads('...')`, built as `repr(json.dumps(params))`). A
-  caller-supplied value is therefore parsed by `json.loads()` at run time and never by the Python
-  parser, so it cannot alter the structure of the generated program — which matters in a system
-  whose entire job is to `exec()` code it built. A tool taking a string argument (an asset name,
-  a target name) would otherwise be an injection hole.
-- **Payloads are read, never imported.** They reference `bpy` and MPFB's services, so importing
-  one on the mpfb-mcp side would fail. The payload directory deliberately has no `__init__.py`,
-  and payloads are loaded as package resources. Packaging has to be told this twice: declare the
-  payloads as package data, or a real (non-editable) install ships a package with no payloads in
-  it; *and* turn off namespace-package discovery, or the build back end picks the directory up as
-  a package anyway and ships the payloads as modules rather than as data.
-- **Adding a tool must not require editing a shared code-generation module.** A new tool is a new
-  tool module, a new payload file, and one `register()` call. This is the objective test of the
-  layout: if a change to shared code is needed to add an ordinary tool, the layout has drifted.
-- **Assembly keeps failures traceable.** A traceback from inside Blender reports a line in the
-  assembled string, not in a payload file, so the order of the three parts is fixed and every seam
-  is marked with a comment naming the file below it. The payload seam has a second consumer: it is
-  also how a call is attributed to a tool without `send_code()` taking an extra argument (see
-  [Diagnostics attach at the socket boundary](observability.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program)).
-  Its format is consequently written by one module and parsed by another, and is pinned by tests on
-  both sides rather than by convention.
+That distinction is the whole safety argument, and it is what makes the mechanism boring rather
+than delicate:
+
+- **A cache of code keyed by a hash of that code cannot be stale.** A cache of *answers* about the
+  disk can, and the answer in question is the table that decides which shape key a modifier is
+  written to. The fragment still runs on every call, so `mpfb_list_targets` still sees a target
+  installed since Blender started — which MPFB's own panels cannot — and no tool needs a `refresh`
+  argument for a cache that has nothing to go stale about.
+- **It is our module, named as ours.** `mpfb_mcp_session_state`, created by the loader, holding
+  nothing that is not rebuilt by sending a fragment again. Never an attribute grafted onto one of
+  MPFB's modules, which is the read-only arrangement in
+  [Reading module-level names MPFB does not publish](#reading-module-level-names-mpfb-does-not-publish)
+  turned into a write.
+- **Never on a datablock.** A scene or object custom property would reach the user's `.blend`, would
+  set `bpy.data.is_dirty`, and would outlive the Blender session it describes.
+- **Two servers against one Blender are safe by construction.** The key is `<file>@<hash>`, so two
+  copies of a fragment are two entries; identical code shares a cache and different code never
+  does, without either side knowing the other exists.
+- **A fragment Blender does not hold is a request, not a failure.** The program that reuses a
+  fragment is by definition not the program that carries it — carrying it is the cost being
+  avoided — so the loader raises with a marker the tool side matches, and the tool re-sends with the
+  source in it. Once, never twice: a second miss means the cache is not being written at all, and
+  that error is more use to a caller than a loop. The handshake is visible in the record as an
+  error envelope, which is honest — a call really did cross the socket and come back with nothing.
+- **The source is embedded as readable Python, not as data.** A raw triple-quoted literal rather
+  than a JSON string, so the program on disk in
+  [FR 012](../feature-requests/done/012-observability/README.md)'s record is still something a
+  developer can read, and so a traceback from inside a fragment reports that fragment's own name and
+  line rather than an offset into the whole program — which is better than what concatenation gave.
+  It costs two constraints on every fragment, both asserted rather than assumed: no `'''` in the
+  source, and no trailing backslash.
 
 ### Shared fragments
 
@@ -209,8 +252,8 @@ A **fragment** is a fourth, optional part: an ordinary `.py` file under
 `src/mpfbmcp/codegen/shared/`, named by a tool module in `assemble(..., shared=[...])` and
 concatenated between the prelude and the payload. It exists for a *concept* two or more payloads
 model identically. There are six: `target_categories.py` rebuilds MPFB's `target.json` category
-table, which `mpfb_get_target_stack`, `mpfb_set_targets` and `mpfb_symmetrize_targets` all need in
-the same shape and none of them can import; `rig_lookup.py` answers "which rig file would MPFB
+table, which `mpfb_list_targets`, `mpfb_get_target_stack`, `mpfb_set_targets` and
+`mpfb_symmetrize_targets` all need in the same shape and none of them can import; `rig_lookup.py` answers "which rig file would MPFB
 load for this identifier, and whose weights would come with it", which `mpfb_list_rigs` and
 `mpfb_add_rig` need to answer *identically*; `asset_sections.py` holds MPFB's
 `ASSET_LIBRARY_SECTIONS` table and what it maps between, which `mpfb_list_assets` reports *from* and
@@ -277,14 +320,22 @@ would silently leave the rig behind, which all four refitting payloads have to k
   "have these drifted?" stays a command rather than an afternoon; it also reports a payload that
   redefines a name from a fragment *it names*, which is a real defect, since the fragment is
   concatenated first and its copy would be silently dead.
-- **Opting in is the payload's business, not the assembler's.** `assemble()` takes the list; there
-  is no table here mapping payloads to fragments. So the rule above still holds unchanged: adding
-  an ordinary tool is still a tool module, a payload and a `register()` call, and a tool that wants
-  a fragment names it in the same `assemble()` call it was already making.
+- **Opting in is the payload's business, not the assembler's.** `assemble()` takes the list — as
+  does `shared_cache.send()`, which is `assemble()` plus the decision about carrying the source —
+  and there is no table anywhere mapping payloads to fragments. So the rule above still holds
+  unchanged: adding an ordinary tool is still a tool module, a payload and a `register()` call, and
+  a tool that wants a fragment names it in the call it was already making.
 - **Fragments come after the prelude**, so a fragment may read `PARAMS`, and before the payload, so
   the payload can simply call the fragment's functions.
-- **Each fragment gets its own labelled seam**, `# --- shared: <name> ---`, for the same reason the
-  payload does.
+- **A fragment may be sent once per Blender session rather than once per call**, and which of the
+  two a given call does is the tool's business rather than the fragment's: the file is identical
+  either way, it is executed into the program's own globals either way, and a payload cannot tell
+  the difference. What decides it is a memo of what this process has already sent to this address —
+  see [Generated code may keep its own source inside Blender](#generated-code-may-keep-its-own-source-inside-blender)
+  for why, and for what makes it safe.
+- **Each fragment gets its own labelled seam**, `# --- shared: <name> ---` or
+  `# --- cached shared: <name>@<hash> (carried|reused) ---`, for the same reason the payload does —
+  and the second form additionally says, in the record, which of the two this call paid for.
 - **Packaging has to be told about the directory separately.** A package-data glob does not
   descend, so `payloads/*.py` ships nothing from a subdirectory of `payloads/` — which is why
   fragments live in a sibling directory with a glob of their own rather than under `payloads/`.

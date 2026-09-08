@@ -27,6 +27,7 @@ from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
 
+from mpfbmcp import codegen, shared_cache
 from mpfbmcp.tools import symmetrize_targets
 
 from tests.blender_stubs import (
@@ -49,12 +50,12 @@ class ArgumentValidationTests(unittest.TestCase):
         self.tool = _tool_callable()
 
     def test_default_call_sends_the_documented_defaults(self):
-        with mock.patch.object(symmetrize_targets, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(direction="left_to_right")
         source = send_code.call_args[0][0]
         self.assertIn("# --- payload: symmetrize_targets.py ---", source)
-        self.assertIn("# --- shared: target_categories.py ---", source)
+        self.assertIn("# --- cached shared: " + codegen.shared_key("target_categories.py"), source)
         self.assertIn(json.dumps({
             "name": None, "direction": "left_to_right", "section": None,
             "dry_run": False, "prune": True, "refit": False}), source)
@@ -68,13 +69,13 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_an_unknown_direction_is_rejected_locally(self):
         for bad in ("left", "LEFT_TO_RIGHT", "l2r", None, True, 1, ""):
             with self.subTest(value=bad):
-                with mock.patch.object(symmetrize_targets, "send_code") as send_code:
+                with mock.patch.object(shared_cache, "send_code") as send_code:
                     with self.assertRaises(ValueError):
                         self.tool(direction=bad)
                 send_code.assert_not_called()
 
     def test_arguments_are_carried_across_unchanged(self):
-        with mock.patch.object(symmetrize_targets, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(direction="right_to_left", name="Human.rig", section="eyes",
                       dry_run=True, prune=False, refit=True)
@@ -85,12 +86,12 @@ class ArgumentValidationTests(unittest.TestCase):
 
     def test_response_envelope_is_returned_unchanged(self):
         envelope = {"status": "error", "message": "no MPFB"}
-        with mock.patch.object(symmetrize_targets, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = envelope
             self.assertIs(self.tool(direction="left_to_right"), envelope)
 
     def test_strict_json_is_requested(self):
-        with mock.patch.object(symmetrize_targets, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(direction="left_to_right")
         self.assertIs(send_code.call_args[1]["strict_json"], True)
@@ -99,7 +100,7 @@ class ArgumentValidationTests(unittest.TestCase):
         for argument in ("name", "section"):
             for bad in (1, True, [], object(), "", "   "):
                 with self.subTest(argument=argument, value=bad):
-                    with mock.patch.object(symmetrize_targets, "send_code") as send_code:
+                    with mock.patch.object(shared_cache, "send_code") as send_code:
                         with self.assertRaises(ValueError):
                             self.tool(direction="left_to_right", **{argument: bad})
                     send_code.assert_not_called()
@@ -109,13 +110,13 @@ class ArgumentValidationTests(unittest.TestCase):
         for argument in ("dry_run", "prune", "refit"):
             for bad in ("false", "true", 0, 1, None):
                 with self.subTest(argument=argument, value=bad):
-                    with mock.patch.object(symmetrize_targets, "send_code") as send_code:
+                    with mock.patch.object(shared_cache, "send_code") as send_code:
                         with self.assertRaises(ValueError):
                             self.tool(direction="left_to_right", **{argument: bad})
                     send_code.assert_not_called()
 
     def test_an_unknown_section_is_not_rejected_locally(self):
-        with mock.patch.object(symmetrize_targets, "send_code") as send_code:
+        with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(direction="left_to_right", section="no-such-section")
         send_code.assert_called_once()

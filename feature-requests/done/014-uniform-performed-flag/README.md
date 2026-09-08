@@ -145,7 +145,7 @@ than as its subject.
   [architecture.md](../../../specifications/architecture.md#shared-fragments).
 
 **What it costs on the wire**, measured rather than assumed, since
-[FR 017](../../017-category-table-cost/README.md) is about exactly this kind of cost: the fragment
+[FR 017](../017-category-table-cost/README.md) is about exactly this kind of cost: the fragment
 is **2.9 KB**, most of it docstring, and it is now concatenated into eleven programs. Against the
 payloads it joins — 31.7 KB for `set_targets.py`, 33.5 KB for `add_asset.py`, 20.8 KB for
 `symmetrize_targets.py` — that is under 10%. The one where it is not is `create_human.py`, a 1.6 KB
