@@ -853,9 +853,11 @@ class StubAssetService:
         """MPFB's scan, cache included - and its unused ``exclude_default``.
 
         Two behaviours are reproduced because a tool depends on each. The result
-        is **cached per (asset_source, asset_subdir) with no invalidation**, so a
-        material written into the directory after the first call for an asset is
-        invisible for the rest of the session; and ``exclude_default`` is
+        is **cached per (asset_source, asset_subdir), and nothing here clears
+        that cache**, matching MPFB: an invalidator exists there but no caller
+        invokes it, so a material written into the directory after the first
+        call for an asset is invisible for the rest of the session; and
+        ``exclude_default`` is
         accepted and **never read**, so the asset's own material is in the list
         like any other. A stub that filtered it out would make
         ``mpfb_list_asset_materials``' ``is_default`` flag look pointless.

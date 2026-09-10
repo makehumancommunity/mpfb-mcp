@@ -1026,6 +1026,71 @@ once: that is
 add-on's `timer_interval_active` preference is a four-to-five-times speedup a user can apply today,
 which [CLAUDE.md](../CLAUDE.md#commands) now says.
 
+## [FR 019](done/019-file-mpfb-defects/README.md) — the confirmed MPFB defects, written up where MPFB's own effort will read them
+
+**The first effort whose deliverable is in another repository**, and the first that changes no
+behaviour at all. Five requests had ended by naming things in MPFB that looked like defects, all
+read from source; [FR 013](done/013-live-verification/README.md) provoked them against a running
+install and left the provocations as a script. This request wrote the result up.
+
+The report is [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../mpfb2/features/MCP_DISCOVERED_BUGS.md),
+256 lines, six defects worst-first, each with the code path, the observed values and the name of
+the function in [check_mpfb_issues.py](../verification/check_mpfb_issues.py) that provokes it. What
+"filing" means was settled when the request was accepted: a document handed to that project, not an
+issue in a tracker.
+
+**Nine candidates went in and six came out, and that ratio is the reason the request existed
+separately from the effort that found the evidence.** Worst first: a user target whose filename
+exceeds 56 characters takes the whole add-on down at `register()`, because
+`_modelsubpanels.py` builds a Scene property named `custom_<filename>` at import time and Blender
+rejects an identifier over 63; `TargetService`'s own name encoding starts at 60, so a target long
+enough to trigger MPFB's encoding cannot sit in a scanned directory at startup at all. Then: a
+`.target.gz` becomes **two** shape keys, at two values, on one mesh, from one file, because the
+panel's `replace(".target", "")` is a substring replace and `filename_to_shapekey_name()`'s is an
+anchored regex. `set_character_skin()` deletes every material before testing `skin_type` against
+five `if`s with no `else`, and with `material_instances` off — the default for three of the five
+types — it raises **nothing**. `unload_mhclo_asset()` deletes whatever object it is handed;
+confirmed against an ordinary cube. `alternative_materials_for_asset()`'s `exclude_default` appears
+in the signature and the docstring and nowhere else, and its cache key does not include it, which
+constrains any fix. And `object_is_rigify_metarig(check_bones=True)` dereferences `.pose.bones`
+under a `typing.cast` that does nothing at runtime.
+
+FR-2 left the two secondary observations to the effort's judgement and both were written up, in
+different registers: the metarig `AttributeError` as the sixth defect, and the proxy-operator
+duplication under a heading saying **it is not a defect** — FR 013 measured `_check_add_proxy()`
+and the library operator producing identical state on every field, so what is reportable is that
+two implementations agree today, and that the *obvious* entry point, `add_mhclo_asset()`, is the
+one that gives a different character. The report ends with the **two candidates that were wrong**,
+named as such, because both had been written into this repository as reasons for decisions.
+
+**FR-4 is the requirement worth remembering: filing is not fixing.** Nothing was removed. MPFB has
+its own priorities and a reported defect may stand for a long time, so every workaround, coercion
+and defensive check that copes with these six stays exactly where it is —
+`mpfb_remove_asset`'s type refusal, `mpfb_set_skin`'s local `skin_type` vocabulary, the
+`data.bones` guard in `generate_rigify_rig.py`. A workaround goes when a **running** MPFB no longer
+needs it, which is what `check_mpfb_issues.py` detects: its assertions are written so that a fixed
+MPFB makes them fail.
+
+**FR-5 cost more than filing did.** The two refuted candidates were still cited as reasons in six
+places, three of them load-bearing prose: `generate_rigify_rig.py`'s docstring said
+`identify_rig()` can return `None` and that MPFB's `poll()` would raise on that (it returns
+`"unknown"`, and the `poll()` returned `False`); `list_asset_materials.py`, its payload, the root
+CLAUDE.md and `specifications/responses.md` all said the alternative-material cache has no
+invalidation, and `responses.md` and the tool description went further and told the caller that no
+`refresh` argument could ever help. That last one was downloaded by every MCP client on every
+connection. The corrections say what was checked and no more, and `responses.md` gained the reason
+in general form: **a limitation attributed to MPFB is a claim about MPFB**, and carries the same
+burden of evidence a defect report does. The code the wrong reasons had justified was left alone,
+per FR-4, with the docstrings now saying which guard is necessary and which is belt and braces.
+
+[mpfb-integration.md](../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
+gained the standing rule — where a confirmed defect is written down, and that writing it there
+changes nothing about what a tool does. [FR 018](018-alternative-material-refresh/README.md) shrank
+as a result, since half of what it set out to correct is now corrected, and
+[FR 023](023-verification-smoke-test/README.md) grew a constraint it did not have: its FR-7 deletes
+`check_fr010.py` and its FR-8 moves `check_mpfb_issues.py`, and both are now cited by path **from
+another repository**, where no link check here would catch the break.
+
 ## [FR 020](done/020-trim-claude-md/README.md) — the root CLAUDE.md trimmed, and the rule that keeps it trimmed
 
 The second effort that adds no tool. The root [CLAUDE.md](../CLAUDE.md) had reached **704 lines**

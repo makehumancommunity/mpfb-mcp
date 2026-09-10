@@ -215,7 +215,7 @@ restart the session needed — MPFB did not come back. The sharp form is that `T
 name *encoding* starts above 60 characters while registration breaks above 56, so an encoded user
 target cannot exist in a scanned directory at startup at all.
 
-Two things follow. It is the first thing [FR 019](../../019-file-mpfb-defects/README.md) should
+Two things follow. It is the first thing [FR 019](../019-file-mpfb-defects/README.md) should
 file. And it is a hazard this repository created on somebody's install, so
 `verification/fixtures.py` now carries `SAFE_AT_STARTUP`, the long probe is installed and removed
 within a single checklist run, and the defect is reproduced by attempting the registration directly
@@ -453,7 +453,7 @@ finding ambiguous about which change caused it.
 | 14 | Trim the tool descriptions from 66.7 KB toward ~45 KB | **[FR 016](../016-trim-tool-descriptions/README.md)** |
 | 15 | The category-table rebuild costs ~2 s per call | **[FR 017](../017-category-table-cost/README.md)** |
 | 16 | `mpfb_list_asset_materials` should be able to rescan | **[FR 018](../../018-alternative-material-refresh/README.md)** |
-| 17 | File the five confirmed MPFB defects, including the one that stops MPFB loading | **[FR 019](../../019-file-mpfb-defects/README.md)** |
+| 17 | File the five confirmed MPFB defects, including the one that stops MPFB loading | **[FR 019](../019-file-mpfb-defects/README.md)** |
 | 18 | Merge `blocked()`'s six variants | **Rejected** — one convention applied six times, not one concept duplicated |
 | 19 | A composite `add_rig` + `generate_rigify_rig` | **Rejected** — the clothes go between them, which the run confirmed matters |
 | 20 | A composite `create_human` + `set_macro_details` | **Rejected** — the gap is a docstring, not a tool |

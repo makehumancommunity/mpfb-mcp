@@ -21,13 +21,18 @@ and the search roots that make an empty answer explainable.
 
 Three things about that function shape this payload.
 
-**It caches, per ``(asset_source, asset_subdir)``, in a module-level dict with no
-invalidation.** So this tool reports a snapshot from the first time anything in
-this Blender session asked about this asset. A material dropped into the
-directory afterwards is applicable and invisible, and no argument here could
-change that - there is no refresh to offer, because there is nothing to call.
+**It caches, per ``(asset_source, asset_subdir)``, in a module-level dict that
+nothing invalidates automatically.** So this tool reports a snapshot from the
+first time anything in this Blender session asked about this asset, and a
+material dropped into the directory afterwards is applicable and invisible.
 Said out loud in the tool docstring, since a caller who meets it would otherwise
 read it as a bug here.
+
+FR 011 read that cache as having no invalidator at all, and FR 019 corrects it:
+``AssetService.invalidate_alternative_materials_cache()`` exists and clears both
+of MPFB's dicts. The staleness is real - nothing calls it - but it is the kind a
+``refresh`` argument could lift, which is what FR 018 is for. Until that lands
+this payload does not call the invalidator, and the answer is a snapshot.
 
 **Its ``exclude_default`` argument is accepted and never used.** The asset's own
 material is *not* filtered out of the result, so it normally appears in the list.
@@ -190,7 +195,7 @@ else:
     if asset_source:
         try:
             # MPFB's own scan, cached per (asset_source, asset_subdir). See the
-            # docstring: the cache has no invalidation, so this is a snapshot.
+            # docstring: nothing invalidates that cache, so this is a snapshot.
             found_paths = AssetService.alternative_materials_for_asset(
                 asset_source, asset_subdir)
         except Exception:  # pylint: disable=broad-except
@@ -235,9 +240,9 @@ else:
             str(len(materials)) + " material(s) ship beside '" + str(asset_source) + "'.")
     if materials:
         message_parts.append(
-            " This list is a cached snapshot: MPFB caches it per asset with no invalidation, so "
-            "a material installed after the first call for this asset in this Blender session "
-            "will not appear.")
+            " This list is a cached snapshot: MPFB caches it per asset and nothing invalidates "
+            "that cache, so a material installed after the first call for this asset in this "
+            "Blender session will not appear.")
     if default_material is None and asset_source:
         message_parts.append(
             " The asset's own default material is not known ("

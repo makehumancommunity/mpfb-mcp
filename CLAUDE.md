@@ -179,7 +179,7 @@ docstring is where the reasoning lives**; the line below is only enough to find 
 | `mpfb_list_rigs` | Catalogue. Predicts, per rig, which file would load and whose weights come with it — via `rig_lookup.py`, so `mpfb_add_rig` cannot disagree. |
 | `mpfb_list_assets` | Catalogue, and the first answer that does not fit: filtered, capped and paged. Reports `pack` (from a directory convention) and both the passable `path` and the portable `fragment`. |
 | `mpfb_list_targets` | Catalogue. The one tool that is genuinely side-effect-free — no MPFB cache populated, no preview loaded, hence no `refresh`. Reports `shapekey_name` from MPFB, since a name over 60 characters is encoded. |
-| `mpfb_list_asset_materials` | Catalogue for something that is **not** an asset library section, so `mpfb_list_assets` cannot name it. Its answer is stale by design: MPFB caches that scan with no invalidation. |
+| `mpfb_list_asset_materials` | Catalogue for something that is **not** an asset library section, so `mpfb_list_assets` cannot name it. Its answer is stale by design: MPFB caches that scan and nothing invalidates it. |
 | `mpfb_get_macro_details` | Reads a character's phenotype. Subject resolved from any object in the character's family. |
 | `mpfb_set_macro_details` | Writes it. Sliders default to `None`, not `0.5` — "not mentioned" and "set to the default" are different requests. Writes every property, then recalculates **once**. |
 | `mpfb_refit_human` | Refits everything to a changed body. Detects the generated-Rigify-rig-with-no-meta-rig case, which `HumanService.refit()` reports only through an `operator` an MCP tool has none of. |

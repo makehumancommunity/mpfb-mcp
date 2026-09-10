@@ -21,9 +21,15 @@ object in the character's family, but it narrows to a ``Skeleton`` and then asks
 ``RigService.identify_rig()`` which kind it found. Two details make that a scan
 of *all* the skeleton relatives rather than a single lookup:
 
-- ``identify_rig()`` can return ``None``. It starts from ``guessed_rig = None``
-  and matches on bone names, so an armature MPFB does not recognise falls
-  straight through - and MPFB's own operator ``poll()`` would raise on that.
+- ``identify_rig()`` answers for an armature it does not recognise rather than
+  refusing to. It matches on bone names and falls through to ``"unknown"``,
+  ``"rigify.unknown"`` or ``"rigify_generated.unknown"``, so "not a meta rig"
+  is a string this payload has to read, not an exception it could let through.
+  (FR 019 corrects FR 009 here: the earlier reading was that ``identify_rig()``
+  returns ``None`` and that MPFB's own operator ``poll()`` would raise on that.
+  Provoked against an armature matching nothing, it returned ``"unknown"`` and
+  the ``poll()`` returned ``False``. The scan below is unchanged, since it is
+  the *second* reason that makes it load-bearing.)
 - After a previous generation, the basemesh's ``Skeleton`` relative is the
   *generated* rig, not the meta rig. ``RigifyHelpers.adjust_children_for_rigify()``
   re-parents the basemesh and every garment onto the generated rig, leaving the
@@ -77,9 +83,13 @@ REFIT_IMPOSSIBLE_REASON = (
 def rig_kind(armature_object):
     """What ``identify_rig()`` makes of an armature: metarig, generated, other.
 
-    Guarded because the real function returns None for an armature it cannot
-    place, and because a Skeleton-typed object that is not an armature at all
-    would have no ``data.bones`` to match against.
+    The ``data.bones`` guard is the necessary one: a Skeleton-typed object that
+    is not an armature at all has none for ``identify_rig()`` to match against.
+    The falsy-``rig_type`` guard is belt and braces - MPFB 2.0.17 answers
+    ``"unknown"`` rather than ``None`` for an armature it cannot place (see the
+    module docstring), and the final ``return`` would classify that as "other"
+    anyway. It is kept because both readings end in the same answer and the
+    cheaper one is the one that survives MPFB changing its mind.
     """
     if armature_object is None or armature_object.type != "ARMATURE":
         return (None, "other")

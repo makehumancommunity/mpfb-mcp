@@ -145,12 +145,17 @@ And the same convention has a fourth form, seen from the other side:
 
 - **The tool can be the stale one, and must say so.**
   `AssetService.alternative_materials_for_asset()` caches its scan per `(asset_source,
-  asset_subdir)` in a module-level dict with no invalidation, so `mpfb_list_asset_materials` reports
-  a snapshot taken the first time anything in that Blender session asked about the asset. A material
-  installed afterwards is on disk, is applicable, and will not appear — and no `refresh` argument
-  could change that, because there is nothing to call. Where the staleness is *ours* rather than
-  MPFB's, the obligation is the same: name it in the docstring and in the response, so a caller who
-  meets it does not read it as a bug.
+  asset_subdir)` in a module-level dict that nothing invalidates automatically, so
+  `mpfb_list_asset_materials` reports a snapshot taken the first time anything in that Blender
+  session asked about the asset. A material installed afterwards is on disk, is applicable, and
+  will not appear. Where the staleness is *ours* rather than MPFB's, the obligation is the same:
+  name it in the docstring and in the response, so a caller who meets it does not read it as a bug.
+
+  **Say only what was checked.** This entry used to end "and no `refresh` argument could change
+  that, because there is nothing to call", which was false —
+  `AssetService.invalidate_alternative_materials_cache()` exists, and the live run found it. A
+  limitation attributed to MPFB is a claim about MPFB, and carries the same burden of evidence as
+  a defect report does.
 
 Prefer describing what is actually on disk, and label the part MPFB will not show — rather than
 either papering over the difference or quietly inheriting the limitation. Where the difference is

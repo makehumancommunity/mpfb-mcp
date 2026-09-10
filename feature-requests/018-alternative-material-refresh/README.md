@@ -13,14 +13,21 @@ exists**, and clears both `_ALTERNATIVE_MATERIALS` and `_ALTERNATIVE_MATERIAL_TI
 it, so the staleness is real; "cannot be invalidated" is not. That makes this the smallest
 outstanding item in the catalogue: a tool documents a limitation that MPFB does not have.
 
+**Half of that is already fixed.** [FR 019](../done/019-file-mpfb-defects/README.md)'s FR-5 struck the
+false half of the claim wherever this repository stated it — the tool docstring, the payload,
+`specifications/responses.md` and the root `CLAUDE.md` no longer say the cache cannot be cleared or
+that no `refresh` argument could help. What is left for this request is the argument itself, which
+is the whole of its primary goal; the secondary goal below is now a smaller edit than it was.
+
 ## Goals
 
 **Primary: `mpfb_list_asset_materials` gains a `refresh` argument**, matching the one
 `mpfb_list_rigs` and `mpfb_list_assets` already have, so a user who has just installed a material
 can see it.
 
-**Secondary: correct the docstring**, which currently tells a caller that a restarted Blender is
-the only remedy.
+**Secondary: finish correcting the docstring.** FR 019 removed the false claim; what remains is
+that the docstring still offers a restarted Blender as the only remedy, because at the time it was
+written that was true of this tool.
 
 ## Functional requirements
 
@@ -30,8 +37,9 @@ the only remedy.
   before the scan, and the response says the cache was cleared. Note this clears the cache for
   **every** asset, not only the one being listed, which is a side effect on other tools' answers
   and must be reported rather than hidden.
-- **FR-3.** The docstring stops describing the staleness as unfixable and describes it as what it
-  is: a cache nothing invalidates automatically, with an argument that does.
+- **FR-3.** The docstring stops offering a Blender restart as the remedy and names the argument
+  instead. It already describes the staleness correctly — a cache nothing invalidates
+  automatically — since FR 019 corrected that much.
 - **FR-4.** The default stays `false`. A listing that rescans by default would make the cheap call
   expensive and would clear a cache other tools benefit from.
 
@@ -55,7 +63,9 @@ the cache dicts themselves, which are module-level in `assetservice.py`.
 twenty descriptions to 47,759 B against a 48,500 B ceiling asserted by
 `tests/test_description_budget.py`, so FR-3's rewrite has about 700 B of room. It should not need
 any: the paragraph it replaces is longer than "`refresh` rescans; it clears the cache for every
-asset, and `cache_invalidated` says so" is.
+asset, and `cache_invalidated` says so" is. The measured figure moved after FR 019's corrections;
+run `python3 tests/test_description_budget.py` for the current one rather than trusting the number
+above.
 
 **Pitfall: `exclude_default` is still dead.** The same function accepts and never reads it, which
 [FR 013](../done/013-live-verification/README.md) also confirmed. `mpfb_list_asset_materials` flags the

@@ -122,12 +122,23 @@ it, lives in that request's own subdir, and goes to `done/` with it.
   - `run_all.py` — replaced by the smoke script itself.
   - `results/` is gitignored and needs no action beyond the new script writing its own.
 
-- **FR-8. `check_mpfb_issues.py` is moved, not deleted.** It is not a check of mpfb-mcp's tools at
-  all — it provokes defects in *MPFB* — and
-  [FR 019](../019-file-mpfb-defects/README.md) is Proposed and cites it by path as the evidence it
-  will file. It moves into `feature-requests/019-file-mpfb-defects/`, and FR 019's README is
-  re-pointed at the new path. This is the first application of FR-10's rule, and it is the reason
-  FR 019 must be checked before this request lands rather than after.
+- **FR-8. `check_mpfb_issues.py` is moved, not deleted — and the move now leaves this
+  repository.** It is not a check of mpfb-mcp's tools at all: it provokes defects in *MPFB*. It
+  moves into `feature-requests/done/019-file-mpfb-defects/`, which is where FR 019 landed, and
+  every citation of the old path is re-pointed.
+
+  **FR 019 changed what that costs.** The filed report,
+  [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../mpfb2/features/MCP_DISCOVERED_BUGS.md),
+  cites `verification/check_mpfb_issues.py` **by path, from another repository**, once per defect,
+  and names a function inside it per section; it also links `verification/check_fr010.py`, which
+  FR-7 deletes, for the proxy comparison. So this request must either keep those two paths valid
+  or update that document as part of landing — and a path in somebody else's repository is not
+  something a link check here would catch. Deleting `check_fr010.py` without rewriting the
+  report's "Reproduction" line for the proxy item leaves a filed defect report pointing at
+  nothing, which is exactly the failure FR 019's "reproductions, not descriptions" requirement
+  exists to prevent.
+
+  This is the first application of FR-10's rule.
 
 - **FR-9. Four files, and the count is the ceiling.** `harness.py` (the tool callables, the
   scratch scene, the snapshot/compare, the probe, the `performed` audit and the report),
@@ -304,9 +315,10 @@ live check in FR-1 is sufficient and this is a convenience.
   measured ceiling that fails a run. FR-5 deliberately stops short of copying it, and the
   non-functional requirements say why: that ceiling measures bytes this repository computes, and
   this one would be measuring the machine MPFB happens to be running on.
-- [FR 019](../019-file-mpfb-defects/README.md) — Proposed, cites
-  `verification/check_mpfb_issues.py` by path; FR-8 moves that file into FR 019's subdir and this
-  request must not land without re-pointing it.
+- [FR 019](../done/019-file-mpfb-defects/README.md) — **Done**. Its deliverable,
+  [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../mpfb2/features/MCP_DISCOVERED_BUGS.md),
+  cites `verification/check_mpfb_issues.py` and `verification/check_fr010.py` by path from another
+  repository; FR-8 says what this request owes them.
 - [FR 018](../018-alternative-material-refresh/README.md) — Proposed; the cache-staleness fixture
   this request removes is its subject, and it should take the fixture if it wants it.
 - [FR 020](../done/020-trim-claude-md/README.md) — the same disease in the documentation: growth by

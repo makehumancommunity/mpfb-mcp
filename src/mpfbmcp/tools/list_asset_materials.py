@@ -16,9 +16,9 @@ they were searched for, per
 
 One caution belongs in the tool docstring rather than only here:
 ``AssetService.alternative_materials_for_asset()`` **caches per**
-``(asset_source, asset_subdir)`` in a module-level dict with no invalidation, so
-this answer is a snapshot taken the first time any tool asked about this asset in
-this Blender session. A material dropped into the asset's directory afterwards is
+``(asset_source, asset_subdir)`` in a module-level dict that nothing invalidates
+automatically, so this answer is a snapshot taken the first time any tool asked
+about this asset in this Blender session. A material dropped into the asset's directory afterwards is
 on disk and applicable and will not appear here. That is the mirror image of
 ``mpfb_list_targets``' staleness note: there MPFB's own panels are stale and this
 package is current, and here it is this package that is stale.
@@ -74,11 +74,11 @@ def register(mcp: FastMCP) -> None:
         `mpfb_list_objects` reports it or as `mpfb_add_asset` returned it in
         `asset_object_name`.
 
-        **The answer is a snapshot.** MPFB caches this scan per asset with no
-        invalidation, so a material added to the asset's directory after the
-        first call for that asset - in this Blender session - will not appear,
-        and no refresh argument could change that. Restart Blender if a newly
-        installed material is missing.
+        **The answer is a snapshot.** MPFB caches this scan per asset and
+        nothing invalidates that cache, so a material added to the asset's
+        directory after the first call for that asset - in this Blender
+        session - will not appear. Restart Blender if a newly installed
+        material is missing.
 
         `result` carries `asset_object_name`, `object_type`, `asset_source` and
         the `asset_subdir` searched; `default_material`, the absolute path the

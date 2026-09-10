@@ -90,6 +90,12 @@ versus services" to *any* two MPFB code paths.
   invalidator) and found the fifth to be worse and quieter than described. Each is provoked by a
   script under [verification/](../verification/), so a claim about MPFB is re-checkable against a
   future MPFB rather than frozen as an opinion.
+- **Filing it changes nothing here.** A confirmed defect is written up in
+  [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../mpfb2/features/MCP_DISCOVERED_BUGS.md), one
+  section each, and that is where the reporting ends: MPFB has its own priorities, so a reported
+  defect may stand for a long time. The workaround, the coercion or the defensive check that copes
+  with it stays exactly as it is, and it is removed when a **running** MPFB no longer needs it —
+  which is what the script detects, since it is written to fail once a defect is gone.
 - **Do not merge them.** Picking one and naming it is the rule; synthesizing a fourth behavior that
   matches none of MPFB's own would make the result unreproducible from inside Blender.
 - **The limiting case is no service path at all.** Setting an alternative material on an equipped

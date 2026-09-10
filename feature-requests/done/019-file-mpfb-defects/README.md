@@ -1,11 +1,11 @@
 # File the confirmed MPFB defects against ../mpfb2
 
-**Status:** Accepted
+**Status:** Done
 
 Five requests ended by naming things in MPFB that looked like defects, all read from source and
-none observed. [FR 013](../done/013-live-verification/README.md)'s live session provoked each one
+none observed. [FR 013](../013-live-verification/README.md)'s live session provoked each one
 against a running install and, deliberately, wrote the provocations down as a script
-([verification/check_mpfb_issues.py](../../verification/check_mpfb_issues.py)) rather than as prose.
+([verification/check_mpfb_issues.py](../../../verification/check_mpfb_issues.py)) rather than as prose.
 Four of the seven were confirmed, two refuted outright, and one turned out worse and quieter than
 described. A sixth was found by accident, and it is the most serious of the set.
 
@@ -15,7 +15,7 @@ into the effort that found the evidence would have made both worse.
 
 **What "filing" means here.** Not an issue in a tracker: it means writing a summary of the
 confirmed defects to
-[../mpfb2/features/MCP_DISCOVERED_BUGS.md](../../../mpfb2/features/MCP_DISCOVERED_BUGS.md), one
+[../mpfb2/features/MCP_DISCOVERED_BUGS.md](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md), one
 section per defect, in the directory where that project already keeps its own investigations. That
 is the whole deliverable — a document handed to MPFB's own effort, not a promise from it.
 
@@ -48,7 +48,7 @@ that never gave a reason.
 ## Functional requirements
 
 - **FR-1.** Write, to
-  [../mpfb2/features/MCP_DISCOVERED_BUGS.md](../../../mpfb2/features/MCP_DISCOVERED_BUGS.md), one
+  [../mpfb2/features/MCP_DISCOVERED_BUGS.md](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md), one
   section for each of the five confirmed:
   1. **A long-named user target prevents registration.** The one above. Severity is the argument:
      it disables the add-on, and the trigger is a file the user put in a directory MPFB told them
@@ -76,7 +76,7 @@ that never gave a reason.
 - **FR-5.** The two refuted candidates are corrected wherever this repository still cites them:
   `RigService.identify_rig()` **cannot** return `None`, and the alternative-material cache **does**
   have an invalidator. Both have already been corrected in the verification records; check the
-  payload docstrings and [specifications/](../../specifications/) too.
+  payload docstrings and [specifications/](../../../specifications/) too.
 
 ## Non-functional requirements
 
@@ -105,8 +105,8 @@ MPFB data directory should be held to the same rule.
 
 ## Affected specifications
 
-- **[specifications/mpfb-integration.md](../../specifications/mpfb-integration.md)** —
-  [Where MPFB's own code paths disagree](../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
+- **[specifications/mpfb-integration.md](../../../specifications/mpfb-integration.md)** —
+  [Where MPFB's own code paths disagree](../../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
   already carries FR 013's correction that a candidate defect must be confirmed before it is filed.
   It gains one sentence naming where a confirmed defect is written down — and saying that writing
   it down there neither removes the workaround nor changes what a tool does, since MPFB may not fix
@@ -120,13 +120,13 @@ this repository should find out from a red line rather than from a changelog.
 
 ## References
 
-- [FR 013's review](../done/013-live-verification/review.md#the-seven-candidate-mpfb-defects) — what
+- [FR 013's review](../013-live-verification/review.md#the-seven-candidate-mpfb-defects) — what
   was confirmed, what was refuted, and on what evidence.
-- [FR 008](../done/008-detail-targets/README.md#verification-status) — the gzip divergence and the
+- [FR 008](../008-detail-targets/README.md#verification-status) — the gzip divergence and the
   registration failure, both observed there.
-- [NEXT_STEPS.md](../NEXT_STEPS.md#file-the-4-kb-chunked-read-against-blender_mcp) — a **sixth**
+- [NEXT_STEPS.md](../../NEXT_STEPS.md#file-the-4-kb-chunked-read-against-blender_mcp) — a **sixth**
   defect to report, in the same shape as these five and against a different project:
-  [FR 017](../done/017-category-table-cost/README.md) measured that blender_mcp's add-on reads one
+  [FR 017](../017-category-table-cost/README.md) measured that blender_mcp's add-on reads one
   4 KB chunk of a request per timer tick, which is the dominant cost of every tool here. It is kept
   separate deliberately, since this request's scope is `../mpfb2`, but whoever writes these five is
   the right person to write that one.
