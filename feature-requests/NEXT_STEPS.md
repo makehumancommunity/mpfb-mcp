@@ -31,12 +31,16 @@ Both types should be supported, probably with different tool calls.
 
 ## Getting URLs to documentation etc
 
+**Scoped as [FR 024](024-documentation-urls/README.md) (Accepted).**
+
 There should be a tool call for getting links to relevant online resources. Most of these urls
-are defined as constants, which can be found via the "start_here" UI module in MPFB. 
+are defined as constants, which can be found via the "start_here" UI module in MPFB. (They live
+in `src/mpfb/ui/weburls.py`; the `start_here` panel only consumes them.)
 
 ## Finding, downloading and installing asset packs
 
-The URL to the asset packs page should be possible to find as per the "Getting URLs" section.
+The URL to the asset packs page should be possible to find as per the "Getting URLs" section,
+which is scoped as [FR 024](024-documentation-urls/README.md).
 
 Need to have an effective solution for downloading and installing the packs too. There is an
 operator for loading a pack from zip in mpfb which can be used as inspiration.
