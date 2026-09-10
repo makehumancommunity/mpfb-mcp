@@ -10,6 +10,8 @@ records what has already landed and why. When an effort below is finished, move 
 
 ## Saving, listing and loading character presets
 
+**Scoped as [FR 025](025-character-presets/README.md) (Accepted).**
+
 Humans are stored in presets ("save files"), which are simple json structures. Handling these
 is a core functionality of MPFB.
 
