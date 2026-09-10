@@ -69,14 +69,21 @@ CATEGORY_READING_PAYLOADS = (
 
 class PayloadFileTests(unittest.TestCase):
     def test_there_is_a_payload_for_each_implemented_tool(self) -> None:
+        # Twenty-one payloads for twenty-two tools: `mpfb_list_docs` has none.
+        # It is a local table with two URL constants over it, so it never
+        # generates code and never crosses the socket - the one tool for which
+        # the module/payload/test naming rule does not hold. The omission is
+        # deliberate rather than a gap in this hand-maintained list; see
+        # src/mpfbmcp/tools/list_docs.py.
         self.assertEqual(
             codegen.payload_names(),
             ["add_asset.py", "add_rig.py", "create_human.py", "generate_rigify_rig.py",
              "get_macro_details.py", "get_object_info.py", "get_status.py",
              "get_target_stack.py", "list_asset_materials.py", "list_assets.py",
-             "list_objects.py", "list_rigs.py", "list_targets.py", "refit_human.py",
-             "remove_asset.py", "set_asset_material.py", "set_macro_details.py",
-             "set_skin.py", "set_targets.py", "symmetrize_targets.py"])
+             "list_objects.py", "list_rigs.py", "list_targets.py", "list_urls.py",
+             "refit_human.py", "remove_asset.py", "set_asset_material.py",
+             "set_macro_details.py", "set_skin.py", "set_targets.py",
+             "symmetrize_targets.py"])
 
     def test_shared_fragments_are_the_ones_expected(self) -> None:
         # A short list on purpose: a fragment exists only where two or more

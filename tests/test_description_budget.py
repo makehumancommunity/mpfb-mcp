@@ -4,7 +4,7 @@
 The preloaded tool surface, measured and capped.
 
 An MCP client downloads every tool's description and parameter schema before
-any work happens, so the twenty docstrings in ``src/mpfbmcp/tools/`` are a
+any work happens, so the twenty-two docstrings in ``src/mpfbmcp/tools/`` are a
 call-time cost paid by every session whether or not a tool is used.
 [FR 013](../feature-requests/done/013-live-verification/review.md) measured it
 for the first time and found 66.7 KB of descriptions against an estimate of
@@ -53,7 +53,18 @@ import mpfbmcp
 # instruction: see FR 016 for what came out, and what was left in on purpose.
 # The ceiling leaves about 700 bytes, which is a paragraph - enough that a real
 # addition fits and a habit of adding does not.
-DESCRIPTION_CEILING = 48500
+#
+# Raised from 48,500 to 52,200 by
+# [FR 024](../feature-requests/done/024-documentation-urls/README.md), which
+# added `mpfb_list_urls` and `mpfb_list_docs`. Two new tools cannot be made to
+# fit inside a ceiling with 740 B of headroom and a 400 B floor per tool, so the
+# request raised it deliberately rather than trimming twenty descriptions to pay
+# for two. What keeps that from being a licence: both newcomers came in at 1,981
+# and 1,806 B against a 2,387 B per-tool average, because a lookup tool
+# instructs about a small static vocabulary and most of what a caller needs is
+# visible in the response - and the headroom left over is the same paragraph it
+# was before.
+DESCRIPTION_CEILING = 52200
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -111,7 +122,7 @@ class DescriptionBudgetTests(unittest.TestCase):
         self.measured = measure()
 
     def test_every_registered_tool_is_measured(self) -> None:
-        self.assertEqual(20, len(self.measured))
+        self.assertEqual(22, len(self.measured))
 
     def test_total_description_size_is_under_the_ceiling(self) -> None:
         total = sum(entry["description_bytes"] for entry in self.measured)

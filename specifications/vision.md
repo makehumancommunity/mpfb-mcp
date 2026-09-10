@@ -95,11 +95,11 @@ answer changes.
 | **Introspection** | ask what is already there, and what state it is in, before acting — always cheaply, and always getting an answer rather than an error | 5 tools |
 | **Catalogues** | learn what *could* be added, each entry named exactly as the acting tool will want it | 4 tools |
 | **Creation and modification** | build a character and change it: phenotype, detail morphs, rig, garments, materials — and undo a mistake | 11 tools |
-| **Documentation** | answer "how does MPFB do X" without the client shipping its own copy of the manual | none yet |
+| **Documentation** | answer "how does MPFB do X" without the client shipping its own copy of the manual | 2 tools |
 
-[README.md](../README.md) lists the twenty that exist, grouped this way;
-[CLAUDE.md](../CLAUDE.md#the-twenty-tools) gives one line each and points at the module docstring
-that explains it.
+[README.md](../README.md) lists the twenty-two that exist, grouped this way;
+[CLAUDE.md](../CLAUDE.md#the-twenty-two-tools) gives one line each and points at the module
+docstring that explains it.
 
 **What is still missing**, and why each is worth having:
 
@@ -107,10 +107,16 @@ that explains it.
   character in a single answer. Today that is five calls, which is five round trips to establish
   what an agent needs before almost any modification. Its macro half must be produced by calling
   the same read `mpfb_get_macro_details` uses, not by a second implementation that can diverge.
-- `mpfb_search_docs` — ranked search over bundled MPFB documentation, mirroring how blmcp exposes
-  Blender's RST reference. Likely sourced from `../../makehuman-static-website`. This is the one
-  area with nothing in it, and it is the area that most directly serves the goal above: an agent
-  that can look something up does not have to guess.
+- `mpfb_search_docs` — ranked search over MPFB documentation *bundled with the client*, mirroring
+  how blmcp exposes Blender's RST reference. Likely sourced from `../../makehuman-static-website`.
+  [FR 024](../feature-requests/done/024-documentation-urls/README.md) took the small half of this
+  area — `mpfb_list_urls` and `mpfb_list_docs` hand out addresses, so an agent can be pointed at
+  the authoritative document instead of guessing. What is left is the half that needs the text
+  itself: ranking a query against content nobody has fetched is not something an address can do,
+  and it is the part that would let an agent answer rather than delegate. Note that
+  [no network connection](architecture.md#mpfb-mcp-opens-no-network-connection-except-the-one-to-the-add-on)
+  is now a standing constraint, so the documentation such a tool searches has to be shipped or
+  vendored rather than retrieved.
 
 Scoped and queued work is in
 [NEXT_STEPS.md](../feature-requests/NEXT_STEPS.md); what has landed, and what each effort

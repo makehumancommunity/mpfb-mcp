@@ -4,6 +4,11 @@
 arguments, against a real Blender. It answers one question — *does every tool still work at
 all?* — and it answers it in well under a minute, so there is no reason to skip it.
 
+One item reaches no Blender at all: `mpfb_list_docs` is a local table, so its item establishes only
+that the tool is registered and still answers with the keys its description promises. It is a
+per-tool item anyway, because coverage is derived from the registry and the run-level set is closed
+at three.
+
 Not part of the installed package, not discovered by `python3 -m unittest discover -s tests`, and
 not shipped: `pyproject.toml` declares package data by explicit glob under `src/`, so a top-level
 directory outside it cannot be picked up.
@@ -64,7 +69,7 @@ by the checks alone. Wall clock against somebody else's Blender is too noisy and
 install-dependent to gate on, and a check that fails for a reason outside the repository is one
 people learn to ignore.
 
-Last measured at **42.6 s**, 23 items, 0 failed, 0 skipped — Blender 5.1.0, MPFB 2.0.17
+Last measured at **43.4 s**, 25 items, 0 failed, 0 skipped — Blender 5.1.0, MPFB 2.0.17
 `FROM_SOURCE`, 909 assets across 112 packs, and blender_mcp's `timer_interval_active` at its
 **0.25 s default**. That last number matters more than the machine: the add-on reads one 4 KB
 chunk of a request per timer tick, so it is the dominant cost of every call here and 0.05 s makes

@@ -207,6 +207,13 @@ architecture and not of any one test:
   unrigged — the claim
   [A tool reports an ordering constraint it cannot enforce](mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
   rests on.
+- **No stub can establish what a real MPFB has loaded.** `mpfb_list_urls` reads
+  `<root>.ui.weburls` out of `sys.modules`, and the payload test executes it against a stub
+  `sys.modules` carrying exactly such a module — which is to say the test is built out of the
+  assumption under test and can only ever confirm it. Whether MPFB really imports its UI on a
+  normal install is a question only a running Blender answers, and FR 024's own check is what
+  asked it. This is the general shape of the trap: **a stub that reproduces a precondition cannot
+  verify it.**
 
 Every item on that list needs a live Blender, and a feature request whose primary goal lands in
 one must say so in its own "Tests" section rather than leave it to be discovered.
@@ -220,6 +227,32 @@ five skin types by [FR 011](../feature-requests/done/011-skin-and-materials/READ
 and its weights by [FR 009](../feature-requests/done/009-add-rig/README.md) — and a later change
 in that area owes the same proof again, in its own subdir. See
 [Where an exhaustive live check belongs](#where-an-exhaustive-live-check-belongs).
+
+## A test may depend on a sibling checkout if it skips without one
+
+Some data in this package is copied by hand out of another repository: `reference/urls.py` is a
+copy of MPFB's `ui/weburls.py`, and `reference/docs.py` names paths in mpfb2's `docs/` tree. Both
+go stale silently — a renamed document still looks like a path — and neither can be checked at run
+time, since [mpfb-mcp opens no network connection](architecture.md#mpfb-mcp-opens-no-network-connection-except-the-one-to-the-add-on).
+
+On the machine where the editing actually happens there is a checkout of the source repository one
+directory up. A test may use it, **under one condition: it skips when the checkout is absent**, so
+the suite still passes anywhere. `tests/test_reference_drift.py` is the first of these.
+
+This is a real cost and is accepted rather than waved through. A skipped test proves nothing, and
+a suite that quietly proves less on one machine than another is worse than one that proves the
+same everywhere. It is worth it because the alternatives are both worse — a hard dependency breaks
+the suite for anyone without the checkout, and no check at all leaves the drift to be found by
+whoever follows a dead link. Two things keep it honest:
+
+- **Read the sibling, never execute it.** Parse the file rather than importing it: importing
+  another repository's module to read a few string literals runs whatever else is in it.
+- **Assert that the read found something**, so that "no differences" cannot pass vacuously because
+  the parse returned nothing.
+
+Such a test says the *vendored copy* needs updating, never that the sibling is wrong. And it does
+not replace a live check: the checkout is whatever is checked out, while the extension is whatever
+is installed, and an effort's own live check compares against the second.
 
 ## The exception: what is entirely on this side of the socket
 

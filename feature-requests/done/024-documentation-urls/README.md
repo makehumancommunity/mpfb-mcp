@@ -1,6 +1,6 @@
 # Links to documentation and other online resources
 
-**Status:** Accepted
+**Status:** Done
 
 An agent driving MPFB through these twenty tools can find out what is installed, what could be
 added and what a character is made of. What it cannot do is look anything *up*. When a tool
@@ -8,7 +8,7 @@ response is not enough — what an `.mhclo` file actually contains, what a human
 MPFB's asset packs are obtained and installed — the agent has no address to go to, and the failure
 mode is not an error but a guess presented as fact.
 
-This is the first entry in the one area of [vision.md](../../specifications/vision.md#target-tool-catalog)
+This is the first entry in the one area of [vision.md](../../../specifications/vision.md#target-tool-catalog)
 that is still empty. It is deliberately the *small* half of it: two catalogue tools that hand out
 addresses. The ranked search over bundled documentation that vision.md calls `mpfb_search_docs`
 stays a separate, later effort — this request neither implements it nor forecloses it.
@@ -16,11 +16,11 @@ stays a separate, later effort — this request neither implements it nor forecl
 There are two distinct bodies of material, with different audiences and different provenance:
 
 - **The community sites.** MPFB keeps thirteen `URL_*` constants in
-  [`src/mpfb/ui/weburls.py`](../../../mpfb2/src/mpfb/ui/weburls.py) — homepage, documentation, FAQ,
+  [`src/mpfb/ui/weburls.py`](../../../../mpfb2/src/mpfb/ui/weburls.py) — homepage, documentation, FAQ,
   forum, issue tracker, asset packs, system assets, the getting-started guide and video. These are
-  MPFB's own values and change with MPFB. (The [NEXT_STEPS](../NEXT_STEPS.md#getting-urls-to-documentation-etc)
-  entry says they are found via the `start_here` UI module; `start_here/startherepanel.py` only
-  *consumes* them, and `weburls.py` is where they live.)
+  MPFB's own values and change with MPFB. (The NEXT_STEPS entry — since moved to
+  [HISTORY.md](../../HISTORY.md) — said they are found via the `start_here` UI module;
+  `start_here/startherepanel.py` only *consumes* them, and `weburls.py` is where they live.)
 - **The mpfb2 repository's developer documentation.** 105 markdown files under
   [`docs/`](https://github.com/makehumancommunity/mpfb2/tree/master/docs) — one per service, per
   file format, per entity. This is the material that actually answers "how does MPFB do X", and it
@@ -28,7 +28,7 @@ There are two distinct bodies of material, with different audiences and differen
   amount of code running inside Blender can reach it.
 
 A second effort depends on this one:
-[Finding, downloading and installing asset packs](../NEXT_STEPS.md#finding-downloading-and-installing-asset-packs)
+[Finding, downloading and installing asset packs](../../NEXT_STEPS.md#finding-downloading-and-installing-asset-packs)
 needs the asset-packs URL, and says so.
 
 ## Goals
@@ -63,7 +63,7 @@ anything.
 4. **Answers in all three states**: MPFB read live; MPFB absent or not initialized (fallback,
    `source_of_truth: "builtin_fallback"`, `mpfb_status` carrying the reason); Blender unreachable
    (fallback, same field, reason naming the socket failure). None of the three is an error
-   envelope. This is the [absence-is-an-answer](../../specifications/responses.md) shape
+   envelope. This is the [absence-is-an-answer](../../../specifications/responses.md) shape
    `mpfb_get_status` already has, extended to a socket failure — see [Architecture](#architecture),
    since that part is genuinely new.
 5. Carries the **ecosystem links** MPFB's constants do not: MakeHuman itself, the community asset
@@ -71,7 +71,7 @@ anything.
    and are honest about it — MPFB does not endorse them by having them in this list.
 6. **Not capped, not paged.** Roughly twenty entries. The docstring says so explicitly, so a
    caller does not go looking for `truncated` or `total_count` — the
-   [bounding convention](../../specifications/responses.md#how-tools-bound-a-large-answer) applies
+   [bounding convention](../../../specifications/responses.md#how-tools-bound-a-large-answer) applies
    to answers that do not fit, and this one does.
 
 ### `mpfb_list_docs` — the developer documentation
@@ -84,7 +84,7 @@ anything.
    `topic` (`services` / `fileformats` / `entities` / `ui` / `general`).
 8. **The response must not read as the whole tree.** It carries `curated: true`, the count of
    documents in the tree it was curated from, and `tree_url` pointing at the full listing. This is
-   the [an absent entry must be explainable](../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added)
+   the [an absent entry must be explainable](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added)
    obligation: an agent that reads a short list as the whole truth concludes rather than
    investigates.
 9. **Filterable** by `topic` and by a free-text `keyword` matched against title, description and
@@ -104,7 +104,7 @@ anything.
     [Affected specifications](#affected-specifications).
 13. Descriptions and keywords are **mpfb-mcp's own text**, not MPFB's — MPFB stores none. Both
     docstrings say so, per the
-    [derived-fact convention](../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact).
+    [derived-fact convention](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact).
 
 ### Candidate curated set
 
@@ -124,7 +124,7 @@ stopped being curation and requirement 7 should be revisited.
 
 **The description budget is the binding constraint on this effort.** The twenty existing tools
 measure 47,730 B against a ceiling of 48,500 — about 770 B of headroom, and
-[`MINIMUM_DESCRIPTION`](../../tests/test_description_budget.py) is 400 B per tool. Two new tools do
+[`MINIMUM_DESCRIPTION`](../../../tests/test_description_budget.py) is 400 B per tool. Two new tools do
 not fit, and cannot be made to fit by trimming them. The effort therefore **raises
 `DESCRIPTION_CEILING` deliberately**, records the reason in the test's own comment and in the
 commit message, and holds both descriptions to well under the current 2,387 B average: these two
@@ -150,7 +150,7 @@ chunk and one timer tick. `mpfb_list_docs` costs nothing at all.
 **Two tool modules, one payload.** `tools/list_urls.py` with
 `codegen/payloads/list_urls.py`; `tools/list_docs.py` with **no payload at all** — the first tool
 in the package that never generates code. That is a real exception to
-[CLAUDE.md](../../CLAUDE.md#the-twenty-tools)'s "tool module, payload and test module all share a
+[CLAUDE.md](../../../CLAUDE.md#the-twenty-two-tools)'s "tool module, payload and test module all share a
 name", and it should be stated there rather than left to be noticed.
 `tests/test_codegen.py`'s payload list is hand-maintained, so it simply does not gain an entry for
 `list_docs`; nothing breaks, but the omission needs a comment or the next reader will read it as a
@@ -162,12 +162,12 @@ mistake.
 the module is already in `sys.modules` and reading it re-executes nothing.
 
 This extends
-[Reading module-level names MPFB does not publish](../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish),
+[Reading module-level names MPFB does not publish](../../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish),
 which today says such a name is reached *through a service's module*. `weburls` is a **UI** module
 with no service behind it; the rule's three conditions still hold (through `sys.modules` rather
 than a fresh import, always with a fallback, never as a substitute for a service), but the spec as
 written does not cover the case and should. Note the difference from
-[`_modelsubpanels`](../../specifications/mpfb-integration.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not),
+[`_modelsubpanels`](../../../specifications/mpfb-integration.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not),
 which `mpfb_set_targets` deliberately does *not* read: that module builds a table at import time
 and would be a stale snapshot. `weburls` is thirteen string literals with no computation, so
 reading it has none of that problem — and saying why the two are treated differently is part of the
@@ -192,7 +192,7 @@ and answer from the vendored copy. Two pitfalls:
 `urls.py` and `docs.py`, each a plain module with `__init__.py`. Deliberately *not* under
 `codegen/payloads/` or a new data directory: these are imported by this package and never sent to
 Blender, which is the exact opposite of what a payload is, and the
-[package-data globs](../../pyproject.toml) are shallow and fussy enough that a real sub-package is
+[package-data globs](../../../pyproject.toml) are shallow and fussy enough that a real sub-package is
 the lower-risk choice.
 
 **`mpfb_list_docs` builds URLs from `path`, it does not store them.** One repo constant, one raw
@@ -202,25 +202,25 @@ entries.
 
 ## Affected specifications
 
-- [architecture.md](../../specifications/architecture.md) — extend
-  [Reading module-level names MPFB does not publish](../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish)
+- [architecture.md](../../../specifications/architecture.md) — extend
+  [Reading module-level names MPFB does not publish](../../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish)
   to cover a UI module with no service behind it, and why `weburls` qualifies where
   `_modelsubpanels` does not. Add the standing constraint that **mpfb-mcp opens no network
   connection except to the blender_mcp add-on**, and note that a tool may legitimately answer
   without crossing the socket at all.
-- [responses.md](../../specifications/responses.md) — a response that reports **which source
+- [responses.md](../../../specifications/responses.md) — a response that reports **which source
   answered it** when a tool has more than one; and the curated-list obligation (a deliberately
   partial answer must carry the size of what it was drawn from and the address of the whole).
-- [tool-interface.md](../../specifications/tool-interface.md) — the description budget section
+- [tool-interface.md](../../../specifications/tool-interface.md) — the description budget section
   gains the ceiling change and its reason.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md) — `weburls.py` is a concept MPFB's
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md) — `weburls.py` is a concept MPFB's
   UI has and its services do not, which is exactly what
-  [that section](../../specifications/mpfb-integration.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not)
+  [that section](../../../specifications/mpfb-integration.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not)
   is about; this is the second instance and the first one where reading the UI module is the right
   answer.
-- [vision.md](../../specifications/vision.md#target-tool-catalog) — the **Documentation** row moves
+- [vision.md](../../../specifications/vision.md#target-tool-catalog) — the **Documentation** row moves
   from "none yet" to two tools; the `mpfb_search_docs` bullet stays, narrowed to what remains.
-- [testing.md](../../specifications/testing.md) — a test that skips on the absence of a sibling
+- [testing.md](../../../specifications/testing.md) — a test that skips on the absence of a sibling
   checkout is a new kind here, and the reason it is worth having anyway.
 
 ## Tests
@@ -251,16 +251,52 @@ It runs during the effort and moves to `done/` with it; what stays behind is the
 
 ## References
 
-- [`mpfb2/src/mpfb/ui/weburls.py`](../../../mpfb2/src/mpfb/ui/weburls.py) — the thirteen constants,
+- [`mpfb2/src/mpfb/ui/weburls.py`](../../../../mpfb2/src/mpfb/ui/weburls.py) — the thirteen constants,
   and their docstring's reason for existing ("so that the same link does not have to be maintained
   in several panels"), which is the same reason this tool should read them rather than copy them.
 - [`mpfb2/docs/`](https://github.com/makehumancommunity/mpfb2/tree/master/docs) — 105 markdown
-  files; locally at [`../../../mpfb2/docs`](../../../mpfb2/docs).
-- [NEXT_STEPS: Getting URLs to documentation etc](../NEXT_STEPS.md#getting-urls-to-documentation-etc)
-  — the entry this request scopes.
-- [NEXT_STEPS: Finding, downloading and installing asset packs](../NEXT_STEPS.md#finding-downloading-and-installing-asset-packs)
+  files; locally at [`../../../mpfb2/docs`](../../../../mpfb2/docs).
+- NEXT_STEPS: *Getting URLs to documentation etc* — the entry this request scoped. It has since
+  moved to [HISTORY.md](../../HISTORY.md), so there is no section left in NEXT_STEPS.md to link.
+- [NEXT_STEPS: Finding, downloading and installing asset packs](../../NEXT_STEPS.md#finding-downloading-and-installing-asset-packs)
   — the dependent effort.
-- [vision.md: target tool catalog](../../specifications/vision.md#target-tool-catalog) — the
+- [vision.md: target tool catalog](../../../specifications/vision.md#target-tool-catalog) — the
   Documentation row and the `mpfb_search_docs` bullet this request deliberately does not close.
-- [FR 016](../done/016-trim-tool-descriptions/README.md) — what the description budget is, and what
+- [FR 016](../016-trim-tool-descriptions/README.md) — what the description budget is, and what
   was already taken out to make room.
+
+
+## Outcome
+
+**Done**, and verified two ways: [`check_weburls.py`](check_weburls.py) in this subdir (14 checks,
+all passing, against Blender 5.1.0 with MPFB 2.0.17), and one smoke item per tool in
+[verification/](../../../verification/) — 25 items, 0 failed, 0 skipped, 43.4 s. What landed and
+what it decided is in [HISTORY.md](../../HISTORY.md#fr-024--links-to-documentation-and-other-online-resources);
+the durable decisions are folded into the documents named under
+[Affected specifications](#affected-specifications). What follows is only where this request was
+**wrong**, since that is the part a reader of a finished request cannot get from the specs.
+
+- **Eleven `URL_*` constants, not thirteen.** The background section says thirteen; the installed
+  MPFB 2.0.17 publishes eleven, and so does the checkout. Harmless, because FR-2 enumerates by
+  prefix rather than from a list — which is precisely the property that made the miscount not
+  matter, and the reason to keep it that way.
+- **Nineteen candidate documents, not eighteen.** The candidate set under
+  [Candidate curated set](#candidate-curated-set) lists nineteen paths and calls it eighteen. All
+  nineteen were kept; the response computes `curated_document_count` rather than carrying a
+  written-down number, so again nothing depended on the arithmetic.
+- **"A few hundred bytes" was the wrong unit for the program.** True of the logic, false of the
+  program: at 6.8 KB assembled `list_urls.py` is dominated by its own docstring, as every payload
+  here is, and only two of the twenty-one fit in one 4 KB chunk at all. The cost claim that
+  actually mattered survived intact and is what the test asserts — the vendored table is **not**
+  in the program, because sending it in as `PARAMS` would have put ~3 KB on every call to compute
+  what a local function already computes.
+- **The "which is a per-tool item?" question under [Tests](#tests) resolved to "a per-tool item".**
+  `mpfb_list_docs` reaches no Blender, so there is nothing live for its item to establish — but
+  coverage is derived from the registry and the run-level set is closed at three, so a per-tool
+  item is what it gets, with the comment saying why.
+
+One thing the request did not anticipate and the implementation added: `check_weburls.py` provokes
+the fallback by pointing `BLENDER_MCP_PORT` at a **really refused socket** rather than by mocking
+`ConnectionError`. The Tests section scoped the live check to the `sys.modules` claim alone, but
+catching a transport failure and answering anyway is the one genuinely new mechanism here, and a
+mechanism only ever exercised through a mock has not been exercised.

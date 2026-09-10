@@ -29,8 +29,8 @@ def _shipped_without_source_indentation(mcp: FastMCP) -> None:
 
     ``Tool.from_function()`` takes ``fn.__doc__`` verbatim, so every line of
     every tool description would otherwise cross the wire carrying the eight
-    spaces it is indented by in the file: about 500 bytes per tool, 10 KB across
-    the twenty, of whitespace an MCP client downloads before any work happens.
+    spaces it is indented by in the file: about 500 bytes per tool, 11 KB across
+    the twenty-two, of whitespace an MCP client downloads before any work happens.
     ``inspect.cleandoc`` is what ``help()`` shows and what the docstrings are
     written to look like.
 
@@ -107,6 +107,15 @@ def build_server() -> FastMCP:
             "Changing a body's shape moves it out from under everything fitted "
             "to it, so finish a series of modeling changes with one call to "
             "mpfb_refit_human. "
+            "Neither of the two lookup tools acts on Blender at all: they hand "
+            "out addresses for the client to retrieve, and neither fetches "
+            "anything itself. mpfb_list_urls gives the community sites - where "
+            "to download MPFB, get asset packs, ask on the forum, file a bug - "
+            "and answers even when MPFB or Blender is unreachable, which is "
+            "when those links matter most. mpfb_list_docs gives MPFB's "
+            "developer documentation, one document per service and per file "
+            "format, for when a tool response does not say how MPFB actually "
+            "does something. Use them rather than composing a URL. "
             "Conventions every tool here shares, so that no single tool's "
             "description repeats them. Each returns blender_mcp's envelope: "
             "check `status` (\"ok\" or \"error\"), then read `result`. A tool "
@@ -130,8 +139,8 @@ def build_server() -> FastMCP:
     from mpfbmcp.tools import (
         add_asset, add_rig, create_human, generate_rigify_rig, get_macro_details,
         get_object_info, get_status, get_target_stack, list_asset_materials, list_assets,
-        list_objects, list_rigs, list_targets, refit_human, remove_asset, set_asset_material,
-        set_macro_details, set_skin, set_targets, symmetrize_targets)
+        list_docs, list_objects, list_rigs, list_targets, list_urls, refit_human, remove_asset,
+        set_asset_material, set_macro_details, set_skin, set_targets, symmetrize_targets)
     add_asset.register(mcp)
     add_rig.register(mcp)
     create_human.register(mcp)
@@ -142,9 +151,11 @@ def build_server() -> FastMCP:
     get_target_stack.register(mcp)
     list_asset_materials.register(mcp)
     list_assets.register(mcp)
+    list_docs.register(mcp)
     list_objects.register(mcp)
     list_rigs.register(mcp)
     list_targets.register(mcp)
+    list_urls.register(mcp)
     refit_human.register(mcp)
     remove_asset.register(mcp)
     set_asset_material.register(mcp)

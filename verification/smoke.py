@@ -123,6 +123,26 @@ def _get_status(run: _Run) -> dict:
     return run.tools["mpfb_get_status"]()
 
 
+@_item("mpfb_list_urls", "urls", "count", "source_of_truth", "mpfb_status",
+       "blender_reachable")
+def _list_urls(run: _Run) -> dict:
+    # Crosses the socket, but needs nothing of MPFB: it answers from a vendored
+    # copy when MPFB cannot be read. The one thing this item establishes that no
+    # stub can is that MPFB's `ui.weburls` really is in sys.modules on a working
+    # install - which is what `source_of_truth` says, and it is worth reading in
+    # the run's output rather than only asserting on.
+    return run.tools["mpfb_list_urls"]()
+
+
+@_item("mpfb_list_docs", "documents", "count", "curated", "tree_url", "known_topics")
+def _list_docs(run: _Run) -> dict:
+    # The only item that reaches no Blender at all: a local table with two URL
+    # constants over it. It is a per-tool item rather than a run-level one
+    # anyway, because coverage is derived from the registry and the run-level
+    # set is closed at three - not because there is anything live to check.
+    return run.tools["mpfb_list_docs"]()
+
+
 @_item("mpfb_list_targets", "sections")
 def _list_targets(run: _Run) -> dict:
     return run.tools["mpfb_list_targets"]()
@@ -471,7 +491,7 @@ def run() -> dict:
             print("    {}".format(error), file=sys.stderr, flush=True)
         return dict(failed=1, exit_code=2)
 
-    report = Report("mpfb-mcp smoke run - twenty tools, default arguments")
+    report = Report("mpfb-mcp smoke run - twenty-two tools, default arguments")
 
     install = fixtures.check_install(tools)
     if not report.check("MPFB is loaded and initialized", install["usable"], install["state"]

@@ -117,6 +117,47 @@ the asset's containing directory name against the asset names in the installed p
   lives only under the user data root, so an asset under another root cannot be attributed even when
   it did come from a pack. Both are cases to detect and report as `null`, not cases to guess at.
 
+## A response says which source answered it
+
+Most tools have one source: they ask MPFB, and the answer is MPFB's. Where a tool has **more than
+one** — a live read with a local fallback behind it — the caller is going to quote the answer to a
+user, and "MPFB says this URL" and "mpfb-mcp's copy of what MPFB said some months ago says this
+URL" are different claims. **A caller must never have to infer which one it got.**
+
+- **Name the source in a field of its own**, not by the presence or absence of some other field.
+  `source_of_truth` is `"mpfb"` or `"builtin_fallback"`; the reason for a degradation sits beside it
+  in `fallback_reason`, and is `null` when there was none.
+- **The live source wins every disagreement, in both directions.** A value it has changed is
+  reported as it now is; a key it no longer has is *not* resurrected from the copy. A fallback that
+  can override the source is not a fallback.
+- **Report the disagreement rather than only resolving it**, and say what kind it is. `changed`,
+  `added_by_mpfb` and `missing_from_mpfb` call for different repairs, and collapsing them into one
+  "stale" flag loses the part that says what to do.
+- **"They agree" and "we could not compare" are not the same answer**, so they are not spelled the
+  same way. When nothing live was read, the staleness fields are `null` — the
+  [`null` versus `[]` rule](#response-shape) applied to a comparison rather than a container.
+- **Degrading is not failing.** Every state the tool can be in is a successful envelope: this is
+  [absence is an answer](#response-shape) extended past MPFB's absence to the transport's. What it
+  must not swallow is a *defect* — a payload that raised inside Blender still surfaces as an error,
+  or the bug is hidden for good.
+
+## A deliberately partial answer carries the size of the whole
+
+[How tools bound a large answer](#how-tools-bound-a-large-answer) covers an answer capped because
+it did not fit. A **curated** one is the other case: it is short because somebody chose what goes
+in it, and the caller has no cap or `total_count` to notice that by. `mpfb_list_docs` returns
+nineteen of MPFB's 105 documentation files.
+
+The obligation is the same as
+[an absent entry must be explainable](tool-interface.md#how-tools-name-things-that-can-be-added),
+and it is discharged with three fields rather than a sentence in the docstring: a flag saying the
+answer is curated, the **size of the collection it was drawn from**, and the **address of the
+whole**. Nineteen of nineteen reads as complete; nineteen of 105, with a link, reads as a
+selection and sends a caller looking rather than concluding. All three are present on every
+answer, including the unfiltered one — which is the answer most likely to be mistaken for the
+whole — and including an empty one, where the temptation to report "nothing found" is strongest
+and most wrong.
+
 ## A tool may report a fact MPFB's own UI does not show
 
 Where a tool's answer can legitimately disagree with what the user sees in Blender, **the docstring

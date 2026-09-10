@@ -60,11 +60,13 @@ The tool is `src/mpfbmcp/tools/list_asset_materials.py` and its payload
 the cache dicts themselves, which are module-level in `assetservice.py`.
 
 **The docstring has a budget.** [FR 016](../done/016-trim-tool-descriptions/README.md) brought the
-twenty descriptions to 47,759 B against a 48,500 B ceiling asserted by
-`tests/test_description_budget.py`, so FR-3's rewrite has about 700 B of room. It should not need
-any: the paragraph it replaces is longer than "`refresh` rescans; it clears the cache for every
-asset, and `cache_invalidated` says so" is. The measured figure moved after FR 019's corrections;
-run `python3 tests/test_description_budget.py` for the current one rather than trusting the number
+descriptions to a third of their size, and `tests/test_description_budget.py` has capped them ever
+since; [FR 024](../done/024-documentation-urls/README.md) raised that ceiling to 52,200 B for two
+new tools, leaving the same paragraph of room it always leaves — 51,517 B across twenty-two tools.
+So FR-3's rewrite has about 700 B of headroom. It should not need any: the paragraph it replaces
+is longer than "`refresh` rescans; it clears the cache for every asset, and `cache_invalidated`
+says so" is. The measured figure has moved twice already; run
+`python3 tests/test_description_budget.py` for the current one rather than trusting the numbers
 above.
 
 **Pitfall: `exclude_default` is still dead.** The same function accepts and never reads it, which

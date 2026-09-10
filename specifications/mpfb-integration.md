@@ -201,3 +201,23 @@ address individual shape keys but could not express anything MPFB's own sliders 
 
 The general case — two MPFB *code paths* that disagree, rather than a UI concept the services lack —
 is [Where MPFB's own code paths disagree, mpfb-mcp picks one and names it](#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it).
+
+### Sometimes reading the UI module is the right answer
+
+The modifier case above ends in "never import the UI module", and that reads as a rule about UI
+modules. It is not — it is a rule about *snapshots*. `_modelsubpanels` builds its table when
+Blender starts, so anything built on it is blind to a target installed since, and mpfb-mcp
+reimplements the concept from `target.json` instead.
+
+`mpfb/ui/weburls.py` is the second instance of the same situation and comes out the other way. It
+is again a concept MPFB's UI has and its services do not — the community addresses, which MPFB
+gathers there "so that the same link does not have to be maintained in several panels" — but it
+holds eleven string literals and computes nothing. There is no snapshot in it, so `mpfb_list_urls`
+reads it out of `sys.modules` rather than keeping a second copy that MPFB's own edits would not
+reach. The mechanics and the two conditions that make a UI module readable are in
+[architecture.md](architecture.md#a-ui-module-with-no-service-behind-it).
+
+The distinction worth carrying: **reimplement a UI concept that is computed, read a UI table that
+is constant.** Both keep the rule the two cases actually share — MPFB's value is the authority,
+and a copy of it is a fallback that must say it is one
+([and say so in the response](responses.md#a-response-says-which-source-answered-it)).

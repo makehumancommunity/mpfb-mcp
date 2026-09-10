@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 
-An agent driving these twenty tools can build a character and change it, but it cannot **keep**
+An agent driving these twenty-two tools can build a character and change it, but it cannot **keep**
 one. Everything it assembles — phenotype, detail morphs, rig, garments, skin, eye materials, ink
 layers — exists only in the running `.blend`, and the agent has no way to put it somewhere it can
 be brought back from, nor to start from something a user built earlier by hand. A preset is MPFB's
@@ -369,7 +369,7 @@ differed, and moves to `done/` with the request. What stays behind is the three 
 - [`mpfb2/docs/fileformats/human_preset.md`](../../../mpfb2/docs/fileformats/human_preset.md) —
   what is actually in the JSON, key by key, including the asset-path-relative-to-any-asset-root
   convention the tools' responses must not mangle. This document is in
-  [FR 024](../024-documentation-urls/README.md)'s candidate curated set, partly for this effort.
+  [FR 024](../done/024-documentation-urls/README.md)'s candidate curated set, partly for this effort.
 - MPFB's own UI, which these tools collapse:
   [`savenewpresets.py`](../../../mpfb2/src/mpfb/ui/presets/humanpresets/operators/savenewpresets.py),
   [`overwritepresets.py`](../../../mpfb2/src/mpfb/ui/presets/humanpresets/operators/overwritepresets.py),

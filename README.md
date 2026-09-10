@@ -6,7 +6,7 @@ MPFB-related code.
 
 ## Status
 
-Proof of concept. Twenty tools are implemented.
+Proof of concept. Twenty-two tools are implemented.
 
 **Introspection** — read-only, and each of them always answers rather than failing:
 
@@ -22,6 +22,12 @@ Proof of concept. Twenty tools are implemented.
 - `mpfb_list_assets` — which clothes, body parts, proxies and skins are installed?
 - `mpfb_list_targets` — which modeling targets could be set?
 - `mpfb_list_asset_materials` — which other materials ship beside this equipped asset?
+
+**Documentation** — addresses to look something up, and neither of them fetches anything:
+
+- `mpfb_list_urls` — where to download MPFB, get asset packs, ask on the forum, file a bug.
+  Answers even when MPFB or Blender is unreachable, which is when those links matter most.
+- `mpfb_list_docs` — MPFB's developer documentation, one document per service and file format.
 
 **Creation and modification:**
 
@@ -39,9 +45,9 @@ Proof of concept. Twenty tools are implemented.
 generate a Rigify rig after them. The tools report the violation they can see rather than
 enforcing it.
 
-**All twenty have been run against a real Blender, and re-checking all twenty is one short
+**All twenty-two have been run against a real Blender, and re-checking all of them is one short
 command.** [verification/](verification/) is a smoke run — one call per tool with default
-arguments, measured at 42.6 s for the whole set — so confirming that nothing has stopped working
+arguments, measured at 43.4 s for the whole set — so confirming that nothing has stopped working
 is a command rather than a session. Each tool was also proved exhaustively once, by the effort
 that added it; see [HISTORY.md](feature-requests/HISTORY.md) for what each of those runs found.
 

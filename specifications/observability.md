@@ -16,7 +16,7 @@ The concrete environment variables and what they write are in
 Every tool assembles a program, hands it to `send_code()` and returns the envelope. That single
 function is therefore the only place diagnostics belong, and the rule is worth stating as a
 constraint rather than as a preference: **if observing a call requires editing a tool module, a
-payload or `codegen/`, the design is wrong.** Twenty tools crossing one function is what makes a
+payload or `codegen/`, the design is wrong.** Twenty-one tools crossing one function is what makes a
 per-call record a change in one file; it is also what stops "which tool called this" needing an
 extra argument, since the seam marker of
 [Code-generation layout](architecture.md#code-generation-layout) already names the payload.

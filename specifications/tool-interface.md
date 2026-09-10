@@ -16,8 +16,8 @@ something, including how it resolves its subject.
 ## A tool description is call-time instruction with a budget
 
 A tool's description is not documentation about the tool — it is the instruction the caller
-reasons from, and an MCP client downloads all twenty of them before any work happens. That makes
-it the one piece of prose in this repository with a **cost per session**, and it is measured:
+reasons from, and an MCP client downloads all twenty-two of them before any work happens. That
+makes it the one piece of prose in this repository with a **cost per session**, and it is measured:
 [FR 013](../feature-requests/done/013-live-verification/review.md#does-the-tool-surface-fit-its-consumer)
 found 66.7 KB of descriptions against an estimate of 58.5 KB, having grown unnoticed across five
 requests because nothing counted it. `tests/test_description_budget.py` counts it now, against a
@@ -39,14 +39,23 @@ ceiling, so the next drift is a failing test rather than a discovery.
   concept and not the key (`objects_removed`, `rig_object_name`, `asset_info.material_source`).
   A shorter description a caller has to guess against is worse than a long one.
 - **What every tool would otherwise repeat belongs in the server instructions**, which are sent
-  once rather than twenty times: the response envelope, the `name`/active-object subject
+  once rather than twenty-two times: the response envelope, the `name`/active-object subject
   convention, that a refusal is an answer carrying `found`, `ready` and `blocked_by`, the uniform
   `performed` flag, and that a capped listing always reports `truncated` and `total_count`. A
   tool then says only where it differs from the convention — which is the part worth reading.
+- **Raising the ceiling is a decision, and it is made in the commit that needs the space.** FR 024
+  raised it from 48,500 to 52,200 for two new tools: 740 B of headroom against a 400 B per-tool
+  floor cannot absorb two, and trimming twenty descriptions to pay for two would have spent the
+  effort's judgement on the wrong tools. What keeps that from being a licence is the *shape* of
+  what was added — both newcomers came in around 1,900 B against a 2,387 B average, because a
+  lookup tool instructs about a small static vocabulary and most of what its caller needs is
+  visible in the response itself. A description that arrives at the average is carrying rationale;
+  the ceiling moves by roughly what the new tools cost, and the paragraph of headroom stays a
+  paragraph.
 - **The docstring crosses the wire verbatim**, indentation included: FastMCP takes `fn.__doc__`
   as it is written. `mpfbmcp.build_server()` dedents every description once, after registration,
-  because eight spaces per line across twenty tools is ten kilobytes of whitespace an agent pays
-  for and nobody reads.
+  because eight spaces per line across twenty-two tools is eleven kilobytes of whitespace an agent
+  pays for and nobody reads.
 
 ## Validate before crossing the socket
 

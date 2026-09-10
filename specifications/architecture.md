@@ -100,6 +100,43 @@ nothing beyond it; anything that depends on what MPFB actually does is checked a
 Blender by a separate, re-runnable harness. That split, and the discipline it imposes on both
 halves, is [testing.md](testing.md).
 
+## mpfb-mcp opens no network connection except the one to the add-on
+
+The socket to the blender_mcp add-on is the only connection this package makes. It fetches no
+URL, resolves no host, and consults no remote service — not to check a version, not to retrieve a
+document, not to validate a link.
+
+This became a decision rather than an accident when FR 024 added two tools whose entire subject is
+addresses. **A tool may hand out a URL; it may not retrieve one.** Retrieving is the MCP client's
+job, and the client is where the capability, the credentials and the user's consent already live.
+Three things follow:
+
+- **A tool that returns addresses returns them as data**, with enough beside each one — a title, a
+  sentence, keywords — that a caller can choose without fetching to find out.
+- **Vendored reference data is checked against a local source or not at all.** `reference/urls.py`
+  is a copy of a file in the mpfb2 repository and `reference/docs.py` names paths in it; both drift,
+  and neither may be validated by asking the network. What checks them is a test that reads a
+  sibling checkout when there is one — see
+  [testing.md](testing.md#a-test-may-depend-on-a-sibling-checkout-if-it-skips-without-one).
+- **A degraded answer is still an answer.** A links tool that fails when its source is unreachable
+  is useless in the one situation where the download link is what was wanted, so the fallback is
+  part of the design rather than an error path.
+
+**And a tool need not cross the socket at all.** `mpfb_list_docs` is a local table with a URL rule
+over it: no payload, no generated code, no Blender, no MPFB. That is a legitimate shape for a tool
+here and not a sign that something belongs elsewhere — the test is whether an agent driving MPFB
+needs the answer, not whether the answer comes from Blender. It is the one tool for which the
+`tools/<name>.py` / `payloads/<name>.py` / `tests/test_<name>.py` naming rule does not hold, and
+the omission is stated where the payload list is kept rather than left to be read as a gap.
+
+`mpfb_list_urls` sits between the two: it crosses the socket when it can, and answers from the
+vendored copy when it cannot. It is the only tool that catches `ConnectionError` from
+`send_code()` — see
+[a tool may answer from more than one source](responses.md#a-response-says-which-source-answered-it)
+for what that obliges it to report, and note that the catch belongs in the tool module. The other
+twenty-one depend on a connection failure being an error envelope, and this is one tool's
+exception rather than a change to the wire layer.
+
 ## Supporting a second backend
 
 There are two unrelated projects called "blender mcp", and supporting both as backends is a goal
@@ -210,6 +247,33 @@ read. These are reachable, under three rules:
   may rename them without notice. Read them with `getattr(module, name, default)` and degrade —
   a stale local copy of the type vocabulary is a better answer than a failed call.
 - **Never as a substitute for a service.** If what is wanted is in `SERVICES`, take it from there.
+
+#### A UI module with no service behind it
+
+The three rules above are written around a *service's* module, because that is where every such
+name lived until FR 024. `mpfb/ui/weburls.py` is not one: it is a UI module holding eleven string
+constants, with no service on it and nothing in `SERVICES` that would drag it in. The rules still
+apply, and the first of them is reached differently — `sys.modules.get("<root>.ui.weburls")`,
+where the root comes from the module scan the bootstrap already did. **Not
+`importlib.import_module`**: MPFB imports its UI during `register()`, so on an initialized install
+the module is already there and reading it re-executes nothing, while importing it would run MPFB
+code inside an install that may be exactly as broken as the tool was called to report on. A miss
+is therefore an ordinary answer carrying a reason, not a case to fix by importing.
+
+**Two conditions make a UI module readable, and `weburls` is the only one so far that meets
+both.** It must be reachable without importing it — which means MPFB must already import it on a
+normal install, a claim a stub cannot make and
+[a live check has to](testing.md#what-the-suite-can-never-establish); FR 024's found it loaded
+along with 308 other UI modules. And it must hold **data rather than a snapshot**: eleven string
+literals with no computation at import time, so there is nothing in it that can be stale.
+
+That second condition is what separates it from `ui/model/_modelsubpanels.py`, which
+`mpfb_set_targets` deliberately does *not* read
+([why](mpfb-integration.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not)):
+that module builds its table when Blender starts, so a tool reading it would be blind to a target
+installed since. Reading a UI module is not a general licence — it is available where the module
+is a constant table, and the fallback the second rule already required is what makes being wrong
+about that survivable.
 
 ### Generated code may keep its own source inside Blender
 

@@ -40,14 +40,14 @@ lifecycle that on completion folds durable decisions into `specifications/`, mov
 
 ## Project status
 
-Proof of concept. **Twenty tools are implemented, and all twenty have been run against a real
-Blender.** [README.md](README.md) lists them by purpose;
+Proof of concept. **Twenty-two tools are implemented, and all twenty-two have been run against a
+real Blender.** [README.md](README.md) lists them by purpose;
 [HISTORY.md](feature-requests/HISTORY.md) tells the story of each effort, including what the live
 run found; [vision.md](specifications/vision.md#target-tool-catalog) says what is planned beyond
 them; [NEXT_STEPS.md](feature-requests/NEXT_STEPS.md) is the active queue.
 
 The live verification is a **smoke run**: one call per tool with default arguments, one command,
-42.6 s for all twenty. It lives in [verification/](verification/) — see
+43.4 s for all twenty-two. It lives in [verification/](verification/) — see
 [verification/README.md](verification/README.md). An *exhaustive* live check belongs to the
 feature request that needs it, in that request's own subdir, and moves to `done/` with it.
 
@@ -157,19 +157,25 @@ map, and carries only what is not stated there or in its sibling specifications.
 | [codegen/bootstrap.py](src/mpfbmcp/codegen/bootstrap.py) | The only shared part still written as a string. `_MPFB_MODULE_SCAN` is the `sys.modules` scan that finds MPFB whatever extension repo it was installed from; `MPFB_BOOTSTRAP` raises unless MPFB is fully initialized, `MPFB_STATUS_BOOTSTRAP` never raises and classifies the install instead. Reuse one of the two for any new tool; **never resolve a service by importing an MPFB submodule.** ([rationale](specifications/architecture.md#resolving-mpfb-from-generated-code)) |
 | [codegen/payloads/](src/mpfbmcp/codegen/payloads) | One ordinary `.py` per tool, named for its tool module. Not modules of this package, never imported here, read as package resources — the directory has no `__init__.py` and `pyproject.toml` declares them as package data *and* sets `namespaces = false`. Each payload's docstring names the assembler-bound names it relies on, since a linter flags those as undefined. ([rationale](specifications/architecture.md#code-generation-layout)) |
 | [codegen/shared/](src/mpfbmcp/codegen/shared) | **Six fragments**, for concepts two or more payloads model identically: `target_categories.py` (MPFB's modeling-category table, used by `list_targets` and the three detail-target tools), `rig_lookup.py` (which rig file and whose weights, used by `list_rigs` and `add_rig`), `asset_sections.py` (MPFB's `ASSET_LIBRARY_SECTIONS` table, used by the asset and material tools), `performed.py` (the uniform `performed` flag, named by all eleven mutating tools and the only fragment that binds nothing from the bootstrap), `modifier_reading.py` (what one modeling category's slider reads, used by `get_target_stack` and `symmetrize_targets`), `refit_blocker.py` (whether a refit would silently leave the rig behind, used by all four refitting tools, which each phrase the message themselves). A *sibling* of `payloads/` with a package-data glob of its own, because such a glob does not descend. ([rationale](specifications/architecture.md#shared-fragments)) |
+| [reference/](src/mpfbmcp/reference) | The two vendored tables the lookup tools hand out: `urls.py` (a copy of MPFB's `ui/weburls.py`, plus this package's own ecosystem links and the prose for both) and `docs.py` (nineteen curated paths into mpfb2's `docs/` tree, with the rule that builds two URLs from each). An ordinary sub-package, **not** package data: these are imported here and never sent to Blender, the exact opposite of a payload. Both drift and neither can be checked without the network, so `tests/test_reference_drift.py` checks them against a sibling `../mpfb2` and skips without one. ([rationale](specifications/architecture.md#mpfb-mcp-opens-no-network-connection-except-the-one-to-the-add-on)) |
 | [tools/](src/mpfbmcp/tools) | One module per MCP tool, each with `register(mcp)`. See the tool table below. ([rationale](specifications/architecture.md#one-module-per-tool)) |
 | [__init__.py](src/mpfbmcp/__init__.py) | `build_server()`: builds the `FastMCP` server, calls each tool module's `register()`, and dedents every description once (FastMCP sends `fn.__doc__` verbatim). `main()` runs it over stdio. |
 
 **Adding a tool touches exactly three things**: a module in `tools/`, a payload in
 `codegen/payloads/`, and one `register()` call in `__init__.py`. No shared code-generation module
 is edited — a tool that wants a fragment names it in the `assemble()` call it was already making.
-If a change to shared code is needed to add an ordinary tool, the layout has drifted.
+If a change to shared code is needed to add an ordinary tool, the layout has drifted. A tool that
+answers without Blender at all touches two of the three: `mpfb_list_docs` has no payload.
 
-### The twenty tools
+### The twenty-two tools
 
 Tool module, payload and test module all share a name: `mpfb_set_skin` is
-`tools/set_skin.py`, `codegen/payloads/set_skin.py` and `tests/test_set_skin.py`. **The module
-docstring is where the reasoning lives**; the line below is only enough to find the right one.
+`tools/set_skin.py`, `codegen/payloads/set_skin.py` and `tests/test_set_skin.py`. **One
+exception**: `mpfb_list_docs` has no payload, because it never generates code and never crosses
+the socket — so there are twenty-one payloads for twenty-two tools, and `tests/test_codegen.py`'s
+hand-maintained payload list says so where the gap would otherwise read as an oversight. **The
+module docstring is where the reasoning lives**; the line below is only enough to find the right
+one.
 
 | Tool | The distinctive thing about it |
 |------|-------------------------------|
@@ -192,6 +198,8 @@ docstring is where the reasoning lives**; the line below is only enough to find 
 | `mpfb_add_asset` | Equips an MHCLO asset. Takes the catalogue's `path` *or* its `fragment`, exactly one, and always reports which file it landed on. `asset_type` is **required**: MPFB's `"Clothes"` default is wrong for six of the eight types and mislabels a body part silently. |
 | `mpfb_remove_asset` | Takes it off properly — deleting the object would leave the body's mask modifier and the garment's sub-rig behind. |
 | `mpfb_set_skin` | Five material models. Follows **MPFB's settings panel rather than the function signature**: `skin_type` defaults to `MAKESKIN`, and `material_instances` is coerced off for three types — so the *default call creates no material instances*. Reports requested beside used. |
+| `mpfb_list_urls` | The community addresses, read out of MPFB's `ui/weburls.py` by prefix. The only tool that **catches a connection failure and answers anyway** — from a vendored copy, saying so — because the download link is the answer precisely when nothing is running. |
+| `mpfb_list_docs` | Addresses for mpfb2's `docs/` tree, which the extension does not ship. The only tool with **no payload**: a local table and a URL rule, no socket, no Blender, no MPFB. |
 | `mpfb_set_asset_material` | Has **no service function to wrap at all**; the mechanism exists only in a UI operator, reimplemented from services with three of its quirks reproduced rather than tidied up. |
 
 ### What is validated on this side of the socket
@@ -222,7 +230,7 @@ These are the specific local checks, and each exists because the alternative fai
 
 ## Tests
 
-Stdlib `unittest`, no pytest, 747 tests. Two layers per tool: the wrapper with `send_code`
+Stdlib `unittest`, no pytest, 799 tests. Two layers per tool: the wrapper with `send_code`
 mocked, then the assembled source `exec()`'d against stub Blender and stub MPFB services.
 **Read [specifications/testing.md](specifications/testing.md) before adding or changing a
 test** — in particular the rule that stubs reproduce MPFB's real behaviour rather than
@@ -248,6 +256,9 @@ convenient values, and the list of what the suite can never establish.
 | [test_add_rig.py](tests/test_add_rig.py), [test_generate_rigify_rig.py](tests/test_generate_rigify_rig.py) | `RigTestCase`, shared with `test_list_rigs` so one test can assert the catalogue's weights prediction equals the adder's outcome — which means nothing unless it is the same disk. |
 | [test_add_asset.py](tests/test_add_asset.py), [test_remove_asset.py](tests/test_remove_asset.py) | `MeshAssetTestCase`: a real asset library plus a stub character. Two roots hold the same `fedora.mhclo`, so the basename ambiguity is under test. Removal equips through `add_asset`'s own payload. |
 | [test_set_skin.py](tests/test_set_skin.py), [test_set_asset_material.py](tests/test_set_asset_material.py), [test_list_asset_materials.py](tests/test_list_asset_materials.py) | The same fixture plus a skins root and a real MPFB data directory. `material_slots` is derived from `data.materials` the way Blender derives it, so the two material paths cannot look alike. |
+| [test_list_urls.py](tests/test_list_urls.py) | The four states that must all be successful answers — live, MPFB absent, MPFB present without its `weburls`, Blender unreachable — and the one that must not be: a payload that raised. The payload runs against a stub `sys.modules` carrying a fake `ui.weburls`, with an extra constant and a missing one, so enumerate-by-prefix and the staleness report are tested rather than assumed. |
+| [test_list_docs.py](tests/test_list_docs.py) | Entirely local, and the only tool module with no second layer: URL construction from `path`, both filters, and that `curated`/`tree_document_count`/`tree_url` are on every answer including the empty one. |
+| [test_reference_drift.py](tests/test_reference_drift.py) | The two vendored tables against a sibling `../mpfb2` checkout, `skipUnless` it exists. Parses `weburls.py` with `ast` rather than importing another repository's module, and asserts the parse found something so that "no differences" cannot pass vacuously. ([why a skipping test is worth having](specifications/testing.md#a-test-may-depend-on-a-sibling-checkout-if-it-skips-without-one)) |
 | [test_verification_smoke.py](tests/test_verification_smoke.py) | The one test that reaches outside `src/`: `verification/smoke.py`'s item table, imported by path, must have exactly one entry per registered tool and name no key the tool's own description does not. A coverage rule that only fires with a Blender running is one that fires late. |
 
 Anything needing real MPFB is verified against a running Blender, and a feature request is

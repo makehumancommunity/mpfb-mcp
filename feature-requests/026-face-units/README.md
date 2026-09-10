@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 
-A character these twenty tools build has a face that cannot do anything. It has a phenotype, detail
+A character these twenty-two tools build has a face that cannot do anything. It has a phenotype, detail
 morphs, a rig, garments and a skin — and one fixed, neutral expression, because the `!ex-` shape
 keys that drive an ARKit face are the one part of MPFB's modelling surface no tool reaches.
 `mpfb_get_target_stack` can already *see* them, behind an `include_expressions` flag, and nothing

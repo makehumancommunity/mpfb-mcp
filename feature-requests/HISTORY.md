@@ -1291,3 +1291,85 @@ difference is not survival of anything exhaustive: the leak compare needs ~130 l
 Blender source that no trimming touches, and twenty item definitions cost about seven lines each. It also now changes
 **nothing outside the `.blend`** — FR 013's three deliberate exceptions all left with the
 checklists that needed them.
+
+## [FR 024](done/024-documentation-urls/README.md) — links to documentation and other online resources
+
+The first entry in the one capability area [vision.md](../specifications/vision.md#target-tool-catalog)
+had nothing in: an agent could ask what was installed and what a character was made of, but could
+not look anything *up*, and the failure mode was not an error but a guessed URL presented as fact.
+Deliberately the small half of that area. `mpfb_list_urls` reports the community addresses —
+downloads, asset packs, documentation, forum, issue tracker — read live out of MPFB's
+`ui/weburls.py`; `mpfb_list_docs` reports addresses for the nineteen most useful of the 105
+developer documents in the mpfb2 repository, which the extension does not ship. The ranked search
+over documentation content that vision.md calls `mpfb_search_docs` stays a separate, later effort,
+now narrowed to the half an address cannot do.
+
+**Two tools, two shapes neither of which existed here before.** `mpfb_list_urls` is the only tool
+that **catches a connection failure and answers anyway**: a links tool that fails when MPFB is
+missing is useless in the one situation where the download link is what was wanted, so all four
+states — live, MPFB absent, MPFB loaded without its `weburls`, Blender unreachable — are successful
+envelopes naming what degraded. Two things about that catch are load-bearing and are recorded as
+such: it catches `ConnectionError` only, so a payload that raised *inside* Blender still surfaces
+as an error rather than being hidden behind a cheerful fallback forever; and it lives in the tool
+module, because the other twenty-one tools depend on a connection failure being an error and this
+is one tool's exception rather than a change to the wire layer. `mpfb_list_docs` is the first tool
+here with **no payload at all** — a local table and a URL rule, no generated code, no socket, no
+Blender, no MPFB — which is a real exception to the module/payload/test naming rule and is now
+stated where the payload list is kept rather than left to read as an oversight.
+
+**Reading a UI module became a rule rather than a one-off.** `weburls` is reached through
+`sys.modules`, never imported, and
+[architecture.md](../specifications/architecture.md#a-ui-module-with-no-service-behind-it) now says
+what makes that legitimate: the module must already be imported on a normal install, and it must
+hold **data rather than a snapshot**. That second condition is exactly what separates it from
+`_modelsubpanels`, which `mpfb_set_targets` deliberately reimplements instead — so
+[mpfb-integration.md](../specifications/mpfb-integration.md#sometimes-reading-the-ui-module-is-the-right-answer)
+now carries both instances and the distinction between them: *reimplement a UI concept that is
+computed, read a UI table that is constant.*
+
+**A standing constraint was settled rather than left implicit**: mpfb-mcp opens no network
+connection except the one to the blender_mcp add-on. A tool may hand out a URL; it may not
+retrieve one. That is what makes the vendored tables in the new `src/mpfbmcp/reference/`
+sub-package uncheckable at run time, which in turn produced
+[the first test that depends on a sibling checkout](../specifications/testing.md#a-test-may-depend-on-a-sibling-checkout-if-it-skips-without-one)
+and skips without one — accepted with its cost stated, since the alternatives are breaking the
+suite everywhere else or letting a renamed document be found by whoever follows the dead link.
+
+Two response conventions came out of it.
+[A response says which source answered it](../specifications/responses.md#a-response-says-which-source-answered-it):
+where a tool has a live source and a local fallback, `source_of_truth` names which one it got, the
+live value wins every disagreement in **both** directions, the disagreement is reported by kind
+rather than as one "stale" bit, and "they agree" is not spelled the same way as "we could not
+compare" — the `null`-versus-`[]` rule applied to a comparison. And
+[a deliberately partial answer carries the size of the whole](../specifications/responses.md#a-deliberately-partial-answer-carries-the-size-of-the-whole):
+a *curated* list has no cap and no `total_count` to warn a caller with, so it carries `curated`,
+the size of the collection it was drawn from and the address of the whole — nineteen of nineteen
+reads as complete, nineteen of 105 with a link reads as a selection.
+
+**The description ceiling was raised deliberately, from 48,500 to 52,200**, with the reason in the
+test's own comment and in
+[tool-interface.md](../specifications/tool-interface.md#a-tool-description-is-call-time-instruction-with-a-budget):
+740 B of headroom against a 400 B per-tool floor cannot absorb two tools, and trimming twenty
+descriptions to pay for two would have spent the effort's judgement on the wrong tools. Both
+newcomers came in around 1,900 B against a 2,387 B average, and the paragraph of headroom is still
+a paragraph.
+
+**The live check found the request's own arithmetic wrong twice, in the harmless direction.** MPFB
+publishes **eleven** `URL_*` constants, not the thirteen the request said, and the candidate
+document set is **nineteen**, not the eighteen it counted — neither of which matters, because the
+constants are enumerated by prefix rather than by a list kept here and the curated count is
+computed rather than written down. The request's cost estimate was wrong in a more interesting
+way: it predicted "a few hundred bytes" for the program, which is true of the logic and false of
+the program, since the payload's docstring dominates it as it dominates every payload here. At
+6.8 KB assembled it is the third-smallest of twenty-one, and what the test asserts is the decision
+that actually mattered — the vendored table is **not** in the program, because the alternative
+design would have put ~3 KB on every call to compute what a local function already computes.
+
+Verified two ways. The effort's own
+[`check_weburls.py`](done/024-documentation-urls/check_weburls.py) established the one claim no
+stub can — `<root>.ui.weburls` really is in `sys.modules` on a working install, alongside 308
+other UI modules, with the vendored copy matching the installed extension exactly — and provoked
+the fallback with a **really refused socket** rather than a mocked exception, which is the whole
+novel mechanism end to end. Both tools then gained a smoke item: 25 items, 0 failed, 0 skipped,
+43.4 s, against Blender 5.1.0 and MPFB 2.0.17 at blender_mcp's slow 0.25 s tick. The unit suite
+went from 747 tests to 799.

@@ -66,21 +66,20 @@ in the user config dir. The latter is loaded in an operator in the rigging ui hi
 
 Both types should be supported, probably with different tool calls. 
 
-## Getting URLs to documentation etc
-
-**Scoped as [FR 024](024-documentation-urls/README.md) (Accepted).**
-
-There should be a tool call for getting links to relevant online resources. Most of these urls
-are defined as constants, which can be found via the "start_here" UI module in MPFB. (They live
-in `src/mpfb/ui/weburls.py`; the `start_here` panel only consumes them.)
-
 ## Finding, downloading and installing asset packs
 
-The URL to the asset packs page should be possible to find as per the "Getting URLs" section,
-which is scoped as [FR 024](024-documentation-urls/README.md).
+**The URL is no longer the open question.** `mpfb_list_urls` reports `URL_ASSET_PACKS` (and
+`URL_SYSTEM_ASSETS`), read live out of MPFB's own constants — see
+[FR 024](done/024-documentation-urls/README.md), which landed for exactly this dependency.
 
-Need to have an effective solution for downloading and installing the packs too. There is an
-operator for loading a pack from zip in mpfb which can be used as inspiration.
+What remains is the downloading and installing, and FR 024 changed its shape rather than only
+unblocking it: **mpfb-mcp opens no network connection except the one to the blender_mcp add-on**
+is now a [standing constraint](../specifications/architecture.md#mpfb-mcp-opens-no-network-connection-except-the-one-to-the-add-on).
+So this effort cannot simply fetch a pack. Either the retrieval happens on the *Blender* side, in
+generated code, which is a different thing from mpfb-mcp opening a socket and needs to be argued
+explicitly rather than assumed; or the client is handed the address and the tool installs what the
+user has already downloaded. There is an operator for loading a pack from zip in MPFB which can be
+used as inspiration for the second half either way.
 
 ## Exporting characters
 
