@@ -17,12 +17,47 @@ is a core functionality of MPFB.
 
 The MHM path can be left alone for now, it's only relevant in legacy MakeHuman pipelines.
 
-## Expressions 
+## Expressions
+
+**Scoped as two requests, in this order: [FR 026](026-face-units/README.md) (Accepted) for the
+face-unit layer, then [FR 027](027-expression-library/README.md) (Accepted) for the saved-expression
+library and the stack that applies it. FR 027 extends FR 026's tools; see
+[the dependency](027-expression-library/README.md#the-dependency-and-what-happens-if-the-order-reverses).**
 
 These are the `!ex-` prefixed shape keys. They depend on particular asset packs being installed.
 Expressions should be a mix of functionality from the `src/mpfb/ui/create_assets/makeexpression`
 and `src/mpfb/ui/apply_assets/useexpression` UI code hierarchies in MPFB. TargetService has
 some functionality for working with expressions.
+
+## Saving expressions
+
+Queued behind [FR 027](027-expression-library/README.md), which reads and applies expressions but
+writes none. An `mpfb_save_expression` would close the gap named in
+[FR 026](026-face-units/README.md#a-composed-face-is-transient): a face composed from ARKit units
+survives nothing today — not a preset save (a preset serializes the applied-expressions *stack*, and
+a composed face has no stack rows), and not the next library call, which clears every `!ex-` key
+before rebuilding.
+
+`FaceService.save_expression` already exists and already does the filtering, rounding and metadata
+defaulting. The tool should follow [FR 025](025-character-presets/README.md)'s name-not-a-path
+convention and its `overwrite: False` default, writing to
+`LocationService.get_user_data("expressions")`. It comes after FR 027 because what it writes is read
+back through the library.
+
+## Visemes and lip sync
+
+The rest of `FaceService`, deliberately excluded from both expression requests (see
+[Not visemes](026-face-units/README.md#not-visemes)): `MICROSOFT_VISEMES` and `META_VISEMES`,
+`load_targets`, `interpolate_targets` and `configure_lip_sync`.
+
+This is speech animation rather than expression — a different vocabulary, different asset packs
+(`visemes01` / `visemes02`), and a different propagation mechanism: `interpolate_targets` transfers
+shape keys to child meshes through MHCLO vertex correspondence, which is not what a refit does. Note
+that it matches shape keys by **bare** name, so it has never propagated the `!ex-` prefixed
+expression keys.
+
+`configure_lip_sync` additionally depends on the third-party `lip-sync` addon, maintained outside
+the MakeHuman ecosystem, which is a dependency no tool in this package has yet.
 
 ## Loading poses
 
