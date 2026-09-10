@@ -1,6 +1,6 @@
 # File the confirmed MPFB defects against ../mpfb2
 
-**Status:** Proposed
+**Status:** Accepted
 
 Five requests ended by naming things in MPFB that looked like defects, all read from source and
 none observed. [FR 013](../done/013-live-verification/README.md)'s live session provoked each one
@@ -10,8 +10,22 @@ Four of the seven were confirmed, two refuted outright, and one turned out worse
 described. A sixth was found by accident, and it is the most serious of the set.
 
 Nothing has been filed. That is what this request is for, and it is deliberately separate: filing
-an issue against somebody else's project is a communication task, not a code change, and folding it
+a defect against somebody else's project is a communication task, not a code change, and folding it
 into the effort that found the evidence would have made both worse.
+
+**What "filing" means here.** Not an issue in a tracker: it means writing a summary of the
+confirmed defects to
+[../mpfb2/features/MCP_DISCOVERED_BUGS.md](../../../mpfb2/features/MCP_DISCOVERED_BUGS.md), one
+section per defect, in the directory where that project already keeps its own investigations. That
+is the whole deliverable — a document handed to MPFB's own effort, not a promise from it.
+
+**Filing is not fixing, and this repository should not plan as if it were.** MPFB has its own
+priorities and none of these defects is owed a fix on any particular timescale; several may stand
+for a long time, and one of them may be judged rare enough not to be worth the change. So **every
+workaround mpfb-mcp carries for these defects stays exactly where it is**, and a section appearing
+in `MCP_DISCOVERED_BUGS.md` is not a reason to remove one. A workaround goes when a *running* MPFB
+no longer needs it — which is precisely what `verification/check_mpfb_issues.py` is built to
+detect, by failing the day a defect is gone.
 
 **The one to file first**: a user target whose filename is over 56 characters **prevents MPFB from
 loading at all**. `ui/model/_modelsubpanels.py` registers each synthesized modeling category as a
@@ -24,8 +38,8 @@ all.
 
 ## Goals
 
-**Primary: file the five confirmed defects**, each with a reproduction that runs rather than a
-description that has to be believed.
+**Primary: file the five confirmed defects** in `MCP_DISCOVERED_BUGS.md`, each with a
+reproduction that runs rather than a description that has to be believed.
 
 **Secondary: correct this repository where a refuted candidate is still cited as a reason.** Two of
 the seven were wrong, and a decision whose stated reason is wrong is harder to revisit than one
@@ -33,7 +47,9 @@ that never gave a reason.
 
 ## Functional requirements
 
-- **FR-1.** File, against [../mpfb2](../../../mpfb2), the five confirmed:
+- **FR-1.** Write, to
+  [../mpfb2/features/MCP_DISCOVERED_BUGS.md](../../../mpfb2/features/MCP_DISCOVERED_BUGS.md), one
+  section for each of the five confirmed:
   1. **A long-named user target prevents registration.** The one above. Severity is the argument:
      it disables the add-on, and the trigger is a file the user put in a directory MPFB told them
      to use.
@@ -48,14 +64,16 @@ that never gave a reason.
   4. **`unload_mhclo_asset()` deletes whatever object it is handed**, without checking it is a mesh
      asset. Confirmed against an ordinary cube.
   5. **`alternative_materials_for_asset()`'s `exclude_default` is accepted and never read.**
-- **FR-2.** File, or decide not to, the two secondary observations: that
+- **FR-2.** File in the same document, or decide not to, the two secondary observations: that
   `ObjectService.object_is_rigify_metarig()` reads `blender_object.pose.bones` without checking and
   raises for an armature whose `pose` is `None`; and that MPFB's proxy library operator
   reimplements `_check_add_proxy()` rather than calling it — a duplication that agrees today.
-- **FR-3.** Each filed issue links or attaches the reproduction from
-  `verification/check_mpfb_issues.py`, so it can be re-run against a future MPFB rather than
-  re-argued.
-- **FR-4.** The two refuted candidates are corrected wherever this repository still cites them:
+- **FR-3.** Each section names the reproduction in `verification/check_mpfb_issues.py` that
+  provokes it, so it can be re-run against a future MPFB rather than re-argued.
+- **FR-4.** **No workaround, coercion or defensive check in this repository is removed by this
+  effort.** Filing changes nothing about what MPFB does today, and the tools go on coping with
+  every one of these defects exactly as they do now.
+- **FR-5.** The two refuted candidates are corrected wherever this repository still cites them:
   `RigService.identify_rig()` **cannot** return `None`, and the alternative-material cache **does**
   have an invalidator. Both have already been corrected in the verification records; check the
   payload docstrings and [specifications/](../../specifications/) too.
@@ -63,16 +81,22 @@ that never gave a reason.
 ## Non-functional requirements
 
 **A defect report is a claim about someone else's code and should be no stronger than the
-evidence.** Two of seven were wrong. Each report says what was observed, on what version, and what
-was inferred.
+evidence.** Two of seven were wrong. Each section says what was observed, on what version, and
+what was inferred.
+
+**The document is written for a reader who did not run the session.** `MCP_DISCOVERED_BUGS.md`
+lands in a repository whose developers have no access to this one's verification records, so each
+section stands on its own: the symptom, the code path, what was observed, and what a fix would have
+to change.
 
 **Reproductions, not descriptions.** The script exists; use it.
 
 ## Architecture
 
-No code change in this repository beyond FR-4's corrections. `verification/check_mpfb_issues.py`
+No code change in this repository beyond FR-5's corrections. `verification/check_mpfb_issues.py`
 is the artifact; it runs against the install it is pointed at and prints one line per defect with
-the observed value.
+the observed value. Outside this repository the effort writes a single Markdown file,
+`../mpfb2/features/MCP_DISCOVERED_BUGS.md`, and nothing else.
 
 **Note on the first one and this repository's own conduct.** The harness caused that outage on a
 user's install. `verification/fixtures.py` now carries `SAFE_AT_STARTUP` and the long probe target
@@ -84,7 +108,9 @@ MPFB data directory should be held to the same rule.
 - **[specifications/mpfb-integration.md](../../specifications/mpfb-integration.md)** —
   [Where MPFB's own code paths disagree](../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
   already carries FR 013's correction that a candidate defect must be confirmed before it is filed.
-  Expect no further change unless FR-4 finds a stale citation.
+  It gains one sentence naming where a confirmed defect is written down — and saying that writing
+  it down there neither removes the workaround nor changes what a tool does, since MPFB may not fix
+  it for a long time. Expect no further change unless FR-5 finds a stale citation.
 
 ## Tests
 
