@@ -46,9 +46,10 @@ Blender.** [README.md](README.md) lists them by purpose;
 run found; [vision.md](specifications/vision.md#target-tool-catalog) says what is planned beyond
 them; [NEXT_STEPS.md](feature-requests/NEXT_STEPS.md) is the active queue.
 
-The live verification is no longer a manual session. It lives in [verification/](verification/) as
-one script per checklist, and re-running a whole checklist after a fix is one command — see
-[verification/README.md](verification/README.md).
+The live verification is a **smoke run**: one call per tool with default arguments, one command,
+42.6 s for all twenty. It lives in [verification/](verification/) — see
+[verification/README.md](verification/README.md). An *exhaustive* live check belongs to the
+feature request that needs it, in that request's own subdir, and moves to `done/` with it.
 
 ## Version control
 
@@ -88,8 +89,8 @@ against. Check whether blender_mcp has migrated before bumping this.
 To exercise a tool against real Blender: start Blender with MPFB and the blender_mcp add-on
 installed and enabled, start the add-on's socket server from its preferences panel (default
 `localhost:9876`), then run `mpfb-mcp` and call the tool from an MCP client. `BLENDER_MCP_HOST` /
-`BLENDER_MCP_PORT` override the address if the add-on isn't on the default. For a whole checklist
-rather than one call, use [verification/](verification/README.md#running).
+`BLENDER_MCP_PORT` override the address if the add-on isn't on the default. To confirm that all
+twenty still work rather than exercise one, use [verification/](verification/README.md#running).
 
 **Turn the add-on's timer interval down while you are there.** In its preferences panel,
 `timer_interval_active` defaults to 0.25 s, and the add-on reads only one 4 KB chunk of a request
@@ -221,7 +222,7 @@ These are the specific local checks, and each exists because the alternative fai
 
 ## Tests
 
-Stdlib `unittest`, no pytest, 742 tests. Two layers per tool: the wrapper with `send_code`
+Stdlib `unittest`, no pytest, 747 tests. Two layers per tool: the wrapper with `send_code`
 mocked, then the assembled source `exec()`'d against stub Blender and stub MPFB services.
 **Read [specifications/testing.md](specifications/testing.md) before adding or changing a
 test** — in particular the rule that stubs reproduce MPFB's real behaviour rather than
@@ -247,12 +248,15 @@ convenient values, and the list of what the suite can never establish.
 | [test_add_rig.py](tests/test_add_rig.py), [test_generate_rigify_rig.py](tests/test_generate_rigify_rig.py) | `RigTestCase`, shared with `test_list_rigs` so one test can assert the catalogue's weights prediction equals the adder's outcome — which means nothing unless it is the same disk. |
 | [test_add_asset.py](tests/test_add_asset.py), [test_remove_asset.py](tests/test_remove_asset.py) | `MeshAssetTestCase`: a real asset library plus a stub character. Two roots hold the same `fedora.mhclo`, so the basename ambiguity is under test. Removal equips through `add_asset`'s own payload. |
 | [test_set_skin.py](tests/test_set_skin.py), [test_set_asset_material.py](tests/test_set_asset_material.py), [test_list_asset_materials.py](tests/test_list_asset_materials.py) | The same fixture plus a skins root and a real MPFB data directory. `material_slots` is derived from `data.materials` the way Blender derives it, so the two material paths cannot look alike. |
+| [test_verification_smoke.py](tests/test_verification_smoke.py) | The one test that reaches outside `src/`: `verification/smoke.py`'s item table, imported by path, must have exactly one entry per registered tool and name no key the tool's own description does not. A coverage rule that only fires with a Blender running is one that fires late. |
 
 Anything needing real MPFB is verified against a running Blender, and a feature request is
-expected to say so explicitly. That check lives in [verification/](verification/), a sibling of
-`tests/` that is not discovered by `unittest discover -s tests` and is not shipped. See
-[verification/README.md](verification/README.md) for how to run it, what it changes outside the
-`.blend` and puts back, and the two things it cannot put back.
+expected to say so explicitly — in **its own subdir**, as a script that runs during the effort and
+moves to `done/` with it. What it adds to [verification/](verification/) is at most one smoke item.
+That directory is a sibling of `tests/`, four files, not discovered by `unittest discover -s tests`
+and not shipped; it changes nothing outside the `.blend`. See
+[verification/README.md](verification/README.md) for how to run it and the two things it cannot
+put back.
 
 **One harness process at a time**: two against one Blender interleave, and the second fails in
 ways that look like tool defects.

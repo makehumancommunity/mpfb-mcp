@@ -893,8 +893,8 @@ times, differing only in which of that tool's own fields each nulls out, where a
 "this tool's null response" would be bigger than the six copies. Being identical is likewise not a
 reason: `property_value()`'s six copies and `as_path()`'s four are harmless and stayed.
 
-The census is now [verification/census.py](../verification/census.py), the one script there that
-needs no Blender. It gained something the hand-run version did not have: it reads which fragments
+The census became `verification/census.py`, the one script there that needed no Blender (deleted
+by [FR 023](done/023-verification-smoke-test/README.md) as FR-time instrumentation; git holds it). It gained something the hand-run version did not have: it reads which fragments
 each payload is actually assembled with out of the `assemble(..., shared=[...])` calls in the tool
 modules, so it can separate a payload that **shadows** a fragment it names — a real defect, since
 the fragment is concatenated first and its copy is then dead — from one that merely defines the
@@ -1010,14 +1010,14 @@ is the one thing the discarded design would have had to work to keep.
 
 The secondary goal landed too: `payloads/list_targets.py` takes its scan from the fragment, so the
 catalogue and the three tools that act on it read one implementation, and
-[verification/census.py](../verification/census.py) no longer reports `files_matching()` or
+the census no longer reported `files_matching()` or
 `read_target_json()` against `target_categories.py`. Two shape differences were reconciled in the
 open — the `custom` section is now labelled as MPFB labels it, and a `target.json` category with no
 `name` is dropped rather than listed. The cost is that this one tool's *first* call carries 18 KB it
 never used to, which is stated rather than hidden.
 
 Live: `run_all.py` in full, **85 passed, 0 failed, 3 skipped** — which also clears FR 015's
-outstanding re-verification. [measure.py](../verification/measure.py) gained
+outstanding re-verification. `verification/measure.py` gained
 `transport_by_program_size`, the measurement this effort turned out to be about, and
 `shared_source_cache`, its before/after. The 4 KB chunk itself is a one-line defect in an add-on
 this project does not own, and removing it there would take most of this cost out of every tool at
@@ -1035,7 +1035,8 @@ install and left the provocations as a script. This request wrote the result up.
 
 The report is [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../mpfb2/features/MCP_DISCOVERED_BUGS.md),
 256 lines, six defects worst-first, each with the code path, the observed values and the name of
-the function in [check_mpfb_issues.py](../verification/check_mpfb_issues.py) that provokes it. What
+the function in [check_mpfb_issues.py](done/019-file-mpfb-defects/check_mpfb_issues.py) that
+provokes it. What
 "filing" means was settled when the request was accepted: a document handed to that project, not an
 issue in a tracker.
 
@@ -1087,7 +1088,7 @@ per FR-4, with the docstrings now saying which guard is necessary and which is b
 gained the standing rule — where a confirmed defect is written down, and that writing it there
 changes nothing about what a tool does. [FR 018](018-alternative-material-refresh/README.md) shrank
 as a result, since half of what it set out to correct is now corrected, and
-[FR 023](023-verification-smoke-test/README.md) grew a constraint it did not have: its FR-7 deletes
+[FR 023](done/023-verification-smoke-test/README.md) grew a constraint it did not have: its FR-7 deletes
 `check_fr010.py` and its FR-8 moves `check_mpfb_issues.py`, and both are now cited by path **from
 another repository**, where no link check here would catch the break.
 
@@ -1237,3 +1238,56 @@ stay unchanged" is a claim about structure. Its slug is kept too.
 Across FR 020-022 the three documents that had become append-targets went from 704, 870 and 374
 lines to 268, 256 and 137, and the standing specifications went from two documents to eight, each
 named for its subject.
+
+## [FR 023](done/023-verification-smoke-test/README.md) — the live verification becomes a smoke test
+
+[FR 013](done/013-live-verification/README.md) was right that a live check must be a re-runnable
+script rather than a memory of a session. Its instruction — put the script in `verification/` —
+was the part that did not survive contact with eight efforts. What it produced was **the backlog,
+written down**: one exhaustive checklist per feature request, each re-proving that request's claims
+forever, 5,308 lines across fourteen files, and a run crossing the socket more than two hundred
+times. Minutes, not seconds, and fragile in proportion — which is the same failure FR 013 existed
+to fix, repeated at a different scale.
+
+`verification/` is now a **smoke test**: one item per tool, called with the tool's own defaults,
+asserting three shallow things — the envelope is not an error, the response carries the keys the
+tool's own contract names as always present, and for a mutating tool `performed` is true and agrees
+with that tool's verb. It asserts nothing about *values*. Four files, one command, and **42.6 s for
+all twenty tools** against Blender 5.1.0 with MPFB 2.0.17, measured at blender_mcp's slow 0.25 s
+tick. Beside the twenty there are three run-level items and the set is closed: the install gate,
+the leak compare, and FR 012's traceback check.
+
+**3,822 lines were deleted outright** — the eight `check_frNNN.py` checklists, `measure.py`,
+`census.py` and `run_all.py` — because their findings had already been folded into
+[specifications/](../specifications/) and into this file, and keeping the scripts was keeping a
+receipt for a conclusion already written down. `check_mpfb_issues.py` moved rather than went: it
+provokes defects in *MPFB* rather than checking mpfb-mcp's tools, so it now lives in
+[FR 019's subdir](done/019-file-mpfb-defects/) beside the report it backs, carrying the three
+probe targets with it — and with the two paths
+[`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../mpfb2/features/MCP_DISCOVERED_BUGS.md) cites
+from the other repository re-pointed, which was this request's one obligation outside its own tree.
+
+Two mechanisms keep the directory from regrowing. **Coverage is derived from the registry**: a
+registered tool with no smoke item, or an item for a tool that is gone, stops the run — asserted
+live and again, without a Blender, in the new
+[test_verification_smoke.py](../tests/test_verification_smoke.py). And **the rule about where a
+live check belongs is written down** in [CLAUDE.md](CLAUDE.md) and
+[testing.md](../specifications/testing.md): an exhaustive live check belongs to the feature request
+that needs it, lives in that request's own subdir, and goes to `done/` with it. This request's own
+[`check_negatives.py`](done/023-verification-smoke-test/check_negatives.py) is the first thing
+written under that rule, and it is what proved the coverage check and the skip path by making them
+fail rather than by watching them pass.
+
+Two corrections fell out. FR-3's "not a copy of the contract kept here" needed a mechanism rather
+than a habit, since there is no machine-readable contract to read: each item's key list is now held
+to the *description an MCP client downloads*, and that check caught two wrong keys on its first
+live run. And FR-7's justification for deleting `census.py` — that the drift question is "asserted
+per fragment" in `tests/test_codegen.py` — turned out to be true of two fragments out of six;
+[architecture.md](../specifications/architecture.md#shared-fragments) now says which two.
+
+`verification/` is 1,163 lines rather than the 700 the request estimated — 4,272 lines of Python
+went, close to the 4,600 predicted, but more was left standing than the target allowed for. The
+difference is not survival of anything exhaustive: the leak compare needs ~130 lines of embedded
+Blender source that no trimming touches, and twenty item definitions cost about seven lines each. It also now changes
+**nothing outside the `.blend`** — FR 013's three deliberate exceptions all left with the
+checklists that needed them.

@@ -93,8 +93,16 @@ between two calls to assert the staleness. The stub needs the invalidator added 
 MPFB's, which clears *both* dicts — and that same test gains a `refresh: true` third call which
 does see the new file.
 
-**Live verification is required** and is one command: `verification/check_fr011.py` already writes
-a probe `.mhmat` between two calls and asserts the answer does not change. It gains a third call.
+**Live verification is required**, and since
+[FR 023](../done/023-verification-smoke-test/README.md) it belongs **in this request's own subdir** as
+a script, not in `verification/` — which is now a smoke run of one default call per tool and
+asserts nothing about values. What that script has to do is small and is already written down: the
+deleted `check_fr011.py` wrote a probe `.mhmat` beside an installed asset between two calls to
+`mpfb_list_asset_materials` and asserted the second answer did not change; this effort's version
+adds a third call with `refresh: true` that does see the new file, and deletes the probe afterwards.
+Git holds the original if the exact fixture is wanted back. `verification/` gains nothing from this
+effort — `mpfb_list_asset_materials` already has its smoke item, and a new argument does not earn a
+second one.
 
 ## References
 

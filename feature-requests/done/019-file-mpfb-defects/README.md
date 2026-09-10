@@ -5,7 +5,7 @@
 Five requests ended by naming things in MPFB that looked like defects, all read from source and
 none observed. [FR 013](../013-live-verification/README.md)'s live session provoked each one
 against a running install and, deliberately, wrote the provocations down as a script
-([verification/check_mpfb_issues.py](../../../verification/check_mpfb_issues.py)) rather than as prose.
+([check_mpfb_issues.py](check_mpfb_issues.py)) rather than as prose.
 Four of the seven were confirmed, two refuted outright, and one turned out worse and quieter than
 described. A sixth was found by accident, and it is the most serious of the set.
 
@@ -24,7 +24,7 @@ priorities and none of these defects is owed a fix on any particular timescale; 
 for a long time, and one of them may be judged rare enough not to be worth the change. So **every
 workaround mpfb-mcp carries for these defects stays exactly where it is**, and a section appearing
 in `MCP_DISCOVERED_BUGS.md` is not a reason to remove one. A workaround goes when a *running* MPFB
-no longer needs it — which is precisely what `verification/check_mpfb_issues.py` is built to
+no longer needs it — which is precisely what `check_mpfb_issues.py` is built to
 detect, by failing the day a defect is gone.
 
 **The one to file first**: a user target whose filename is over 56 characters **prevents MPFB from
@@ -68,7 +68,7 @@ that never gave a reason.
   `ObjectService.object_is_rigify_metarig()` reads `blender_object.pose.bones` without checking and
   raises for an armature whose `pose` is `None`; and that MPFB's proxy library operator
   reimplements `_check_add_proxy()` rather than calling it — a duplication that agrees today.
-- **FR-3.** Each section names the reproduction in `verification/check_mpfb_issues.py` that
+- **FR-3.** Each section names the reproduction in `check_mpfb_issues.py` that
   provokes it, so it can be re-run against a future MPFB rather than re-argued.
 - **FR-4.** **No workaround, coercion or defensive check in this repository is removed by this
   effort.** Filing changes nothing about what MPFB does today, and the tools go on coping with
@@ -93,7 +93,7 @@ to change.
 
 ## Architecture
 
-No code change in this repository beyond FR-5's corrections. `verification/check_mpfb_issues.py`
+No code change in this repository beyond FR-5's corrections. `check_mpfb_issues.py`
 is the artifact; it runs against the install it is pointed at and prints one line per defect with
 the observed value. Outside this repository the effort writes a single Markdown file,
 `../mpfb2/features/MCP_DISCOVERED_BUGS.md`, and nothing else.
@@ -114,7 +114,7 @@ MPFB data directory should be held to the same rule.
 
 ## Tests
 
-No unit tests. `verification/check_mpfb_issues.py` is the test, and its assertions are written so
+No unit tests. `check_mpfb_issues.py` is the test, and its assertions are written so
 that a fixed MPFB makes them **fail** — which is the point: the day one of these is fixed upstream,
 this repository should find out from a red line rather than from a changelog.
 
@@ -130,3 +130,19 @@ this repository should find out from a red line rather than from a changelog.
   4 KB chunk of a request per timer tick, which is the dominant cost of every tool here. It is kept
   separate deliberately, since this request's scope is `../mpfb2`, but whoever writes these five is
   the right person to write that one.
+
+---
+
+**Note added by [FR 023](../023-verification-smoke-test/README.md):** `check_mpfb_issues.py` moved
+out of `verification/` and into this subdir. It was never a check of mpfb-mcp's tools — it provokes
+defects in MPFB, on behalf of the report above — and it writes into MPFB's user `custom` directory,
+which the smoke run in `verification/` never does. The three probe targets came with it, including
+the long-named one that prevents MPFB from loading if it is left on disk when Blender starts. The
+paths [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md)
+cites were re-pointed in the same change.
+
+The Architecture note above says `verification/fixtures.py` carries `SAFE_AT_STARTUP`. It no longer
+exists: it was there for a checklist that wanted a probe target to survive a restart, and that
+checklist is gone. The rule it encoded still holds and is now the only rule — the three probe
+targets are installed and removed inside one run of `check_mpfb_issues.py`, and nothing else in
+this project writes into an MPFB data directory at all.

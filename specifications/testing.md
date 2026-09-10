@@ -17,18 +17,17 @@ There are two kinds of check, and they answer different questions:
 - The **unit suite** (`tests/`) answers *"is this the program we meant to send, and does it do
   the right thing with the answers it gets back?"* It runs anywhere, in about nine seconds, and
   it is what a change is expected to keep green.
-- The **live harness** ([verification/](../verification/)) answers *"does MPFB do what we read
-  in its source?"* It needs a running Blender, and it is described below.
+- The **live smoke run** ([verification/](../verification/)) answers *"does every tool still
+  work at all?"* It needs a running Blender, takes well under a minute, and is described below.
+  *"Does MPFB behave as we read it in its source?"* is a different question, answered once, by
+  the effort making the claim — see [Where an exhaustive live check belongs](#where-an-exhaustive-live-check-belongs).
 
 ## The live harness is named and re-runnable, not a session
 
 Exercising a tool against real MPFB requires a running Blender with MPFB and blender_mcp
 installed and enabled. That is a verification step outside the unit suite — but a **named and
-re-runnable** one, not a manual session. It lives in [verification/](../verification/): a
-snapshot/compare helper over twelve datablock collections, a fixture builder, and one script per
-checklist, each driving the real tool callables the way an MCP client would and each printing one
-pass/fail/skipped line per item with the observed value beside it. Re-running a whole checklist
-after a code fix is one command.
+re-runnable** one, not a manual session. It lives in [verification/](../verification/) and is one
+command.
 
 That distinction is not cosmetic. Five consecutive requests reached `Done` without their live
 check, each postponement justified by the cost of a session nothing of which survived to make the
@@ -36,16 +35,56 @@ next one cheaper — which is exactly the defect a re-runnable harness removes. 
 outside `src/`, is not discovered by `unittest discover -s tests`, and is not shipped; nothing in
 it may be imported by the package.
 
-Two properties of it are load-bearing rather than incidental. **Checks go through the tool
-callables**, not through hand-assembled `send_code()` calls, or what is verified is a program no
-client will ever send — a large part of what is under test is the tool module's own validation
-and defaulting. And **a comparison against "what MPFB's own panel produces" is a diff, not a
-screenshot**: MPFB's panels are thin, so driving the scene property behind a slider or calling
-the operator behind a button *is* pressing it, and the two results can be compared field by field
-in one file.
+**What it re-runs is a smoke test.** One item per registered tool, called with the tool's own
+defaults, asserting three shallow things: the envelope is not an error, the response carries the
+keys the tool's own contract names as always present, and — for a mutating tool — `performed` is
+true and agrees with that tool's verb. That last one is the single check the unit suite genuinely
+cannot make, because there the flag and the verb are read out of the same stub run. It asserts
+nothing about *values*.
 
-What it changes outside the `.blend` and puts back, what it cannot put back, and how to run it
-are in [verification/README.md](../verification/README.md).
+Two properties of it are load-bearing rather than incidental. **Checks go through the tool
+callables** of the server `build_server()` builds, not through hand-assembled `send_code()`
+calls, or what is verified is a program no client will ever send — a large part of what is under
+test is the tool module's own validation and defaulting. And **a comparison against "what MPFB's
+own panel produces" is a diff, not a screenshot**: MPFB's panels are thin, so driving the scene
+property behind a slider or calling the operator behind a button *is* pressing it, and the two
+results can be compared field by field in one file. The second property now describes what an
+*effort* does during its life cycle rather than what `verification/` holds — the smoke run makes
+no such comparison.
+
+Two rules bound its growth, and only one is mechanical. **Coverage is derived from the
+registry**: a registered tool with no smoke item, or an item for a tool the server does not
+register, stops the run, so the table can neither fall behind nor keep dead entries.
+[tests/test_verification_smoke.py](../tests/test_verification_smoke.py) asserts the same without
+a Blender. **The time is bounded by design** — one character, one call per tool, three
+assertions — and kept honest by being printed on every run rather than by a threshold. Sixty
+seconds is a target the run reports itself against and never enforces: wall clock against
+somebody else's Blender is too install-dependent to gate on, and a check that fails for a reason
+outside the repository is one people learn to ignore. This is deliberately weaker than
+[test_description_budget.py](../tests/test_description_budget.py)'s ceiling, which measures bytes
+this repository computes and which are the same on every machine.
+
+What it does to the Blender it is pointed at, what it cannot put back, and how to run it are in
+[verification/README.md](../verification/README.md).
+
+## Where an exhaustive live check belongs
+
+**In the feature request that needs it** — its own subdir, run during that effort, moved into
+`done/` with it. What the effort adds to `verification/` is at most the one smoke item for a tool
+it introduced.
+
+This is [FR 023](../feature-requests/done/023-verification-smoke-test/README.md)'s rule, and it
+exists because the alternative was tried. [FR 013](../feature-requests/done/013-live-verification/README.md)
+was right that a live check must be a re-runnable script rather than a memory of a session, and
+its instruction — put it in `verification/` — produced eight per-request checklists, 5,308 lines,
+and a run that crossed the socket more than two hundred times and took minutes. Nothing in those
+checklists was wrong. Their findings had all been folded into these specifications and into
+[HISTORY.md](../feature-requests/HISTORY.md) long before, and what was left standing was a receipt
+for a conclusion already written down.
+
+Exhaustively proving one feature against a live Blender is worth doing **once**, by the effort
+making the claim. It is not worth re-proving on every code change, and keeping the proof around
+forever is what turns a good idea into an unbounded directory.
 
 ## The unit suite is two layers
 
@@ -169,8 +208,18 @@ architecture and not of any one test:
   [A tool reports an ordering constraint it cannot enforce](mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
   rests on.
 
-Every item on that list is `verification/`'s job, and a feature request whose primary goal lands
-in it must say so in its own "Tests" section rather than leave it to be discovered.
+Every item on that list needs a live Blender, and a feature request whose primary goal lands in
+one must say so in its own "Tests" section rather than leave it to be discovered.
+
+**None of them is a standing check, and the spec should not imply one.** The smoke run in
+`verification/` establishes that each tool runs and reports having done what it says; it does not
+establish that a garment equipped through `mpfb_add_asset` matches the panel's, nor that any skin
+type builds the right node tree. Each of those was established once, by the effort that claimed
+it — the asset comparison by [FR 010](../feature-requests/done/010-mesh-assets/README.md), the
+five skin types by [FR 011](../feature-requests/done/011-skin-and-materials/README.md), the rig
+and its weights by [FR 009](../feature-requests/done/009-add-rig/README.md) — and a later change
+in that area owes the same proof again, in its own subdir. See
+[Where an exhaustive live check belongs](#where-an-exhaustive-live-check-belongs).
 
 ## The exception: what is entirely on this side of the socket
 

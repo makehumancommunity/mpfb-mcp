@@ -48,7 +48,10 @@ been talked to in the last five seconds, and about **1 s per 4 KB** against one 
 because blender_mcp drops to a one-second tick after five seconds without a request *finishing*,
 and bytes arriving do not count as work. A 50 KB program costs 3 s or 12 s, and it makes no
 difference at all what the program computes. Measured, and predicted to within a few percent, by
-[verification/measure.py](../verification/measure.py)'s `transport_by_program_size`.
+[FR 013](../feature-requests/done/013-live-verification/README.md)'s cost measurements, and
+consistent with [FR 023](../feature-requests/done/023-verification-smoke-test/README.md)'s smoke
+run, whose three slowest items are its three largest programs. The measuring script was FR 013's
+own instrumentation and was deleted by FR 023; the model it produced is this section.
 
 Three consequences, and they are not small:
 
@@ -316,10 +319,14 @@ would silently leave the rig behind, which all four refitting payloads have to k
   the two above were made into fragments. `blocked()`'s six variants were left alone deliberately:
   they are one convention applied six times, differing only in which of that tool's own fields each
   nulls out, and a mechanism for "this tool's null response" would be larger than the six copies.
-  The census is kept as [verification/census.py](../verification/census.py) so that the question
-  "have these drifted?" stays a command rather than an afternoon; it also reports a payload that
-  redefines a name from a fragment *it names*, which is a real defect, since the fragment is
-  concatenated first and its copy would be silently dead.
+  **"Have these drifted?" is asserted in [tests/test_codegen.py](../tests/test_codegen.py)**, on
+  every unit run and with no Blender — for the two fragments where a second implementation would
+  go wrong quietly rather than loudly: `refit_blocker.py` and `modifier_reading.py` each have a
+  check that no payload using them keeps an implementation of its own. The other four are not
+  covered that way, and a fragment added later should bring such a check with it. The census that
+  produced the nineteen figure was an exploratory instrument for finding the *next* migration
+  candidate, which is an FR-time activity, and it went with
+  [FR 023](../feature-requests/done/023-verification-smoke-test/README.md).
 - **Opting in is the payload's business, not the assembler's.** `assemble()` takes the list — as
   does `shared_cache.send()`, which is `assemble()` plus the decision about carrying the source —
   and there is no table anywhere mapping payloads to fragments. So the rule above still holds

@@ -87,9 +87,12 @@ versus services" to *any* two MPFB code paths.
   about mpfb-mcp. But a candidate defect read from source is a hypothesis: of the seven FR 008
   through FR 011 recorded, the live run confirmed four, refuted two outright
   (`RigService.identify_rig()` cannot return `None`; the alternative-material cache *does* have an
-  invalidator) and found the fifth to be worse and quieter than described. Each is provoked by a
-  script under [verification/](../verification/), so a claim about MPFB is re-checkable against a
-  future MPFB rather than frozen as an opinion.
+  invalidator) and found the fifth to be worse and quieter than described. Each is provoked by
+  [`check_mpfb_issues.py`](../feature-requests/done/019-file-mpfb-defects/check_mpfb_issues.py),
+  which lives beside the report it backs, so a claim about MPFB is re-checkable against a future
+  MPFB rather than frozen as an opinion. It is deliberately not in `verification/`: it provokes
+  defects in MPFB rather than checking mpfb-mcp's tools, and it writes into MPFB's user data
+  directory, which the smoke run there never does.
 - **Filing it changes nothing here.** A confirmed defect is written up in
   [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../mpfb2/features/MCP_DISCOVERED_BUGS.md), one
   section each, and that is where the reporting ends: MPFB has its own priorities, so a reported

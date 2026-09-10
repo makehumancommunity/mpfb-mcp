@@ -11,18 +11,27 @@ decision this package took. This script provokes each one.
 The proxy item is the one that is not merely tidiness. FR 010's Architecture
 section justifies which code path ``mpfb_add_asset`` follows *on those three
 paths differing*, so if they do not differ, a documented decision has lost its
-reason. The measurement lives in [check_fr010.py](check_fr010.py), which builds
-the three characters; what this script adds is the two paths' source-level
-relationship, which is what a filed issue would have to describe.
+reason. The field-by-field measurement over three characters was made once, by
+[FR 010](../010-mesh-assets/README.md); what this script adds is the two paths'
+source-level relationship, which is what a filed issue would have to describe.
+
+**It lives here rather than in ``verification/`` because it is not a check of
+mpfb-mcp's tools at all** - it provokes defects in *MPFB*, on behalf of the
+report [FR 019](README.md) filed, and that report cites it by path from the
+mpfb2 repository. [FR 023](../023-verification-smoke-test/README.md) made
+``verification/`` a smoke run that changes nothing outside the ``.blend``; this
+script writes target files into MPFB's user ``custom`` directory, which is
+exactly the kind of thing that no longer belongs there. It still uses
+``verification/harness.py`` for the tools, the scratch scene and the report.
 
 Every item below is destructive to a scratch character and to nothing else, and
 each cleans up after itself. ``set_character_skin()``'s five-``if`` dispatch is
 the exception worth naming: provoking it destroys the materials on the character
 it is aimed at, which is the whole point of the report.
 
-Run with::
+Run from the repository root::
 
-    python3 verification/check_mpfb_issues.py
+    PYTHONPATH=. python3 feature-requests/done/019-file-mpfb-defects/check_mpfb_issues.py
 """
 
 from __future__ import annotations
@@ -31,8 +40,129 @@ __all__ = ("run",)
 
 import sys
 
-from verification import fixtures, harness
+from verification import harness
 from verification.harness import Report, probe
+
+# --------------------------------------------------------------------------
+# The fixtures this script needs, carried with it.
+#
+# They used to live in verification/fixtures.py. FR 023 turned that directory
+# into a smoke run that changes nothing outside the .blend, and these three do
+# change something outside it: they write target files into MPFB's own user
+# `custom` directory. They belong here, with the defects they provoke, because
+# **one of the three prevents MPFB from loading if it is still on disk when
+# Blender starts** - which is how that defect was found, and which makes this
+# the single riskiest thing anything in this project does to a developer's
+# install. install/remove are always used as a pair inside one run.
+# --------------------------------------------------------------------------
+
+# A gzipped custom target (the naming divergence), a name long enough that MPFB
+# encodes it, and one whose name contains "basis". The long one is deliberately
+# built out of substrings MPFB's encoding table knows ("female", "average",
+# "muscle", "weight", "height", "young"): the >60 character rule only turns
+# encoding *on*, and a long name containing none of those encodes to itself.
+PROBE_TARGETS = (
+    "mpfbmcp_probe_vwide.target.gz",
+    "mpfbmcp_probe_a_very_long_female_average_muscle_weight_height_young_name.target",
+    "mpfbmcp_probe_basis_containing_name.target",
+)
+
+# MPFB derives a Scene property identifier as "custom_" + the target's name, and
+# Blender rejects one over 63 characters. So a user target name over 56
+# characters breaks MPFB's registration - while the *encoding* only starts above
+# 60. The two conditions cannot both be met by a file left on disk, which is the
+# sharp form of the defect.
+MAX_SAFE_TARGET_NAME_LENGTH = 63 - len("custom_")
+
+# The one asset named by filename anywhere in this project. FR 023 removed the
+# rest; this one stays because the defect it provokes is about an asset that has
+# alternative materials beside it, and the script says so when it is missing.
+ALTERNATIVE_MATERIAL_ASSET = "nurse_uniform_coat_clothsim/nurse_uniform_coat_clothsim.mhclo"
+
+
+def _install_probe_targets() -> dict:
+    """Write the three probe targets, and report which were newly created."""
+    return probe("install_probe_targets", _INSTALL_CODE, names=list(PROBE_TARGETS))
+
+
+_INSTALL_CODE = '''
+import gzip, os, sys
+
+candidates = [name for name in sys.modules if name.endswith("mpfb")]
+mpfb = sys.modules[candidates[0]]
+services = mpfb.MPFB_CONTEXTUAL_INFORMATION["SERVICES"]
+LocationService = services["LocationService"]
+
+directory = str(LocationService.get_user_data("custom"))
+if not os.path.isdir(directory):
+    os.makedirs(directory)
+
+# Two vertices on the belly, moved outwards. Vertex indices are hm08's and any
+# valid index would do: nothing here checks where the target points.
+body = "3000 0.100000 0.000000 0.000000\\n3001 0.100000 0.000000 0.000000\\n"
+
+created = []
+existed = []
+for name in PARAMS["names"]:
+    full_path = os.path.join(directory, name)
+    if os.path.exists(full_path):
+        existed.append(full_path)
+        continue
+    if name.endswith(".gz"):
+        handle = gzip.open(full_path, "wt")
+    else:
+        handle = open(full_path, "w")
+    handle.write(body)
+    handle.close()
+    created.append(full_path)
+
+result = dict(directory=directory, created=created, existed=existed)
+'''
+
+
+def _remove_probe_targets() -> dict:
+    """Take the three probe targets away again, leaving the install as it was."""
+    return probe("remove_probe_targets", _REMOVE_CODE, names=list(PROBE_TARGETS))
+
+
+_REMOVE_CODE = '''
+import os, sys
+
+candidates = [name for name in sys.modules if name.endswith("mpfb")]
+mpfb = sys.modules[candidates[0]]
+services = mpfb.MPFB_CONTEXTUAL_INFORMATION["SERVICES"]
+LocationService = services["LocationService"]
+
+directory = str(LocationService.get_user_data("custom"))
+removed = []
+missing = []
+for name in PARAMS["names"]:
+    full_path = os.path.join(directory, name)
+    if os.path.exists(full_path):
+        os.remove(full_path)
+        removed.append(full_path)
+    else:
+        missing.append(full_path)
+
+result = dict(directory=directory, removed=removed, missing=missing)
+'''
+
+
+def _fresh_human(tools: dict, rename_to: str) -> str:
+    """A scratch character with a name of its own, so two of them are told apart."""
+    response = tools["mpfb_create_human"]()
+    if response.get("status") != "ok":
+        raise RuntimeError("could not create a character: {}".format(response))
+    return harness.rename_object(response["result"]["object_name"], rename_to)
+
+
+def _skin_fragment(tools: dict) -> str:
+    """The first skin this install has, resolved rather than named."""
+    listing = tools["mpfb_list_assets"](asset_subdir="skins", limit=1)["result"]
+    if not listing["assets"]:
+        raise RuntimeError("this install has no skin to apply")
+    return listing["assets"][0]["fragment"]
+
 
 ITEMS = (
     "a gzipped custom target is addressed under two different names",
@@ -48,11 +178,11 @@ ITEMS = (
 
 def run() -> dict:
     tools = harness.tools()
-    report = Report("FR-6 - the seven candidate mpfb2 defects", ITEMS)
+    report = Report("FR-6 - the seven candidate mpfb2 defects")
     harness.ensure_scratch_scene()
     harness.cleanup_scratch_scene()
     before = harness.snapshot()
-    fixtures.install_probe_targets()
+    _install_probe_targets()
 
     _check_gzip_naming(report)
     _check_identify_rig_poll(tools, report)
@@ -62,7 +192,7 @@ def run() -> dict:
     _check_exclude_default(tools, report)
     _check_long_target_name_breaks_registration(report)
 
-    fixtures.remove_probe_targets()
+    _remove_probe_targets()
     harness.cleanup_scratch_scene()
     after = harness.snapshot()
     difference = harness.diff_snapshots(before, after)
@@ -73,10 +203,10 @@ def run() -> dict:
 
 def _check_gzip_naming(report: Report) -> None:
     observed = probe("gzip_naming", _GZIP_NAMING_CODE,
-                     filename=fixtures.PROBE_TARGETS[0])
+                     filename=PROBE_TARGETS[0])
     report.check("a gzipped custom target is addressed under two different names",
                  observed["panel_name"] != observed["service_name"],
-                 dict(file=fixtures.PROBE_TARGETS[0],
+                 dict(file=PROBE_TARGETS[0],
                       name_modelsubpanels_builds=observed["panel_name"],
                       name_filename_to_shapekey_name_builds=observed["service_name"],
                       confirmed="the two names differ, so one file is two shape keys",
@@ -86,7 +216,7 @@ def _check_gzip_naming(report: Report) -> None:
 
 
 def _check_identify_rig_poll(tools: dict, report: Report) -> None:
-    fixtures.fresh_human(tools, "PollCharacter")
+    _fresh_human(tools, "PollCharacter")
     observed = probe("identify_rig_poll", _IDENTIFY_RIG_POLL_CODE, name="PollCharacter")
     # Refuted, and the refutation is the useful half: identify_rig() ends with a
     # `if guessed_rig is None:` block that assigns one of three strings, so the
@@ -112,7 +242,8 @@ def _check_proxy_paths(report: Report) -> None:
                  observed["check_add_proxy_calls_add_mhclo_asset"]
                  and not observed["library_operator_calls_add_mhclo_asset"],
                  dict(observed,
-                      note=("the *observable* comparison is in check_fr010.py: "
+                      note=("the *observable* comparison was made once, by FR 010 (see "
+                            "feature-requests/done/010-mesh-assets/README.md): "
                             "add_mhclo_asset() alone differs from _check_add_proxy(), but "
                             "_check_add_proxy() and the library operator produced identical "
                             "state on every field compared - so this is duplicated "
@@ -120,7 +251,7 @@ def _check_proxy_paths(report: Report) -> None:
 
 
 def _check_unload_anything(tools: dict, report: Report) -> None:
-    fixtures.fresh_human(tools, "UnloadCharacter")
+    _fresh_human(tools, "UnloadCharacter")
     tools["mpfb_add_rig"](name="UnloadCharacter", identifier="default")
     observed = probe("unload_anything", _UNLOAD_ANYTHING_CODE, name="UnloadCharacter")
     refusal = tools["mpfb_remove_asset"](name="UnloadCharacter")
@@ -136,8 +267,8 @@ def _check_unload_anything(tools: dict, report: Report) -> None:
 
 
 def _check_skin_typo(tools: dict, report: Report) -> None:
-    fixtures.fresh_human(tools, "TypoCharacter")
-    skin = fixtures.skin_fragment(tools)
+    _fresh_human(tools, "TypoCharacter")
+    skin = _skin_fragment(tools)
     tools["mpfb_set_skin"](name="TypoCharacter", fragment=skin, skin_type="MAKESKIN")
     observed = probe("skin_typo", _SKIN_TYPO_CODE, name="TypoCharacter",
                      fragment=skin, skin_type="MAKSKIN")
@@ -167,16 +298,16 @@ def _check_skin_typo(tools: dict, report: Report) -> None:
 
 def _check_exclude_default(tools: dict, report: Report) -> None:
     observed = probe("exclude_default", _EXCLUDE_DEFAULT_CODE,
-                     fragment=fixtures.ALTERNATIVE_MATERIAL_ASSET)
+                     fragment=ALTERNATIVE_MATERIAL_ASSET)
     report.check("alternative_materials_for_asset()'s exclude_default is never read",
                  observed["with_exclude"] == observed["without_exclude"]
                  and observed["default_is_in_the_list"], observed)
     # Refuted. AssetService.invalidate_alternative_materials_cache() exists and
     # clears both caches. The *staleness* FR 011 documented is real - nothing
-    # calls it automatically, and check_fr011.py confirms a new .mhmat between
-    # two calls is not seen - but "cannot be invalidated" is wrong, and it means
-    # mpfb_list_asset_materials could grow the same `refresh` argument the other
-    # catalogue tools have.
+    # calls it automatically, and FR 011's own live check saw a new .mhmat
+    # written between two calls go unnoticed - but "cannot be invalidated" is
+    # wrong, and it means mpfb_list_asset_materials could grow the same
+    # `refresh` argument the other catalogue tools have.
     report.check("alternative_materials_for_asset()'s cache has an invalidator after all",
                  observed["invalidator"] is not None, dict(
                      invalidator=observed["invalidator"],
@@ -184,7 +315,8 @@ def _check_exclude_default(tools: dict, report: Report) -> None:
                      cleared_by_it=observed["cleared_by_invalidator"],
                      refutes="FR 011's 'uninvalidatable module-level cache'",
                      still_true=("nothing calls it, so a listing is stale until something "
-                                 "does - confirmed behaviourally in check_fr011.py")))
+                                 "does - confirmed behaviourally by FR 011's live check, and "
+                                 "the subject of FR 018")))
 
 
 def _check_long_target_name_breaks_registration(report: Report) -> None:
@@ -204,8 +336,8 @@ def _check_long_target_name_breaks_registration(report: Report) -> None:
     somebody's install.
     """
     observed = probe("long_property_name", _LONG_PROPERTY_NAME_CODE,
-                     name=fixtures.PROBE_TARGETS[1].replace(".target", ""),
-                     limit=fixtures.MAX_SAFE_TARGET_NAME_LENGTH)
+                     name=PROBE_TARGETS[1].replace(".target", ""),
+                     limit=MAX_SAFE_TARGET_NAME_LENGTH)
     report.check("a long-named user target prevents MPFB from registering at all",
                  observed["raised"] and not observed["registered"],
                  dict(observed,

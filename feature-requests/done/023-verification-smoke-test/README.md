@@ -1,8 +1,8 @@
 # The live verification becomes a smoke test
 
-**Status:** Proposed
+**Status:** Done
 
-[FR 013](../done/013-live-verification/README.md) built `verification/` to clear a backlog: five
+[FR 013](../013-live-verification/README.md) built `verification/` to clear a backlog: five
 requests had reached `Done` with no live check because a live check was a session nobody wanted to
 repeat. It worked — the backlog cleared, defects in both mpfb-mcp and MPFB fell out of it, and
 re-running a checklist after a fix became one command. But what it built was *the backlog*,
@@ -43,7 +43,7 @@ are not per-tool checks is fixed at three.
 **Secondary: most of what is there now is deleted.** Roughly 4,600 of the 5,308 lines go. This is
 the point of the effort, not a side effect of it: the eight per-request checklists have already
 delivered their findings into `specifications/` and
-[HISTORY.md](../HISTORY.md), and keeping the scripts that produced them is keeping a receipt for a
+[HISTORY.md](../../HISTORY.md), and keeping the scripts that produced them is keeping a receipt for a
 conclusion that is already written down. Git holds them if a question ever needs re-asking.
 
 **Secondary: the rule about where a live check belongs is written down**, so the directory cannot
@@ -94,7 +94,7 @@ it, lives in that request's own subdir, and goes to `done/` with it.
   An over-target total is a prompt to look, and the summary should say so in those terms, naming
   blender_mcp's `timer_interval_active` first, since a Blender left at the 0.25 s default is by
   far the likeliest cause and is a configuration mistake rather than a regression (see
-  [CLAUDE.md](../../CLAUDE.md#commands)). Wall clock against a live Blender is too noisy and too
+  [CLAUDE.md](../../../CLAUDE.md#commands)). Wall clock against a live Blender is too noisy and too
   install-dependent to gate on, and a check that fails for a reason outside the repository is one
   people learn to ignore — which would cost more than the minute it was protecting.
 
@@ -109,11 +109,11 @@ it, lives in that request's own subdir, and goes to `done/` with it.
   remains:
   - `check_fr004.py`, `check_fr005.py`, `check_fr007.py`, `check_fr008.py`, `check_fr009.py`,
     `check_fr010.py`, `check_fr011.py`, `check_fr012.py` — 3,122 lines. Their findings are in
-    `specifications/`, in [HISTORY.md](../HISTORY.md) and in each request's own README under `done/`.
+    `specifications/`, in [HISTORY.md](../../HISTORY.md) and in each request's own README under `done/`.
     FR 012's one live claim survives as FR-4's traceback item.
   - `measure.py` — 368 lines. It takes minutes, nothing depends on it, and the cost model it
     produced is written down in
-    [architecture.md](../../specifications/architecture.md#what-a-call-costs-is-the-size-of-its-program).
+    [architecture.md](../../../specifications/architecture.md#what-a-call-costs-is-the-size-of-its-program).
     It is FR-time instrumentation for an effort that is over.
   - `census.py` — 244 lines. Its recurring value — *have the fragments and their payloads
     drifted?* — is already asserted per fragment in `tests/test_codegen.py`, on every run, with no
@@ -128,7 +128,7 @@ it, lives in that request's own subdir, and goes to `done/` with it.
   every citation of the old path is re-pointed.
 
   **FR 019 changed what that costs.** The filed report,
-  [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../mpfb2/features/MCP_DISCOVERED_BUGS.md),
+  [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md),
   cites `verification/check_mpfb_issues.py` **by path, from another repository**, once per defect,
   and names a function inside it per section; it also links `verification/check_fr010.py`, which
   FR-7 deletes, for the proxy comparison. So this request must either keep those two paths valid
@@ -147,7 +147,7 @@ it, lives in that request's own subdir, and goes to `done/` with it.
   be argued as its own request.
 
 - **FR-10. The rule is written down where a future effort will read it.**
-  [feature-requests/CLAUDE.md](../CLAUDE.md)'s "Tests" section currently instructs an effort to put
+  [feature-requests/CLAUDE.md](../../CLAUDE.md)'s "Tests" section currently instructs an effort to put
   its live check in `verification/` as a script. That is what produced eight checklists, and it
   becomes: an exhaustive live check belongs in **the feature request's own subdir**, is run during
   that effort, and moves to `done/` with it; what the effort adds to `verification/` is at most
@@ -167,7 +167,7 @@ it, lives in that request's own subdir, and goes to `done/` with it.
   fall behind and cannot hold entries for tools that no longer exist. The *time* is bounded by
   design instead — one character, one call per tool, three assertions — and kept honest by being
   printed on every run rather than by a threshold. This is a weaker mechanism than
-  [test_description_budget.py](../../tests/test_description_budget.py)'s ceiling, and deliberately
+  [test_description_budget.py](../../../tests/test_description_budget.py)'s ceiling, and deliberately
   so: that one measures bytes computed on this side of the socket, which are the same on every
   machine, where this one would be measuring somebody else's Blender.
 
@@ -192,7 +192,7 @@ independent of.
 
 **The ordering constraint is real and the item table has to respect it.** `mpfb_add_rig` before
 `mpfb_add_asset`, and `mpfb_generate_rigify_rig` after — the same ordering the tools report and do
-not enforce ([README.md](../../README.md)). `mpfb_generate_rigify_rig` also needs the rig added to
+not enforce ([README.md](../../../README.md)). `mpfb_generate_rigify_rig` also needs the rig added to
 have been a Rigify meta rig, and it is the one tool that cannot restore the caller's selection. A
 second character is permitted **only** if a precondition genuinely cannot be satisfied on the
 first, and if one is built the README says what it cost in seconds.
@@ -216,7 +216,7 @@ correctness gain:
 - **`enhanced_settings.default.json` moved aside and restored** — FR 011's specific question about
   creation, asked and answered.
 - **the `.mhmat` written beside an asset** — the cache-staleness observation, which is
-  [FR 018](../018-alternative-material-refresh/README.md)'s subject and should move there if that
+  [FR 018](../../018-alternative-material-refresh/README.md)'s subject and should move there if that
   effort still wants it.
 
 After this, `verification/` changes nothing outside the `.blend` at all, which is a materially
@@ -237,7 +237,7 @@ request exists to resist, and FR-3's three-things list is the thing to point at 
 
 ## Affected specifications
 
-- **[specifications/testing.md](../../specifications/testing.md)** — the substantive fold-back, and
+- **[specifications/testing.md](../../../specifications/testing.md)** — the substantive fold-back, and
   it is a change of meaning rather than an addition:
   - *"The live harness is named and re-runnable, not a session"* is rewritten. The harness is still
     named and re-runnable; what it now answers is **"does every tool still work at all?"**, in
@@ -254,26 +254,26 @@ request exists to resist, and FR-3's three-things list is the thing to point at 
     through the tool matches the panel's, nor that any skin type builds the right node tree. Those
     were established once, by FR 010 and FR 011, and the spec should say so — naming the effort
     that established each — rather than implying a standing check that no longer exists.
-- **[specifications/architecture.md](../../specifications/architecture.md)** — two dangling pointers.
+- **[specifications/architecture.md](../../../specifications/architecture.md)** — two dangling pointers.
   The transport cost model cites `verification/measure.py` as where it was measured; that citation
   becomes a citation of FR 013 and this request's own measurements. The shared-fragments section
   says the census "is kept as `verification/census.py` so that the question stays a command"; that
   claim stops being true and should be replaced by what is actually true — the drift question is
   asserted per fragment in `tests/test_codegen.py`, on every unit run.
-- **[specifications/mpfb-integration.md](../../specifications/mpfb-integration.md)** — "Each is
+- **[specifications/mpfb-integration.md](../../../specifications/mpfb-integration.md)** — "Each is
   provoked by a script under `verification/`" is re-pointed at FR 019's subdir, per FR-8.
-- **[feature-requests/CLAUDE.md](../CLAUDE.md)** — not under `specifications/`, but the document that
+- **[feature-requests/CLAUDE.md](../../CLAUDE.md)** — not under `specifications/`, but the document that
   will produce the next eight checklists if it is left alone. Its "Tests" section changes per
   FR-10, and its `Done (live verification outstanding)` paragraph should say what "verified" now
   means: the effort's own exhaustive check ran during the effort, and the tool has a smoke item.
-- **[README.md](../../README.md)** and **[CLAUDE.md](../../CLAUDE.md)** — the map, edited because the
+- **[README.md](../../../README.md)** and **[CLAUDE.md](../../../CLAUDE.md)** — the map, edited because the
   layout and the commands genuinely changed (one script, one command, a reported time), not
   narrated at length. The root CLAUDE.md's "Project status" paragraph and its `verification/`
   mentions; README's "All twenty have been run against a real Blender", which stays true and gains
   the sharper claim that re-checking all twenty is now one short command. Whatever the run is
   measured at, quote that number rather than the target — a documentation claim about speed should
   be the observation, not the aspiration.
-- **[verification/README.md](../../verification/README.md)** — rewritten, and it is the one document
+- **[verification/README.md](../../../verification/README.md)** — rewritten, and it is the one document
   where the new purpose is stated in full: what the run is for, what it deliberately does *not*
   check, the four files, the timing the run was last measured at, and where an exhaustive check
   goes instead.
@@ -306,21 +306,97 @@ live check in FR-1 is sufficient and this is a convenience.
 
 ## References
 
-- [FR 013](../done/013-live-verification/README.md) — built `verification/`, and its
+- [FR 013](../013-live-verification/README.md) — built `verification/`, and its
   non-functional requirements are where the two things the harness cannot put back are recorded.
   Nothing in it was wrong; its shape was right for clearing a backlog and wrong for standing
   service.
-- [FR 016](../done/016-trim-tool-descriptions/README.md) and
-  [tests/test_description_budget.py](../../tests/test_description_budget.py) — the precedent for a
+- [FR 016](../016-trim-tool-descriptions/README.md) and
+  [tests/test_description_budget.py](../../../tests/test_description_budget.py) — the precedent for a
   measured ceiling that fails a run. FR-5 deliberately stops short of copying it, and the
   non-functional requirements say why: that ceiling measures bytes this repository computes, and
   this one would be measuring the machine MPFB happens to be running on.
-- [FR 019](../done/019-file-mpfb-defects/README.md) — **Done**. Its deliverable,
-  [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../mpfb2/features/MCP_DISCOVERED_BUGS.md),
+- [FR 019](../019-file-mpfb-defects/README.md) — **Done**. Its deliverable,
+  [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md),
   cites `verification/check_mpfb_issues.py` and `verification/check_fr010.py` by path from another
   repository; FR-8 says what this request owes them.
-- [FR 018](../018-alternative-material-refresh/README.md) — Proposed; the cache-staleness fixture
+- [FR 018](../../018-alternative-material-refresh/README.md) — Proposed; the cache-staleness fixture
   this request removes is its subject, and it should take the fixture if it wants it.
-- [FR 020](../done/020-trim-claude-md/README.md) — the same disease in the documentation: growth by
+- [FR 020](../020-trim-claude-md/README.md) — the same disease in the documentation: growth by
   accumulation until copies drift. Worth reading before writing the replacement README, since the
   failure mode being cured here is that one wearing different clothes.
+
+## Verification status
+
+**Verified live.** Blender 5.1.0, MPFB 2.0.17 `FROM_SOURCE`, 909 assets across 112 packs,
+blender_mcp's `timer_interval_active` at its **0.25 s default** — the slow configuration, which is
+the honest one to quote.
+
+```
+--- mpfb-mcp smoke run - twenty tools, default arguments: 23 passed, 0 failed, 0 skipped, 42.6s
+    slowest: mpfb_set_targets 7.8s, mpfb_add_asset 4.5s, mpfb_set_skin 3.8s
+```
+
+All twenty tools exercised, none skipped, the leak compare identical, the traceback item resolved.
+**42.6 s against the 60 s target**, and the cut list in the Architecture section was never needed —
+the first measurement of the twenty default calls came in at 34 s of tool time, so no second
+character was ever built and no catalogue call had to be capped beyond the `limit=1` the
+prerequisite lookups already use.
+
+The two things FR 023's Tests section says must be verified **by making them fail** were, by
+[`check_negatives.py`](check_negatives.py) — this effort's own check, in this effort's own subdir,
+which is the first application of FR-10's rule:
+
+```
+--- FR 023 - the two properties verified by making them fail: 6 passed, 0 failed, 0 skipped
+```
+
+FR-1's coverage check was provoked in all three directions (a registered tool with no item stops
+the run with exit code 2; an item removed from the table is named; an item for a tool that is not
+registered is named). FR-6's skip path was provoked by making the asset catalogue answer empty:
+five tools reported `skipped` with a reason, the summary named every one of them, and the run
+still passed with exit code 0.
+
+`tests/` gained the candidate the request called optional —
+[test_verification_smoke.py](../../../tests/test_verification_smoke.py), five tests, importing the
+item table by path. The plumbing turned out to be four lines, so the coverage rule now also fires
+in the nine-second unit run. 742 tests became 747.
+
+### Three things the implementation found
+
+**The 700-line target was too low, and nothing exhaustive survived to explain the difference.**
+The four files come to **1,163 lines** — `smoke.py` 509, `harness.py` 440, `fixtures.py` 87,
+`README.md` 127. In Python alone the fourteen files were 5,308 and the three that remain are
+1,036, so **4,272 lines of Python went**, close to FR-7's estimate of 4,600 but leaving more
+standing than the 700 target allowed for. The estimate assumed `harness.py` would shed more than
+it could: FR-4's leak compare needs the snapshot, the cleanup and the scratch scene, which are
+~130 lines of embedded Blender source that no trimming touches, and twenty item definitions cost
+about seven lines each. Of the 1,036 Python lines, 546 are code and the rest is prose and blank
+lines. The pitfall the request warned about — items growing assertions — did not materialise; the
+assertions are the three FR-3 names, and nothing else.
+
+**FR-3's "read from the response, not from a copy of the contract kept here" needed a mechanism,
+not just a habit.** There is no machine-readable contract to read: what a tool promises is prose
+in its docstring. So each item names its contract keys, and `_keys_the_tool_names()` holds that
+tuple to **the description the MCP client actually downloads** — every backticked span in it,
+reduced to its leading identifier. A key the description stops naming fails the item. The check
+found two mistakes on its first live run (`blender`, which the description writes as
+`blender.version`, and `found`, which it writes as `found: false`), which is what a drift check
+existing is for.
+
+**Two fragments have a drift check, not six.** FR-7 justified deleting `census.py` on the grounds
+that its recurring question is "already asserted per fragment in `tests/test_codegen.py`". It is
+asserted for `refit_blocker.py` and `modifier_reading.py`, and not for the other four —
+`performed.py`'s tests exercise the fragment but do not assert that no payload keeps a copy. The
+deletion still stands (the census was exploratory, and its output is quoted in
+[architecture.md](../../../specifications/architecture.md#shared-fragments) where it matters), but the
+justification was overstated and
+[architecture.md](../../../specifications/architecture.md#shared-fragments) now says which two are
+covered and that a fragment added later should bring such a check with it.
+
+### What was left alone deliberately
+
+Eight `done/` request READMEs link a `check_frNNN.py` that no longer exists. They are historical
+records of what that effort did, the links were valid when written, and several of them already
+link a `verification/review.md` that was removed long before this effort. Git holds the scripts.
+[verification/README.md](../../../verification/README.md) says so in as many words rather than
+leaving the dangling links unexplained.

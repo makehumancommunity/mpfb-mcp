@@ -1,43 +1,28 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-The instrument the live verification session runs on.
+The instrument the smoke run stands on: the tools, a scene of its own, and a
+report.
 
-Everything here exists because FR 006's run was thrown away. That session built
-a scratch basemesh, loaded four targets, snapshotted twelve datablock
-collections and compared them afterwards - all by hand, and none of it
-re-runnable. Five requests then landed unverified, each postponement justified
-by the same cost. This module is the part of that cost that can be removed:
-the scratch scene, the snapshot/compare, the tool callables and the pass/fail
-reporting, so that re-running a whole checklist after a code fix is one command.
+**Checks run through the real tool callables**, taken off the server
+``build_server()`` builds. A check written as a hand-assembled ``send_code()``
+call would verify a program no MCP client will ever send: a tool module's own
+validation, defaulting and coercion is a large part of what is under test here.
 
-Three things about it are decisions rather than details.
-
-**Checks run through the real tool callables.** ``tools()`` registers every tool
-module on a ``FastMCP`` instance and hands back the underlying sync functions,
-the way ``tests/`` reaches them. A check written as a hand-assembled
-``send_code()`` call would verify a program no MCP client will ever send: the
-tool module's own validation, defaulting and coercion is a large part of what
-is under test here, and FR 011's ``skin_type`` vocabulary check lives *only*
-there.
-
-**The scratch scene, not a scratch file.** The session runs against whatever
-Blender the user has prepared, and that Blender holds their work. Reloading a
-home file to get a clean baseline would discard it. So the harness makes its own
-scene, builds in that, and deletes what it made; the snapshot/compare is what
-turns "deleted what it made" from a claim into an assertion. The ``.blend`` is
-never saved, by anything here.
+**The scratch scene, not a scratch file.** The run happens in whatever Blender
+the user has prepared, and that Blender holds their work; reloading a home file
+to get a clean baseline would discard it. So the harness makes its own scene,
+builds in that, and deletes what it made. ``snapshot``/``diff_snapshots`` is
+what turns "deleted what it made" from a claim into an assertion, and the
+``.blend`` is never saved by anything here.
 
 **Probes are sent with a payload marker.** ``probe()`` is the harness's own
-channel into Blender - for snapshots, for reading back what MPFB's UI thinks,
-and for the observations no tool exposes. It goes through the same
-``send_code()`` every tool uses, so FR 012's record covers it too; the marker is
-written so those records are named after the probe rather than all landing under
+channel into Blender - the snapshot, the scene, the rename - and goes through
+the same ``send_code()`` every tool uses, so FR 012's record covers it too. The
+marker is what keeps those records named rather than all landing under
 ``unnamed``.
 
-Nothing here is unit-tested and nothing here may be imported by ``src/``. Its
-own correctness is established the way the request asks: by pointing a checklist
-at a deliberately broken call and watching it fail.
+Nothing here is unit-tested and nothing here may be imported by ``src/``.
 """
 
 from __future__ import annotations
@@ -48,11 +33,13 @@ __all__ = (
     "Report",
     "SCRATCH_SCENE",
     "cleanup_scratch_scene",
+    "descriptions",
     "diff_snapshots",
     "ensure_scratch_scene",
-    "context_is_clean",
-    "performed_disagreements",
+    "main_guard",
+    "performed_disagreement",
     "probe",
+    "rename_object",
     "results_directory",
     "snapshot",
     "tools",
@@ -63,8 +50,7 @@ import os
 import sys
 import time
 
-from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
-
+from mpfbmcp import build_server
 from mpfbmcp.connection import send_code
 
 # The twelve collections FR 006's run named, plus the dirty flag. Kept as a
@@ -112,14 +98,8 @@ MUTATING_VERBS = {
     "mpfb_set_asset_material": "applied",
 }
 
-# Filled by the wrappers ``tools()`` puts around the mutating tools, and drained
-# by Report.summary(). A list rather than a raised exception because a
-# disagreement is a finding to report, not a reason to abandon the checklist
-# that found it.
-_PERFORMED_DISAGREEMENTS = []
 
-
-def _performed_disagreement(tool_name, envelope):
+def performed_disagreement(tool_name: str, envelope: dict) -> str | None:
     """Why ``performed`` and this tool's verb disagree in one answer, or None."""
     if not isinstance(envelope, dict) or envelope.get("status") != "ok":
         return None
@@ -127,85 +107,61 @@ def _performed_disagreement(tool_name, envelope):
     if not isinstance(result, dict):
         return None
     if "performed" not in result:
-        return "{}: no 'performed' in the answer".format(tool_name)
+        return "no 'performed' in the answer"
     performed = result["performed"]
     if not isinstance(performed, bool):
-        return "{}: 'performed' is {!r}, not a bool".format(tool_name, performed)
+        return "'performed' is {!r}, not a bool".format(performed)
     verb = MUTATING_VERBS[tool_name]
     if verb is None:
         return None
     if verb not in result:
         # Every refusal carries the verb too, so its absence is itself a finding.
-        return "{}: no {!r} in the answer beside 'performed'".format(tool_name, verb)
+        return "no {!r} in the answer beside 'performed'".format(verb)
     expected = bool(result[verb])
     if tool_name == "mpfb_symmetrize_targets" and result.get("dry_run"):
         # The one tool whose verb is deliberately not the flag: a dry run lists
         # the changes it would make and writes none of them.
         expected = False
     if performed != expected:
-        return "{}: performed={!r} but {}={!r} (dry_run={!r})".format(
-            tool_name, performed, verb, result[verb], result.get("dry_run"))
+        return "performed={!r} but {}={!r} (dry_run={!r})".format(
+            performed, verb, result[verb], result.get("dry_run"))
     return None
 
 
-def performed_disagreements():
-    """Everything the audit has seen since it was last drained."""
-    drained = list(_PERFORMED_DISAGREEMENTS)
-    del _PERFORMED_DISAGREEMENTS[:]
-    return drained
+def _registered() -> list:
+    """The tools of the server ``main()`` runs, not a re-registration of them.
 
-
-def _audited(tool_name, function):
-    """Wrap one mutating tool so every answer it gives is audited in passing."""
-    def audited(*args, **keywords):
-        envelope = function(*args, **keywords)
-        disagreement = _performed_disagreement(tool_name, envelope)
-        if disagreement is not None:
-            _PERFORMED_DISAGREEMENTS.append(disagreement)
-        return envelope
-    audited.__name__ = getattr(function, "__name__", tool_name)
-    audited.__doc__ = getattr(function, "__doc__", None)
-    return audited
+    ``build_server()`` is what an MCP client connects to, so asking it is what
+    makes "called the way a client would call it" true rather than nearly true -
+    and its descriptions are the dedented ones the client downloads, which is
+    what the smoke run holds each item's contract keys to.
+    """
+    server = build_server()
+    return list(server._tool_manager.list_tools())  # noqa: SLF001
 
 
 def tools() -> dict:
     """Every MCP tool, by name, as the plain callable behind the coroutine.
 
-    This is the same route ``tests/`` takes into a tool. Registering all twenty
-    on one server rather than one per check also means a checklist pays the
-    registration cost once.
-
-    Every mutating tool comes back wrapped in the ``performed`` audit, so a
-    checklist gets that check on every call it already makes without writing
-    one - and Report.summary() reports what the audit saw.
+    This is the same route ``tests/`` takes into a tool, and it is what FR 023's
+    coverage rule is measured against: the smoke run asks this for the set of
+    registered tools and fails if any of them has no item.
     """
-    mcp = FastMCP("mpfb-mcp-verification")
-    from mpfbmcp.tools import (  # pylint: disable=import-outside-toplevel
-        add_asset, add_rig, create_human, generate_rigify_rig, get_macro_details,
-        get_object_info, get_status, get_target_stack, list_asset_materials, list_assets,
-        list_objects, list_rigs, list_targets, refit_human, remove_asset, set_asset_material,
-        set_macro_details, set_skin, set_targets, symmetrize_targets)
-    for module in (
-            add_asset, add_rig, create_human, generate_rigify_rig, get_macro_details,
-            get_object_info, get_status, get_target_stack, list_asset_materials, list_assets,
-            list_objects, list_rigs, list_targets, refit_human, remove_asset, set_asset_material,
-            set_macro_details, set_skin, set_targets, symmetrize_targets):
-        module.register(mcp)
-    resolved = {name: tool.fn for name, tool in mcp._tool_manager._tools.items()}  # noqa: SLF001
-    return {name: _audited(name, function) if name in MUTATING_VERBS else function
-            for name, function in resolved.items()}
+    return {tool.name: tool.fn for tool in _registered()}
+
+
+def descriptions() -> dict:
+    """Every tool's description, by name - the contract an MCP client downloads."""
+    return {tool.name: tool.description or "" for tool in _registered()}
 
 
 def probe(label: str, code: str, **params: object) -> dict:
     """Run harness-owned code inside Blender and return its ``result``.
 
-    The first argument is called ``label`` rather than ``name`` so that a probe
-    can take a ``name=`` parameter of its own - almost every one of them names
-    an object, and a collision there would be a footgun in every check script.
-
-    ``params`` is bound as ``PARAMS`` from a JSON literal, the same way
-    ``codegen``'s prelude binds a payload's parameters - so a probe contains no
-    placeholders and no escaping either. Raises on an error envelope, because a
+    The first argument is ``label`` rather than ``name`` so that a probe can take
+    a ``name=`` parameter of its own. ``params`` is bound as ``PARAMS`` from a
+    JSON literal, the way ``codegen``'s prelude binds a payload's, so a probe
+    contains no placeholders and no escaping. Raises on an error envelope: a
     probe that failed is a broken instrument rather than a failed check, and the
     two must not be able to look alike in a report.
     """
@@ -249,9 +205,9 @@ result = dict(
 def diff_snapshots(before: dict, after: dict) -> dict:
     """What appeared, what disappeared, and whether anything did.
 
-    Reported per collection rather than as one boolean: "identical" is the
-    claim the revert discipline makes, and a report that only says "not
-    identical" leaves the next hour to finding out what leaked.
+    Reported per collection rather than as one boolean: "identical" is the claim
+    the revert discipline makes, and a report that only says "not identical"
+    leaves the next hour to finding out what leaked.
     """
     differences = dict()
     for key, _attribute in DATABLOCK_COLLECTIONS:
@@ -291,16 +247,35 @@ result = dict(scene=scene.name, created=created)
 '''
 
 
-def cleanup_scratch_scene(keep: list | None = None) -> dict:
+def rename_object(old: str, new: str) -> str:
+    """Give a character a name of its own.
+
+    MPFB names every character ``Human`` and uniquifies the second one, so two
+    of them would be told apart by a suffix that depends on what was already in
+    the file.
+    """
+    return probe("rename", _RENAME_CODE, old=old, new=new)["name"]
+
+
+_RENAME_CODE = '''
+import bpy
+
+obj = bpy.data.objects.get(PARAMS["old"])
+if obj is None:
+    raise RuntimeError("no object named " + PARAMS["old"])
+obj.name = PARAMS["new"]
+result = dict(name=obj.name)
+'''
+
+
+def cleanup_scratch_scene() -> dict:
     """Delete every object in the scratch scene, and the datablocks they held.
 
     Orphan meshes, armatures, materials, images and node groups are purged
     afterwards, because deleting an object leaves all five behind and the
-    snapshot compare would report every one of them. ``keep`` names objects to
-    leave alone, for a checklist that wants the character to survive into the
-    next one.
+    snapshot compare would report every one of them.
     """
-    return probe("cleanup", _CLEANUP_CODE, scene=SCRATCH_SCENE, keep=list(keep or []))
+    return probe("cleanup", _CLEANUP_CODE, scene=SCRATCH_SCENE)
 
 
 _CLEANUP_CODE = '''
@@ -309,16 +284,13 @@ import bpy
 removed = []
 scene = bpy.data.scenes.get(PARAMS["scene"])
 if scene is not None:
-    keep = set(PARAMS["keep"])
     for obj in list(scene.collection.all_objects):
-        if obj.name in keep:
-            continue
         removed.append(obj.name)
         bpy.data.objects.remove(obj, do_unlink=True)
 
 # An object removal leaves its data behind. Purge only what nothing uses, and
-# only in these five collections: a zero-user brush or world is Blender's own
-# business and predates this session.
+# only in these six collections: a zero-user brush or world is Blender's own
+# business and predates this run.
 purged = dict()
 for collection_name in ["meshes", "armatures", "materials", "images", "node_groups", "actions"]:
     collection = getattr(bpy.data, collection_name)
@@ -350,76 +322,43 @@ result = dict(removed=removed, purged=purged)
 '''
 
 
-def context_is_clean() -> dict:
-    """OBJECT mode and a scratch-scene context, checked before a checklist item.
-
-    Both FR 009 and FR 010 learned from source that ``bpy.ops`` polls on
-    ``bpy.context.mode`` and not on the subject's - so an unrelated object left
-    in edit mode fails an operator on a character that looks perfectly fine.
-    Asserting it here is what keeps such a failure from being read as the
-    tool's.
-    """
-    return probe("context", _CONTEXT_CODE)
-
-
-_CONTEXT_CODE = '''
-import bpy
-
-result = dict(
-    mode=str(bpy.context.mode),
-    clean=str(bpy.context.mode) == "OBJECT",
-    scene=bpy.context.scene.name,
-    active_object=None if bpy.context.active_object is None else bpy.context.active_object.name,
-    selected=sorted([o.name for o in bpy.context.selected_objects]),
-)
-'''
-
-
 def results_directory() -> str:
-    """Where a checklist writes its full result, for the record that follows it.
-
-    The printed line is capped so a terminal stays readable; the record FR-4
-    asks for wants the observed value in full. Overridable, and defaulted
-    outside the repository is deliberately *not* done here - unlike FR 012's
-    per-call record, a checklist result is a list of pass/fail lines about this
-    package, not diagnostic output about the user's machine.
-    """
+    """Where the run writes its full result: the printed line is capped, the file
+    is not. Defaulting it outside the repository is deliberately *not* done -
+    unlike FR 012's per-call record, a run result is pass/fail lines about this
+    package rather than diagnostics about the user's machine."""
     return os.environ.get("MPFB_MCP_VERIFICATION_RESULTS",
                           os.path.join(os.path.dirname(os.path.abspath(__file__)), "results"))
 
 
 class Report:
-    """One checklist: a pass/fail/skip line per item, with the observed value.
+    """The run: a pass/fail/skip line per item, with the observed value and a time.
 
-    FR-4 wants each source request's record rewritten with the observed value
-    beside each item, and FR 013's non-functional requirements put truthfulness
-    above completeness. So there are three outcomes and not two: ``skip`` is a
-    first-class result carrying the reason it could not be reached, and an item
-    nobody called is reported as missing at the end rather than silently absent.
+    There are three outcomes and not two. ``skip`` is a first-class result
+    carrying the reason the item could not be reached, and the summary names
+    every skipped item rather than only counting it: twenty passes and four
+    skips must not be presentable as twenty-four passes. The per-item duration
+    is kept because the sixty-second target is watched rather than enforced, so
+    it has to be visible on every run.
     """
 
-    def __init__(self, name: str, expected_items: tuple = ()) -> None:
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.expected_items = tuple(expected_items)
         self.results = []
         self._started = time.perf_counter()
         print("\n=== {} ===".format(name), flush=True)
 
-    def check(self, item: str, passed: bool, observed: object = None) -> bool:
+    def check(self, item: str, passed: bool, observed: object = None,
+              elapsed: float = 0.0) -> bool:
         self.results.append(dict(item=item, outcome="pass" if passed else "fail",
-                                 observed=observed))
-        print("[{}] {}{}".format(
-            "x" if passed else " ", item, _observed_suffix(observed)), flush=True)
+                                 observed=observed, elapsed=elapsed))
+        print("[{}] {}{}{}".format(
+            "x" if passed else " ", item, _elapsed_prefix(elapsed),
+            _observed_suffix(observed)), flush=True)
         return passed
 
-    def equal(self, item: str, actual: object, expected: object) -> bool:
-        """A check whose observed value is worth reporting even when it passes."""
-        return self.check(item, actual == expected,
-                          actual if actual == expected else
-                          "expected {!r}, got {!r}".format(expected, actual))
-
-    def skip(self, item: str, reason: str) -> bool:
-        self.results.append(dict(item=item, outcome="skip", observed=reason))
+    def skip(self, item: str, reason: str, elapsed: float = 0.0) -> bool:
+        self.results.append(dict(item=item, outcome="skip", observed=reason, elapsed=elapsed))
         print("[-] {} -- SKIPPED: {}".format(item, reason), flush=True)
         return False
 
@@ -427,36 +366,42 @@ class Report:
         """An observation that is not itself a check. Kept out of the counts."""
         print("    . {}".format(text), flush=True)
 
-    def summary(self) -> dict:
-        # FR 014's audit, drained here rather than checked at each call site:
-        # every mutating call this checklist made has already been compared
-        # against its own verb, and this is where the comparison is reported.
-        # An item on every checklist, so a checklist that calls no mutating tool
-        # says so rather than staying silent about it.
-        disagreements = performed_disagreements()
-        self.check("'performed' agreed with each tool's own verb on every call",
-                   not disagreements,
-                   "; ".join(disagreements) if disagreements else None)
-
+    def summary(self, target_seconds: float | None = None) -> dict:
+        total = time.perf_counter() - self._started
         counts = dict(passed=0, failed=0, skipped=0)
         for result in self.results:
             counts["passed" if result["outcome"] == "pass" else
                    "failed" if result["outcome"] == "fail" else "skipped"] += 1
-        reached = set(result["item"] for result in self.results)
-        never_run = [item for item in self.expected_items if item not in reached]
-        print("--- {}: {} passed, {} failed, {} skipped, {} never run, {:.1f}s".format(
-            self.name, counts["passed"], counts["failed"], counts["skipped"],
-            len(never_run), time.perf_counter() - self._started), flush=True)
-        for item in never_run:
-            print("[ ] {} -- NEVER RUN".format(item), flush=True)
-        counts["never_run"] = never_run
+        counts["seconds"] = total
         counts["results"] = self.results
+
+        print("\n--- {}: {} passed, {} failed, {} skipped, {:.1f}s".format(
+            self.name, counts["passed"], counts["failed"], counts["skipped"], total), flush=True)
+        for result in self.results:
+            if result["outcome"] == "fail":
+                print("    FAILED: {}".format(result["item"]), flush=True)
+        for result in self.results:
+            if result["outcome"] == "skip":
+                print("    not exercised: {} -- {}".format(
+                    result["item"], result["observed"]), flush=True)
+        slowest = sorted(self.results, key=lambda r: -r["elapsed"])[:3]
+        print("    slowest: {}".format(", ".join(
+            "{} {:.1f}s".format(result["item"], result["elapsed"])
+            for result in slowest if result["elapsed"])), flush=True)
+        if target_seconds is not None and total > target_seconds:
+            # Over target is a prompt to look, never a failure: the number being
+            # measured is somebody else's Blender. The likeliest cause by a wide
+            # margin is a configuration mistake rather than a regression.
+            print("    over the {:.0f}s target. Check blender_mcp's "
+                  "timer_interval_active first - 0.25s is its default and 0.05s is the "
+                  "module's; every call here is four to five times slower at the "
+                  "former. This does not fail the run.".format(target_seconds), flush=True)
         self._write(counts)
         return counts
 
     def _write(self, counts: dict) -> None:
-        """Persist the full result. Best-effort, for FR 012's reason: a report
-        that cannot be written must not take the checklist down with it."""
+        """Persist the full result. Best-effort: a report that cannot be written
+        must not take the run down with it."""
         try:
             directory = results_directory()
             os.makedirs(directory, exist_ok=True)
@@ -471,6 +416,10 @@ class Report:
             print("    (could not write result: {})".format(error), flush=True)
 
 
+def _elapsed_prefix(elapsed: float) -> str:
+    return "" if not elapsed else " ({:.1f}s)".format(elapsed)
+
+
 def _observed_suffix(observed: object) -> str:
     if observed is None:
         return ""
@@ -481,7 +430,7 @@ def _observed_suffix(observed: object) -> str:
 
 
 def main_guard(function) -> int:
-    """Run one checklist, reporting a broken instrument differently from a fail."""
+    """Run one script, reporting a broken instrument differently from a fail."""
     try:
         counts = function()
     except Exception as exception:  # noqa: BLE001 - the report is the product

@@ -39,11 +39,11 @@ Proof of concept. Twenty tools are implemented.
 generate a Rigify rig after them. The tools report the violation they can see rather than
 enforcing it.
 
-**All twenty have been run against a real Blender.** The checks live in
-[verification/](verification/) as one script per checklist, so re-running one after a fix is a
-command rather than a session; see
-[FR 013](feature-requests/done/013-live-verification/README.md) for the run that cleared the
-backlog and the three defects it found.
+**All twenty have been run against a real Blender, and re-checking all twenty is one short
+command.** [verification/](verification/) is a smoke run — one call per tool with default
+arguments, measured at 42.6 s for the whole set — so confirming that nothing has stopped working
+is a command rather than a session. Each tool was also proved exhaustively once, by the effort
+that added it; see [HISTORY.md](feature-requests/HISTORY.md) for what each of those runs found.
 
 See [src/mpfbmcp](src/mpfbmcp) and [CLAUDE.md](CLAUDE.md) for how they work and how to run them.
 
