@@ -107,6 +107,22 @@ that never imports `bpy`, and its whole value is that it runs anywhere in second
 and what `tests/` structurally cannot. Adopting MPFB's harness for `bridge/` also pays for itself
 twice: it is the arrangement that works, and it is the one an MPFB contributor already knows.
 
+**Since FR 029 the bridge harness can test the bridge's transport, which it could not before.**
+That is the single largest change to what this repository is able to check, and it is worth
+recording where the split is explained rather than left as a fact about one test module. The
+suite runs inside `blender --background`, where `bpy.app.timers` never fire and the start
+operator refuses — so until the headless drive mechanism existed, every test in it called into a
+module and none of them made a socket round trip. The add-on's own protocol was the one part of
+it the tests could not reach. Now a test starts the server on an OS-assigned port, runs a client
+on a thread and drives `poll_blocking()` from the main one, which is the same concurrency shape
+the add-on has in production and needs no second Blender process.
+
+**What that does not remove is the line between the two harnesses**, only where it falls. A
+bridge test still needs a real Blender; `tests/` still must run on a machine that has none. And
+the bridge's suite still cannot exercise the *timer-driven* path, since there is no event loop to
+drive it — so whether a windowed Blender and a headless one answer the same is a claim no unit
+test can make, and it belongs to an effort's own live check.
+
 **One hard constraint falls out of it, and it is not negotiable.** `python3 -m unittest discover
 -s tests` must keep discovering exactly what it discovers today, on a machine with no Blender
 installed. A bridge test imports `bpy` and would fail at *import*, not at assertion — which is

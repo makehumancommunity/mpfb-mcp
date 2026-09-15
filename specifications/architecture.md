@@ -65,10 +65,19 @@ one line in a table.
 
 MPFB's Blender-side logic belongs in a Blender add-on, because that is where it runs. The **MPFB
 Bridge** is a companion extension — `bridge/mpfb_bridge/` in this repository, `id = "mpfb_bridge"`,
-`blender_version_min = "4.2.0"` to match MPFB's — that listens on `127.0.0.1:9877` and dispatches a
+`blender_version_min = "5.0.0"` — that listens on `127.0.0.1:9877` and dispatches a
 closed vocabulary of named commands. It is deliberately *not* part of the pip package:
 `pyproject.toml` packages `src/mpfbmcp` and a top-level `bridge/` is outside its search root
 entirely, so the bridge needs neither a package-data glob nor a `namespaces` setting.
+
+**Its Blender floor is its own decision, not MPFB's.** The bridge began at MPFB's `4.2.0`, on the
+reasoning that there is no point supporting a Blender that cannot run MPFB. That is true and the
+converse does not follow: MPFB is a general-purpose add-on with an installed base on older
+Blenders, and the bridge is a companion whose entire audience installs it deliberately in order to
+drive MPFB from an agent. Supporting Blenders none of them run costs testing surface on every
+command and buys nothing — and the cost is paid once per command, of which there are to be
+twenty-five. The narrowing is real and should be stated wherever the bridge is offered rather than
+discovered at install time: a user on 4.2 with a working MPFB cannot install the bridge.
 
 **The command vocabulary is closed, and that is the point.** The server looks a name up in a fixed
 table and runs nothing else; there is no request shape by which a caller's string becomes Python.
@@ -77,12 +86,27 @@ Three structural consequences:
 - **One tool is one command.** Not one command per MPFB service function — the unit stays the
   *intent*, exactly as [vision.md](vision.md#what-makes-something-a-tool) requires. Batching and
   multi-step reasoning stay inside a single command rather than becoming several round trips.
-- **The table is a literal dict in a module of its own.** The security claim is only worth making
-  if it is cheap to check, and checking it must mean reading one short file rather than tracing
-  decorators across a package.
-- **`bpy` is main-thread only, so every command runs on a timer.** The socket is non-blocking and
-  is drained from a `bpy.app.timers` callback; a handler therefore executes exactly where a button
-  press would. A server that answered from an accepted connection's own thread would be touching
+- **The table is a literal dict in a module that holds the table and nothing else.** The security
+  claim is only worth making if it is cheap to check, and checking it must mean reading one short
+  file rather than tracing decorators across a package. Each command's handler and parameter
+  specification live in a module named for the command, mirroring `src/mpfbmcp/tools/` down to the
+  naming, and `commands/table.py` imports them and spells the table out. **The table is written,
+  never assembled**: no decorator, no `__init_subclass__`, no directory scan, no registration as an
+  import side effect. A dict assembled by imports is a dict whose contents depend on import order,
+  and a directory scan would make adding a command to this add-on a matter of dropping a file in a
+  folder — very nearly the thing a closed vocabulary exists to deny. A command module not named in
+  the table is dead code and must be unreachable.
+- **A command declares what it takes, and the dispatcher enforces it.** Parameters are a tuple of
+  `Param` records — type, bounds, choices, default, nullability — checked before the handler runs,
+  so a handler that runs has already been given parameters of the right shape. A command also
+  declares whether it needs MPFB, and one that does is refused with `mpfb_unavailable` rather than
+  reaching a service that is not there. Both are properties of the table rather than habits each
+  handler keeps, which is what stops the twenty-fifth command from validating differently from the
+  first.
+- **`bpy` is main-thread only, so every command runs on the main thread.** The socket is
+  non-blocking and is drained from a `bpy.app.timers` callback in a windowed Blender and from a
+  `select` loop in a headless one; a handler therefore executes exactly where a button press
+  would. A server that answered from an accepted connection's own thread would be touching
   Blender's data from the wrong one, which does not reliably fail — it corrupts.
 
 **The honest limitation is documented rather than papered over.** While the server is running, any
@@ -91,16 +115,30 @@ binds loopback only, that it is off until started from a preferences panel, and 
 do is a list a sceptic can read. A shared-secret token was considered and rejected for now: it
 adds a configuration step to every client setup, which is the friction the pivot exists to remove.
 
-**The server runs only in a GUI Blender, and refuses to start anywhere else.** `bpy.app.timers`
-callbacks are driven by Blender's event loop, and a `--background` Blender has none — so a server
-started there binds a socket, registers a timer that can never fire, and answers nothing, while
-every client hangs until its own timeout. That is not a hypothetical: it is what the bridge did
-before [FR 028](../feature-requests/done/028-pivot-to-specific-addon/README.md)'s live
-verification found it. The start operator now refuses in background mode and says why. **A
-headless command loop is a legitimate thing to add later** — it is how a pipeline would drive MPFB
-without a screen — but it is a second drive mechanism (blender lab's add-on has one, reached
-through a CLI command) rather than a fix to this one, and until it exists the refusal is the
-honest answer.
+**There are two drive mechanisms, and which one you get is decided by whether Blender has a
+screen.** In a windowed Blender the socket is drained from a `bpy.app.timers` callback; in a
+headless one it is drained from a blocking `select` loop reached through
+`blender --background --command mpfb_bridge`. They differ in how they wait and in nothing else,
+ending in the same dispatch, the same framing and the same table — **one protocol implemented
+once**, which is a deliberate departure from the add-on the transport is modelled on, where the
+background path is a second read loop beside the timer-driven one.
+
+**The start operator still refuses background mode, and now says what to use instead.**
+`bpy.app.timers` callbacks are driven by Blender's event loop and a `--background` Blender has
+none, so a server started from the operator there binds a socket, registers a timer that can never
+fire, and answers nothing while every client hangs until its own timeout. That is not a
+hypothetical: it is what the bridge did before
+[FR 028](../feature-requests/done/028-pivot-to-specific-addon/README.md)'s live verification found
+it, and the guard belongs to the *operator* rather than to the server — a guard in `start()` would
+make the CLI path refuse itself.
+
+**What the headless path establishes, and what it does not.** It makes the *bridge* drivable
+without a screen, which is how a pipeline would drive MPFB and — the reason it was built when it
+was — the only way the bridge's own test suite can exercise its own transport, since that suite
+runs inside `blender --background`. It establishes nothing about how much of MPFB works without a
+screen. Two prerequisites are easy to miss: the add-on must be *enabled* in the Blender being run,
+because a disabled extension registers no CLI command, and the loop owns the main thread until it
+is interrupted.
 
 **`bpy.app.online_access` does not gate a loopback bind, and the bridge does not consult it.**
 Blender asks add-ons that declare a `network` permission to respect that flag, and blender lab's
@@ -118,10 +156,18 @@ thing to put to extension review rather than settle here.
 A request is a JSON object terminated by a NUL byte; a response is the same. The shapes:
 
 ```
---> {"command": "get_status", "params": {...}}\0
+--> {"command": "get_status", "params": {...}, "protocol_version": 1}\0
 <-- {"status": "ok",    "protocol_version": 1, "command": "get_status", "result": {...}}\0
 <-- {"status": "error", "protocol_version": 1, "error": "<slug>", "message": "..."}\0
 ```
+
+The slugs are `malformed_request`, `unknown_command`, `invalid_params`, `command_failed`,
+`result_not_serializable`, `request_too_large`, `timeout`, `mpfb_unavailable` and
+`protocol_mismatch`. Two of those carry most of the meaning a caller acts on:
+**`invalid_params`** says the request was wrong and names the parameter, and
+**`mpfb_unavailable`** says the request was fine and the install is not — distinct from
+`command_failed` on purpose, because there is no bug and no traceback to read, there is an
+install to fix.
 
 - **Nothing is decoded before the frame boundary.** The receive buffer is a `bytearray` and the
   delimiter search is a byte search, so a multi-byte UTF-8 sequence split across two `recv()`
@@ -138,6 +184,15 @@ A request is a JSON object terminated by a NUL byte; a response is the same. The
 - **A caller branches on `error`, never on `message`.** The slug is the contract and the sentence
   beside it may be reworded; an unknown command's refusal additionally carries the list of
   commands that *do* exist, because a closed vocabulary is only useful if it is discoverable.
+  `list_commands` is the same catalogue asked for politely, and the two must agree — having to
+  guess wrong in order to learn an interface is a poor way to publish one.
+- **An unknown key in `params` is an error; an unknown key in the envelope is not.** The
+  asymmetry is deliberate and worth stating, because it looks like an inconsistency. The envelope
+  belongs to the protocol and is versioned, so a client may carry a key this bridge has not heard
+  of and a future one may add `request_id` without breaking anything. `params` belongs to one
+  command whose contract is declared, so a misspelled `catagory` there is a mistake — and one
+  that, quietly dropped, produces a call that succeeds and does nothing, which is the most
+  expensive kind of failure to diagnose from the far side of a socket.
 - **A result is serialized before the server commits to an answer**, so a value that cannot be
   encoded fails as a clear error envelope rather than as an exception halfway through writing a
   response the caller has already begun reading.
@@ -157,12 +212,31 @@ The division of labour is unchanged by the pivot: **shape here, vocabulary there
 `limit` is a non-negative integer is knowable on this side; whether `"cinderella"` is an installed
 rig is not, and guessing would make the catalogue and the acting tool disagree.
 
+**On the bridge's side the rules are data rather than code**, which is what keeps the duplication
+from becoming a divergence of its own. A command declares its parameters as `Param` records and
+one function checks them, so the bool-strictness, the non-`bool` integer and the range bounds
+exist once for twenty-five commands instead of once per command. The same specification is what
+`list_commands` hands out, so what a caller is told and what is enforced cannot drift apart. The
+type vocabulary is JSON Schema's — `string`, `integer`, `number`, `boolean`, `array`, `object` —
+because the reader on the other end is describing JSON rather than Python; `number` additionally
+rejects NaN and the infinities, which survive `json.loads` and compare false against every bound.
+
 ### Versioning
 
-Every `get_status` answer carries a `protocol_version`, and the client checks it. MPFB, the bridge
-and mpfb-mcp are three separately released pieces, and that matrix is a real cost of this
-packaging choice — the only cheap defence is a handshake that exists from the first command.
-Nothing else in the system carries a version today.
+Every answer carries a `protocol_version`, and `get_status` additionally reports
+`min_supported_protocol_version` — the oldest request version this bridge still understands — so
+that a client can tell "too old" from "from the future" without guessing. A request *may* declare
+its own `protocol_version`; one outside the accepted range is refused with `protocol_mismatch`
+rather than misinterpreted, and one carrying none is served, deliberately, so that a client
+written by hand at a terminal stays possible. MPFB, the bridge and mpfb-mcp are three separately
+released pieces, and that matrix is a real cost of this packaging choice — the only cheap defence
+is a handshake that exists from the first command.
+
+**The bridge's half of the handshake is what exists; the client's half is the backend seam's.**
+Nothing on mpfb-mcp's side checks the version yet, because nothing on mpfb-mcp's side talks to the
+bridge yet. The bridge's own version is reported too, and must equal the `version` in
+`blender_manifest.toml` — kept in step by hand, since nothing in the extension format publishes
+one to the other, and asserted by a test rather than by a comment.
 
 ## No direct dependency on MPFB or blender_mcp
 

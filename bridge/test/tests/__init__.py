@@ -13,6 +13,7 @@ ends in the package name, and hand the leaf tests something already resolved.
 
 __all__ = (
     "dynamic_import",
+    "bridge_module",
     "bridge_package",
 )
 
@@ -32,10 +33,21 @@ def bridge_package():
         "enabled in this Blender for these tests to run.".format(_PACKAGE_SUFFIX))
 
 
+def bridge_module(relative_module):
+    """One of the add-on's submodules, resolved by suffix.
+
+    The module rather than a name out of it, which matters for the tests that
+    replace something on it: patching an attribute only works if the code under
+    test reaches it through the module, and the patch has to be applied to the
+    same module object the add-on imported.
+    """
+    package = bridge_package()
+    return importlib.import_module("{:s}.{:s}".format(package.__name__, relative_module))
+
+
 def dynamic_import(relative_module, key):
     """One name out of one of the add-on's submodules, resolved by suffix."""
-    package = bridge_package()
-    module = importlib.import_module("{:s}.{:s}".format(package.__name__, relative_module))
+    module = bridge_module(relative_module)
     if not hasattr(module, key):
         raise AttributeError("Module {:s} does not have attribute {:s}".format(module.__name__, key))
     return getattr(module, key)

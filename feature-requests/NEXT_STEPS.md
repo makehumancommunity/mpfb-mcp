@@ -12,8 +12,10 @@ records what has already landed and why. When an effort below is finished, move 
 
 **[FR 028](done/028-pivot-to-specific-addon/README.md) is done — see
 [HISTORY.md](HISTORY.md#fr-028--the-pivot-to-a-bridge-add-on-decided-and-proved) for what it
-landed. It made the decision and proved the transport; the six efforts below are what remains,
-and they run in order.**
+landed. It made the decision and proved the transport, and
+[FR 029](done/029-bridge-transport-and-skeleton/README.md) grew the add-on into something
+twenty-five commands can be added to. The five efforts below are what remains, and they run in
+order.**
 
 The fundamental principle of the solution changed: instead of assembling Python programs and
 sending them over a third party's MCP add-on socket, MPFB's Blender-side logic moves into a
@@ -29,31 +31,25 @@ route is built on: the bridge and the generated-code path are comparable side by
 Blender at every stage, and the old one is deleted only when nothing uses it. Numbers are
 assigned when a request is started, not here.
 
-### 1. Bridge transport and skeleton
+<a id="1-bridge-transport-and-skeleton"></a>
 
-**Scoped as [FR 029](029-bridge-transport-and-skeleton/README.md) (Accepted)**, which additionally
-takes on the headless drive mechanism named below — not only as the pipeline feature it is, but
-because the bridge's own suite runs inside `blender --background`, where the server refuses to
-start, so today no test in it makes a socket round trip. It also raises the add-on's
-`blender_version_min` to `5.0.0`, which is a decision FR 028 made differently, and splits
-`commands.py` into one module per command before there is more than one to split.
+### ~~1. Bridge transport and skeleton~~ — done
 
-Grow FR 028's proof of concept into a real add-on: a preferences panel that does more than start
-and stop, a settled error envelope, the protocol-version handshake checked at both ends, and the
-command table with enough structure to hold twenty-five entries rather than one. The transport
-itself is done and verified against Blender 5.1.0; what this adds is everything a second command
-would have wanted and the first one did not need.
+**[FR 029](done/029-bridge-transport-and-skeleton/README.md) landed it** — see
+[HISTORY.md](HISTORY.md#fr-029--the-bridge-grows-a-skeleton-and-a-second-way-to-drive-it).
+The declarative parameter contract, the `mpfb_unavailable` precondition, `list_commands`, the
+handshake, a diagnostic panel, one module per command, a `5.0.0` Blender floor, and the headless
+drive mechanism. The bridge's suite went from 7 tests to 35 and, for the first time, makes a real
+socket round trip.
 
-**The obvious candidate for real work here is a headless drive mechanism.** The bridge runs only
-in a GUI Blender, because `bpy.app.timers` callbacks need an event loop and `blender -b` has none;
-FR 028 made the start operator refuse background mode rather than bind a socket that could never
-answer. A pipeline driving MPFB without a screen needs the second mechanism — blender lab's add-on
-reaches one through a CLI command — and that is a feature rather than a fix. See
-[The bridge](../specifications/architecture.md#the-bridge).
+**Three things it settled that the efforts below inherit.** A command is a record in
+`commands/table.py` with a handler, a parameter specification and a `requires_mpfb` flag, and a
+migrated tool adds one module and one entry — nothing else. The wire's slugs are fixed, and
+`mpfb_unavailable` is the one every migrated command depends on. And the two drive mechanisms are
+verified to give identical answers, so nothing below has to test both.
 
-Two questions FR 028 *closed* and that should not be reopened by accident: `bpy.app.online_access`
-does not gate a loopback bind, and the closed vocabulary survives
-[the hardest tool](done/028-pivot-to-specific-addon/README.md#requirement-4-mpfb_set_asset_material-survives-comfortably).
+**What it explicitly did not establish**: anything about the twenty-three commands still to be
+written, or about how much of MPFB works in a headless Blender.
 
 ### 2. The server-side backend seam
 
@@ -62,6 +58,11 @@ learns which transport it is on —
 [Supporting a second backend](../specifications/architecture.md#supporting-a-second-backend)
 already says where it goes, having been designed for a different second backend and spent on this
 one instead.
+
+**The client half of the protocol handshake belongs to this effort.** FR 029 built the bridge's
+half — every answer carries `protocol_version`, `get_status` also reports
+`min_supported_protocol_version`, and a request declaring a version outside the range is refused
+with `protocol_mismatch` — and left the checking to whoever first speaks to it, which is this.
 
 **Backend selection is explicit configuration, never autodetection**, and that bullet is the one
 that constrains this effort directly: both third-party add-ons answer on 9876, the bridge answers

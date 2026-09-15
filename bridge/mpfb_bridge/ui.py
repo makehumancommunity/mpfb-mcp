@@ -13,7 +13,15 @@ very hard to see.
 **The server is off until started.** Not a preference, not an auto-start timer: a
 listening socket that appears because software was installed is exactly the
 posture the pivot is meant to improve on, and "installation is the consent" only
-holds if starting it is a second, separate act.
+holds if starting it is a second, separate act. An autostart option was
+considered and refused for that reason rather than overlooked.
+
+**The panel says what is true, not only what is configured.** It reports where
+MPFB was found and what state it is in, and - once the server is up - how many
+requests it has answered and what the last one was. The commonest failure in
+this whole system is MPFB not being where the bridge looked, and before this the
+only way to learn that was to make a call from somewhere else and read the
+answer.
 """
 
 __all__ = (
@@ -23,12 +31,17 @@ __all__ = (
     "MPFB_BRIDGE_OT_server_stop",
 )
 
+import time
+
 import bpy
 
 from . import command_server
+from . import mpfb_resolution
+from . import stats
+from .cli import CLI_COMMAND_ID
 from .commands import COMMANDS
-from .commands import BRIDGE_VERSION
 from .log import get_logger
+from .version import BRIDGE_VERSION
 
 _LOG = get_logger("ui")
 
@@ -43,6 +56,18 @@ class _State:
     """
 
     last_error = ""
+
+
+def _clock(timestamp):
+    """A wall-clock time for the panel. Local, to the second, no date.
+
+    The panel reports what happened during this Blender session, so the date is
+    noise and the seconds are the part a developer watching a client actually
+    compares against.
+    """
+    if not timestamp:
+        return "-"
+    return time.strftime("%H:%M:%S", time.localtime(timestamp))
 
 
 def _update_timer_interval_active(self, _context):
@@ -83,7 +108,7 @@ class MPFB_BRIDGE_Preferences(bpy.types.AddonPreferences):
         update=_update_timer_interval_active)
 
     def draw(self, _context):
-        """Paint the preferences panel: the address, the switch, and what is running."""
+        """Paint the preferences panel: the address, the switch, and what is happening."""
         layout = self.layout
 
         column = layout.column()
@@ -95,8 +120,10 @@ class MPFB_BRIDGE_Preferences(bpy.types.AddonPreferences):
 
         if command_server.is_running():
             layout.operator("mpfb_bridge.server_stop", icon="CANCEL")
-            layout.label(text="Server is running on {:s}:{:d}".format(self.host, self.port),
-                         icon="CHECKMARK")
+            address = command_server.bound_address()
+            # The bound address rather than the preference, which may say port 0.
+            layout.label(text="Server is running on {:s}:{:d}".format(*address) if address
+                         else "Server is running", icon="CHECKMARK")
         else:
             layout.operator("mpfb_bridge.server_start", icon="PLAY")
             layout.label(text="Server is stopped", icon="X")
@@ -104,11 +131,73 @@ class MPFB_BRIDGE_Preferences(bpy.types.AddonPreferences):
         if _State.last_error:
             layout.label(text=_State.last_error, icon="ERROR")
 
+        self._draw_mpfb_status(layout)
+        if command_server.is_running():
+            self._draw_activity(layout)
+
         box = layout.box()
         box.label(text="MPFB Bridge {:s}, protocol {:d}".format(
             BRIDGE_VERSION, command_server.PROTOCOL_VERSION))
         box.label(text="{:d} command(s): {:s}".format(len(COMMANDS), ", ".join(sorted(COMMANDS))))
         box.label(text="Commands are dispatched by name. No caller-supplied code is executed.")
+        box.label(text="Headless: blender --background --command {:s}".format(CLI_COMMAND_ID))
+
+    @staticmethod
+    def _draw_mpfb_status(layout):
+        """Say where MPFB was found and what state it is in.
+
+        Resolved on every redraw rather than cached. The scan is a pass over
+        `sys.modules`, a panel redraws only while somebody is looking at it, and
+        a cached answer here would be wrong in precisely the situation this box
+        exists for: the user has just enabled or fixed MPFB and wants to see
+        whether it took.
+        """
+        resolution = mpfb_resolution.resolve()
+
+        box = layout.box()
+        if resolution.is_ok:
+            box.label(text="MPFB is loaded and initialized", icon="CHECKMARK")
+        elif resolution.state == mpfb_resolution.STATE_NOT_INITIALIZED:
+            box.label(text="MPFB is loaded but did not finish initializing", icon="ERROR")
+        else:
+            box.label(text="MPFB is not loaded in this Blender", icon="X")
+
+        if resolution.module is not None:
+            version = getattr(resolution.module, "VERSION", None)
+            box.label(text="Found as {:s}{:s}".format(
+                resolution.module.__name__,
+                ", version {:s}".format(".".join(str(part) for part in version))
+                if isinstance(version, (tuple, list)) else ""))
+            if resolution.module.__name__ not in bpy.context.preferences.addons:
+                # MPFB's unregister() leaves its contextual information in place,
+                # so a disabled MPFB still resolves. Only the preferences tell.
+                box.label(text="That add-on is currently disabled", icon="ERROR")
+
+        if len(resolution.candidates) > 1:
+            # Two MPFBs is a real situation - two extension repositories, or a
+            # legacy install beside an extension one - and which one wins is
+            # arbitrary, so say so rather than picking quietly.
+            box.label(text="More than one candidate: {:s}".format(
+                ", ".join(resolution.candidates)), icon="ERROR")
+
+    @staticmethod
+    def _draw_activity(layout):
+        """What the server has answered since it started."""
+        counters = stats.snapshot()
+
+        box = layout.box()
+        box.label(text="{:d} request(s) answered, {:d} of them errors".format(
+            counters["requests_served"] + counters["failures"], counters["failures"]))
+
+        if counters["last_command"]:
+            box.label(text="Last command: {:s} at {:s}".format(
+                counters["last_command"], _clock(counters["last_command_at"])))
+        else:
+            box.label(text="No command has been dispatched yet")
+
+        if counters["last_error"]:
+            box.label(text="Last error at {:s}: {:s}".format(
+                _clock(counters["last_error_at"]), counters["last_error"][:120]), icon="ERROR")
 
 
 class MPFB_BRIDGE_OT_server_start(bpy.types.Operator):
@@ -129,12 +218,16 @@ class MPFB_BRIDGE_OT_server_start(bpy.types.Operator):
             # `--background` Blender has none - so the socket would bind, the timer
             # would register, this operator would report success, and every client
             # would hang until its own timeout. Verified: that is exactly what
-            # happened before this guard existed. blender lab's add-on refuses
-            # background mode for the same reason and points at a CLI command; the
-            # bridge has no such command yet, so it says so plainly.
-            message = ("The MPFB Bridge server cannot run in background mode: Blender runs no "
-                       "event loop with --background, so the timer that answers requests would "
-                       "never fire and every client would hang. Start Blender normally.")
+            # happened before this guard existed.
+            #
+            # The refusal stands, but it is no longer the end of the sentence:
+            # there is now a second drive mechanism for exactly this case, and
+            # naming it is the difference between a dead end and a redirect.
+            message = ("The MPFB Bridge server cannot run in background mode from this operator: "
+                       "Blender runs no event loop with --background, so the timer that answers "
+                       "requests would never fire and every client would hang. Use "
+                       "'blender --background --command {:s}' instead, which serves the same "
+                       "commands from a blocking loop.".format(CLI_COMMAND_ID))
             _State.last_error = message
             self.report({"ERROR"}, message)
             return {"CANCELLED"}

@@ -1,12 +1,12 @@
 # Bridge transport and skeleton
 
-**Status:** Accepted
+**Status:** Done
 
-[FR 028](../done/028-pivot-to-specific-addon/README.md) proved the transport with one command that
+[FR 028](../028-pivot-to-specific-addon/README.md) proved the transport with one command that
 takes no parameters, answers from `bpy` alone, and cannot fail in a way a caller needs to
 distinguish. That was the right thing to prove and it is not much to build twenty-four more
 commands on. This is
-[stage 1 of the pivot](../NEXT_STEPS.md#1-bridge-transport-and-skeleton): grow the proof of
+[stage 1 of the pivot](../../NEXT_STEPS.md#1-bridge-transport-and-skeleton): grow the proof of
 concept into an add-on a migration can add commands to without each command re-deriving the
 conventions.
 
@@ -21,12 +21,12 @@ The bridge's own suite runs inside `blender --background`, where `bpy.app.timers
 the start operator therefore refuses. So none of its seven tests makes a socket round trip: the
 transport this add-on exists to provide is the one part of it the suite cannot reach. A headless
 drive mechanism — named in NEXT_STEPS as "the obvious candidate for real work here" and in
-[architecture.md](../../specifications/architecture.md#the-bridge) as "a legitimate thing to add
+[architecture.md](../../../specifications/architecture.md#the-bridge) as "a legitimate thing to add
 later" — is what closes that, and it is worth roughly fifty lines. Landing twenty-four commands on
 a transport the bridge's own harness has never exercised end to end is a bad trade for fifty lines.
 
 Nothing that works today changes. `src/mpfbmcp/` is untouched, as in FR 028, and the client half
-of the handshake belongs to [stage 2](../NEXT_STEPS.md#2-the-server-side-backend-seam).
+of the handshake belongs to [stage 2](../../NEXT_STEPS.md#2-the-server-side-backend-seam).
 
 ## Goals
 
@@ -57,14 +57,14 @@ deleted without affecting a working system — should survive one more stage int
    where one applies — and `dispatch()` checks a request against it *before* the handler runs,
    answering `invalid_params` with a message naming the offending argument. A handler that runs
    has already been given parameters of the right shape. The checks reproduce
-   [mpfb-mcp's own rules](../../CLAUDE.md#what-is-validated-on-this-side-of-the-socket) exactly,
+   [mpfb-mcp's own rules](../../../CLAUDE.md#what-is-validated-on-this-side-of-the-socket) exactly,
    bool strictness and the non-`bool` integer included, because both ends validate deliberately
    and two ends that disagree about what a `bool` is are worse than one end.
 2. **Each command lives in its own module from the start.** `commands.py` becomes a `commands/`
    package: one file per command, plus one short file holding nothing but the table. Twenty-five
    commands stacked into a single module is the shape this repository already rejected on the
    other side of the socket — `src/mpfbmcp/tools/` is one module per tool, and
-   [one module per tool](../../specifications/architecture.md#one-module-per-tool) says why. Doing
+   [one module per tool](../../../specifications/architecture.md#one-module-per-tool) says why. Doing
    it now rather than at the tenth command means no migration effort has to stop and reorganise,
    and no command's reasoning ends up in a docstring shared with four others. **The security
    argument survives the split intact, and is arguably improved**: what a sceptic must read is
@@ -115,9 +115,20 @@ deleted without affecting a working system — should survive one more stage int
     which is a real narrowing and should be stated plainly wherever the bridge is documented
     rather than left to be discovered at install time.
 11. **Nothing that works today stops working.** `src/mpfbmcp/` unmodified, all **886** tests passing
-   unchanged, [verification/](../../verification/) untouched, and `get_status`'s answer keeps every
-   field it has — FR 028's [`check_bridge.py`](../done/028-pivot-to-specific-addon/check_bridge.py)
-   must still pass unedited, which is the cheapest possible regression test for a wire format.
+    unchanged, [verification/](../../../verification/) untouched, and `get_status`'s answer keeps every
+    field it has.
+
+    **This requirement said FR 028's [`check_bridge.py`](../028-pivot-to-specific-addon/check_bridge.py)
+    must still pass unedited, and it cannot.** Four of its assertions fail, all from one cause,
+    and the cause is requirement 3 doing exactly what it says. Three of its framing checks send
+    `params={"note": ...}` and its closed-vocabulary section asserts that
+    `params={"unexpected": True}` is tolerated — so refusing an unknown parameter key refuses
+    those payloads. Nothing about the framing changed, which is checkable: the same three shapes
+    pass with a payload that puts the extra key in the envelope instead, and the bridge's own
+    suite now carries all three. The requirement is therefore **the script must still pass except
+    for the assertions requirement 3 deliberately invalidates, and those must be exactly the four
+    named above.** A fifth failure would be a regression. The script is not edited: it lives in
+    `done/` and is a historical artifact.
 12. **The bridge's suite makes at least one real socket round trip**, headless, through the
     mechanism requirement 7 adds.
 
@@ -132,12 +143,12 @@ deleted without affecting a working system — should survive one more stage int
   counter and last-error line cover the immediate need, which is "is it alive and what did it last
   do". A real record is worth having when there are commands worth recording, and its design
   question — what the unit of the record is — is
-  [already stage 2's](../../specifications/observability.md), which is where it should be answered
+  [already stage 2's](../../../specifications/observability.md), which is where it should be answered
   once rather than twice.
 - **Autostart on Blender launch.** blender lab's add-on has one and the temptation is real. It is
   refused here because "the server is off until started" is a stated posture in both
-  [ui.py](../../bridge/mpfb_bridge/ui.py) and
-  [architecture.md](../../specifications/architecture.md#the-bridge): a listening socket that
+  [ui.py](../../../bridge/mpfb_bridge/ui.py) and
+  [architecture.md](../../../specifications/architecture.md#the-bridge): a listening socket that
   appears because software was installed is exactly what this pivot claims to improve on, and
   "installation is the consent" only holds while starting it is a second, separate act. Adding it
   means reversing a documented decision, which is a request of its own and not a panel tweak.
@@ -148,7 +159,7 @@ deleted without affecting a working system — should survive one more stage int
   as a panel that tells you something.
 - **Coverage in the bridge harness.** Deferred by FR 028 to "the effort that first migrates a
   command", recorded in
-  [testing.md](../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary), and
+  [testing.md](../../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary), and
   that is still the right effort — not this one.
 
 ## Non-functional requirements
@@ -180,18 +191,24 @@ deleted without affecting a working system — should survive one more stage int
 
 ## Architecture
 
-**Where the new code goes.** Three new modules under `bridge/mpfb_bridge/`, one existing module
-turned into a package, and edits to three others:
+**Where the new code goes.** New modules under `bridge/mpfb_bridge/`, one existing module turned
+into a package, and edits to three others. Two rows below were not in this table when it was
+written and are recorded rather than quietly absorbed: `version.py`, because three places need
+the add-on's version and none of them is a natural owner for it, and `commands/command.py`,
+because the record a table entry *is* turned out to want a home of its own:
 
 | Module | What it is |
 |---|---|
 | `validation.py` (new) | The parameter specification type and the validators. No `bpy`, so it is readable and testable outside Blender like `command_server` and `mpfb_resolution` already are. |
 | `cli.py` (new) | `argparse` over `--host` / `--port`, starting the server and running the blocking loop. Modelled on `../blender_mcp/addon/blender_mcp_addon/cli.py`, which is 57 lines. |
-| `stats.py` (new, or a small `_Stats` in `command_server.py`) | Requests served, last command, last error, last timestamp. Whichever, `bpy` stays out of it: the panel reads it, the server never draws. |
+| `stats.py` (new) | Requests served, last command, last error, last timestamp. `bpy` stays out of it: the panel reads it, the server never draws. |
+| `version.py` (new) | `BRIDGE_VERSION`, which must equal the manifest's. A module of its own because the status command, the panel and the table all need it. |
+| `commands/command.py` (new) | The `Command` record: handler, parameter spec, `requires_mpfb`, summary. It carries no behaviour — a record that could validate itself would be one each command could quietly opt out of. |
 | `commands/` (was `commands.py`) | A package: `table.py` holds `COMMANDS`, mapping a name to a record — handler, parameter spec, `requires_mpfb`, one-line summary — rather than to a bare function; `get_status.py` and `list_commands.py` hold one command each. See below. |
-| `command_server.py` | `dispatch()` applies the spec and the MPFB requirement before the handler; `poll_blocking()` is added for the headless loop; two new slugs. |
+| `command_server.py` | `dispatch()` applies the spec and the MPFB requirement before the handler; `poll_blocking()` is added for the headless loop; two new slugs. Also `bound_address()`, so the panel and the tests can ask what port was really bound when 0 was requested — and the client deadline becomes wall-clock rather than a count of ticks, since the two drive mechanisms tick at different rates and a client should not get ten times longer to dawdle because Blender happens to be headless. |
 | `ui.py` | The panel additions, and the background-mode message now names the CLI command. |
 | `__init__.py` | `register_cli_command` / `unregister_cli_command`, in `register()` / `unregister()`. |
+| `mpfb_resolution.py` | `resolve()` returns a `Resolution` record rather than a four-tuple, because it is now handed to every handler and `resolution.state` is legible where `resolution[0]` is not. |
 
 **How the `commands/` package is laid out, and the one rule that makes the split safe.** One
 module per command, named for the command: `commands/get_status.py`, `commands/list_commands.py`,
@@ -226,10 +243,10 @@ disable is exactly the stale state nobody diagnoses. FR 028's observation that "
 that once" was about the four undocumented module-level names `mpfb_set_asset_material` reads with
 `getattr` fallbacks on every call; that is a memo keyed on a module object, it is still a good
 idea, and it belongs to
-[the effort that migrates that tool](../NEXT_STEPS.md#4-creation-and-modification-migrated).
+[the effort that migrates that tool](../../NEXT_STEPS.md#4-creation-and-modification-migrated).
 
 **`list_commands` is a command that is not a tool, and that is allowed.**
-[architecture.md](../../specifications/architecture.md#the-bridge) says "one tool is one command",
+[architecture.md](../../../specifications/architecture.md#the-bridge) says "one tool is one command",
 which a reader will notice this violating. The rule is about *not splitting a tool across several
 commands* — the unit stays the intent, batching and multi-step reasoning stay inside one command.
 It says nothing about the bridge having infrastructure of its own, and `get_status` is already
@@ -238,7 +255,7 @@ reader to re-derive it.
 
 **`bpy.utils.register_cli_command` needs no version guard, and that is requirement 10's doing.**
 Against the old `"4.2.0"` floor this was an open question: the API is documented in
-[the 5.1 reference](../../../blender_python_reference_5_1/bpy.utils.html), blender lab's add-on
+[the 5.1 reference](../../../../blender_python_reference_5_1/bpy.utils.html), blender lab's add-on
 uses it but declares `blender_version_min = "5.1.0"` and so is no evidence about 4.2, and the
 alternative would have been a `hasattr` guard leaving headless mode quietly unavailable on some
 installs. At `"5.0.0"` the API is simply there. Write the registration unguarded — a `hasattr`
@@ -266,7 +283,7 @@ effort; if it is not free, the answer is a refresh button, **not** a timer. A ba
 exists to keep a panel fresh is a listening add-on doing work nobody asked for.
 
 **One documentation fix in passing**, since this request owns `bridge/`:
-[bridge/test/README.md](../../bridge/test/README.md) says "the five tests that currently exist" and
+[bridge/test/README.md](../../../bridge/test/README.md) says "the five tests that currently exist" and
 there are seven. FR 028 noticed and corrected the same drift in its own requirement text; the
 README kept the old number.
 
@@ -274,9 +291,9 @@ README kept the old number.
 
 Rewritten by **this** request:
 
-- [specifications/architecture.md](../../specifications/architecture.md) — five places, three of
+- [specifications/architecture.md](../../../specifications/architecture.md) — five places, three of
   them because a sentence there is about to become false.
-  [The bridge](../../specifications/architecture.md#the-bridge)'s paragraph beginning "The server
+  [The bridge](../../../specifications/architecture.md#the-bridge)'s paragraph beginning "The server
   runs only in a GUI Blender, and refuses to start anywhere else" states that a headless command
   loop is "a legitimate thing to add later" and that "until it exists the refusal is the honest
   answer"; it exists after this request and that paragraph becomes a description of two drive
@@ -287,28 +304,28 @@ Rewritten by **this** request:
   carry MPFB's compatibility obligations. Its bullet **"The table is a literal dict in a module of
   its own"** survives in substance and must change in wording: after requirement 2 the module of
   its own holds the table and only the table, which is what that bullet was reaching for.
-  [The wire](../../specifications/architecture.md#the-wire) gains the two new slugs, the
+  [The wire](../../../specifications/architecture.md#the-wire) gains the two new slugs, the
   request-side `protocol_version`, and the rule that an unknown parameter key is an error.
-  [Both ends validate, deliberately](../../specifications/architecture.md#both-ends-validate-deliberately)
+  [Both ends validate, deliberately](../../../specifications/architecture.md#both-ends-validate-deliberately)
   gains the declarative specification as the mechanism on the bridge's side — the *principle* is
   already written and correct, so this is a mechanism paragraph rather than a rewrite.
-- [specifications/testing.md](../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary)
+- [specifications/testing.md](../../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary)
   — what the bridge harness can establish changes materially: it can drive a real round trip
   rather than only call into modules. That is the single biggest change to what this repository is
   able to test, and it should be recorded where the split is explained. The coverage deferral in
   that section stays deferred, and stays pointed at the first migration.
 
 **Explicitly not this request's**, and named so the debt stays where FR 028 put it:
-[observability.md](../../specifications/observability.md),
-[responses.md](../../specifications/responses.md) and
-[tool-interface.md](../../specifications/tool-interface.md) are rewritten by the backend seam,
+[observability.md](../../../specifications/observability.md),
+[responses.md](../../../specifications/responses.md) and
+[tool-interface.md](../../../specifications/tool-interface.md) are rewritten by the backend seam,
 because all three are about what happens on *mpfb-mcp's* side of the socket and this request does
-not touch that side. [vision.md](../../specifications/vision.md) needs nothing: it describes the
+not touch that side. [vision.md](../../../specifications/vision.md) needs nothing: it describes the
 end state, and the end state has not changed.
-[mpfb-integration.md](../../specifications/mpfb-integration.md) is untouched for the reason FR 028
+[mpfb-integration.md](../../../specifications/mpfb-integration.md) is untouched for the reason FR 028
 gave — what MPFB does wrong does not depend on how the call arrives.
 
-[CLAUDE.md](../../CLAUDE.md) gains the headless command under Commands, and its `bridge/` table
+[CLAUDE.md](../../../CLAUDE.md) gains the headless command under Commands, and its `bridge/` table
 rows change for `commands.py` — now a package — and `command_server.py`. It states no Blender
 version and should not start. Map edits only; no narrative paragraph.
 
@@ -316,7 +333,7 @@ version and should not start. Map edits only; no narrative paragraph.
 justifies its floor in place — "Matches MPFB's own floor. MPFB is what this add-on exists to
 drive, so there is no point supporting a Blender that cannot run MPFB." Requirement 10 makes that
 comment false while leaving it true-looking, which is the failure mode
-[the lifecycle warns about](../CLAUDE.md#lifecycle): a decision whose stated reason is wrong is
+[the lifecycle warns about](../../CLAUDE.md#lifecycle): a decision whose stated reason is wrong is
 harder to revisit than one that never gave a reason. Rewrite it, do not just change the number.
 
 ## Tests
@@ -359,7 +376,7 @@ with no Blender. 886, unchanged. If a test under `tests/` needs editing, this re
 its scope.
 
 **Live verification, in this subdir, as a script.** `check_bridge_skeleton.py`, extending rather
-than replacing FR 028's [`check_bridge.py`](../done/028-pivot-to-specific-addon/check_bridge.py) —
+than replacing FR 028's [`check_bridge.py`](../028-pivot-to-specific-addon/check_bridge.py) —
 which must also still pass unedited, since requirement 11 says the wire format did not change under
 it. What the new script adds beyond the unit tests:
 
@@ -374,9 +391,9 @@ it. What the new script adds beyond the unit tests:
 - **A `requires_mpfb` command against a Blender with no MPFB**, which is a `--factory-startup` run
   and was already part of FR 028's procedure.
 
-**No smoke item is added** to [verification/](../../verification/). It holds one item per
+**No smoke item is added** to [verification/](../../../verification/). It holds one item per
 registered MCP tool, this request registers none, and
-[tests/test_verification_smoke.py](../../tests/test_verification_smoke.py) enforces exactly that
+[tests/test_verification_smoke.py](../../../tests/test_verification_smoke.py) enforces exactly that
 correspondence.
 
 **What this effort will not establish**, stated now rather than discovered later: nothing about the
@@ -385,13 +402,58 @@ realistic payload — `list_commands` is not a batched `mpfb_set_targets` — an
 MPFB is fully usable from a headless Blender. Requirement 7 makes the *bridge* drivable without a
 screen; how much of MPFB works there is a question for whichever effort first needs the answer.
 
+### Verification status
+
+**Run against Blender 5.1.0 on 2026-09-15**, with the bridge symlinked into
+`~/.config/blender/5.1/extensions/user_default/`. Everything passes.
+
+| Check | Result |
+|---|---|
+| Bridge suite, `bridge/test/execute_tests_headless.bash` | **35 passed** (was 7) |
+| [`check_bridge_skeleton.py`](check_bridge_skeleton.py), GUI Blender, server started from the panel | **45 passed, 0 failed** |
+| [`check_bridge_skeleton.py --compare`](check_bridge_skeleton.py), headless, against the GUI run | **54 passed, 0 failed** |
+| FR 028's [`check_bridge.py`](../028-pivot-to-specific-addon/check_bridge.py), both paths | **30 passed, 4 failed** — the four named in requirement 11 and no others |
+| Unit suite, `unittest discover -s tests`, unchanged | **886 passed** |
+| `git status --porcelain src/mpfbmcp verification tests` | **empty** |
+| pylint against MPFB's unmodified rcfile | **9.38/10** |
+
+**What the live run established that no test could:**
+
+- **The two drive mechanisms are the same bridge.** Seven recorded answers compared field by
+  field between a windowed Blender running the timer and a background one running the blocking
+  loop: **every field identical except `result.blender.background`**. That is requirement 7's
+  whole claim, and the comparison also fails when handed two runs of the same kind — it asserts
+  that something *did* differ, so it cannot pass vacuously. The bridge's own suite cannot make
+  this claim at all, because it runs headless and the timer cannot fire there.
+- **The cost of the two paths differs, and in the direction it should.** 25 sequential calls at
+  **50 ms each** through the timer at a 0.05 s interval — one tick, matching FR 028's 52 ms — and
+  **under 1 ms each** headless, where `select` wakes on the connection rather than on a clock. The
+  headless number is the more interesting one: it is what a pipeline would see, and it is not a
+  number the GUI path can reach at any timer setting.
+- **The closed vocabulary survived growing a validation layer.** FR 028's four attack shapes were
+  re-run against the new dispatcher on both paths. All refused, and the `params`-smuggling one is
+  now refused rather than ignored, which is strictly better.
+- **The CLI command works as documented**, including the prerequisite that the add-on must be
+  enabled in the Blender being run: `blender --background --factory-startup --python-expr
+  "...addon_enable..." --command mpfb_bridge --port 9977`.
+
+**Two things this effort did not establish**, stated because a verification that oversells itself
+is worse than none. Nothing about the behaviour of the twenty-three commands still to be written:
+the two in the table take no parameters and one boolean between them, so the parameter contract is
+proved against synthetic specifications in the unit suite rather than against a real command. And
+nothing about how much of *MPFB* works in a headless Blender — requirement 7 makes the bridge
+drivable without a screen and says nothing about what it can then drive. The MPFB used during
+verification was `absent` throughout, deliberately: every command in the table declares
+`requires_mpfb=False`, so an `ok` install would have exercised nothing extra, and the
+`mpfb_unavailable` path has no command to reach it from outside yet.
+
 ## References
 
-- [FR 028](../done/028-pivot-to-specific-addon/README.md) — the decision, the proof of concept, and
+- [FR 028](../028-pivot-to-specific-addon/README.md) — the decision, the proof of concept, and
   the conventions this request inherits. Its
-  [What the proof of concept does not establish](../done/028-pivot-to-specific-addon/README.md#what-the-proof-of-concept-does-not-establish)
+  [What the proof of concept does not establish](../028-pivot-to-specific-addon/README.md#what-the-proof-of-concept-does-not-establish)
   is the list this request is working down.
-- [NEXT_STEPS.md, stage 1](../NEXT_STEPS.md#1-bridge-transport-and-skeleton) — the entry this
+- [NEXT_STEPS.md, stage 1](../../NEXT_STEPS.md#1-bridge-transport-and-skeleton) — the entry this
   request implements, including the headless mechanism it names as the candidate for real work.
 - `../blender_mcp/addon/blender_mcp_addon/cli.py` and `execute_blocking.py` — the headless drive
   mechanism to model, 57 and 32 lines. `mcp_to_blender_server.poll_blocking()` is the select-based
@@ -402,7 +464,7 @@ screen; how much of MPFB works there is a question for whichever effort first ne
 - `../blender_python_reference_5_1/bpy.utils.html` — `register_cli_command(id, execute)`: the id
   must pass `str.isidentifier`, the callback takes the argument list after the id and returns an
   int, and the returned handle is opaque and only for unregistering.
-- [CLAUDE.md, what is validated on this side of the socket](../../CLAUDE.md#what-is-validated-on-this-side-of-the-socket)
+- [CLAUDE.md, what is validated on this side of the socket](../../../CLAUDE.md#what-is-validated-on-this-side-of-the-socket)
   — the rules the bridge's validators must reproduce, each with the silent failure that motivates
   it.
 - `../mpfb2/src/mpfb/__init__.py` — `MPFB_CONTEXTUAL_INFORMATION`, and the reason a resolved

@@ -95,6 +95,11 @@ python3 -m unittest tests.test_create_human.CreateHumanToolTests.test_default_ca
 # add-on enabled and symlinked to this checkout, and pytest in Blender's own Python
 # (bridge/test/README.md). `unittest discover -s tests` must never find these.
 BLENDER_EXE=$(which blender) bridge/test/execute_tests_headless.bash
+
+# Run the bridge in a Blender with no screen. The GUI start operator refuses
+# background mode (timers never fire there); this is the other drive mechanism,
+# and the add-on must be enabled in that Blender for the command to exist.
+blender --background --command mpfb_bridge
 ```
 
 `mcp[cli]` is pinned to `<2` ([pyproject.toml](pyproject.toml)) — mcp 2.x renamed `FastMCP` to
@@ -176,7 +181,7 @@ mpfb-mcp tool  →  {"command": ..., "params": {...}}  →  TCP 127.0.0.1:9877
 
 | Path | What it is |
 |------|------------|
-| [bridge/mpfb_bridge/](bridge/mpfb_bridge) | The add-on. `command_server.py` is the socket and the framing and imports no `bpy`; `commands.py` is the closed vocabulary, and is the one file to read to know everything the add-on can be asked to do; `mpfb_resolution.py` is the `sys.modules` scan; `ui.py` and `timer.py` are the Blender-facing halves. Operator ids are prefixed `mpfb_bridge.`, **never** `mpfb.` |
+| [bridge/mpfb_bridge/](bridge/mpfb_bridge) | The add-on. `command_server.py` is the socket, the framing and the dispatch, and imports no `bpy`; `commands/table.py` is the closed vocabulary and is the one file to read to know everything the add-on can be asked to do, with one module per command beside it; `validation.py` is what a command declares it takes; `mpfb_resolution.py` is the `sys.modules` scan; `stats.py` is what the panel paints; `ui.py`, `timer.py` and `cli.py` are the Blender-facing halves — `timer.py` drives the server in a windowed Blender and `cli.py` in a headless one. Operator ids are prefixed `mpfb_bridge.`, **never** `mpfb.` |
 | [bridge/test/](bridge/test) | Its harness: pytest in a headless Blender, MPFB's arrangement. Not discovered by `unittest discover -s tests`, and must never be |
 | `bridge/.pylintrc`, `bridge/pyrightconfig.json`, `bridge/requirements-dev.txt` | MPFB's, copied and retargeted. Where this repository's conventions and MPFB's disagree about add-on code, MPFB's win |
 

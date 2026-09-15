@@ -8,8 +8,8 @@ now. The assertions are deliberately shallow - the bridge's real suite arrives
 with its real code.
 
 Named ``aaa_`` because pytest discovers alphabetically and MPFB uses the same
-prefix trick to force the core checks to run first. With one module it changes
-nothing; it is here so the convention is already in place when there are five.
+prefix trick to force the core checks to run first. The convention is now
+earning itself: this module is what the others assume works.
 """
 
 import bpy
@@ -27,12 +27,21 @@ def test_addon_is_loaded():
 
 
 def test_command_vocabulary_is_closed():
-    """commands.COMMANDS"""
+    """commands.table.COMMANDS"""
     commands = dynamic_import("commands", "COMMANDS")
     assert isinstance(commands, dict), "The command table should be a plain dict"
     assert "get_status" in commands, "get_status should be in the command table"
-    for name, handler in commands.items():
-        assert callable(handler), "Command {:s} should map to a callable".format(name)
+    for name, command in commands.items():
+        # The table maps a name to a record rather than to a bare function, so
+        # that a command's parameters and its MPFB precondition travel with it.
+        assert callable(command.handler), "Command {:s} should carry a callable".format(name)
+        assert command.name == name, \
+            "Command {:s} should know its own name, but calls itself {:s}".format(name, command.name)
+        assert isinstance(command.params, tuple), \
+            "Command {:s} should declare its parameters as a tuple".format(name)
+        assert isinstance(command.requires_mpfb, bool), \
+            "Command {:s} should say whether it requires MPFB".format(name)
+        assert command.summary, "Command {:s} should carry a one-line summary".format(name)
 
 
 def test_server_is_not_listening_by_default():
@@ -59,15 +68,34 @@ def test_bridge_does_not_mistake_itself_for_mpfb():
 
 
 def test_get_status_answers_in_the_three_state_vocabulary():
-    """commands.get_status()"""
+    """commands.get_status.get_status()"""
     commands = dynamic_import("commands", "COMMANDS")
-    result = commands["get_status"]({})
+    resolve = dynamic_import("mpfb_resolution", "resolve")
+
+    # Called directly rather than through the dispatcher, which is what the
+    # dispatch tests are for. Every handler takes (params, resolution), the same
+    # two arguments, whether or not it uses both.
+    result = commands["get_status"].handler({}, resolve())
+
     assert result["state"] in ("absent", "not_initialized", "ok"), \
         "get_status should answer with one of the three known states"
     assert result["message"], "Every state should come with a sentence explaining it"
     assert isinstance(result["candidate_modules"], list), \
         "candidate_modules should always be a list, even when empty"
     assert result["protocol_version"] >= 1, "The answer should carry a protocol version"
+    assert result["min_supported_protocol_version"] <= result["protocol_version"], \
+        "The oldest accepted protocol should not be newer than the one spoken"
+    assert result["bridge_version"], "The answer should name the bridge's own version"
+
+
+def test_get_status_does_not_require_mpfb():
+    """commands.table.COMMANDS['get_status'].requires_mpfb"""
+    # The one command that must answer when MPFB is missing, since that is the
+    # state it exists to report. Gating it on MPFB would make it useless in
+    # exactly the situation somebody asks it.
+    commands = dynamic_import("commands", "COMMANDS")
+    assert not commands["get_status"].requires_mpfb, \
+        "get_status must not require MPFB, because it is what reports MPFB missing"
 
 
 def test_server_starts_refuses_a_second_start_and_restarts():

@@ -1548,3 +1548,78 @@ Blender with no MPFB loaded at all. The bridge's own headless suite passes 7 tes
 produces. A round trip costs **52 ms** against a 0.05 s poll interval — one tick, regardless of
 payload, which is the claim the whole pivot rests on, though one `get_status` is not evidence about
 a batched command. The unit suite stayed at 886.
+
+## [FR 029](done/029-bridge-transport-and-skeleton/README.md) — the bridge grows a skeleton, and a second way to drive it
+
+Stage 1 of the pivot. FR 028 proved the transport with one command that takes no parameters,
+answers from `bpy` alone, and cannot fail in a way a caller needs to distinguish; this built
+everything a *second* command would have wanted, so that the twenty-three still to come can be
+added mechanically rather than each re-deriving the conventions.
+
+**A command is now a record, and the dispatcher enforces it.** `commands/table.py` maps a name to
+a handler, a tuple of `Param` records and a `requires_mpfb` flag, and `dispatch()` applies all
+three before the handler runs — so a handler that runs has already been given parameters of the
+right shape, and one that needs MPFB is refused with the new `mpfb_unavailable` slug rather than
+reaching a service that is not there. That slug is the load-bearing one for the migration:
+twenty-four of the twenty-five commands to come need MPFB, and without it each would have failed
+as a `command_failed` carrying a traceback of somebody else's install problem. The validation
+rules are mpfb-mcp's own, duplicated deliberately because the socket is reachable by anything on
+the machine: `bool` strictly a `bool`, an integer that is not a `bool`, bounds that MPFB does not
+enforce, and — new here — NaN and the infinities, which survive `json.loads` and compare false
+against every bound.
+
+**One module per command, from the first two, with the table written rather than assembled.** The
+split mirrors `src/mpfbmcp/tools/` down to the naming so that a tool and the command it becomes
+are findable from each other during the migration. The rule that makes it safe is that
+`table.py` imports each module and spells the dict out: no decorator, no directory scan, no
+registration as an import side effect, because a dict assembled by imports is a dict whose
+contents depend on import order and a scan would make adding a command a matter of dropping a
+file in a folder — very nearly what the closed vocabulary exists to deny. The security argument
+survives the split and arguably improves: the file a sceptic reads is now imports and a literal
+dict rather than a dict under a hundred lines of handler.
+
+**The headless drive mechanism was the largest single item, and the argument for it was
+testing.** `blender --background --command mpfb_bridge` serves the same commands from a blocking
+`select` loop, sharing the dispatch, the framing and the table with the timer-driven path — one
+protocol implemented once, deliberately unlike the add-on the transport is modelled on, whose
+background mode is a second read loop. The reason to build it now rather than later is that the
+bridge's own suite runs inside `blender --background`, where timers never fire and the start
+operator refuses: until this existed, not one of its tests made a socket round trip, and the
+transport was the one part of the add-on its tests could not reach. It now starts the server on
+an OS-assigned port, runs a client on a thread and drives the loop from the main one, which is
+the add-on's production concurrency shape. The suite went from **7 tests to 35**.
+
+**The Blender floor was raised from 4.2.0 to 5.0.0**, reversing FR 028's decision to match
+MPFB's. The reasoning FR 028 gave was sound and its converse does not follow: MPFB is a
+general-purpose add-on with an installed base on older Blenders, and the bridge is a companion
+whose entire audience installs it deliberately to drive MPFB from an agent, so supporting
+Blenders none of them run costs testing surface on every one of twenty-five commands and buys
+nothing. It also settled an open question outright — `bpy.utils.register_cli_command` is
+unambiguously present at 5.0, where at 4.2 the headless path would have needed a `hasattr` guard.
+The narrowing is real: a user on 4.2 with a working MPFB cannot install the bridge. The
+manifest's comment justifying the old floor was rewritten rather than left true-looking beside a
+changed number.
+
+**One requirement of this request could not be met, and the honest version is recorded in its
+place.** It said FR 028's `check_bridge.py` must still pass unedited, as the cheapest possible
+regression test for a wire format. Four of its assertions fail, all from one cause: three framing
+checks send `params={"note": ...}` and one asserts that an unexpected parameter is tolerated, and
+refusing unknown parameter keys refuses those payloads. Nothing about the framing changed, which
+was checked rather than asserted — the same three shapes pass with the extra key in the envelope
+instead, and all three moved into the bridge's own suite. The requirement became "the script
+passes except for those four, and a fifth failure is a regression".
+
+Verified against Blender 5.1.0 on 2026-09-15. The claim worth scripting was the one no unit test
+can make: the bridge's suite runs headless and can never drive the timer, so whether a windowed
+Blender and a background one answer the *same* is unprovable from inside it. The effort's own
+[`check_bridge_skeleton.py`](done/029-bridge-transport-and-skeleton/check_bridge_skeleton.py)
+records every answer and compares a later run field by field — **45 passed against the GUI path,
+54 against the headless one comparing back to it, every field identical except
+`result.blender.background`** — and the comparison fails when handed two runs of the same kind,
+so it cannot pass vacuously. The cost of the two paths differs in the direction it should: **50 ms
+per call through the timer** at a 0.05 s interval, one tick and matching FR 028's 52 ms, against
+**under 1 ms headless**, where `select` wakes on the connection rather than on a clock. FR 028's
+four attack shapes were re-run against the new dispatcher on both paths and all were refused —
+the `params`-smuggling one now refused rather than ignored, which is strictly better. The unit
+suite stayed at 886 and `src/mpfbmcp/` was not touched; pylint rates the add-on 9.38/10 against
+MPFB's unmodified rcfile, the residue being the two categories MPFB's own source produces.

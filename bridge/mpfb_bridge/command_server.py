@@ -33,6 +33,13 @@ and the deadline is reset whenever a chunk arrives. At parameter sizes neither
 would matter much, which is precisely the point: the bridge should not inherit
 the defect it was built to avoid.
 
+**One dispatch, two ways of waiting.** :func:`poll` is driven by a Blender timer
+and :func:`poll_blocking` by ``select``; they differ in how they wait for a
+socket and in nothing else, both ending in the same :func:`_service_clients`.
+That is on purpose. blender lab's add-on keeps a second read loop for its
+background mode, and a second implementation of the framing is a second place
+for the multi-byte-split bug to come back.
+
 ``bpy`` is not imported here, and must not be. Keeping the protocol free of it is
 what lets this module be read, reasoned about and exercised without a running
 Blender.
@@ -40,13 +47,19 @@ Blender.
 
 __all__ = (
     "PROTOCOL_VERSION",
+    "MIN_SUPPORTED_PROTOCOL_VERSION",
     "DEFAULT_HOST",
     "DEFAULT_PORT",
     "TIMER_INTERVAL_ACTIVE",
+    "BLOCKING_SELECT_TIMEOUT",
     "is_running",
+    "bound_address",
+    "registered_commands",
     "start",
     "stop",
     "poll",
+    "poll_blocking",
+    "dispatch",
     "timer_idle_reset",
     "timer_idle_interval",
     "timer_internal_vars_calc",
@@ -54,10 +67,16 @@ __all__ = (
 
 import json
 import math
+import select
 import socket
+import time
 import traceback
 
+from . import mpfb_resolution
+from . import stats
 from .log import get_logger
+from .validation import InvalidParams
+from .validation import validate_params
 
 _LOG = get_logger("commandserver")
 
@@ -67,6 +86,12 @@ _LOG = get_logger("commandserver")
 # handshake that exists from the first command is the cheap defence against that
 # matrix. Nothing else in the MakeHuman MCP stack carries a version today.
 PROTOCOL_VERSION = 1
+
+# The oldest request version this add-on still understands. Equal to
+# PROTOCOL_VERSION while there has only ever been one; the pair exists so that a
+# client can be told the difference between "too old" and "from the future"
+# without either side having to guess.
+MIN_SUPPORTED_PROTOCOL_VERSION = 1
 
 # Not 9876. Both blender lab's MCP add-on and the community "blender-mcp" default
 # to that port, and a user may well have one of them running.
@@ -87,9 +112,18 @@ _MAX_REQUEST_BYTES = 4 * 1024 * 1024
 _LISTEN_BACKLOG = 5
 _RECV_BUFFER_SIZE = 65536
 # Seconds a client gets to finish sending one request before it is dropped. The
-# countdown is reset by every chunk that arrives, so this bounds silence rather
-# than the size of a request.
+# deadline is pushed back by every chunk that arrives, so this bounds silence
+# rather than the size of a request. It is wall-clock rather than a count of
+# ticks because the two drive mechanisms tick at different rates and a client
+# should not get ten times longer to dawdle because Blender happens to be
+# headless.
 _CLIENT_TIMEOUT = 10.0
+
+# How long the headless loop blocks in select() before looking around. It bounds
+# how quickly a stopped server notices and how promptly a stalled client's
+# deadline is collected; it is not a per-request cost, since an arriving
+# connection wakes select() immediately.
+BLOCKING_SELECT_TIMEOUT = 0.25
 
 # Error slugs. A caller branches on these; the human sentence beside one may be
 # reworded without notice, the slug may not.
@@ -100,6 +134,11 @@ ERROR_COMMAND_FAILED = "command_failed"
 ERROR_RESULT_NOT_SERIALIZABLE = "result_not_serializable"
 ERROR_REQUEST_TOO_LARGE = "request_too_large"
 ERROR_TIMEOUT = "timeout"
+# The command exists and the request was well formed, but MPFB is not in a state
+# where it could run. Distinct from command_failed on purpose: this is not a bug
+# in the add-on and there is no traceback to read, there is an install to fix.
+ERROR_MPFB_UNAVAILABLE = "mpfb_unavailable"
+ERROR_PROTOCOL_MISMATCH = "protocol_mismatch"
 
 
 class _TimerState:
@@ -111,7 +150,6 @@ class _TimerState:
         "interval_idle_delay",
         "idle_countdown_reset",
         "idle_countdown",
-        "client_timeout_countdown",
     )
 
     def __init__(self):
@@ -120,7 +158,6 @@ class _TimerState:
         self.interval_idle_delay = _TIMER_INTERVAL_IDLE_DELAY
         self.idle_countdown_reset = 0
         self.idle_countdown = 0
-        self.client_timeout_countdown = 2
 
 
 _timer = _TimerState()
@@ -142,7 +179,6 @@ def timer_internal_vars_calc(active=None, idle=None, idle_delay=None):
     # Round up, so a delay is never shorter than the one that was asked for.
     _timer.idle_countdown_reset = math.ceil(_timer.interval_idle_delay / _timer.interval_active)
     _timer.idle_countdown = _timer.idle_countdown_reset
-    _timer.client_timeout_countdown = max(2, math.ceil(_CLIENT_TIMEOUT / _timer.interval_active))
 
 
 def timer_idle_reset():
@@ -164,12 +200,12 @@ timer_internal_vars_calc()
 class _Client:
     """One accepted connection, and the partial request read from it so far."""
 
-    __slots__ = ("conn", "buffer", "ticks_remaining")
+    __slots__ = ("conn", "buffer", "deadline")
 
     def __init__(self, conn):
         self.conn = conn
         self.buffer = bytearray()
-        self.ticks_remaining = _timer.client_timeout_countdown
+        self.deadline = time.monotonic() + _CLIENT_TIMEOUT
 
 
 class _ServerState:
@@ -189,6 +225,31 @@ _state = _ServerState()
 def is_running():
     """Whether the listening socket is open."""
     return _state.sock is not None
+
+
+def bound_address():
+    """The ``(host, port)`` actually bound, or ``None`` when stopped.
+
+    Not the same thing as what the preferences say: a port of 0 asks the OS to
+    pick one, which the tests rely on and which the panel should report rather
+    than echoing the 0 back at the user.
+    """
+    if _state.sock is None:
+        return None
+    try:
+        host, port = _state.sock.getsockname()[:2]
+    except OSError:
+        return None
+    return (host, port)
+
+
+def registered_commands():
+    """The table this server was started with. Empty when it is not running.
+
+    A copy would be safer and is not worth it: the one caller is
+    ``list_commands``, which must describe what will really be dispatched.
+    """
+    return _state.commands
 
 
 def start(host, port, commands):
@@ -218,6 +279,7 @@ def start(host, port, commands):
     _state.sock = sock
     _state.clients = []
     _state.commands = dict(commands)
+    stats.reset()
     _LOG.info("Command server listening on %s:%d with %d commands", host, port, len(_state.commands))
 
 
@@ -262,6 +324,7 @@ def _error(slug, message, **extra):
         "message": message,
     }
     response.update(extra)
+    stats.record_failure(slug, message)
     return response
 
 
@@ -276,17 +339,58 @@ def _send_and_close(client, response):
     _close_client(client)
 
 
+def _check_protocol_version(request):
+    """Refuse a request declaring a protocol this add-on cannot serve.
+
+    A request carrying no ``protocol_version`` is served, deliberately: the
+    handshake is there so that a *mismatch* is caught rather than
+    misinterpreted, and requiring the field would mean a one-line client written
+    by hand at a terminal could not ask this add-on anything. Returns an error
+    response, or ``None`` when the request may proceed.
+    """
+    if "protocol_version" not in request:
+        return None
+
+    declared = request["protocol_version"]
+    if not isinstance(declared, int) or isinstance(declared, bool):
+        return _error(
+            ERROR_MALFORMED_REQUEST,
+            "'protocol_version' must be an integer if it is given at all, got {:s}.".format(
+                type(declared).__name__))
+
+    if declared < MIN_SUPPORTED_PROTOCOL_VERSION or declared > PROTOCOL_VERSION:
+        return _error(
+            ERROR_PROTOCOL_MISMATCH,
+            "This bridge speaks protocol version {:d} and accepts requests from version {:d} "
+            "upwards; the request declared version {:d}. Upgrade whichever of the two is "
+            "older.".format(PROTOCOL_VERSION, MIN_SUPPORTED_PROTOCOL_VERSION, declared),
+            min_supported_protocol_version=MIN_SUPPORTED_PROTOCOL_VERSION,
+            requested_protocol_version=declared)
+
+    return None
+
+
 def dispatch(request):
     """Turn one decoded request into one response dict.
 
     Split out from the socket handling because this is the half worth reading:
     it is the whole of what a caller can make this add-on do. Note what is
     missing - there is no branch here that executes anything the caller sent.
+
+    The order of the checks is the order in which a caller can be told something
+    useful: is this protocol intelligible, is this a command, are these
+    parameters, and only then, can MPFB run it. Resolving MPFB before knowing
+    the request is well formed would report an install problem to somebody who
+    has a typo.
     """
     if not isinstance(request, dict):
         return _error(
             ERROR_MALFORMED_REQUEST,
             "A request must be a JSON object, got {:s}.".format(type(request).__name__))
+
+    mismatch = _check_protocol_version(request)
+    if mismatch is not None:
+        return mismatch
 
     name = request.get("command")
     if not isinstance(name, str) or not name.strip():
@@ -296,8 +400,8 @@ def dispatch(request):
             "commands.",
             known_commands=sorted(_state.commands))
 
-    handler = _state.commands.get(name)
-    if handler is None:
+    command = _state.commands.get(name)
+    if command is None:
         # Naming the alternatives matters more here than anywhere else: this is
         # the message a caller sees when it guessed, and the vocabulary being
         # closed is only useful if it is also discoverable.
@@ -318,7 +422,28 @@ def dispatch(request):
             command=name)
 
     try:
-        result = handler(params)
+        validated = validate_params(command.params, params)
+    except InvalidParams as error:
+        # Before the handler, always. A handler that runs has been given
+        # parameters of the right shape, which is the whole reason the
+        # specification is data rather than twenty lines at the top of each one.
+        return _error(ERROR_INVALID_PARAMS, str(error), command=name)
+
+    resolution = mpfb_resolution.resolve()
+    if command.requires_mpfb and not resolution.is_ok:
+        # Not a command_failed: there is no bug here and no traceback to read,
+        # there is an install to fix, and the sentence that says how is the one
+        # mpfb_resolution already keeps for this state.
+        return _error(
+            ERROR_MPFB_UNAVAILABLE,
+            "The command {!r} needs MPFB, which is not usable in this Blender. {:s}".format(
+                name, resolution.message),
+            command=name,
+            state=resolution.state,
+            candidate_modules=resolution.candidates)
+
+    try:
+        result = command.handler(validated, resolution)
     except Exception:  # pylint: disable=broad-except
         # A handler raising is a bug in this add-on, not in the caller, so the
         # traceback goes back over the wire rather than only to Blender's console:
@@ -336,6 +461,7 @@ def dispatch(request):
         "command": name,
         "result": result,
     }
+    stats.record_dispatch(name)
 
     try:
         # Serialize before committing to an answer. A result that cannot be
@@ -411,9 +537,9 @@ def _service_clients():
         received, still_open = _read_available(client)
 
         if received:
-            # Reset the deadline on progress, so a large or slow request is not
-            # killed for taking several ticks to arrive. It bounds silence.
-            client.ticks_remaining = _timer.client_timeout_countdown
+            # Push the deadline back on progress, so a large or slow request is
+            # not killed for taking several ticks to arrive. It bounds silence.
+            client.deadline = time.monotonic() + _CLIENT_TIMEOUT
             did_work = True
 
         if not still_open:
@@ -432,8 +558,7 @@ def _service_clients():
 
         delimiter = client.buffer.find(b"\0")
         if delimiter < 0:
-            client.ticks_remaining -= 1
-            if client.ticks_remaining <= 0:
+            if time.monotonic() >= client.deadline:
                 _state.clients.remove(client)
                 _send_and_close(client, _error(
                     ERROR_TIMEOUT,
@@ -472,3 +597,33 @@ def poll():
         return False
     _accept_clients()
     return _service_clients()
+
+
+def poll_blocking(timeout=BLOCKING_SELECT_TIMEOUT):
+    """Wait for something to happen, then do exactly what a tick does.
+
+    This is the headless drive mechanism, and the notable thing about it is how
+    little there is: ``select`` replaces the timer as the thing that decides
+    when to look, and :func:`poll` does the rest. There is no second accept, no
+    second read loop and no second framing - which matters, because the
+    add-on this transport is modelled on does have a second one, and a protocol
+    implemented twice is a protocol with two sets of bugs.
+
+    ``poll()`` is called even when ``select`` times out. That is not a spin: the
+    wait already happened, and a pass with no traffic is what collects the
+    deadline of a client that connected and then went quiet.
+    """
+    if _state.sock is None:
+        return False
+
+    watched = [_state.sock]
+    watched.extend(client.conn for client in _state.clients)
+
+    try:
+        select.select(watched, [], [], timeout)
+    except (OSError, ValueError):
+        # A socket closed underneath us, which poll() is about to notice and
+        # tidy up. Falling through is the whole recovery.
+        pass
+
+    return poll()

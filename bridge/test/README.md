@@ -19,6 +19,23 @@ BLENDER_EXE=$(which blender) ./execute_tests_headless.bash
 
 Set `TEST_MODULE` to narrow the run to one file.
 
+## What is in here
+
+Modules are prefixed alphabetically to force order, as MPFB does it, and each one assumes
+the ones before it work.
+
+| Module | What it covers |
+|--------|----------------|
+| `aaa_bridge_test.py` | The harness itself, the shape of the command table, and the start/stop lifecycle. Also the background-mode refusal, which is **the one test that could only be written because the suite runs headless**: `bpy.app.background` is `True` here, so the refusal is directly assertable |
+| `bbb_validation_test.py` | The parameter contract, as one table of cases read by one loop. Every case is a failure that would otherwise be silent — `limit=True` paging one entry at a time, `refresh="false"` rescanning the disk, a misspelled key producing a call that succeeds and does nothing |
+| `ccc_dispatch_test.py` | What a request becomes before a handler sees it: the order of the checks, the `mpfb_unavailable` precondition with both non-`ok` states supplied rather than waited for, the handshake, and that a handler which raises does not take the server down |
+| `ddd_roundtrip_test.py` | **A real request over a real socket.** Client on a thread, dispatch on the main one, which is the add-on's production shape. This is what the headless drive mechanism bought: before it, the transport was the one part of the add-on its own tests could not reach |
+| `eee_metadata_test.py` | The two claims kept in step by hand — the reported version against the manifest, and `list_commands` against the table the dispatcher actually uses |
+
+**What this suite cannot establish** is that the *timer-driven* path answers the same as the
+blocking one, because there is no event loop here to drive a timer. That comparison belongs
+to a feature request's own live check.
+
 ## Prerequisites
 
 Two:
@@ -54,5 +71,5 @@ through an `a1_coverage.pth` in Blender's `site-packages` that starts `coverage`
 the add-on is imported — and no script in the mpfb2 repository creates that file, so
 adopting it means writing that step rather than copying it. It is worth having and is
 recorded as such in
-[../../specifications/testing.md](../../specifications/testing.md); it is not worth having
-to measure the five tests that currently exist.
+[../../specifications/testing.md](../../specifications/testing.md); it is deferred to the
+effort that first migrates a real command, where there will be something worth measuring.

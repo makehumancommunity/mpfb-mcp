@@ -1,16 +1,23 @@
 schema_version = "1.0.0"
 
 id = "mpfb_bridge"
-version = "0.1.0"
+version = "0.2.0"
 name = "MPFB Bridge"
 tagline = "Local command server exposing MPFB to MCP clients"
 maintainer = "Joel Palmius"
 type = "add-on"
 website = "https://github.com/makehumancommunity/mpfb-mcp"
 
-# Matches MPFB's own floor. MPFB is what this add-on exists to drive, so there is
-# no point supporting a Blender that cannot run MPFB.
-blender_version_min = "4.2.0"
+# Higher than MPFB's own floor of 4.2.0, deliberately. It is true that there is
+# no point supporting a Blender that cannot run MPFB - but the converse does not
+# follow, and this add-on need not inherit MPFB's compatibility obligations.
+# MPFB is a general-purpose add-on with an installed base on older Blenders;
+# this is a companion whose entire audience installs it on purpose to drive MPFB
+# from an agent, and supporting Blenders none of them run costs testing surface
+# on every command and buys nothing. It also settles one question outright:
+# bpy.utils.register_cli_command, which the headless drive mechanism needs, is
+# unambiguously present here and would have needed a guard at 4.2.
+blender_version_min = "5.0.0"
 
 license = [
   "SPDX:GPL-3.0-or-later",
