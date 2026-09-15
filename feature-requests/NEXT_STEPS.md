@@ -8,6 +8,23 @@ Completed efforts are no longer listed here — they move to [HISTORY.md](HISTOR
 records what has already landed and why. When an effort below is finished, move it there
 (see the [lifecycle in CLAUDE.md](CLAUDE.md#lifecycle)).
 
+## A larger pivot: an MPFB-specific bridge add-on
+
+**Scoped as [FR 028](028-pivot-to-specific-addon/README.md) (Proposed).**
+
+Changes the fundamental principle of the solution: instead of assembling Python programs and
+sending them over a third party's MCP add-on socket, MPFB's Blender-side logic moves into a
+companion add-on of our own, with a closed command vocabulary and its own socket, and mpfb-mcp
+becomes a thin client. FR 028 *plans* that pivot — a proof-of-concept add-on proving the
+transport, a rewrite of [vision.md](../specifications/vision.md) and
+[architecture.md](../specifications/architecture.md), and the sequence of child efforts below.
+It migrates no tool.
+
+The child efforts, in order, each landing with both paths still working: bridge transport and
+skeleton; the server-side backend seam; introspection and catalogues migrated; creation and
+modification migrated; the generated-code path retired; the bridge published and documented.
+Each becomes its own numbered request when started.
+
 ## Saving, listing and loading character presets
 
 **Scoped as [FR 025](025-character-presets/README.md) (Accepted).**
