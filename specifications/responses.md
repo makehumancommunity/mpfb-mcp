@@ -116,6 +116,14 @@ the asset's containing directory name against the asset names in the installed p
   asset lying directly in an asset root has no directory of its own to key on, and pack metadata
   lives only under the user data root, so an asset under another root cannot be attributed even when
   it did come from a pack. Both are cases to detect and report as `null`, not cases to guess at.
+- **A fact read from the filesystem is this same kind**, and the convention covers it unchanged.
+  `mpfb_list_presets` reports `size_bytes` and `modified` per preset; MPFB's own list is bare names
+  and records neither, so both come from `os.stat` here and the docstring says so. The three clauses
+  above all apply as written: the miss is ordinary (`exists: false` is what MPFB's cached list
+  naming a deleted file looks like), the derivation never becomes the source of truth (the entries
+  are MPFB's names, annotated, not a directory listing dressed up as MPFB's answer), and the place
+  the convention does not hold is named — a preset MPFB lists under a name these tools will not
+  accept carries `addressable: false` rather than being quietly dropped or quietly offered.
 
 ## A response says which source answered it
 

@@ -29,8 +29,8 @@ def _shipped_without_source_indentation(mcp: FastMCP) -> None:
 
     ``Tool.from_function()`` takes ``fn.__doc__`` verbatim, so every line of
     every tool description would otherwise cross the wire carrying the eight
-    spaces it is indented by in the file: about 500 bytes per tool, 11 KB across
-    the twenty-two, of whitespace an MCP client downloads before any work happens.
+    spaces it is indented by in the file: about 500 bytes per tool, 12 KB across
+    the twenty-five, of whitespace an MCP client downloads before any work happens.
     ``inspect.cleandoc`` is what ``help()`` shows and what the docstrings are
     written to look like.
 
@@ -107,6 +107,15 @@ def build_server() -> FastMCP:
             "Changing a body's shape moves it out from under everything fitted "
             "to it, so finish a series of modeling changes with one call to "
             "mpfb_refit_human. "
+            "A character exists only in the running .blend until it is saved "
+            "as an MPFB preset: mpfb_save_preset writes one - the only file "
+            "any tool here creates, and not undoable - mpfb_list_presets says "
+            "which exist, and mpfb_create_human_from_preset builds a NEW "
+            "character from one rather than loading into the current one. "
+            "A preset is addressed by name, never by a path - and note that "
+            "mpfb_save_preset is the one tool here whose `name` is NOT the "
+            "subject: it is the preset, and the character is named by "
+            "`subject`. "
             "Neither of the two lookup tools acts on Blender at all: they hand "
             "out addresses for the client to retrieve, and neither fetches "
             "anything itself. mpfb_list_urls gives the community sites - where "
@@ -137,13 +146,15 @@ def build_server() -> FastMCP:
     )
 
     from mpfbmcp.tools import (
-        add_asset, add_rig, create_human, generate_rigify_rig, get_macro_details,
-        get_object_info, get_status, get_target_stack, list_asset_materials, list_assets,
-        list_docs, list_objects, list_rigs, list_targets, list_urls, refit_human, remove_asset,
-        set_asset_material, set_macro_details, set_skin, set_targets, symmetrize_targets)
+        add_asset, add_rig, create_human, create_human_from_preset, generate_rigify_rig,
+        get_macro_details, get_object_info, get_status, get_target_stack, list_asset_materials,
+        list_assets, list_docs, list_objects, list_presets, list_rigs, list_targets, list_urls,
+        refit_human, remove_asset, save_preset, set_asset_material, set_macro_details, set_skin,
+        set_targets, symmetrize_targets)
     add_asset.register(mcp)
     add_rig.register(mcp)
     create_human.register(mcp)
+    create_human_from_preset.register(mcp)
     generate_rigify_rig.register(mcp)
     get_macro_details.register(mcp)
     get_object_info.register(mcp)
@@ -153,11 +164,13 @@ def build_server() -> FastMCP:
     list_assets.register(mcp)
     list_docs.register(mcp)
     list_objects.register(mcp)
+    list_presets.register(mcp)
     list_rigs.register(mcp)
     list_targets.register(mcp)
     list_urls.register(mcp)
     refit_human.register(mcp)
     remove_asset.register(mcp)
+    save_preset.register(mcp)
     set_asset_material.register(mcp)
     set_macro_details.register(mcp)
     set_skin.register(mcp)

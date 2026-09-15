@@ -1,0 +1,153 @@
+"""
+The ``mpfb_save_preset`` tool: keep the character that has been built.
+
+Everything else in this package changes a ``.blend`` that nothing here can save.
+This is the one tool whose effect **outlives the Blender session**, and it is
+the first in the package to write a file outside the ``.blend`` at all - which
+is where its two unusual decisions come from.
+
+**``overwrite`` defaults to refusing.** Blender's undo stack does not reach a
+file, there is no confirmation channel across MCP, and a caller cannot see the
+directory to notice what it is about to replace. So a preset that already exists
+is a refusal carrying the existing file's size and age, not a silent
+replacement - and the caller decides.
+
+**A preset is addressed by name, never by path**, in this tool and in
+``mpfb_create_human_from_preset``. Three reasons, and each is enough on its own:
+writing is confined to a directory MPFB owns rather than to anywhere the Blender
+process can reach; it is the same namespace MPFB's own panels use, so a preset
+saved here appears in MPFB's dropdown and vice versa, where two namespaces would
+be two lists that disagree; and ``deserialize_from_json_file()`` extracts the
+name with a regex whose match it never checks, so any path not of exactly the
+shape ``human.<name>.json`` raises ``AttributeError: 'NoneType' object has no
+attribute 'group'`` from inside MPFB. Confining the input makes that unreachable
+rather than merely unlikely. The name rule itself is in
+``mpfbmcp.preset_names``.
+
+**One tool where MPFB has two operators.** ``mpfb.save_new_human_presets``
+refuses when the file exists, and ``mpfb.overwrite_human_presets`` is reachable
+only from a dropdown of the presets that do. They differ in nothing else - both
+call ``serialize_to_json_file(basemesh, file_name, True)`` and then report the
+same warning - and a pair of MCP tools distinguished only by a precondition is
+a pair an agent will pick wrongly. ``overwrite`` is that precondition.
+
+**The generated-Rigify warning those two operators emit is deliberately not
+reproduced.** See the payload's docstring for why it overstates the problem and
+what is reported instead.
+"""
+
+from __future__ import annotations
+
+__all__ = (
+    "register",
+)
+
+from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
+from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
+
+from mpfbmcp import codegen
+from mpfbmcp.connection import send_code
+from mpfbmcp.preset_names import validated_preset_name
+
+
+def _validated_subject(name: object) -> str | None:
+    """Reject locally what would otherwise round-trip to Blender to fail there."""
+    if name is None:
+        return None
+    if not isinstance(name, str):
+        raise ValueError("subject must be a string or omitted, got {!r}".format(name))
+    if not name.strip():
+        raise ValueError(
+            "subject must not be empty or whitespace; omit it to use the active object")
+    return name
+
+
+def _validated_overwrite(overwrite: object) -> bool:
+    if not isinstance(overwrite, bool):
+        # Deliberately not truthiness. This is the flag standing between a
+        # caller and an irreversible file replacement, so `overwrite="false"`
+        # must not read as permission to overwrite.
+        raise ValueError("overwrite must be a bool, got {!r}".format(overwrite))
+    return overwrite
+
+
+def register(mcp: FastMCP) -> None:
+    @mcp.tool(
+        annotations=ToolAnnotations(
+            title="Save Character Preset",
+            readOnlyHint=False,
+            destructiveHint=True,
+            idempotentHint=False,
+            openWorldHint=False,
+        )
+    )
+    def mpfb_save_preset(
+        name: str,
+        subject: str | None = None,
+        overwrite: bool = False,
+    ) -> dict[str, object]:
+        """
+        Save a character as an MPFB preset - phenotype, detail morphs, rig,
+        body parts, garments, skin and eye materials - to be rebuilt later with
+        `mpfb_create_human_from_preset` or from MPFB's own preset panel.
+        **This writes a file outside the .blend, and nothing in Blender can
+        undo it.**
+
+        `name` is a preset name, never a path: the file is always
+        `human.<name>.json` in MPFB's user config directory, and `path` in the
+        response says which file that was. Letters, digits, `_`, `-` and `.`
+        only, at most 64 characters, no leading dot - stricter than MPFB's own
+        panel, which rejects only a space, so that a name cannot become a path.
+
+        The character is named by **`subject`**, not by `name` as every other
+        tool here does - `name` is the preset. It takes any object in the
+        character's family (basemesh, rig, a garment fitted to it); omit it to
+        use whatever is active. `basemesh_name` says which character was
+        actually serialized.
+
+        `overwrite` (default false) is the only thing standing between a call
+        and the loss of an existing preset. With it false and the preset
+        present, the tool refuses - `blocked_by: "preset_exists"`, nothing
+        written - and `previous_file` carries that file's size and age so the
+        decision can be made from the response.
+
+        **A generated Rigify rig does not round-trip.** MPFB stores the meta
+        rig it was generated from, so loading the preset back gives you the
+        meta rig and `mpfb_generate_rigify_rig` finishes the job. Nothing is
+        lost and nothing fails; `rig_identified_as` and `rig_saved_as` show the
+        substitution on the call where it happened.
+
+        On `saved: true` (and so `performed: true`), `result` carries `path`,
+        `size_bytes`, `modified`, `overwrote`, `previous_file` (the replaced
+        file's facts, or null), `config_dir`, `basemesh_name`, `rig_name`,
+        `rig_identified_as`/`rig_saved_as`, and `contents` - what the written
+        file actually holds, read back from it: `rig`, `proxy`, `bodyparts`,
+        `clothes`, `skin_mhmat`, `skin_material_type`, `eyes_material_type`,
+        `target_count`, `expression_count`, `makeup_count`.
+
+        Refusals come back as `saved: false` with a `blocked_by`, having
+        written nothing: `subject_not_found`, `preset_exists`,
+        `not_a_human_project` (MPFB only serializes characters made within
+        MPFB, not imported meshes), `rig_not_identifiable` (an armature MPFB
+        cannot name - for a custom rig, its definition is no longer in your
+        user data), `config_dir_missing` and `serialize_failed`.
+        """
+        code = codegen.assemble(
+            "save_preset.py",
+            bootstrap="raising",
+            params={
+                # The authoritative check, here rather than in Blender: this
+                # name becomes a path. See mpfbmcp/preset_names.py.
+                "name": validated_preset_name(name),
+                "subject": _validated_subject(subject),
+                "overwrite": _validated_overwrite(overwrite),
+            },
+            # preset_files.py so that this tool, the catalogue and the load tool
+            # cannot disagree about which names are legal or where the file is;
+            # performed.py for the uniform flag every mutating tool reports.
+            shared=["preset_files.py", "performed.py"],
+        )
+        # `result` (built in codegen/payloads/save_preset.py) is plain JSON-safe
+        # data, so strict_json=True surfaces a clear error if that ever stops
+        # being true.
+        return send_code(code, strict_json=True)

@@ -16,7 +16,7 @@ something, including how it resolves its subject.
 ## A tool description is call-time instruction with a budget
 
 A tool's description is not documentation about the tool — it is the instruction the caller
-reasons from, and an MCP client downloads all twenty-two of them before any work happens. That
+reasons from, and an MCP client downloads all twenty-five of them before any work happens. That
 makes it the one piece of prose in this repository with a **cost per session**, and it is measured:
 [FR 013](../feature-requests/done/013-live-verification/review.md#does-the-tool-surface-fit-its-consumer)
 found 66.7 KB of descriptions against an estimate of 58.5 KB, having grown unnoticed across five
@@ -39,7 +39,7 @@ ceiling, so the next drift is a failing test rather than a discovery.
   concept and not the key (`objects_removed`, `rig_object_name`, `asset_info.material_source`).
   A shorter description a caller has to guess against is worse than a long one.
 - **What every tool would otherwise repeat belongs in the server instructions**, which are sent
-  once rather than twenty-two times: the response envelope, the `name`/active-object subject
+  once rather than twenty-five times: the response envelope, the `name`/active-object subject
   convention, that a refusal is an answer carrying `found`, `ready` and `blocked_by`, the uniform
   `performed` flag, and that a capped listing always reports `truncated` and `total_count`. A
   tool then says only where it differs from the convention — which is the part worth reading.
@@ -51,10 +51,15 @@ ceiling, so the next drift is a failing test rather than a discovery.
   lookup tool instructs about a small static vocabulary and most of what its caller needs is
   visible in the response itself. A description that arrives at the average is carrying rationale;
   the ceiling moves by roughly what the new tools cost, and the paragraph of headroom stays a
-  paragraph.
+  paragraph. FR 025 raised it again, from 52,200 to 59,200 for three tools, and its own numbers say
+  what the rule is really asking for: the catalogue tool came in at 1,885 B, well under the 2,341 B
+  average, while the two acting tools did not — `mpfb_create_human_from_preset` is the only tool in
+  the package with seven optional arguments, each of which changes what is built and none of which
+  a caller can discover from a response. An above-average description needs a reason of that kind,
+  and it is not "the tool is important".
 - **The docstring crosses the wire verbatim**, indentation included: FastMCP takes `fn.__doc__`
   as it is written. `mpfbmcp.build_server()` dedents every description once, after registration,
-  because eight spaces per line across twenty-two tools is eleven kilobytes of whitespace an agent
+  because eight spaces per line across twenty-five tools is twelve kilobytes of whitespace an agent
   pays for and nobody reads.
 
 ## Validate before crossing the socket
@@ -89,6 +94,20 @@ In both cases the authoritative check stays in the payload, ahead of anything de
 response still reports the valid values; the local check only means a typo never travels. Adding a
 third case needs the same argument: naming the enum is not enough, the damage must precede the
 check.
+
+**An argument that becomes a path is a shape, not a vocabulary, and it is checked here.**
+`mpfb_save_preset` and `mpfb_create_human_from_preset` take a preset `name` that resolves to
+`human.<name>.json` in MPFB's user config directory, and a name carrying `/`, `\` or `..` would
+address — and on the saving side *write* — a file outside it. Which characters may appear in a
+filename cannot drift from anything on the user's disk, so this is the ordinary rule rather than an
+exception to it, and it is deliberately stricter than MPFB's own panel (which rejects only an empty
+name and one containing a space). Strictness runs one way only: every name accepted must be one
+MPFB would also accept, so the two never disagree about what exists — and where the reverse fails,
+the catalogue tool flags it (`mpfb_list_presets`' `addressable`) rather than letting a caller meet
+it as a refusal. The rule is also restated in the payload, as the last statement before `open()`,
+and `tests/test_codegen.py` runs the two implementations over one table of names so they cannot
+drift. What that buys is in
+[a tool whose effect is outside the `.blend`](mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more).
 
 **Structured input is taken as flat scalar arguments, not as a nested dict.** `mpfb_create_human`
 takes eleven separate macro sliders rather than the `macro_detail_dict` MPFB's own

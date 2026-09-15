@@ -1,6 +1,6 @@
 # Saving, listing and loading character presets
 
-**Status:** Accepted
+**Status:** Done
 
 An agent driving these twenty-two tools can build a character and change it, but it cannot **keep**
 one. Everything it assembles — phenotype, detail morphs, rig, garments, skin, eye materials, ink
@@ -10,10 +10,10 @@ answer to both, and it is a core part of the addon rather than an accessory: the
 MPFB users move a character between scenes, between projects and between machines.
 
 This request scopes three tools around
-[`HumanService`](../../../mpfb2/src/mpfb/services/humanservice.py)'s serialization half: one to
+[`HumanService`](../../../../mpfb2/src/mpfb/services/humanservice.py)'s serialization half: one to
 list the presets that exist, one to write the current character into that namespace, and one to
 build a character from a preset. It is the first entry in the
-[Creation and modification](../../specifications/vision.md#target-tool-catalog) area that both
+[Creation and modification](../../../specifications/vision.md#target-tool-catalog) area that both
 reads and writes a file MPFB owns, and it is the first time an mpfb-mcp tool causes a write outside
 the `.blend`.
 
@@ -24,15 +24,15 @@ Two boundaries are drawn deliberately and are not up for rediscovery during the 
   pipelines, it needs two settings keys (`clothes_deep_search`, `bodypart_deep_search`) that
   `get_default_deserialization_settings()` does not contain, and its asset matching is a different
   problem — UUID and filename lookup against the installed library, with its own failure modes.
-  The [NEXT_STEPS entry](../NEXT_STEPS.md#saving-listing-and-loading-character-presets) says to
+  The [NEXT_STEPS entry](../../NEXT_STEPS.md#saving-listing-and-loading-character-presets) says to
   leave it; this request agrees and says why.
 - **A preset is named, never a path.** See [Path policy](#a-preset-is-a-name-not-a-path).
 
 Two queued efforts touch the same JSON and are deliberately separate.
-[Expressions](../NEXT_STEPS.md#expressions) are serialized into a preset today
+[Expressions](../../NEXT_STEPS.md#expressions) are serialized into a preset today
 (`_populate_human_info_with_expression_info`, and `_apply_expressions_from_human_info` on the way
 back), so they round-trip through these tools for free without this request implementing anything
-about them. [Loading poses](../NEXT_STEPS.md#loading-poses) is unrelated: a preset stores no pose.
+about them. [Loading poses](../../NEXT_STEPS.md#loading-poses) is unrelated: a preset stores no pose.
 
 ## Goals
 
@@ -47,7 +47,7 @@ user clicking MPFB's own panels would get.
 - Establish what a tool that **writes outside the `.blend`** owes its caller, since there has not
   been one, and record it as a standing convention rather than as three tools' private habits.
 - Confirm and file the `save_clothes` defect below, in the shape
-  [FR 019](../done/019-file-mpfb-defects/README.md) established.
+  [FR 019](../019-file-mpfb-defects/README.md) established.
 
 ## Functional requirements
 
@@ -65,19 +65,19 @@ user clicking MPFB's own panels would get.
    `HumanService.get_list_of_human_presets()`. MPFB caches the scan in a module global
    (`_EXISTING_PRESETS`) and nothing invalidates it, so a preset written by another means since
    Blender started is invisible until a refresh — the
-   [MPFB caches what it scans](../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides)
+   [MPFB caches what it scans](../../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides)
    obligation, and the tool says both halves.
 4. **Not capped, not paged.** A user's preset collection is tens of files, not thousands. The
    docstring says so, so a caller does not look for `truncated`.
 5. Reports `mtime`-derived fields from `os.stat`, not from MPFB, and says so per the
-   [derived-fact convention](../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact).
+   [derived-fact convention](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact).
    MPFB's own list is bare names.
 
 ### `mpfb_save_preset` — write the current character
 
 6. Takes `name` (required) and the standard optional subject argument, resolving the basemesh from
    any object in the character's family exactly as the existing mutating tools do
-   ([how a mutating tool takes its subject](../../specifications/mutating-tools.md#how-a-mutating-tool-takes-its-subject)).
+   ([how a mutating tool takes its subject](../../../specifications/mutating-tools.md#how-a-mutating-tool-takes-its-subject)).
    MPFB's own operator walks `find_object_of_type_amongst_nearest_relatives(..., "Basemesh")` from
    the active object; this is the same walk the package already implements.
 7. Takes `overwrite` (a real `bool`, default `False`). **This collapses MPFB's two operators into
@@ -86,12 +86,12 @@ user clicking MPFB's own panels would get.
    pair of MCP tools distinguished only by a precondition is a pair an agent will pick wrongly.
    With `overwrite: False` and the file present, the tool **refuses** — `ready: false`,
    `blocked_by` naming the existing preset, `performed: false`, nothing written — per
-   [preconditions are answers](../../specifications/mutating-tools.md#preconditions-are-answers).
+   [preconditions are answers](../../../specifications/mutating-tools.md#preconditions-are-answers).
 8. **Validates the name locally, and more strictly than MPFB does.** MPFB rejects only an empty
    name and one containing a space. It does not reject `/`, `\`, `..` or a leading dot, so
    `os.path.join(confdir, "human." + name + ".json")` will happily escape the config directory.
    This is the one place where the
-   [validate the shape, never the vocabulary](../../specifications/tool-interface.md#validate-before-crossing-the-socket)
+   [validate the shape, never the vocabulary](../../../specifications/tool-interface.md#validate-before-crossing-the-socket)
    rule and a filesystem meet: the *shape* of a preset name is knowable here, and the consequence
    of getting it wrong is a file written somewhere nobody will look for it. The check is a
    whitelist — letters, digits, `_`, `-`, `.` — with no path separator, no `..`, and a length
@@ -100,7 +100,7 @@ user clicking MPFB's own panels would get.
 9. **Always reports the absolute file it wrote**, and whether it replaced an existing one
    (`overwrote: true/false`, with the previous file's size and mtime when it did). A write is not
    reversible across the socket and the caller cannot see the disk.
-10. `performed` is stamped from `saved`, via [`performed.py`](../../src/mpfbmcp/codegen/shared/performed.py),
+10. `performed` is stamped from `saved`, via [`performed.py`](../../../src/mpfbmcp/codegen/shared/performed.py),
     like the other eleven mutating tools.
 11. **Passes `save_clothes=True`**, matching both of MPFB's operators, which pass `True`
     positionally. See [the defect](#the-save_clothes-parameter-is-accepted-and-ignored) — the
@@ -114,7 +114,7 @@ user clicking MPFB's own panels would get.
     what the **tool description** should say once rather than the response saying it every call, is
     that a generated rig does not round-trip: reloading the preset yields the meta rig, and
     `mpfb_generate_rigify_rig` finishes the job. This is a
-    [deliberate divergence from MPFB's UI](../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
+    [deliberate divergence from MPFB's UI](../../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
     and the module docstring must justify it, not merely note it.
 13. **A rig `identify_rig()` cannot name is a different case and must not be silent.**
     `_populate_human_info_with_rig_info` raises `ValueError("Could not identify rig type. Custom
@@ -131,7 +131,7 @@ user clicking MPFB's own panels would get.
 
 15. Takes `name` (required), validated by the same whitelist as requirement 8, and refuses with
     `found: false` when no such preset exists — **naming the presets that do**, capped, per
-    [how tools name things that can be added](../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added).
+    [how tools name things that can be added](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added).
     A misspelled name is the likeliest failure and the response should end the guessing.
 16. **The name says what the tool does.** This is not "load into the current character": it is a
     creation tool. `deserialize_from_dict` calls `create_human()` unconditionally, so a call adds a
@@ -139,7 +139,7 @@ user clicking MPFB's own panels would get.
     its first sentence, because "load a preset" reads to an agent like "restore over what is there".
 17. Exposes the overrides that change the outcome, each defaulting to `None` meaning *use what the
     preset says*, in the
-    [`mpfb_set_macro_details` idiom](../../specifications/tool-interface.md) where "not mentioned"
+    [`mpfb_set_macro_details` idiom](../../../specifications/tool-interface.md) where "not mentioned"
     and "set to the default" are different requests:
 
     | Argument | Effect |
@@ -174,7 +174,7 @@ user clicking MPFB's own panels would get.
 20. **Reports the selection it leaves behind** (`active_object_after`). Deserialization ends with
     MPFB having created and activated objects, and there is no prior state to restore to — the same
     exception `mpfb_generate_rigify_rig` has and for the same reason, per
-    [restore what was borrowed](../../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after).
+    [restore what was borrowed](../../../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after).
 21. **Does not reproduce the operator's UI conveniences.** `mpfb.human_from_presets` toggles edit
     mode to preselect a vertex group, sets an active material index by name suffix, and optionally
     runs Rigify generation. None of that belongs here: the vertex-group preselection is a
@@ -188,7 +188,7 @@ user clicking MPFB's own panels would get.
 **The description budget is again the binding constraint, and this effort has less room than
 FR 024.** Three tools, and `mpfb_create_human_from_preset` alone has seven optional arguments to
 instruct about. The ceiling must be raised deliberately, with the reason recorded beside it in
-[`test_description_budget.py`](../../tests/test_description_budget.py), and the two catalogue-ish
+[`test_description_budget.py`](../../../tests/test_description_budget.py), and the two catalogue-ish
 tools held well under the average — `mpfb_list_presets` in particular instructs about almost
 nothing. Where a vocabulary is already documented by an existing tool (skin models, rig
 identifiers), the description **names that tool** instead of restating the list.
@@ -237,14 +237,14 @@ false`.
 
 `tools/list_presets.py`, `tools/save_preset.py`, `tools/create_human_from_preset.py`, each with
 the same-named payload and test module — the ordinary shape, no exceptions like FR 024's
-payload-less tool. Three `register()` calls in [`__init__.py`](../../src/mpfbmcp/__init__.py).
+payload-less tool. Three `register()` calls in [`__init__.py`](../../../src/mpfbmcp/__init__.py).
 
 **Is there a shared fragment here?** Probably one, and the effort should decide rather than assume:
 the *preset name validation and path construction* is used by all three payloads, and the
 `config_dir` reporting by all three. That is the bar
-[`codegen/shared/`](../../src/mpfbmcp/codegen/shared) sets — a concept two or more payloads model
+[`codegen/shared/`](../../../src/mpfbmcp/codegen/shared) sets — a concept two or more payloads model
 identically. Against it: the fragment would be perhaps fifteen lines, and
-[FR 015](../done/015-fourth-shared-fragment/README.md) and [FR 017](../done/017-category-table-cost/README.md)
+[FR 015](../015-fourth-shared-fragment/README.md) and [FR 017](../017-category-table-cost/README.md)
 both found that a fragment earns its keep when payloads would otherwise *disagree*, not merely when
 they repeat. Two payloads disagreeing about which characters are legal in a name is exactly the
 kind of drift that matters, so the presumption is in favour — but the decision is the effort's, and
@@ -262,8 +262,8 @@ pass-through — and nowhere else. Clothes are therefore always saved, and the d
 `False` describes behaviour that does not exist.
 
 Nobody has noticed because both UI operators pass `True`. This is a defect in the
-[FR 019](../done/019-file-mpfb-defects/README.md) sense and should be filed in
-[`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../mpfb2/features/MCP_DISCOVERED_BUGS.md) —
+[FR 019](../019-file-mpfb-defects/README.md) sense and should be filed in
+[`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md) —
 **after** confirming it against the running install rather than from source alone, which is FR 013's
 correction and the reason FR 019 exists in the form it does. It is a small enough report that it
 belongs in this effort rather than in a request of its own.
@@ -291,28 +291,28 @@ reading. If the effort reverses this, the reversal belongs in the module docstri
 
 ## Affected specifications
 
-- [mutating-tools.md](../../specifications/mutating-tools.md) — **a mutating tool whose effect is
+- [mutating-tools.md](../../../specifications/mutating-tools.md) — **a mutating tool whose effect is
   outside the `.blend`**: what it owes the caller (name the absolute artifact; default to refusing
   an overwrite; never partially write on a refusal), and why Blender's undo stack does not cover
   it. This is the genuinely new standing rule.
-- [tool-interface.md](../../specifications/tool-interface.md) — the
-  [validate before crossing the socket](../../specifications/tool-interface.md#validate-before-crossing-the-socket)
+- [tool-interface.md](../../../specifications/tool-interface.md) — the
+  [validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket)
   section gains the filesystem case: a name that becomes a path is a *shape* this side can and must
   check, and more strictly than MPFB does. Also the description-budget ceiling change and its
   reason.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md) — two entries. Under
-  [where MPFB's own code paths disagree](../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it):
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md) — two entries. Under
+  [where MPFB's own code paths disagree](../../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it):
   the generated-Rigify warning MPFB's operators emit and these tools deliberately do not, and the
   UI conveniences requirement 21 drops. Under
-  [MPFB caches what it scans](../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides):
+  [MPFB caches what it scans](../../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides):
   `_EXISTING_PRESETS`, which is a third instance of the same pattern.
-- [responses.md](../../specifications/responses.md) — a response reporting a **filesystem** fact
+- [responses.md](../../../specifications/responses.md) — a response reporting a **filesystem** fact
   (`size_bytes`, `modified`, `config_dir`) is derived rather than recorded, and the existing
   convention covers it; check whether it needs extending or only an example.
-- [vision.md](../../specifications/vision.md#target-tool-catalog) — the *Creation and modification*
+- [vision.md](../../../specifications/vision.md#target-tool-catalog) — the *Creation and modification*
   count goes from 11 to 14, and persistence becomes something the catalogue can claim.
-- [architecture.md](../../specifications/architecture.md) — only if the shared fragment is created;
-  the [shared fragments](../../specifications/architecture.md#shared-fragments) list is enumerated
+- [architecture.md](../../../specifications/architecture.md) — only if the shared fragment is created;
+  the [shared fragments](../../../specifications/architecture.md#shared-fragments) list is enumerated
   there and would go from six to seven.
 
 ## Tests
@@ -332,7 +332,7 @@ reading. If the effort reverses this, the reversal belongs in the module docstri
   override reaching the settings dict and `None` leaving the preset's value alone; and the one
   test that matters most, that the dict handed to `deserialize_from_dict` **contains all seven
   keys MPFB reads with `[]`**. The stub must reproduce that access pattern — subscripting, not
-  `.get()` — per [testing.md](../../specifications/testing.md)'s rule that stubs reproduce MPFB's
+  `.get()` — per [testing.md](../../../specifications/testing.md)'s rule that stubs reproduce MPFB's
   real behaviour rather than convenient values. A stub that tolerates a partial dict would make the
   suite pass on exactly the bug this requirement exists to prevent.
 - **A round trip in the stub world**: save a stub character, then load what was written, and assert
@@ -345,7 +345,7 @@ reading. If the effort reverses this, the reversal belongs in the module docstri
 - **`tests/test_verification_smoke.py` and `verification/smoke.py`** — three items. Note that a
   smoke item for `mpfb_save_preset` **writes a file into the user's config directory**, which is
   the first time a smoke run leaves anything behind outside the `.blend`;
-  [verification/README.md](../../verification/README.md)'s list of what the run cannot put back
+  [verification/README.md](../../../verification/README.md)'s list of what the run cannot put back
   needs a line about it, and the item should use a name obviously belonging to the harness.
 
 **This effort needs a real Blender, and for more than one claim.** Three of them cannot be reached
@@ -359,25 +359,25 @@ differed, and moves to `done/` with the request. What stays behind is the three 
 
 ## References
 
-- [`mpfb2/src/mpfb/services/humanservice.py`](../../../mpfb2/src/mpfb/services/humanservice.py) —
+- [`mpfb2/src/mpfb/services/humanservice.py`](../../../../mpfb2/src/mpfb/services/humanservice.py) —
   `serialize_to_json_string` / `_to_json_file`, `deserialize_from_dict` / `_from_json_file`,
   `get_default_deserialization_settings`, `get_list_of_human_presets`,
   `update_list_of_human_presets`.
-- [`mpfb2/docs/services/humanservice.md`](../../../mpfb2/docs/services/humanservice.md) — the
+- [`mpfb2/docs/services/humanservice.md`](../../../../mpfb2/docs/services/humanservice.md) — the
   Serialization, Deserialization and Presets sections. Note that it documents `save_clothes` as
   working.
-- [`mpfb2/docs/fileformats/human_preset.md`](../../../mpfb2/docs/fileformats/human_preset.md) —
+- [`mpfb2/docs/fileformats/human_preset.md`](../../../../mpfb2/docs/fileformats/human_preset.md) —
   what is actually in the JSON, key by key, including the asset-path-relative-to-any-asset-root
   convention the tools' responses must not mangle. This document is in
-  [FR 024](../done/024-documentation-urls/README.md)'s candidate curated set, partly for this effort.
+  [FR 024](../024-documentation-urls/README.md)'s candidate curated set, partly for this effort.
 - MPFB's own UI, which these tools collapse:
-  [`savenewpresets.py`](../../../mpfb2/src/mpfb/ui/presets/humanpresets/operators/savenewpresets.py),
-  [`overwritepresets.py`](../../../mpfb2/src/mpfb/ui/presets/humanpresets/operators/overwritepresets.py),
-  [`humanfrompresets.py`](../../../mpfb2/src/mpfb/ui/new_human/newhuman/operators/humanfrompresets.py),
-  [`frompresetspanel.py`](../../../mpfb2/src/mpfb/ui/new_human/newhuman/frompresetspanel.py).
-- [NEXT_STEPS: Saving, listing and loading character presets](../NEXT_STEPS.md#saving-listing-and-loading-character-presets)
+  [`savenewpresets.py`](../../../../mpfb2/src/mpfb/ui/presets/humanpresets/operators/savenewpresets.py),
+  [`overwritepresets.py`](../../../../mpfb2/src/mpfb/ui/presets/humanpresets/operators/overwritepresets.py),
+  [`humanfrompresets.py`](../../../../mpfb2/src/mpfb/ui/new_human/newhuman/operators/humanfrompresets.py),
+  [`frompresetspanel.py`](../../../../mpfb2/src/mpfb/ui/new_human/newhuman/frompresetspanel.py).
+- [NEXT_STEPS: Saving, listing and loading character presets](../../NEXT_STEPS.md#saving-listing-and-loading-character-presets)
   — the entry this request scopes.
-- [FR 019](../done/019-file-mpfb-defects/README.md) — the established shape for a defect report,
+- [FR 019](../019-file-mpfb-defects/README.md) — the established shape for a defect report,
   and the rule that a candidate is confirmed against a running install before it is filed.
-- [FR 011](../done/011-skin-and-materials/README.md) — where `material_instances` and the skin-model
+- [FR 011](../011-skin-and-materials/README.md) — where `material_instances` and the skin-model
   vocabulary were settled; requirement 17 reuses both rather than restating them.

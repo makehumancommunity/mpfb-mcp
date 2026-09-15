@@ -11,8 +11,9 @@ come with changing something the caller cannot undo across the socket.
 They fall into a sequence: take the subject, check that the world is ready, do only what was
 asked, put back what was borrowed, and report what changed — including what changed as a
 consequence, and what the change has now invalidated, under one flag name shared by every tool
-here. Two further sections cover the cases MPFB makes hard: an ordering constraint nothing
-enforces, and a batch that must be all-or-nothing.
+here. Three further sections cover the cases MPFB makes hard: an ordering constraint nothing
+enforces, a batch that must be all-or-nothing, and the one kind of change Blender's undo stack
+does not reach at all.
 
 ## How a mutating tool takes its subject
 
@@ -177,6 +178,47 @@ affected** — rather than either failing or staying silent.
 - **Splitting a tool can be what makes the order expressible.** Rigify generation is a tool of its
   own rather than a flag on `mpfb_add_rig` precisely because the correct order — meta rig, then
   clothes, then generate — cannot be written as a single call.
+
+## A tool whose effect is outside the `.blend` owes more
+
+Everything else here changes a `.blend` that the user can undo, revert or simply not save.
+`mpfb_save_preset` writes a **file**, and FR 025 is where that difference was first paid for. Three
+properties follow, and they are the whole of the extra obligation:
+
+- **Address the artifact by name, never by a path.** A preset is `<name>` within MPFB's user config
+  directory, resolving to `human.<name>.json`. A tool that took a caller-supplied path would write
+  anywhere the Blender process can; addressing by name confines writing to a directory MPFB owns,
+  keeps one namespace rather than two lists that disagree with MPFB's own panels, and makes
+  unreachable a third failure that would otherwise be found the hard way —
+  `deserialize_from_json_file()` extracts the name with a regex whose match it never checks, so any
+  path not of exactly that shape raises `AttributeError: 'NoneType' object has no attribute
+  'group'` from inside MPFB, with nothing in the message about what the caller did wrong. Confirmed
+  against a running install, not read off the source.
+- **The name is a shape, so it is validated on this side of the socket, and more strictly than MPFB
+  does.** This is the filesystem case of
+  [validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket), and
+  it is not the vocabulary exception: which characters may appear in a filename is knowable here
+  and cannot drift from anything on the user's disk. Strictness runs one way — every name accepted
+  must be one MPFB's own panel would also accept, so the two never disagree about what exists.
+  Where the rule has to exist on both sides of the socket (the tool module refuses before the
+  program is built; the payload is the last statement before `open()`), a test runs the two
+  implementations over one table of names, because two copies that disagree would let an artifact
+  be written under a name that cannot be read back.
+- **Refuse to overwrite by default, and always name the absolute artifact.** There is no undo, no
+  confirmation channel across MCP, and the caller cannot see the directory. So an existing file is
+  a refusal carrying that file's size and modification time — enough to decide from, without a
+  second call — and `path` is in **every** answer, refusals included, because "which file was this
+  about" is the first thing a caller needs whatever happened.
+
+The general obligation those three serve is that **a refusal must never be a partial write**: every
+precondition is settled before the writing call is made. MPFB's own path happens to be safe here
+(`serialize_to_json_string()` runs to completion before the file is opened), but that is an
+inherited property rather than a guarantee, so the ordering is the payload's own.
+
+The counterpart on the reading side is that a tool addressing an artifact by name must be able to
+say **which names exist**: a misspelling is the likeliest way such a tool is called wrongly, so the
+refusal names them, per
+[how tools name things that can be added](tool-interface.md#how-tools-name-things-that-can-be-added).
 
 ## A batched mutating tool resolves before it writes
 

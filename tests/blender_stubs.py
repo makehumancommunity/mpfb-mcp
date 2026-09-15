@@ -92,6 +92,7 @@ that remains a manual check against a running Blender.
 
 __all__ = (
     "ASSET_LIBRARY_SECTIONS",
+    "PresetTestCase",
     "MACRO_PROPERTY_DEFAULTS",
     "GeneratedCodeTestCase",
     "StubAssetService",
@@ -107,6 +108,7 @@ __all__ = (
     "StubTargetService",
 )
 
+import fnmatch
 import json
 import os
 import pathlib
@@ -450,7 +452,7 @@ class StubObject:
                  macro_details=None, is_human_project=False, shapekeys=None,
                  mode="OBJECT", selected=False, rigify_target_rig=None,
                  location=(0.0, 0.0, 0.0), modifiers=None, rigify_colors=1,
-                 vertex_groups=()):
+                 vertex_groups=(), inferred_metarig=None):
         self.name = name
         self.type = blender_type
         self.parent = parent
@@ -492,6 +494,9 @@ class StubObject:
         self.metarig = metarig
         # What identify_rig() would deduce from this armature's bones.
         self.rig_type = rig_type
+        # What infer_metarig_type_from_generated() would deduce from a generated
+        # Rigify rig. None is a real answer and is the interesting one.
+        self.inferred_metarig = inferred_metarig
         human_properties = {
             "material_source": material_source,
             "is_human_project": is_human_project,
@@ -1125,6 +1130,17 @@ class StubRigService:
     @staticmethod
     def get_rig_weight_fallbacks(rig_type):
         return [rig_type, *StubRigService.WEIGHT_FALLBACKS.get(rig_type, [])]
+
+    @staticmethod
+    def infer_metarig_type_from_generated(armature_object):
+        """Which meta rig a generated Rigify rig came from, or None.
+
+        Really can answer None - MPFB falls back to "rigify.human_toes" when it
+        does, and that fallback is the whole reason a generated rig does not
+        round-trip through a preset. A stub that always inferred something would
+        make the fallback unreachable.
+        """
+        return getattr(armature_object, "inferred_metarig", None)
 
     @staticmethod
     def load_weights(armature_object, basemesh, weights_file):
@@ -2177,6 +2193,307 @@ class StubHumanService:
         # alias, or the degradation path would never be the one under test.
         StubHumanService.corrective_calls.append(proxymesh.name)
 
+    # ------------------------------------------------------------------
+    # The serialization half: presets. MPFB keeps the preset list in a module
+    # global that nothing invalidates except a save, so it is a class attribute
+    # here rather than a fresh scan per call - the staleness is the behaviour
+    # mpfb_list_presets exists to report, and a stub that rescanned would make
+    # `refresh` untestable.
+    # ------------------------------------------------------------------
+
+    # None until something populates it, exactly like MPFB's _EXISTING_PRESETS.
+    existing_presets = None
+    # One dict per serialize_to_json_file() call. `save_clothes` is recorded so
+    # a test can assert what was passed, which is not the same claim as what it
+    # did - see serialize_to_json_string() below.
+    serialize_calls = []
+    deserialize_calls = []
+    # Set by a test that wants deserialization itself to blow up part way
+    # through, which is the case that leaves a half-built character behind.
+    deserialize_raises = None
+
+    @staticmethod
+    def update_list_of_human_presets():
+        confdir = StubLocationService.get_user_config()
+        names = []
+        for filename in os.listdir(confdir):
+            # MPFB's own two-step match, both steps: an fnmatch that admits
+            # `human.foo.json` and rejects `human.foo.json.bak`, then a regex
+            # whose group must be non-empty, which is what rejects `human.json`.
+            if fnmatch.fnmatch(filename, "human.*.json"):
+                match = re.search(r'^human.(.*).json$', filename)
+                if match and match.group(1):
+                    names.append(match.group(1))
+        names.sort()
+        StubHumanService.existing_presets = names
+
+    @staticmethod
+    def get_list_of_human_presets(as_list_enum=True, use_cache=True):
+        if StubHumanService.existing_presets is None or not use_cache:
+            StubHumanService.update_list_of_human_presets()
+        if not as_list_enum:
+            # The list *itself*, not a copy, as MPFB hands back its global - so
+            # a payload that sorted or filtered the answer in place would be
+            # editing the list MPFB's own preset dropdown is built from, and a
+            # test can see that it did not.
+            return StubHumanService.existing_presets
+        return [(name, name, name) for name in StubHumanService.existing_presets]
+
+    @staticmethod
+    def _serialized_rig(human_info, basemesh):
+        armature = StubObjectService.find_object_of_type_amongst_nearest_relatives(
+            basemesh, "Skeleton")
+        if armature is None:
+            return
+        rig_type = StubRigService.identify_rig(armature)
+        if rig_type is None or rig_type in ("unknown", "unkown"):
+            # MPFB's own message, wrong and all: a custom rig still in user data
+            # serializes perfectly well, as custom.<name>. The payload refuses
+            # before this can be reached, and reproducing the text is what makes
+            # that refusal worth having.
+            raise ValueError("Could not identify rig type. Custom rigs cannot be serialized.")
+        if rig_type.startswith("rigify_generated"):
+            inferred = StubRigService.infer_metarig_type_from_generated(armature)
+            rig_type = inferred if inferred is not None else "rigify.human_toes"
+        human_info["rig"] = rig_type
+
+    @staticmethod
+    def serialize_to_json_string(basemesh, save_clothes=False):
+        """MPFB's serializer, **including the fact that it ignores save_clothes**.
+
+        ``_populate_human_info_with_clothes_info()`` is called unconditionally in
+        the real one; the argument is read nowhere in the body. Reproducing that
+        is the point rather than an oversight - a stub that honoured the flag
+        would let a payload passing the wrong value pass its tests, and the
+        defect FR 025 filed would be invisible from here.
+        """
+        if basemesh is None:
+            raise ValueError('Cannot serialize none basemesh')
+        if not HumanObjectProperties.get_value('is_human_project', entity_reference=basemesh):
+            raise ValueError(
+                'Can only serialize characters created within MPFB (ie not imported characters)')
+
+        human_info = {
+            "phenotype": StubTargetService.get_macro_info_dict_from_basemesh(basemesh),
+            "rig": "",
+            "eyes": "", "eyebrows": "", "eyelashes": "", "tongue": "", "teeth": "", "hair": "",
+            "proxy": "",
+            "targets": [],
+            "clothes": [],
+            "skin_mhmat": "",
+            "skin_material_type": "NONE",
+            "eyes_material_type": "MAKESKIN",
+            "skin_material_settings": dict(),
+            "eyes_material_settings": dict(),
+            "expressions": [],
+        }
+        StubHumanService._serialized_rig(human_info, basemesh)
+
+        for bodypart in ("Eyes", "Eyelashes", "Eyebrows", "Tongue", "Teeth", "Hair"):
+            found = StubObjectService.find_object_of_type_amongst_nearest_relatives(
+                basemesh, bodypart)
+            if found is not None:
+                source = GeneralObjectProperties.get_value(
+                    "asset_source", entity_reference=found)
+                if source:
+                    human_info[bodypart.lower()] = str(source).strip()
+
+        proxy = StubObjectService.find_object_of_type_amongst_nearest_relatives(
+            basemesh, "Proxymeshes")
+        if proxy is not None:
+            source = GeneralObjectProperties.get_value("asset_source", entity_reference=proxy)
+            if source:
+                human_info["proxy"] = str(source).strip()
+
+        # Unconditional. See this method's docstring.
+        for garment in StubObjectService.find_all_objects_of_type_amongst_nearest_relatives(
+                basemesh, "Clothes"):
+            source = GeneralObjectProperties.get_value("asset_source", entity_reference=garment)
+            if source:
+                human_info["clothes"].append(str(source).strip())
+
+        source = HumanObjectProperties.get_value("material_source", entity_reference=basemesh)
+        if source:
+            human_info["skin_mhmat"] = str(source).strip()
+            human_info["skin_material_type"] = "MAKESKIN"
+
+        for block in StubTargetService.get_target_stack(basemesh) or []:
+            human_info["targets"].append(block)
+
+        return json.dumps(human_info, indent=4, sort_keys=True)
+
+    @staticmethod
+    def serialize_to_json_file(basemesh, filename, save_clothes=False):
+        if filename is None or str(filename).strip() == "":
+            raise ValueError('Must supply valid filename')
+        StubHumanService.serialize_calls.append(
+            {"basemesh": None if basemesh is None else basemesh.name,
+             "filename": filename, "save_clothes": save_clothes})
+        # The string is built *before* the file is opened, which is what makes
+        # "a refusal is never a partial write" true of MPFB's own path as well
+        # as of the payload's ordering.
+        json_string = StubHumanService.serialize_to_json_string(basemesh, save_clothes)
+        with open(filename, "w", encoding="utf-8") as json_file:
+            json_file.write(json_string)
+        # A save is the one thing that invalidates the cache, which is why a
+        # preset written through this tool is visible without a refresh and one
+        # written any other way is not.
+        StubHumanService.update_list_of_human_presets()
+
+    @staticmethod
+    def get_default_deserialization_settings():
+        # MPFB's ten keys, verbatim - note which two are *not* here:
+        # override_clothes_model and override_eyes_model are honoured by
+        # deserialize_from_dict() and passed by MPFB's own panel, so "the
+        # defaults" are narrower than the vocabulary. A stub that included them
+        # would hide the payload's having to add them.
+        return {
+            "mask_helpers": True,
+            "detailed_helpers": True,
+            "extra_vertex_groups": True,
+            "feet_on_ground": True,
+            "scale": 0.1,
+            "subdiv_levels": 1,
+            "load_clothes": True,
+            "override_skin_model": "PRESET",
+            "override_rig": "PRESET",
+            "material_instances": "NEVER",
+        }
+
+    @staticmethod
+    def create_human(mask_helpers=True, detailed_helpers=True, extra_vertex_groups=True,
+                     feet_on_ground=True, scale=0.1, macro_detail_dict=None):
+        basemesh = StubObject("Human", object_type="Basemesh", is_human_project=True)
+        StubObjectService.register_object(basemesh)
+        for name, value in (macro_detail_dict or dict()).items():
+            if name == "race":
+                for race, weight in (value or dict()).items():
+                    HumanObjectProperties.set_value(race, weight, entity_reference=basemesh)
+            else:
+                HumanObjectProperties.set_value(name, value, entity_reference=basemesh)
+        GeneralObjectProperties.set_value("scale_factor", scale, entity_reference=basemesh)
+        return basemesh
+
+    @staticmethod
+    def deserialize_from_dict(human_info, deserialization_settings):
+        """Builds a character, **subscripting the eight keys MPFB subscripts**.
+
+        ``[]`` rather than ``.get()`` for all eight, because that is what makes a
+        partial settings dict a ``KeyError`` from inside MPFB rather than a
+        default quietly applied - and a stub that tolerated a partial dict would
+        make the suite pass on exactly the bug the payload builds from
+        ``get_default_deserialization_settings()`` to avoid.
+        """
+        mask_helpers = deserialization_settings["mask_helpers"]
+        detailed_helpers = deserialization_settings["detailed_helpers"]
+        extra_vertex_groups = deserialization_settings["extra_vertex_groups"]
+        feet_on_ground = deserialization_settings["feet_on_ground"]
+        scale = deserialization_settings["scale"]
+        subdiv_levels = deserialization_settings["subdiv_levels"]
+        load_clothes = deserialization_settings["load_clothes"]
+        material_instances = deserialization_settings["material_instances"]
+
+        StubHumanService.deserialize_calls.append(
+            {"human_info": human_info, "settings": dict(deserialization_settings)})
+
+        if human_info is None:
+            raise ValueError('Cannot use None as human_info')
+        if len(human_info.keys()) < 1:
+            raise ValueError('The provided dict does not seem to be a valid human_info')
+
+        human_info["material_instances"] = material_instances if material_instances else "NEVER"
+
+        override_rig = deserialization_settings.get("override_rig")
+        if override_rig and override_rig != "PRESET":
+            human_info["rig"] = "" if override_rig == "NONE" else override_rig
+        override_skin = deserialization_settings.get("override_skin_model")
+        if override_skin and override_skin != "PRESET":
+            human_info["skin_material_type"] = override_skin
+
+        basemesh = StubHumanService.create_human(
+            mask_helpers, detailed_helpers, extra_vertex_groups, feet_on_ground, scale,
+            human_info["phenotype"])
+        if human_info.get("name"):
+            basemesh.name = human_info["name"] + ".body"
+            basemesh.data.name = basemesh.name
+
+        if StubHumanService.deserialize_raises is not None:
+            # Raised here rather than at the top: the point of this hook is a
+            # failure that leaves a character behind, which is only reachable
+            # once one has been created.
+            raise StubHumanService.deserialize_raises
+
+        rig_name = human_info.get("rig")
+        if rig_name and str(rig_name).strip():
+            # The adders raise for a rig they cannot find, since generated code
+            # never has an operator to report through - which is why this is the
+            # failure that leaves a naked character in the scene.
+            if str(rig_name).startswith("custom."):
+                rig = StubHumanService.add_custom_rig(basemesh, rig_name, import_weights=True)
+            else:
+                rig = StubHumanService.add_builtin_rig(basemesh, rig_name, import_weights=True)
+            if rig is not None and human_info.get("name"):
+                rig.name = human_info["name"]
+
+        for bodypart in ("eyes", "eyelashes", "eyebrows", "tongue", "teeth", "hair"):
+            fragment = human_info.get(bodypart)
+            if not fragment or not str(fragment).strip():
+                continue
+            path = StubAssetService.find_asset_absolute_path(fragment, asset_subdir=bodypart)
+            if path is None:
+                # _LOG.warn() and carry on. Nothing is raised, nothing appears,
+                # and the caller is told nothing - which is what the payload's
+                # unresolved_assets exists to say instead.
+                continue
+            StubHumanService.add_mhclo_asset(
+                path, basemesh, asset_type=bodypart, subdiv_levels=subdiv_levels)
+
+        proxy = human_info.get("proxy")
+        if proxy and str(proxy).strip():
+            path = StubAssetService.find_asset_absolute_path(
+                proxy, asset_subdir="proxymeshes")
+            if path is not None:
+                StubHumanService.add_mhclo_asset(
+                    path, basemesh, asset_type="Proxymeshes", subdiv_levels=subdiv_levels,
+                    material_type="NONE")
+
+        if load_clothes:
+            for garment in human_info.get("clothes") or []:
+                path = StubAssetService.find_asset_absolute_path(
+                    garment, asset_subdir="clothes")
+                if path is None:
+                    continue
+                StubHumanService.add_mhclo_asset(
+                    path, basemesh, asset_type="clothes", subdiv_levels=subdiv_levels)
+
+        skin = human_info.get("skin_mhmat")
+        skin_type = human_info.get("skin_material_type")
+        if skin and skin_type and skin_type != "NONE":
+            path = StubAssetService.find_asset_absolute_path(skin, asset_subdir="skins")
+            if path is not None:
+                StubHumanService.set_character_skin(
+                    path, basemesh, skin_type=skin_type, material_instances=False)
+                HumanObjectProperties.set_value(
+                    "material_source", skin, entity_reference=basemesh)
+
+        StubObjectService.activate_blender_object(basemesh)
+        return basemesh
+
+    @staticmethod
+    def deserialize_from_json_file(filename, deserialization_settings):
+        if not os.path.exists(filename):
+            raise IOError(str(filename) + " does not exist")
+        with open(filename, "r", encoding="utf-8") as json_file:
+            human_info = json.load(json_file)
+        # The match is **not** checked, exactly as MPFB does not check it: any
+        # path not of the shape human.<name>.json raises AttributeError on
+        # .group() from in here, with nothing in the message about what the
+        # caller did wrong. It is the third reason a preset is a name and never
+        # a path, and a stub that guarded would make that reason unverifiable.
+        match = re.search(r'human\.([^/\\]*)\.json$', filename)
+        human_info["name"] = match.group(1)
+        return StubHumanService.deserialize_from_dict(human_info, deserialization_settings)
+
 
 class StubMhclo:
     """MPFB's Mhclo entity, for the one field the material tools read.
@@ -2375,6 +2692,13 @@ class GeneratedCodeTestCase(unittest.TestCase):
         StubHumanService.add_asset_raises = None
         StubHumanService.skin_calls = []
         StubHumanService.skin_raises = None
+        # None rather than [], because "nothing has scanned yet" and "the scan
+        # found nothing" are different states and the first one is what a fresh
+        # Blender is in.
+        StubHumanService.existing_presets = None
+        StubHumanService.serialize_calls = []
+        StubHumanService.deserialize_calls = []
+        StubHumanService.deserialize_raises = None
         StubMaterialService.delete_calls = []
         StubMhclo.load_calls = []
         StubMakeSkinMaterial.applied = []
@@ -3098,3 +3422,123 @@ class MeshAssetTestCase(GeneratedCodeTestCase):
             mask.invert_vertex_group = True
             self.objects.append(self.shirt)
         return self.objects
+
+
+class PresetTestCase(MeshAssetTestCase):
+    """A real config directory to save presets into, plus a library and a character.
+
+    Built on ``MeshAssetTestCase`` rather than beside it because a preset is
+    mostly a list of assets: loading one resolves every garment and body part it
+    names against the asset roots, so the fixture that has an asset library is
+    the fixture this needs. That case already points
+    ``StubLocationService.user_config`` at a real directory - it has to, since
+    ``mpfb_set_skin`` claims a settings file appears in it - and the preset tools
+    write into the same one.
+
+    What is added here is the state a config directory accumulates in use. Four
+    presets are written by hand, one of them with a name **MPFB's own panel
+    accepts and these tools do not** (``hand made``, with a space), which is what
+    ``addressable: false`` is for. Three near misses sit beside them -
+    ``human.json``, ``humans.foo.json`` and ``human.decoy.json.bak`` - and each
+    is a file MPFB's two-step match rejects for a different reason.
+
+    Note what is deliberately *not* done in ``setUp``: MPFB's preset list is left
+    unpopulated, so the first call in a test is the one that scans. A fixture
+    that warmed the cache would make the staleness untestable, and the staleness
+    is the thing ``mpfb_list_presets`` reports.
+    """
+
+    # The preset MPFB will list and these tools will refuse. MPFB rejects only
+    # an empty name and a name with a space... which is this one, so it is a
+    # name MPFB's *panel* would refuse and its *scan* still finds - written by
+    # hand, or by an older MPFB. Either way it is in somebody's directory.
+    UNADDRESSABLE_PRESET = "hand made"
+
+    def setUp(self):
+        super().setUp()
+        # MeshAssetTestCase has already created it and pointed MPFB at it.
+        self.config_dir = self.user_config_root
+
+        self.saved_presets = dict()
+        for name in ("alice", "bob-2", self.UNADDRESSABLE_PRESET):
+            self.saved_presets[name] = self.write_preset(name)
+
+        # Three files MPFB's match refuses, each for its own reason: no name
+        # between the dots, the wrong prefix, and the wrong suffix. All three
+        # really turn up in a config directory that has been used.
+        for filename in ("human.json", "humans.foo.json", "human.decoy.json.bak"):
+            handle = open(os.path.join(self.config_dir, filename), "w", encoding="utf-8")
+            handle.write("{}\n")
+            handle.close()
+
+        # Two rig files, because a preset records a rig by identifier and the
+        # adders MPFB's deserializer calls go looking for the file. Without
+        # these, every round trip through a rigged character would exercise the
+        # *failure* path rather than the ordinary one. `default` gets weights
+        # and `rigify.human` does not, which is the ordinary asymmetry -
+        # RigTestCase is where the weights fallback table itself is tested.
+        self.standard_rig_dir = os.path.join(self.mpfb_data_root, "rigs", "standard")
+        self.rigify_rig_dir = os.path.join(self.mpfb_data_root, "rigs", "rigify")
+        os.makedirs(self.standard_rig_dir, exist_ok=True)
+        os.makedirs(self.rigify_rig_dir, exist_ok=True)
+        write_json(os.path.join(self.standard_rig_dir, "rig.default.json"), {"bones": {}})
+        write_json(os.path.join(self.standard_rig_dir, "weights.default.json"), {})
+        write_json(os.path.join(self.rigify_rig_dir, "rig.human.json"), {"bones": {}})
+
+    def build_character(self, **kwargs):
+        """``MeshAssetTestCase``'s character, but one MPFB made.
+
+        ``is_human_project`` defaults to False on a bare ``StubObject`` because
+        every object in a Blender file reads MPFB's properties back at their
+        defaults, and the imported-mesh case depends on that. A character being
+        *saved*, though, is one MPFB built - ``serialize_to_json_string()``
+        raises for anything else - so the fixture's default is the other way
+        round here, and a test wanting the imported case passes
+        ``is_human_project=False`` or builds its own object.
+        """
+        kwargs.setdefault("is_human_project", True)
+        return super().build_character(**kwargs)
+
+    def write_preset(self, name, human_info=None):
+        """One preset file on disk, written behind MPFB's back.
+
+        Behind its back on purpose: a preset that appears without
+        ``serialize_to_json_file()`` having run is exactly the one MPFB's cached
+        list does not hold, which is the case ``refresh`` and
+        ``missing_from_mpfb_list`` are both about.
+        """
+        path = os.path.join(self.config_dir, "human." + name + ".json")
+        handle = open(path, "w", encoding="utf-8")
+        json.dump(human_info if human_info is not None else self.preset_contents(),
+                  handle, indent=4, sort_keys=True)
+        handle.close()
+        return path
+
+    def preset_contents(self, **overrides):
+        """A minimal but complete human_info, in MPFB's own shape."""
+        human_info = {
+            "phenotype": StubTargetService.get_default_macro_info_dict(),
+            "rig": "",
+            "eyes": "", "eyebrows": "", "eyelashes": "", "tongue": "", "teeth": "", "hair": "",
+            "proxy": "",
+            "targets": [],
+            "clothes": [],
+            "skin_mhmat": "",
+            "skin_material_type": "NONE",
+            "eyes_material_type": "MAKESKIN",
+            "skin_material_settings": dict(),
+            "eyes_material_settings": dict(),
+            "expressions": [],
+        }
+        human_info.update(overrides)
+        return human_info
+
+    def read_preset(self, name):
+        handle = open(os.path.join(self.config_dir, "human." + name + ".json"),
+                      "r", encoding="utf-8")
+        contents = json.load(handle)
+        handle.close()
+        return contents
+
+    def preset_filenames(self):
+        return sorted(os.listdir(self.config_dir))

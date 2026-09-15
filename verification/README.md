@@ -69,7 +69,7 @@ by the checks alone. Wall clock against somebody else's Blender is too noisy and
 install-dependent to gate on, and a check that fails for a reason outside the repository is one
 people learn to ignore.
 
-Last measured at **43.4 s**, 25 items, 0 failed, 0 skipped — Blender 5.1.0, MPFB 2.0.17
+Last measured at **50.2 s**, 28 items, 0 failed, 0 skipped — Blender 5.1.0, MPFB 2.0.17
 `FROM_SOURCE`, 909 assets across 112 packs, and blender_mcp's `timer_interval_active` at its
 **0.25 s default**. That last number matters more than the machine: the add-on reads one 4 KB
 chunk of a request per timer tick, so it is the dominant cost of every call here and 0.05 s makes
@@ -80,6 +80,8 @@ goes over target, that setting is the first thing to check.
 
 The three slowest items on that run were `mpfb_set_targets` (7.8 s, two extra catalogue calls to
 find a left/right category plus the write), `mpfb_add_asset` (4.5 s) and `mpfb_set_skin` (3.8 s).
+`mpfb_create_human_from_preset` is the fourth at 3.2 s, and it is the one item whose cost is
+irreducible: it builds a whole second character, which is the only honest way to call that tool.
 
 ## What it does to the Blender it is pointed at
 
@@ -87,10 +89,16 @@ find a left/right category plus the write), `mpfb_add_asset` (4.5 s) and `mpfb_s
   touched, and **the `.blend` is never saved by anything here**.
 - Snapshots twelve datablock collections plus `bpy.data.is_dirty` before the run and compares
   after cleanup. The compare is itself an item, so a leak is a failure rather than a footnote.
-- **Nothing outside the `.blend` is written at all.** FR 013's harness had three deliberate
-  exceptions — probe targets in MPFB's user `custom` directory, `enhanced_settings.default.json`
-  moved aside, a `.mhmat` written beside an asset — and all three left with the checklists that
-  needed them. The probe targets went to
+- **Exactly one file is written outside the `.blend`**, and it is the same file on every run:
+  `human.mpfbmcp_smoke_run.json` in MPFB's user config directory, left there by the
+  `mpfb_save_preset` item (FR 025). The name says where it came from and is constant, so repeated
+  runs leave one file rather than a growing pile, and the item passes `overwrite=True` — the only
+  argument in the whole table that is not left at its default — because the default is correct and
+  would make the item pass once and fail forever after. Delete it by hand if you want it gone;
+  nothing here does. Before FR 025 this line said *nothing* outside the `.blend` was written, which
+  had been true since FR 013's three deliberate exceptions — probe targets in MPFB's user `custom`
+  directory, `enhanced_settings.default.json` moved aside, a `.mhmat` written beside an asset —
+  left with the checklists that needed them. The probe targets went to
   [FR 019](../feature-requests/done/019-file-mpfb-defects/), which is where they belong: one of
   them prevents MPFB from loading if it is left on disk when Blender starts.
 - Two things it still **cannot** put back, both from FR 013's non-functional requirements: MPFB's

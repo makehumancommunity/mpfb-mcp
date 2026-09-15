@@ -318,7 +318,7 @@ than delicate:
 A **fragment** is a fourth, optional part: an ordinary `.py` file under
 `src/mpfbmcp/codegen/shared/`, named by a tool module in `assemble(..., shared=[...])` and
 concatenated between the prelude and the payload. It exists for a *concept* two or more payloads
-model identically. There are six: `target_categories.py` rebuilds MPFB's `target.json` category
+model identically. There are seven: `target_categories.py` rebuilds MPFB's `target.json` category
 table, which `mpfb_list_targets`, `mpfb_get_target_stack`, `mpfb_set_targets` and
 `mpfb_symmetrize_targets` all need in the same shape and none of them can import; `rig_lookup.py` answers "which rig file would MPFB
 load for this identifier, and whose weights would come with it", which `mpfb_list_rigs` and
@@ -326,10 +326,25 @@ load for this identifier, and whose weights would come with it", which `mpfb_lis
 `ASSET_LIBRARY_SECTIONS` table and what it maps between, which `mpfb_list_assets` reports *from* and
 `mpfb_add_asset` resolves *with*; `performed.py` stamps the uniform
 [`performed` flag](mutating-tools.md#the-flag-a-caller-branches-on-is-called-performed) onto the
-answer of every one of the eleven mutating payloads; `modifier_reading.py` computes what one
+answer of every one of the thirteen mutating payloads; `modifier_reading.py` computes what one
 modeling category's slider reads, which `mpfb_get_target_stack` reports and
-`mpfb_symmetrize_targets` acts on; and `refit_blocker.py` answers whether `HumanService.refit()`
-would silently leave the rig behind, which all four refitting payloads have to know.
+`mpfb_symmetrize_targets` acts on; `refit_blocker.py` answers whether `HumanService.refit()`
+would silently leave the rig behind, which all four refitting payloads have to know; and
+`preset_files.py` holds which characters a preset name may contain and how it becomes
+`<user config>/human.<name>.json`, which `mpfb_list_presets`, `mpfb_save_preset` and
+`mpfb_create_human_from_preset` must agree about exactly — two of them disagreeing would let a
+preset be written under a name that cannot be loaded back.
+
+`preset_files.py` is also the one fragment whose rule exists on **both** sides of the socket, which
+is a shape to notice rather than to copy. The authoritative check is in `src/mpfbmcp/preset_names.py`
+and runs before the program is built, because a name that becomes a path is a shape knowable here
+([validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket)); the
+fragment restates it as the last statement before `open()`. Two copies are warranted only because
+the tool side cannot reach Blender at all and the consequence of a gap between them is silent, so
+`tests/test_codegen.py` runs both over one table of names and compares the *sentences*, not only
+the verdicts. A module of this package rather than a helper duplicated in two tool modules, which
+is what the other small validators are: what separates the two cases is what a disagreement would
+cost.
 
 - **A fragment is warranted by duplication that must not drift, not by size.** Three copies of a
   hundred-line scan of the user's target directories are three chances for two tools to disagree

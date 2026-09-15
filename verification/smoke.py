@@ -41,6 +41,12 @@ Blender, so the rule also fires early.
 is closed**: the install gate, the leak compare, and the traceback item. A
 fourth is a sign that the exhaustive habit is growing back.
 
+**One item writes outside the ``.blend``**, which nothing here did before
+FR 025: ``mpfb_save_preset`` leaves ``human.mpfbmcp_smoke_run.json`` in MPFB's
+user config directory, under a name that says where it came from and constant
+across runs so that the pile does not grow. It is the one thing the run does not
+put back, and verification/README.md says so beside the two it cannot.
+
 Run with::
 
     MPFB_MCP_RECORD_DIR=~/mpfb-mcp-records PYTHONPATH=. python3 verification/smoke.py
@@ -141,6 +147,16 @@ def _list_docs(run: _Run) -> dict:
     # anyway, because coverage is derived from the registry and the run-level
     # set is closed at three - not because there is anything live to check.
     return run.tools["mpfb_list_docs"]()
+
+
+@_item("mpfb_list_presets", "presets", "count", "config_dir", "config_dir_exists",
+       "missing_from_mpfb_list")
+def _list_presets(run: _Run) -> dict:
+    # Read-only and needs no character, so it sits with the other catalogues.
+    # It is also what the two items at the bottom of the table write into and
+    # read out of, and running it first means a preset left by an earlier run is
+    # visible in the output rather than a surprise.
+    return run.tools["mpfb_list_presets"]()
 
 
 @_item("mpfb_list_targets", "sections")
@@ -290,11 +306,46 @@ def _remove_asset(run: _Run) -> dict:
     return run.tools["mpfb_remove_asset"](name=_asset_object(run))
 
 
+@_item("mpfb_save_preset", "path", "size_bytes", "overwrote", "previous_file",
+       "basemesh_name", "contents")
+def _save_preset(run: _Run) -> dict:
+    """The one item that writes outside the ``.blend``, deliberately and once.
+
+    ``overwrite`` is the single argument in the table that is **not** left at
+    its default, and the reason is that the default is correct: a second run
+    would otherwise be refused, so the item would pass once and fail forever
+    after. The name belongs obviously to the harness and is the same one every
+    time, so what is left behind is one file rather than a growing pile - see
+    verification/README.md, which is where the fact that it is left behind at
+    all is recorded.
+
+    Last, so that what it serializes is the character every item above built.
+    """
+    return run.tools["mpfb_save_preset"](
+        name=PRESET_NAME, subject=_character(run), overwrite=True)
+
+
+@_item("mpfb_create_human_from_preset", "basemesh_name", "rig_object_name",
+       "equipped_assets", "unresolved_assets", "active_object_after", "objects_created")
+def _create_human_from_preset(run: _Run) -> dict:
+    # The preset the item above just wrote, so the pair is a round trip rather
+    # than two calls that happen to be adjacent. It builds a whole second
+    # character, which is the most expensive item in the run and the only honest
+    # way to call this tool at all.
+    return run.tools["mpfb_create_human_from_preset"](name=PRESET_NAME)
+
+
 # --------------------------------------------------------------------------
 # What an item needs from the install, asked of the catalogue tools rather than
 # named by filename here. FR-6: the run works on any adequate install, and names
 # what it could not exercise.
 # --------------------------------------------------------------------------
+
+
+# The preset the two items at the bottom write and read. Named so that anybody
+# finding it in their MPFB config directory can see where it came from, and
+# constant so that repeated runs leave one file rather than many.
+PRESET_NAME = "mpfbmcp_smoke_run"
 
 
 def _character(run: _Run) -> str:
@@ -491,7 +542,7 @@ def run() -> dict:
             print("    {}".format(error), file=sys.stderr, flush=True)
         return dict(failed=1, exit_code=2)
 
-    report = Report("mpfb-mcp smoke run - twenty-two tools, default arguments")
+    report = Report("mpfb-mcp smoke run - twenty-five tools, default arguments")
 
     install = fixtures.check_install(tools)
     if not report.check("MPFB is loaded and initialized", install["usable"], install["state"]

@@ -34,7 +34,7 @@ expressions by an identifier that means the same thing on another machine.
 - Make the composer/library conflict **visible in a response** rather than discoverable by losing an
   expression to it. This is the requirement the effort turns on; see
   [Two mechanisms, one set of shape keys](#two-mechanisms-one-set-of-shape-keys).
-- Complete the round trip [FR 025](../025-character-presets/README.md) opened: a preset already
+- Complete the round trip [FR 025](../done/025-character-presets/README.md) opened: a preset already
   serializes the applied-expressions stack, so once these tools exist an agent can save a character
   wearing an expression and get it back.
 - Confirm and, if warranted, file the defect below in the shape
@@ -57,7 +57,7 @@ expressions by an identifier that means the same thing on another machine.
 3. **Reports the roots it scanned** whether or not anything was found, so an empty answer is an
    answer. An empty list with no roots named would leave an agent unable to tell "nothing is
    installed" from "the tool looked in the wrong place" — requirement 2 of
-   [FR 025's `mpfb_list_presets`](../025-character-presets/README.md), and the same reasoning.
+   [FR 025's `mpfb_list_presets`](../done/025-character-presets/README.md), and the same reasoning.
 4. **Reports `faceunits01_installed`**, and takes `refresh` for it, in the shape
    [FR 026 established](../026-face-units/README.md#the-asset-pack-is-a-precondition-and-mpfb-reports-its-absence-to-nobody).
    An expression file can exist while the face-unit targets it references do not; the catalogue is
@@ -378,7 +378,7 @@ and moves to `done/` with the request. What stays behind is the three smoke item
   import.
 - [FR 026](../026-face-units/README.md) — the other half: the 52 ARKit units, the asset-pack
   precondition rule this request applies, and the two tools requirement 22 extends.
-- [FR 025](../025-character-presets/README.md) — the preset tools this request completes the round
+- [FR 025](../done/025-character-presets/README.md) — the preset tools this request completes the round
   trip for, and the name-not-a-path convention the queued `mpfb_save_expression` will follow.
 - [FR 008](../done/008-detail-targets/README.md) — where the batched-tool idiom and the
   resolve-everything-before-writing-anything rule were settled; requirements 13 and 15 reuse both.

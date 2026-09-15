@@ -6,7 +6,7 @@ MPFB-related code.
 
 ## Status
 
-Proof of concept. Twenty-two tools are implemented.
+Proof of concept. Twenty-five tools are implemented.
 
 **Introspection** — read-only, and each of them always answers rather than failing:
 
@@ -22,6 +22,7 @@ Proof of concept. Twenty-two tools are implemented.
 - `mpfb_list_assets` — which clothes, body parts, proxies and skins are installed?
 - `mpfb_list_targets` — which modeling targets could be set?
 - `mpfb_list_asset_materials` — which other materials ship beside this equipped asset?
+- `mpfb_list_presets` — which characters have been saved?
 
 **Documentation** — addresses to look something up, and neither of them fetches anything:
 
@@ -40,14 +41,17 @@ Proof of concept. Twenty-two tools are implemented.
 - `mpfb_add_asset` / `mpfb_remove_asset` — equip an MHCLO asset, and take it off properly.
 - `mpfb_set_skin` — give the character a skin, in any of MPFB's five material models.
 - `mpfb_set_asset_material` — recolour an equipped asset, or restore its own material.
+- `mpfb_save_preset` / `mpfb_create_human_from_preset` — keep a character past this Blender
+  session, and build a new one from a saved character. The only tool here that writes a file, and
+  nothing in Blender can undo it, so it refuses to overwrite unless told to.
 
 **Order matters and MPFB reports no error when it is wrong**: add the rig before the clothes, and
 generate a Rigify rig after them. The tools report the violation they can see rather than
 enforcing it.
 
-**All twenty-two have been run against a real Blender, and re-checking all of them is one short
+**All twenty-five have been run against a real Blender, and re-checking all of them is one short
 command.** [verification/](verification/) is a smoke run — one call per tool with default
-arguments, measured at 43.4 s for the whole set — so confirming that nothing has stopped working
+arguments, measured at 50.2 s for the whole set — so confirming that nothing has stopped working
 is a command rather than a session. Each tool was also proved exhaustively once, by the effort
 that added it; see [HISTORY.md](feature-requests/HISTORY.md) for what each of those runs found.
 

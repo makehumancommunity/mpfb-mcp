@@ -1373,3 +1373,98 @@ the fallback with a **really refused socket** rather than a mocked exception, wh
 novel mechanism end to end. Both tools then gained a smoke item: 25 items, 0 failed, 0 skipped,
 43.4 s, against Blender 5.1.0 and MPFB 2.0.17 at blender_mcp's slow 0.25 s tick. The unit suite
 went from 747 tests to 799.
+
+## [FR 025](done/025-character-presets/README.md) — saving, listing and loading character presets
+
+An agent driving the previous twenty-two tools could build a character and change it, but could not
+**keep** one: everything it assembled existed only in the running `.blend`. Three tools close that.
+`mpfb_list_presets` names the presets in MPFB's user config directory, `mpfb_save_preset` writes the
+current character into that namespace, and `mpfb_create_human_from_preset` builds a new character
+from one. MHM stayed out of scope, as the request said and as NEXT_STEPS had asked: it needs two
+settings keys `get_default_deserialization_settings()` does not contain and its asset matching is a
+different problem.
+
+**The durable part is the first tool in the package whose effect outlives the `.blend`.** Everything
+before this was undoable with Blender's undo stack or by deleting an object; a preset file is
+neither, there is no confirmation channel across MCP, and a caller cannot see the directory. So
+[mutating-tools.md](../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more)
+gained the section that says what such a tool owes: address the artifact by **name, never a path**;
+validate that name on this side of the socket, because a name that becomes a path is a shape and
+not a vocabulary; refuse to overwrite by default, carrying the existing file's size and age so the
+decision can be made from the response; and put the absolute path in **every** answer, refusals
+included. The third reason for name-not-a-path was the one that would otherwise have been found the
+hard way, and the live check confirmed it: `deserialize_from_json_file()` extracts the name with a
+regex whose match it never checks, so any other path shape raises `AttributeError: 'NoneType'
+object has no attribute 'group'` from inside MPFB, with nothing in the message about what the
+caller did wrong.
+
+**One rule now lives on both sides of the socket, which is new and is meant to stay rare.**
+`src/mpfbmcp/preset_names.py` holds the name whitelist for the tool modules and
+`codegen/shared/preset_files.py` restates it as the last statement before `open()`; two copies are
+warranted only because the tool side cannot reach Blender and a gap between them would be silent —
+a preset written under a name that cannot be loaded back. `tests/test_codegen.py` runs both over one
+table of names and compares the *sentences*, not only the verdicts. The rule is deliberately
+stricter than MPFB's, which rejects only an empty name and one containing a space, and strictness
+runs one way: every name accepted here is one MPFB's panel would accept too. Where the reverse
+fails — a preset saved by hand under a name these tools refuse — `mpfb_list_presets` flags it as
+`addressable: false` rather than leaving a caller to meet it as a refusal.
+
+**Three MPFB behaviours were followed rather than improved on, and one message was not.** The
+`material_instances` default follows MPFB's preset *panel* (`ENHANCED`) rather than
+`get_default_deserialization_settings()` (`NEVER`) — a third instance of the coercion rule FR 011
+established for skins, with both values reported. The generated-Rigify `WARNING` MPFB's two saving
+operators emit is deliberately **not** reproduced: `_populate_human_info_with_rig_info()` handles
+the case, infers the meta rig and records that, so nothing fails; the description says once that a
+generated rig does not round-trip and the response shows `rig_identified_as` beside `rig_saved_as`
+on the call where it happened. `mpfb.human_from_presets`' three UI conveniences were dropped, and
+entering edit mode across the socket is the reason for two of them rather than a preference. What
+was *not* followed is MPFB's error text: `ValueError("Could not identify rig type. Custom rigs
+cannot be serialized.")` is false — a custom rig still in user data serializes as `custom.<name>` —
+so the condition is checked before anything is written and refused with the real cause.
+
+**A seventh shared fragment, and the reason a mid-way failure is reported rather than prevented.**
+`preset_files.py` is what keeps the three tools agreeing about names and paths. What was considered
+and rejected is a pre-flight rig check: `_check_add_rig()` raises for a rig this Blender does not
+have, *after* `create_human()` has run, so the failure leaves a naked character in the scene —
+preventing it would mean either duplicating `rig_lookup.py`'s resolution or paying its 8.5 KB on
+every call, for one of several failure modes. So the whole deserialization runs inside a `try` and
+`objects_created` names what was left behind, which covers the rig case and every other partial
+failure with it. Likewise an asset a preset names and this Blender lacks: MPFB logs a warning and
+carries on, so every asset is resolved *before* the call and `unresolved_assets` reports the misses.
+
+**The description ceiling was raised from 52,200 to 59,200** and the schema ceiling from 9,000 to
+10,400, both with the reason beside them. The catalogue tool came in at 1,885 B against a 2,341 B
+average, as a catalogue tool should; the two acting tools did not, and
+[tool-interface.md](../specifications/tool-interface.md#a-tool-description-is-call-time-instruction-with-a-budget)
+now records what an above-average description has to be able to say for itself —
+`mpfb_create_human_from_preset` is the only tool in the package with seven optional arguments, each
+of which changes what is built and none of which a caller can discover from a response.
+
+**The `save_clothes` defect was confirmed and filed.** `serialize_to_json_string(basemesh,
+save_clothes=False)` never reads the argument, so clothes are always saved and the documented
+default describes behaviour that does not exist. Provoked rather than read, per FR 019's rule: one
+dressed character serialized twice in the same call, with the argument as the only difference,
+produced **byte-identical strings** both carrying the garment. It is item 7 in
+[`MCP_DISCOVERED_BUGS.md`](../../mpfb2/features/MCP_DISCOVERED_BUGS.md), with the note that changing
+the default to `True` alongside the implementation would keep every existing caller where it is.
+Of the request's two lesser candidates, one was confirmed and **not** filed —
+`get_default_deserialization_settings()` really does omit the two override keys
+`deserialize_from_dict()` honours, which reads as a distinction between required and optional keys
+rather than as an omission — and the other became the third reason for name-not-a-path above.
+
+Verified two ways. The effort's own
+[`check_presets.py`](done/025-character-presets/check_presets.py) ran the full round trip against
+Blender 5.1.0 and MPFB 2.0.17 — a character with a rig, a garment, a body part and a non-default
+`ENHANCED` skin, saved, listed, rebuilt, and compared field by field through the package's own read
+tools — plus the two claims no stub can reach: that MPFB's own preset list holds the name this
+package wrote and that `deserialize_from_json_file()` rebuilds a character from the same file with
+no tool in the path. 31 passed, 0 failed, 0 skipped, 49.5 s, and every preset it wrote deleted
+again. All three tools then gained a smoke item: 28 items, 0 failed, 0 skipped, 50.2 s. The unit
+suite went from 799 tests to 886.
+
+That run also found a **pre-existing bug in the smoke harness's own cleanup**, which is worth
+recording because nothing before this effort could have provoked it: `verification/harness.py`
+drained its six datablock collections in turn, and an `ENHANCED` skin's texture is held by a node
+group held by a material, so the image only reached zero users after `images` had already been
+swept. The fix is a sweep that repeats over all six until a pass removes nothing; the ordering is
+not fixable by reordering.

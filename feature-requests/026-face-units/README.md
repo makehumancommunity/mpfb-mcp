@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 
-A character these twenty-two tools build has a face that cannot do anything. It has a phenotype, detail
+A character these twenty-five tools build has a face that cannot do anything. It has a phenotype, detail
 morphs, a rig, garments and a skin — and one fixed, neutral expression, because the `!ex-` shape
 keys that drive an ARKit face are the one part of MPFB's modelling surface no tool reaches.
 `mpfb_get_target_stack` can already *see* them, behind an `include_expressions` flag, and nothing
@@ -159,7 +159,7 @@ is [FR 027](../027-expression-library/README.md).
 
 The split matters here for one reason: **the library destroys what the composer writes**, because
 `clear_expression` runs unconditionally in the rebuild. That is true today, without FR 027 existing,
-because [FR 025](../025-character-presets/README.md)'s `mpfb_create_human_from_preset` triggers the
+because [FR 025](../done/025-character-presets/README.md)'s `mpfb_create_human_from_preset` triggers the
 same rebuild through `HumanService._apply_expressions_from_human_info`. So requirement 15 is not
 anticipating a future tool; it is describing a hazard an agent can already reach.
 
@@ -176,7 +176,7 @@ Authoring is out of scope by decision, and that decision has a consequence which
 state in the tool description rather than let an agent find:
 
 **A composed face survives nothing.** It is not saved by
-[FR 025](../025-character-presets/README.md)'s `mpfb_save_preset` —
+[FR 025](../done/025-character-presets/README.md)'s `mpfb_save_preset` —
 `_populate_human_info_with_expression_info` serializes the applied-expressions stack, and a composed
 state has no stack rows. It is not restored by `mpfb_create_human_from_preset`; that call rebuilds
 from the stack and clears everything else. It lives in the `.blend` and nowhere else.
@@ -362,7 +362,7 @@ What stays behind is the two smoke items.
   split in MPFB's source.
 - [FR 027](../027-expression-library/README.md) — the other half: saved expression files, the
   applied-expressions stack, and the divergence computation that extends `mpfb_set_face_units`.
-- [FR 025](../025-character-presets/README.md) — why a composed face does not round-trip through a
+- [FR 025](../done/025-character-presets/README.md) — why a composed face does not round-trip through a
   preset, and the `mpfb_create_human_from_preset` path that destroys one today.
 - [FR 008](../done/008-detail-targets/README.md) — where the batched-tool idiom and the
   resolve-everything-before-writing-anything rule were settled; requirements 7 and 9 reuse both.

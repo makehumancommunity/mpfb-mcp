@@ -94,11 +94,11 @@ answer changes.
 |---|---|---|
 | **Introspection** | ask what is already there, and what state it is in, before acting — always cheaply, and always getting an answer rather than an error | 5 tools |
 | **Catalogues** | learn what *could* be added, each entry named exactly as the acting tool will want it | 4 tools |
-| **Creation and modification** | build a character and change it: phenotype, detail morphs, rig, garments, materials — and undo a mistake | 11 tools |
+| **Creation and modification** | build a character and change it: phenotype, detail morphs, rig, garments, materials — and undo a mistake; and **keep** it, as a preset that outlives the session | 14 tools |
 | **Documentation** | answer "how does MPFB do X" without the client shipping its own copy of the manual | 2 tools |
 
-[README.md](../README.md) lists the twenty-two that exist, grouped this way;
-[CLAUDE.md](../CLAUDE.md#the-twenty-two-tools) gives one line each and points at the module
+[README.md](../README.md) lists the twenty-five that exist, grouped this way;
+[CLAUDE.md](../CLAUDE.md#the-twenty-five-tools) gives one line each and points at the module
 docstring that explains it.
 
 **What is still missing**, and why each is worth having:

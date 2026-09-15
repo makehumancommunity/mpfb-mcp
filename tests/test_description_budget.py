@@ -4,7 +4,7 @@
 The preloaded tool surface, measured and capped.
 
 An MCP client downloads every tool's description and parameter schema before
-any work happens, so the twenty-two docstrings in ``src/mpfbmcp/tools/`` are a
+any work happens, so the twenty-five docstrings in ``src/mpfbmcp/tools/`` are a
 call-time cost paid by every session whether or not a tool is used.
 [FR 013](../feature-requests/done/013-live-verification/review.md) measured it
 for the first time and found 66.7 KB of descriptions against an estimate of
@@ -64,13 +64,31 @@ import mpfbmcp
 # instructs about a small static vocabulary and most of what a caller needs is
 # visible in the response - and the headroom left over is the same paragraph it
 # was before.
-DESCRIPTION_CEILING = 52200
+#
+# Raised from 52,200 to 59,200 by
+# [FR 025](../feature-requests/done/025-character-presets/README.md), which added
+# `mpfb_list_presets`, `mpfb_save_preset` and `mpfb_create_human_from_preset` -
+# 1,885, 2,404 and 2,723 B against a 2,341 B per-tool average. The catalogue one
+# came in well under, as a catalogue tool should. The other two did not, and each
+# has a reason that is instruction rather than rationale:
+# `mpfb_create_human_from_preset` is the only tool in the package with seven
+# optional arguments, each of which changes what gets built and none of which a
+# caller can discover from a response (the two vocabularies it shares with
+# existing tools - rig identifiers, skin models - are named by pointing at those
+# tools rather than restated); and `mpfb_save_preset` is the only tool here that
+# writes a file nothing can undo. The ceiling moves by roughly what the three
+# cost, and the paragraph of headroom stays a paragraph.
+DESCRIPTION_CEILING = 59200
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
 # it is downloaded with the descriptions, so it is measured beside them and
-# capped so that a signature cannot grow the preload unnoticed either.
-SCHEMA_CEILING = 9000
+# capped so that a signature cannot grow the preload unnoticed either. Raised
+# from 9,000 to 10,400 by FR 025: `mpfb_create_human_from_preset` alone declares
+# eight parameters, seven of them nullable, which is 881 B of `anyOf` - the
+# largest schema in the package and the price of the "omitted means use what the
+# preset says" idiom it shares with `mpfb_set_macro_details`.
+SCHEMA_CEILING = 10400
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.
@@ -122,7 +140,7 @@ class DescriptionBudgetTests(unittest.TestCase):
         self.measured = measure()
 
     def test_every_registered_tool_is_measured(self) -> None:
-        self.assertEqual(22, len(self.measured))
+        self.assertEqual(25, len(self.measured))
 
     def test_total_description_size_is_under_the_ceiling(self) -> None:
         total = sum(entry["description_bytes"] for entry in self.measured)

@@ -25,6 +25,13 @@ always the one the product would have passed. `HumanService.set_character_skin()
 `loadlibraryskin.py` forces that flag to `False` for `MAKESKIN`, `LAYERED` and `GAMEENGINE` alike —
 a coercion the service's own guard makes for only two of the three.
 
+A third instance says the pattern is not peculiar to skins. `get_default_deserialization_settings()`
+gives `material_instances` as `NEVER`, while `ui/new_human/newhuman/properties/material_instances.json`
+— the panel behind MPFB's "create human from save file" button — defaults it to `ENHANCED`. So
+`mpfb_create_human_from_preset` takes `ENHANCED` as the meaning of an omitted argument, and reports
+`material_instances_used` beside `material_instances_service_default`. Both figures were read off
+the running install rather than the source.
+
 Passing the signature's value in either case would produce a character that **cannot be reproduced
 through MPFB's own UI**, which is the same quality bar
 [FR 007](../feature-requests/done/007-macro-details/README.md) sets for macro details: the goal is
@@ -92,7 +99,11 @@ versus services" to *any* two MPFB code paths.
   which lives beside the report it backs, so a claim about MPFB is re-checkable against a future
   MPFB rather than frozen as an opinion. It is deliberately not in `verification/`: it provokes
   defects in MPFB rather than checking mpfb-mcp's tools, and it writes into MPFB's user data
-  directory, which the smoke run there never does.
+  directory. FR 025's [`check_presets.py`](../feature-requests/done/025-character-presets/check_presets.py)
+  is the second of these and confirmed the `save_clothes` defect the same way — by serializing one
+  dressed character twice, with the argument as the only difference, rather than by reading the
+  function. The smoke run writes outside the `.blend` too now, but exactly one file, always the
+  same one, and [verification/README.md](../verification/README.md) names it.
 - **Filing it changes nothing here.** A confirmed defect is written up in
   [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../mpfb2/features/MCP_DISCOVERED_BUGS.md), one
   section each, and that is where the reporting ends: MPFB has its own priorities, so a reported
@@ -101,6 +112,28 @@ versus services" to *any* two MPFB code paths.
   which is what the script detects, since it is written to fail once a defect is gone.
 - **Do not merge them.** Picking one and naming it is the rule; synthesizing a fourth behavior that
   matches none of MPFB's own would make the result unreproducible from inside Blender.
+- **Not reproducing something MPFB's UI does is the same decision and carries the same burden**, so
+  it is justified in the module docstring rather than merely noted. Two of them are in the preset
+  tools. MPFB's two saving operators emit a `WARNING` whenever `identify_rig()` contains
+  `"generated"`; `mpfb_save_preset` does not, because the warning overstates what happens —
+  `_populate_human_info_with_rig_info()` is built for the case, infers the meta rig, falls back to
+  `rigify.human_toes`, and records that. Nothing fails. What is true is that a generated rig does
+  not round-trip, which the *description* says once and the response shows on the call where it
+  happened, as `rig_identified_as` beside `rig_saved_as`. A warning emitted on every save of a
+  Rigify character is noise an agent learns to ignore. And `mpfb.human_from_presets` ends by
+  entering **edit mode** twice to preselect a vertex group, setting an active material index from
+  it, and optionally running Rigify generation; `mpfb_create_human_from_preset` reproduces none of
+  the three. Entering edit mode across the socket is a hazard rather than a nicety — every later
+  `bpy.ops` call polls on the context mode, and a program that fails between the two `mode_set`
+  calls leaves Blender in edit mode — and Rigify generation is a tool of its own precisely because
+  it cannot be undone.
+- **The inverse also happens: MPFB's message can be wrong, and then it must not reach the agent.**
+  `_populate_human_info_with_rig_info()` raises `ValueError("Could not identify rig type. Custom
+  rigs cannot be serialized.")`, which is false — a custom rig still present in user data
+  serializes as `custom.<name>`. `mpfb_save_preset` checks the condition itself, before anything is
+  written, and refuses with the real cause: the armature is not one MPFB recognises, which for a
+  custom rig means its definition is no longer in user data. Passing MPFB's text through would send
+  a caller looking for a limitation that does not exist.
 - **The limiting case is no service path at all.** Setting an alternative material on an equipped
   asset exists only in `ui/apply_assets/assetlibrary/operators/loadlibrarymaterial.py`, as two
   module-level helpers. There is nothing to prefer, so the panel's behavior *is* the specification,
@@ -149,6 +182,9 @@ answer means rather than merely how fast it arrives.
   Blender started does not appear until something rescans.
 - **The alternative materials of one asset**, cached per `(asset_source, asset_subdir)` — the case
   where [the tool is the stale one](responses.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show).
+- **The list of saved character presets**, in the module global `_EXISTING_PRESETS`, which exactly
+  one thing invalidates: a save through `serialize_to_json_file()`. A preset written by MPFB's panel
+  in another Blender, by hand, or by an earlier session is invisible until something rescans.
 
 What follows for a tool:
 
@@ -166,6 +202,14 @@ What follows for a tool:
   [Generated code may keep its own source inside Blender](architecture.md#generated-code-may-keep-its-own-source-inside-blender)).
   Everything above therefore still describes every cache under these tools, all of them MPFB's own:
   a tool answering from MPFB's data is answering from a scan it just did.
+- **Where the tool can see past the cache cheaply, it does, rather than handing the caller a flag
+  instead of an answer.** `refresh` is opt-in for the reason above, but a caller who has to pass it
+  in order to find out whether it would change anything has not been told much.
+  `mpfb_list_presets` answers from MPFB's cached list — that is the list MPFB's own dropdown is
+  built from, so a name in it is a name the user sees there — and *also* lists the directory, which
+  is one `os.listdir` of some tens of files, reporting the difference as `missing_from_mpfb_list`.
+  This is affordable precisely because the collection is small; it is not a general licence to
+  second-guess a cache whose rescan is the expensive thing being avoided.
 - **Where a cache cannot be refreshed at all, say that too.** A caller who cannot tell staleness
   from absence will read a missing asset as a missing file. FR 013 found that
   `AssetService.invalidate_alternative_materials_cache()` *does* exist and clears both dicts —

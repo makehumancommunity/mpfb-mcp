@@ -25,15 +25,6 @@ skeleton; the server-side backend seam; introspection and catalogues migrated; c
 modification migrated; the generated-code path retired; the bridge published and documented.
 Each becomes its own numbered request when started.
 
-## Saving, listing and loading character presets
-
-**Scoped as [FR 025](025-character-presets/README.md) (Accepted).**
-
-Humans are stored in presets ("save files"), which are simple json structures. Handling these
-is a core functionality of MPFB.
-
-The MHM path can be left alone for now, it's only relevant in legacy MakeHuman pipelines.
-
 ## Expressions
 
 **Scoped as two requests, in this order: [FR 026](026-face-units/README.md) (Accepted) for the
@@ -56,10 +47,18 @@ a composed face has no stack rows), and not the next library call, which clears 
 before rebuilding.
 
 `FaceService.save_expression` already exists and already does the filtering, rounding and metadata
-defaulting. The tool should follow [FR 025](025-character-presets/README.md)'s name-not-a-path
-convention and its `overwrite: False` default, writing to
-`LocationService.get_user_data("expressions")`. It comes after FR 027 because what it writes is read
-back through the library.
+defaulting. The tool writes outside the `.blend`, which is now a settled shape rather than an open
+question: follow
+[a tool whose effect is outside the `.blend`](../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more),
+landed by [FR 025](done/025-character-presets/README.md) — name and never a path, the name validated
+on this side of the socket, `overwrite: False`, the absolute path in every answer — writing to
+`LocationService.get_user_data("expressions")`. Whether the name rule can be *reused* rather than
+restated is the effort's to decide: `src/mpfbmcp/preset_names.py` and
+`codegen/shared/preset_files.py` are written around `human.<name>.json` in the user config
+directory, so a second artifact in a different directory either generalises them or copies them,
+and FR 025's own reason for two copies (a silent gap between two sides of the socket) does not by
+itself argue for a third. It comes after FR 027 because what it writes is read back through the
+library.
 
 ## Visemes and lip sync
 

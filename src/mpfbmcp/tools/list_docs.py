@@ -13,7 +13,7 @@ and never touches the network: it filters
 ``mpfbmcp.reference.docs``'s table and attaches two URLs per entry. That is a
 real exception to the rule that a tool module, a payload and a test module share
 a name, and it is stated in
-[CLAUDE.md](../../../CLAUDE.md#the-twenty-two-tools) rather than left to be
+[CLAUDE.md](../../../CLAUDE.md#the-twenty-five-tools) rather than left to be
 noticed - ``tests/test_codegen.py``'s hand-maintained payload list simply has no
 entry for it. It works with no Blender, no MPFB and no connectivity, which is
 also why it has no ``mpfb_get_status`` precondition and cannot return an error

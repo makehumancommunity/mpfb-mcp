@@ -35,9 +35,11 @@ MUTATING_PAYLOADS = (
     "add_asset.py",
     "add_rig.py",
     "create_human.py",
+    "create_human_from_preset.py",
     "generate_rigify_rig.py",
     "refit_human.py",
     "remove_asset.py",
+    "save_preset.py",
     "set_asset_material.py",
     "set_macro_details.py",
     "set_skin.py",
@@ -69,7 +71,7 @@ CATEGORY_READING_PAYLOADS = (
 
 class PayloadFileTests(unittest.TestCase):
     def test_there_is_a_payload_for_each_implemented_tool(self) -> None:
-        # Twenty-one payloads for twenty-two tools: `mpfb_list_docs` has none.
+        # Twenty-four payloads for twenty-five tools: `mpfb_list_docs` has none.
         # It is a local table with two URL constants over it, so it never
         # generates code and never crosses the socket - the one tool for which
         # the module/payload/test naming rule does not hold. The omission is
@@ -77,13 +79,14 @@ class PayloadFileTests(unittest.TestCase):
         # src/mpfbmcp/tools/list_docs.py.
         self.assertEqual(
             codegen.payload_names(),
-            ["add_asset.py", "add_rig.py", "create_human.py", "generate_rigify_rig.py",
+            ["add_asset.py", "add_rig.py", "create_human.py",
+             "create_human_from_preset.py", "generate_rigify_rig.py",
              "get_macro_details.py", "get_object_info.py", "get_status.py",
              "get_target_stack.py", "list_asset_materials.py", "list_assets.py",
-             "list_objects.py", "list_rigs.py", "list_targets.py", "list_urls.py",
-             "refit_human.py", "remove_asset.py", "set_asset_material.py",
-             "set_macro_details.py", "set_skin.py", "set_targets.py",
-             "symmetrize_targets.py"])
+             "list_objects.py", "list_presets.py", "list_rigs.py", "list_targets.py",
+             "list_urls.py", "refit_human.py", "remove_asset.py", "save_preset.py",
+             "set_asset_material.py", "set_macro_details.py", "set_skin.py",
+             "set_targets.py", "symmetrize_targets.py"])
 
     def test_shared_fragments_are_the_ones_expected(self) -> None:
         # A short list on purpose: a fragment exists only where two or more
@@ -92,7 +95,8 @@ class PayloadFileTests(unittest.TestCase):
         self.assertEqual(
             codegen.shared_names(),
             ["asset_sections.py", "modifier_reading.py", "performed.py",
-             "refit_blocker.py", "rig_lookup.py", "target_categories.py"])
+             "preset_files.py", "refit_blocker.py", "rig_lookup.py",
+             "target_categories.py"])
 
     def test_every_mutating_payload_stamps_the_performed_flag(self) -> None:
         # The uniform "it happened" flag is the one thing every mutating tool
@@ -403,6 +407,100 @@ class PerformedFragmentTests(unittest.TestCase):
         # create_human's answer has no found/ready: it either creates a
         # character or raises, and a raise never reaches this function.
         self.assertIs(self.with_performed({"object_name": "Human"}, True)["performed"], True)
+
+
+class PresetNameRuleDriftTests(unittest.TestCase):
+    """The one rule that lives on both sides of the socket, run as two.
+
+    ``mpfbmcp.preset_names`` is the authoritative check - requirement 8 puts it
+    before the program is built, because a name that becomes a path is a shape
+    knowable here - and ``codegen/shared/preset_files.py`` carries the same rule
+    as the last statement before ``open()``. Two copies, so the two are run over
+    one table of names and held to the same verdicts.
+
+    Why this check rather than the usual "no payload keeps an implementation of
+    its own": the payloads genuinely do share one implementation, through the
+    fragment. What cannot be shared is the tool side, which never reaches
+    Blender. A disagreement between the two would let a preset be written under
+    a name that cannot be loaded back - silently, and only for names in the gap
+    between them.
+    """
+
+    # Every name from the two tool test modules, plus the boundary cases that
+    # only a character-by-character rule can get wrong.
+    NAMES = (
+        "alice", "bob-2", "klara-v2", "Girl_test_walkCycle", "anna_v2", "v1.2",
+        "a" * 64, "a" * 65, "1", "_", "-", "...",
+        "", "   ", ".", "..", ".hidden", "has space", "trailing ",
+        "a/b", "a\\b", "../escape", "/absolute", "c:nope", "na\u00efve", "sm\u00f6rg\u00e5s",
+        "semi;colon", "quote'd", 'double"d', "star*", "pipe|", "null\x00byte",
+        None, 3, True, 1.5, [], {},
+    )
+
+    def setUp(self) -> None:
+        namespace: dict = {"_MPFB_SERVICES": {"LocationService": None, "HumanService": None}}
+        exec(codegen.read_shared("preset_files.py"), namespace)  # noqa: S102
+        self.fragment_rejection = namespace["preset_name_rejection"]
+        self.fragment_namespace = namespace
+
+    def test_both_sides_accept_and_refuse_exactly_the_same_names(self) -> None:
+        from mpfbmcp import preset_names  # pylint: disable=import-outside-toplevel
+        for name in self.NAMES:
+            with self.subTest(name=name):
+                self.assertEqual(
+                    preset_names.preset_name_rejection(name) is None,
+                    self.fragment_rejection(name) is None)
+
+    def test_both_sides_give_the_same_reason(self) -> None:
+        # Not merely the same verdict: the sentence is what a caller is shown,
+        # and two different explanations for one rule is the drift starting.
+        from mpfbmcp import preset_names  # pylint: disable=import-outside-toplevel
+        for name in self.NAMES:
+            with self.subTest(name=name):
+                self.assertEqual(
+                    preset_names.preset_name_rejection(name),
+                    self.fragment_rejection(name))
+
+    def test_the_bound_and_the_pattern_are_the_same_on_both_sides(self) -> None:
+        from mpfbmcp import preset_names  # pylint: disable=import-outside-toplevel
+        self.assertEqual(preset_names.PRESET_NAME_MAX_LENGTH,
+                         self.fragment_namespace["PRESET_NAME_MAX_LENGTH"])
+        self.assertEqual(preset_names.PRESET_NAME_PATTERN,
+                         self.fragment_namespace["PRESET_NAME_PATTERN"])
+
+    def test_no_accepted_name_can_leave_the_config_directory(self) -> None:
+        # The property the rule exists for, asserted rather than inferred from
+        # the pattern: os.path.join of the directory and the assembled filename
+        # stays inside the directory, for every name either side accepts.
+        import os.path  # pylint: disable=import-outside-toplevel
+        preset_filename = self.fragment_namespace["preset_filename"]
+        confdir = os.path.abspath(os.path.join("/tmp", "mpfb", "config"))
+        for name in self.NAMES:
+            if self.fragment_rejection(name) is not None:
+                continue
+            with self.subTest(name=name):
+                joined = os.path.abspath(os.path.join(confdir, preset_filename(name)))
+                self.assertEqual(os.path.dirname(joined), confdir)
+
+    # Which fragment call each payload reaches the rule through. The two acting
+    # payloads ask directly, as the last statement before a path is assembled;
+    # the listing one asks through `preset_record()`, which is where a listed
+    # preset gets its `addressable` flag.
+    PAYLOAD_ENTRY_POINTS = {
+        "list_presets.py": "preset_record(",
+        "save_preset.py": "preset_name_rejection(",
+        "create_human_from_preset.py": "preset_name_rejection(",
+    }
+
+    def test_no_preset_payload_keeps_a_name_rule_of_its_own(self) -> None:
+        # The usual drift check, in its usual form: the rule is the fragment's,
+        # so no payload may hold a second pattern to disagree with it.
+        for name, entry_point in self.PAYLOAD_ENTRY_POINTS.items():
+            with self.subTest(payload=name):
+                source = codegen.read_payload(name)
+                self.assertNotIn("PRESET_NAME_PATTERN =", source, "a second pattern")
+                self.assertNotIn("A-Za-z0-9_.-", source, "a second pattern")
+                self.assertIn(entry_point, source, "does not reach the fragment's rule")
 
 
 class RefitBlockerFragmentTests(unittest.TestCase):

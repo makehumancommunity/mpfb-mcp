@@ -86,6 +86,8 @@ SCRATCH_SCENE = "MPFBMCP_VERIFY"
 # the same stub run. Here they are read out of a real Blender.
 MUTATING_VERBS = {
     "mpfb_create_human": None,
+    "mpfb_create_human_from_preset": "created",
+    "mpfb_save_preset": "saved",
     "mpfb_set_macro_details": "recalculated",
     "mpfb_refit_human": "refit_performed",
     "mpfb_set_targets": "applied",
@@ -291,20 +293,28 @@ if scene is not None:
 # An object removal leaves its data behind. Purge only what nothing uses, and
 # only in these six collections: a zero-user brush or world is Blender's own
 # business and predates this run.
+#
+# The sweep repeats over *all six* until a whole pass removes nothing, rather
+# than draining each collection in turn. Draining in turn is not enough and the
+# order is not fixable by reordering: an ENHANCED skin's texture is held by a
+# node group, which is held by a material, so the image only reaches zero users
+# after both have gone - and "images" is swept before "node_groups". FR 025's
+# live check found this as a single stray image datablock after a run that had
+# cleaned up everything else.
 purged = dict()
-for collection_name in ["meshes", "armatures", "materials", "images", "node_groups", "actions"]:
-    collection = getattr(bpy.data, collection_name)
-    gone = []
-    # Repeat until stable: a material's node group is only orphaned once the
-    # material itself is gone.
-    while True:
-        orphans = [datablock for datablock in collection if datablock.users == 0]
-        if not orphans:
-            break
-        for datablock in orphans:
-            gone.append(datablock.name)
+collection_names = ["meshes", "armatures", "materials", "images", "node_groups", "actions"]
+for collection_name in collection_names:
+    purged[collection_name] = []
+while True:
+    removed_this_pass = 0
+    for collection_name in collection_names:
+        collection = getattr(bpy.data, collection_name)
+        for datablock in [entry for entry in collection if entry.users == 0]:
+            purged[collection_name].append(datablock.name)
             collection.remove(datablock)
-    purged[collection_name] = gone
+            removed_this_pass += 1
+    if not removed_this_pass:
+        break
 
 # Rigify generation creates a WGTS_<rig> collection for its bone widgets, and
 # deleting the widgets leaves the empty collection behind. An empty collection
