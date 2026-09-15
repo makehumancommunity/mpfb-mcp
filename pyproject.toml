@@ -7,6 +7,12 @@ name = "mpfb-mcp"
 version = "0.1.0"
 description = "MCP server exposing MPFB (MakeHuman Plugin For Blender) tools"
 requires-python = ">=3.10"
+# Stated as a classifier rather than a PEP 639 SPDX string: that form needs
+# setuptools 77+, and the build requirement below admits 68. The licence text
+# is in LICENSE, and test modules carry SPDX headers.
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+]
 dependencies = [
     # Pinned below 2.0: mcp 2.x renamed FastMCP to MCPServer and changed
     # other APIs this code (and blender_mcp's) is written against.
