@@ -2,6 +2,16 @@
 
 **Status:** Proposed
 
+> **Written against the generated-code path, and that is still correct.**
+> [FR 028](../done/028-pivot-to-specific-addon/README.md) decided that MPFB's Blender-side logic
+> moves into a bridge add-on, but it migrated no tool and the generated-code path is what every
+> tool uses today — so a payload, a shared fragment and `send_code()` all still mean what they
+> mean here. The one thing to weigh is **scheduling**: a tool that lands before
+> [the migration](../NEXT_STEPS.md#a-larger-pivot-an-mpfb-specific-bridge-add-on) reaches its
+> capability area is a tool the migration then has to carry. That is a reason to sequence, not a
+> reason to wait, and nothing in this request needs rewriting either way.
+
+
 [FR 011](../done/011-skin-and-materials/README.md) documented the alternative-material listing as
 unavoidably stale: `AssetService.alternative_materials_for_asset()` caches per
 `(asset_source, asset_subdir)` and, as the request read it, never invalidates. The tool says so in

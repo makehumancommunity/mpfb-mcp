@@ -13,7 +13,7 @@ Facts here were checked against the checkouts of `../mpfb2`, `../blender_mcp`,
 
 **Option 1 — continue as is.** mpfb-mcp keeps assembling Python programs and sending them over
 somebody else's add-on socket: blender lab's `blender_mcp` today, ahujasid's as well once the
-[backend adapter](feature-requests/NEXT_STEPS.md#second-backend-the-community-blender-mcp) lands.
+[backend adapter](../../NEXT_STEPS.md#second-backend-the-community-blender-mcp) lands.
 MPFB is untouched. The ~7,750 lines of payload and fragment source stay on the client side and
 cross the wire on every call.
 

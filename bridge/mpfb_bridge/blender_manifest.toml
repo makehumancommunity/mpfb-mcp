@@ -1,0 +1,25 @@
+schema_version = "1.0.0"
+
+id = "mpfb_bridge"
+version = "0.1.0"
+name = "MPFB Bridge"
+tagline = "Local command server exposing MPFB to MCP clients"
+maintainer = "Joel Palmius"
+type = "add-on"
+website = "https://github.com/makehumancommunity/mpfb-mcp"
+
+# Matches MPFB's own floor. MPFB is what this add-on exists to drive, so there is
+# no point supporting a Blender that cannot run MPFB.
+blender_version_min = "4.2.0"
+
+license = [
+  "SPDX:GPL-3.0-or-later",
+]
+
+tags = ["Development"]
+
+[permissions]
+# The server listens on 127.0.0.1 and is off until started from the preferences
+# panel. The wording follows blender lab's MCP add-on, which passed extension
+# review with a listening socket declared this way.
+network = "Runs a local TCP socket server for MCP client communication"

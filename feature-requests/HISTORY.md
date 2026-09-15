@@ -1468,3 +1468,83 @@ drained its six datablock collections in turn, and an `ENHANCED` skin's texture 
 group held by a material, so the image only reached zero users after `images` had already been
 swept. The fix is a sweep that repeats over all six until a pass removes nothing; the ordering is
 not fixable by reordering.
+
+## [FR 028](done/028-pivot-to-specific-addon/README.md) — the pivot to a bridge add-on, decided and proved
+
+The project changed its mind about where MPFB's Blender-side logic belongs. For twenty-five tools
+it has been generated Python, assembled on the client side and `exec()`'d inside Blender by a third
+party's add-on; it is going to be a companion Blender extension of our own, the **MPFB Bridge**,
+dispatching a closed vocabulary of named commands. FR 028 made that decision, proved the part of it
+that was genuinely in doubt, and **migrated no tool** — `src/mpfbmcp/` is byte-for-byte unchanged
+and all 886 unit tests pass untouched.
+
+**The three liabilities being escaped are stated in the two analyses that preceded it**, and none
+of them is about elegance: an eight-step install path for an audience of hobbyists, arbitrary code
+execution into Blender by construction, and a wire cost of ~250 ms per 4 KB — ~1 s against the idle
+Blender an agent actually meets — that no amount of trimming payloads removes, because it is a
+property of sending a program at all. The session source cache, the fragment hashing and the
+re-send-once recovery exist only to manage it.
+
+**What was in doubt was the transport, and it turned out to be unremarkable.** `bridge/mpfb_bridge/`
+is a real Blender extension: a non-blocking socket drained from a `bpy.app.timers` callback so every
+command runs on the main thread, NUL-framed JSON in both directions, and a dispatch table with
+`get_status` in it. The protocol module and the MPFB-resolution module import no `bpy`, which is
+what let both be exercised outside Blender while being written. Two things were deliberately *not*
+copied from blender lab's add-on, which the transport is otherwise modelled on: its one 4 KB
+`recv()` per tick, and its client deadline that is never reset by arriving data. At parameter sizes
+neither would matter much — which is the point, since the bridge should not inherit the defect it
+exists to remove.
+
+**The closed-vocabulary question was answered for the case most likely to break it, and it did not
+break.** `mpfb_set_asset_material` is the one tool with no MPFB service function behind it — it
+reimplements two helpers from a UI operator module — and it was therefore the tool most likely to
+need open-ended access. It needs none: four flat JSON scalars under a three-way exclusive-or, and a
+body of service calls. Having no service function behind it turns out to argue *for* the bridge,
+since the reimplementation stops being a generated string and becomes ordinary Python testable
+against a real MPFB. One temptation appears that did not exist before — as an add-on it *could*
+import that UI operator module directly — and the standing rule against it survives unchanged.
+
+**The live verification found three defects, which is the argument for having run it.** The worst
+was that the start operator bound a socket that could never answer: `bpy.app.timers` callbacks need
+an event loop, a `--background` Blender has none, so in `blender -b` the socket listened, the timer
+registered, the operator reported `FINISHED`, and every client hung until its own timeout. It now
+refuses background mode, with a regression test that could only be written *because* the bridge's
+suite runs headless. The other two were in the harness rather than the add-on: a relative import
+that reached beyond its top-level package, and a prerequisite that would have left a
+listening-socket add-on permanently enabled in a developer's preferences as a side effect of running
+tests.
+
+**One open question was settled and one was reframed.** `bpy.app.online_access` does **not** gate a
+loopback bind — measured with the flag off, the bind succeeds and a round trip completes — so
+enabling online access is not the extra install step it was feared to be, and install friction is
+the metric this pivot is judged by. The flag is a policy signal rather than enforcement, which makes
+the bridge's decision to bind anyway a defensible reading rather than an obviously correct one, and
+that is now recorded as a question for extension review rather than as settled.
+
+**Two specifications were re-drafted whole rather than patched**, which turned out to matter more
+than expected. Three anchors in `architecture.md` are linked from `src/mpfbmcp/` — the one tree this
+request was forbidden to edit — so breaking one would have been unfixable in scope; all were
+preserved, two by an explicit `<a id>` where the heading text had to change. The re-draft also
+repaired `architecture.md#code-generation-layout`, referenced from twelve files including the root
+CLAUDE.md and nine finished requests, and pointing at a heading that had never existed. The
+generated-code path is not deleted or demoted to a footnote: it is documented in full under a
+heading that says plainly it is what runs today and is being retired, because it is what every tool
+still uses.
+
+**What the proof of concept does not establish** is stated in the request as plainly as what it
+does: nothing about the behaviour of the twenty-four commands still to be written, nothing about
+performance under real payloads, and nothing about whether the migration is affordable. The largest
+unknown is what happens to 14.2k lines of tests when payload logic becomes add-on code — an
+improvement and a large rewrite at the same time, and the part most likely to be under-estimated.
+
+Verified against Blender 5.1.0 and MPFB 2.0.17 on 2026-09-15. The effort's own
+[`check_bridge.py`](done/028-pivot-to-specific-addon/check_bridge.py) ran against a GUI Blender with
+the server started from its preferences panel: 36 passed, 0 failed, including a request split inside
+a multi-byte UTF-8 character, one arriving a byte at a time, and four attack shapes whose effect was
+checked by comparing `bpy.data.objects` before and after — **nothing executed**. `get_status`
+resolved the real MPFB (`bl_ext.repo.mpfb`, 2.0.17) and the `absent` branch was exercised on a
+Blender with no MPFB loaded at all. The bridge's own headless suite passes 7 tests; pylint rates it
+9.54/10 against MPFB's unmodified rcfile, the residue being the two categories MPFB's own source
+produces. A round trip costs **52 ms** against a 0.05 s poll interval — one tick, regardless of
+payload, which is the claim the whole pivot rests on, though one `get_status` is not evidence about
+a batched command. The unit suite stayed at 886.

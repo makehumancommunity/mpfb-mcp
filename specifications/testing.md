@@ -21,6 +21,10 @@ There are two kinds of check, and they answer different questions:
   work at all?"* It needs a running Blender, takes well under a minute, and is described below.
   *"Does MPFB behave as we read it in its source?"* is a different question, answered once, by
   the effort making the claim — see [Where an exhaustive live check belongs](#where-an-exhaustive-live-check-belongs).
+- The **bridge suite** (`bridge/test/`) answers *"does the add-on behave?"* It runs pytest
+  **inside a headless Blender**, because the add-on under test is a Blender extension. It is a
+  second harness in one repository, deliberately, and the reasons are in
+  [Two harnesses, split at the directory boundary](#two-harnesses-split-at-the-directory-boundary).
 
 ## The live harness is named and re-runnable, not a session
 
@@ -85,6 +89,41 @@ for a conclusion already written down.
 Exhaustively proving one feature against a live Blender is worth doing **once**, by the effort
 making the claim. It is not worth re-proving on every code change, and keeping the proof around
 forever is what turns a good idea into an unbounded directory.
+
+## Two harnesses, split at the directory boundary
+
+[FR 028](../feature-requests/done/028-pivot-to-specific-addon/README.md) added a second test harness
+to this repository, and a second harness is exactly the kind of thing that reads as drift unless
+the reason is written down next to it.
+
+`tests/` uses stdlib `unittest`, `tests/test_<name>.py`, `TestCase` classes, and no Blender
+anywhere. `bridge/test/` uses **MPFB's** arrangement: pytest called from inside a headless
+Blender, `<name>_test.py`, plain module functions, bare `assert` with a message, a docstring
+naming what is under test, and alphabetically-prefixed directories to force order.
+
+**The split is not a compromise; each side is right for what it tests.** `tests/` tests a package
+that never imports `bpy`, and its whole value is that it runs anywhere in seconds. `bridge/` is
+`bpy` code, so its tests need a real Blender — which is precisely what MPFB's harness provides
+and what `tests/` structurally cannot. Adopting MPFB's harness for `bridge/` also pays for itself
+twice: it is the arrangement that works, and it is the one an MPFB contributor already knows.
+
+**One hard constraint falls out of it, and it is not negotiable.** `python3 -m unittest discover
+-s tests` must keep discovering exactly what it discovers today, on a machine with no Blender
+installed. A bridge test imports `bpy` and would fail at *import*, not at assertion — which is
+the worst kind of failure, because it looks like a broken suite rather than a misplaced file. So
+bridge tests live under `bridge/` and never under `tests/`, and the two are discovered by two
+different commands that share nothing.
+
+**Coverage is not wired up in the bridge harness yet, and should be.** MPFB produces a coverage
+report by having an `a1_coverage.pth` in Blender's `site-packages` start `coverage` *before* the
+add-on is imported, which is what makes `class` and `def` lines count as covered. Adopting it is
+not a copy: no script in the mpfb2 repository actually creates that `.pth` file — MPFB's own
+`run_to_install_pytest.py` installs pytest and pytest-cov and nothing else — so the bridge would
+have to write that step itself. The content is one line, `import coverage;
+coverage.process_startup()`, plus a `.coveragerc` and the combine-and-report pass afterwards. It
+was deliberately left out of FR 028, where it would have measured a handful of tests against a
+proof of concept; it is worth having by the time the bridge holds migrated commands, and the
+effort that first migrates one is the natural place for it.
 
 ## The unit suite is two layers
 

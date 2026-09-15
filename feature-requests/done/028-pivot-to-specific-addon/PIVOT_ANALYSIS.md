@@ -58,7 +58,7 @@ domain; the other is a broad, popular, single-maintainer product with a data str
 (PyPI downloads badge, Trendshift listing, an active Discord). Every MPFB tool shipped there is a
 tool that needs no second install, no second add-on, no second port. mpfb-mcp today asks a user to
 install blender lab's add-on *specifically*, which is the less common one — the friction is real
-and is exactly what [vision.md](specifications/vision.md#resolved-which-blender-mcp-both) already
+and is exactly what [vision.md](../../../specifications/vision.md#resolved-which-blender-mcp-both) already
 flags.
 
 **The code-generation layer would mostly disappear.** `codegen/` (bootstrap, payload assembly,
@@ -68,7 +68,7 @@ ordinary module, importing nothing they cannot import, debugged with a real trac
 `stderr` instead of a `result` dict and a captured stream. Roughly **7,750 lines** of payload and
 fragment source stop being generated code and become just code.
 
-**The wire cost model changes shape.** [architecture.md](specifications/architecture.md#what-a-call-costs-is-the-size-of-its-program)
+**The wire cost model changes shape.** [architecture.md](../../../specifications/architecture.md#what-a-call-costs-is-the-size-of-its-program)
 records that a call costs ~250 ms per 4 KB because blender lab's add-on reads one 4 KB chunk per
 timer tick. Add-on-side handlers send parameters, not programs — a few hundred bytes regardless of
 what the tool does. The session source cache, the fragment hashing and the re-send-once recovery
@@ -215,8 +215,8 @@ having produced a fork of someone else's add-on rather than a working product of
 ## The alternatives, ranked
 
 **A. Backend adapter only** — already scoped in
-[NEXT_STEPS.md](feature-requests/NEXT_STEPS.md#second-backend-the-community-blender-mcp) and
-[architecture.md](specifications/architecture.md#supporting-a-second-backend). An adapter below
+[NEXT_STEPS.md](../../NEXT_STEPS.md#second-backend-the-community-blender-mcp) and
+[architecture.md](../../../specifications/architecture.md#supporting-a-second-backend). An adapter below
 `send_code()` translating transport and result channel; tools, payloads and `codegen/` untouched.
 
 Gets: reach for users who already run the community add-on, at a fraction of the cost, with no

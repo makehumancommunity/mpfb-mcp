@@ -1,0 +1,15 @@
+# Development-only dependencies for static type checking, copied from mpfb2's own
+# requirements-dev.txt along with its rule. See ../mpfb2/docs/type-checking.md.
+# NEVER add these to blender_manifest.toml or import them at runtime — at runtime the real
+# compiled bpy is present.
+#
+# Note on pythonVersion in pyrightconfig.json: 3.12 is the *checker's* parse floor,
+# forced by PEP 695 generics inside the stubs. It is NOT the runtime target. This
+# add-on declares blender_version_min = "4.2.0", whose Python is 3.11, so PEP 604
+# (`str | None`) is fine while PEP 695 (`class Foo[T]:`, the `type` statement) must
+# not appear in mpfb_bridge/. The 3.12-pinned checker will not flag that; the
+# dependency-free guard is:
+#
+#     python3.11 -m compileall mpfb_bridge
+pyright
+fake-bpy-module==20260501   # or the build matching the supported Blender version

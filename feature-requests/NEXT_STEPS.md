@@ -10,20 +10,115 @@ records what has already landed and why. When an effort below is finished, move 
 
 ## A larger pivot: an MPFB-specific bridge add-on
 
-**Scoped as [FR 028](028-pivot-to-specific-addon/README.md) (Proposed).**
+**[FR 028](done/028-pivot-to-specific-addon/README.md) is done — see
+[HISTORY.md](HISTORY.md#fr-028--the-pivot-to-a-bridge-add-on-decided-and-proved) for what it
+landed. It made the decision and proved the transport; the six efforts below are what remains,
+and they run in order.**
 
-Changes the fundamental principle of the solution: instead of assembling Python programs and
+The fundamental principle of the solution changed: instead of assembling Python programs and
 sending them over a third party's MCP add-on socket, MPFB's Blender-side logic moves into a
-companion add-on of our own, with a closed command vocabulary and its own socket, and mpfb-mcp
-becomes a thin client. FR 028 *plans* that pivot — a proof-of-concept add-on proving the
-transport, a rewrite of [vision.md](../specifications/vision.md) and
-[architecture.md](../specifications/architecture.md), and the sequence of child efforts below.
-It migrates no tool.
+companion add-on of our own — the **MPFB Bridge**, in [`bridge/`](../bridge) — with a closed
+command vocabulary and its own socket, and mpfb-mcp becomes a thin client. FR 028 *planned* that
+pivot: it proved the transport, rewrote [vision.md](../specifications/vision.md) and
+[architecture.md](../specifications/architecture.md), and migrated no tool. What runs today is
+still the generated-code path, documented as such in
+[The generated-code path](../specifications/architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired).
 
-The child efforts, in order, each landing with both paths still working: bridge transport and
-skeleton; the server-side backend seam; introspection and catalogues migrated; creation and
-modification migrated; the generated-code path retired; the bridge published and documented.
-Each becomes its own numbered request when started.
+**Every one of these lands with both paths still working.** That is the property the whole staged
+route is built on: the bridge and the generated-code path are comparable side by side on a real
+Blender at every stage, and the old one is deleted only when nothing uses it. Numbers are
+assigned when a request is started, not here.
+
+### 1. Bridge transport and skeleton
+
+Grow FR 028's proof of concept into a real add-on: a preferences panel that does more than start
+and stop, a settled error envelope, the protocol-version handshake checked at both ends, and the
+command table with enough structure to hold twenty-five entries rather than one. The transport
+itself is done and verified against Blender 5.1.0; what this adds is everything a second command
+would have wanted and the first one did not need.
+
+**The obvious candidate for real work here is a headless drive mechanism.** The bridge runs only
+in a GUI Blender, because `bpy.app.timers` callbacks need an event loop and `blender -b` has none;
+FR 028 made the start operator refuse background mode rather than bind a socket that could never
+answer. A pipeline driving MPFB without a screen needs the second mechanism — blender lab's add-on
+reaches one through a CLI command — and that is a feature rather than a fix. See
+[The bridge](../specifications/architecture.md#the-bridge).
+
+Two questions FR 028 *closed* and that should not be reopened by accident: `bpy.app.online_access`
+does not gate a loopback bind, and the closed vocabulary survives
+[the hardest tool](done/028-pivot-to-specific-addon/README.md#requirement-4-mpfb_set_asset_material-survives-comfortably).
+
+### 2. The server-side backend seam
+
+mpfb-mcp learns to talk to the bridge. The seam is an adapter *below* the send, so no tool module
+learns which transport it is on —
+[Supporting a second backend](../specifications/architecture.md#supporting-a-second-backend)
+already says where it goes, having been designed for a different second backend and spent on this
+one instead.
+
+**Backend selection is explicit configuration, never autodetection**, and that bullet is the one
+that constrains this effort directly: both third-party add-ons answer on 9876, the bridge answers
+on 9877, and no single probe distinguishes any of them — a NUL-terminated ping leaves the
+community add-on's parser waiting, while an unterminated one leaves blender lab's doing the same.
+mpfb-mcp must be *told*.
+
+One tool is migrated here, chosen for being dull rather than representative, and both paths are
+run side by side on a real Blender so the answers can be compared rather than assumed equal.
+[observability.md](../specifications/observability.md) is rewritten by this effort: the record's
+unit stops being a program. So are
+[responses.md](../specifications/responses.md) and
+[tool-interface.md](../specifications/tool-interface.md), whose "returns blender_mcp's envelope
+as-is" needs a new referent.
+
+### 3. Introspection and catalogues migrated
+
+The nine read-only tools, in batches by capability area — **a catalogue and the tool acting on it
+are designed as a pair and must move together**, because the whole point of the pairing is that
+the identifiers agree.
+
+**This is where the 14.2k lines of tests are decided, and it is the part of the pivot most likely
+to be under-estimated.** Payload logic that becomes add-on code stops being "source `exec()`'d
+against stub Blender and stub MPFB" and becomes ordinary Python in an add-on, testable against a
+real install. That is an improvement and a large rewrite at the same time. The four shared
+fragments these tools use — `target_categories.py`, `rig_lookup.py`, `asset_sections.py`,
+`modifier_reading.py` — become modules two commands import, which is what a fragment was always
+trying to be. [testing.md](../specifications/testing.md) is rewritten by whichever effort
+migrates the first tool.
+
+### 4. Creation and modification migrated
+
+The fourteen mutating tools plus the two documentation ones. `mpfb_list_docs` has nothing to
+migrate — it never crosses the socket — and `mpfb_list_urls` is the awkward one, since it is the
+only tool that catches a connection failure and answers anyway.
+
+`mpfb_set_asset_material` is the interesting case and FR 028 already established that it
+survives: four flat scalars and a body of service calls, no open-ended access needed. The
+temptation this effort must resist is the one being an add-on creates —
+[importing MPFB's UI operator module directly](../specifications/architecture.md#never-import-mpfb-submodules-directly)
+rather than keeping the reimplementation. Don't; the reasons are unchanged and a UI operator
+module is the worst case of them.
+
+### 5. Retire the generated-code path
+
+Delete `codegen/`, the session source cache and the seven shared fragments; fold what they taught
+into the specifications rather than losing it; drop blender_mcp from the install instructions.
+This is also when
+[The generated-code path](../specifications/architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired)
+stops being a section of architecture.md and becomes something HISTORY.md remembers.
+
+Worth filing upstream on the way out, for everyone else's benefit rather than ours: see
+[Handle the 4 KB chunked read](#handle-the-4-kb-chunked-read-against-blender_mcp) below.
+
+### 6. Publish and document
+
+An extension-platform listing for the bridge, and a page on makehumancommunity.org stating
+plainly that it is local, that it is optional, and that nothing is uploaded. Both belong to the
+stage where the bridge is worth installing, and neither is an engineering problem.
+
+Two questions FR 028 recorded as open are answered here or not at all, because they are not
+engineering questions: what extension review makes of a listening socket, and what MPFB's users
+actually want. A forum post describing the bridge costs nothing and would replace guesswork with
+evidence.
 
 ## Expressions
 
@@ -102,6 +197,8 @@ used as inspiration for the second half either way.
 Need to have a tool for exporting a character to, for example, fbx. This should involve 
 similar procedures as is used in `src/mpfb/ui/operations/exportops` in MPFB.
 
+<a id="file-the-4-kb-chunked-read-against-blender_mcp"></a>
+
 ## Handle the 4 KB chunked read against blender_mcp
 
 **The largest single cost in this package is one line in an add-on we do not own.**
@@ -112,17 +209,41 @@ bytes arriving do not reset its idle countdown. A generated program therefore co
 per 4 KB, or 1 s per 4 KB against the idle Blender an agent actually meets, **regardless of what
 the program does**: a 50 KB call is 3 s or 12 s of waiting before Blender has read the request.
 
-It should be investigated if the other blender mcp solution (mentioned in "Second backend" below)
-would be a better fit or if it has the same problem.
+**Since [FR 028](done/028-pivot-to-specific-addon/README.md) this is no longer our problem to solve,
+only ours to report.** The bridge sends parameters rather than programs, so once the migration
+completes there is no generated program whose size this tax is charged against — and the bridge's
+own transport already drains its socket per tick rather than reading one chunk, precisely so it
+does not inherit the defect. What remains worth doing is **filing it upstream**: it is a real
+defect costing every other user of that add-on the same thing it cost this project, the fix is a
+loop, and reporting it is cheap. Do that on the way out, in
+[stage 5 of the pivot](#5-retire-the-generated-code-path), rather than letting it disappear with
+the code that suffered from it.
 
-## Second backend: the community "blender mcp"
+The related question — whether the community add-on has the same problem — is now moot for this
+project's purposes; see the superseded entry below.
 
-mpfb-mcp should also run against the community [blender-mcp](https://github.com/ahujasid/blender-mcp)
-add-on, not only blender lab's, so that a user who already has that one installed does not have
-to install a second. This is settled as a goal — see
-[vision.md](../specifications/vision.md#resolved-which-blender-mcp-both) for the resolution and
-for what comparing the two add-ons turned up: the substantive difference is the result channel
-(the exec namespace's `result` dict, against captured stdout), so the seam is a backend adapter
-below `send_code()` that translates transport and result channel together, leaving the tools,
-the payloads and `codegen/` untouched. Not yet scoped into a numbered request.
+<a id="second-backend-the-community-blender-mcp"></a>
+
+## Superseded: second backend, the community "blender mcp"
+
+**This is not going to be built, and the entry is kept rather than deleted so the decision stays
+visible.** The goal was that mpfb-mcp should run against the community
+[blender-mcp](https://github.com/ahujasid/blender-mcp) add-on as well as blender lab's, so a user
+who already had that one installed did not have to install a second.
+[FR 028](done/028-pivot-to-specific-addon/README.md) removed the dependency the adapter existed to
+abstract: once no program crosses the socket, there is no third-party add-on in the path to
+choose between, and a user running either one is pointed at the bridge instead — one extension
+rather than two, and one that does not execute what it is sent.
+
+**Two findings from that comparison outlive the plan**, and both are load-bearing now. The seam
+it designed — an adapter *below* the send, invisible to tools — is where the bridge is being
+fitted; see
+[Supporting a second backend](../specifications/architecture.md#supporting-a-second-backend),
+which keeps its name for exactly that reason. And its conclusion that **backend selection must be
+explicit configuration, never autodetection** matters more with three candidate ports than it did
+with two. The substantive difference it identified between the two add-ons — the result channel,
+the exec namespace's `result` dict against captured stdout — is now a fact about software this
+project no longer talks to.
+
+See [vision.md](../specifications/vision.md#superseded-which-blender-mcp-neither-in-the-end).
 

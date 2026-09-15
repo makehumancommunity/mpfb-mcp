@@ -3,6 +3,11 @@
 > **Visionary specification.** This describes the *intended end state* of the system, not
 > necessarily the current implementation; where the code diverges, the intent stated here
 > governs. See [Status of these documents](README.md#status-of-these-documents).
+>
+> **This document was rewritten by [FR 028](../feature-requests/done/028-pivot-to-specific-addon/README.md)
+> and now describes the bridge.** The machine actually running today is the generated-code path
+> described under [What runs today](#what-runs-today); it works, it is what every tool uses, and
+> it is being retired rather than abandoned.
 
 This document says why mpfb-mcp exists, how it gets there, and what decides whether something
 becomes a tool. It deliberately does **not** describe what any tool returns: that lives in the
@@ -15,8 +20,7 @@ MPFB (MakeHuman Plugin For Blender) exposes a rich Python service layer
 (`HumanService`, `TargetService`, `AssetService`, etc. — see `../mpfb2/`) for creating and
 editing MakeHuman characters, but that layer is only reachable from *inside* a running
 Blender process. mpfb-mcp's goal is to make MPFB's capabilities available to LLM agents (and
-other MCP clients) as a normal set of MCP tools, without requiring any change to MPFB or to
-the Blender MCP tooling it relies on.
+other MCP clients) as a normal set of MCP tools, **without requiring any change to MPFB itself**.
 
 **"Available" is a low bar; the goal is *efficiently* available.** An agent driving MPFB through
 a generic code-execution tool can already do anything — it would have to read MPFB's source to
@@ -26,28 +30,89 @@ those, so that a correct MakeHuman character is the *cheap* outcome rather than 
 The measure of the project is not how much of MPFB is reachable but how few round trips, and how
 little source-reading, a competent agent needs to get a character right.
 
-## Approach: piggyback, don't fork
+**A second measure was added by [FR 028](../feature-requests/done/028-pivot-to-specific-addon/README.md):
+install friction.** MPFB's users are largely hobbyists who found it through a tutorial and
+installed it with one click from Blender's extension platform. A capability that costs them a
+terminal, a virtual environment and a hand-edited JSON file is, for that audience, a capability
+that does not exist. The number the project is judged by is Blender-side pieces to install, and
+the target is one.
 
-mpfb-mcp is a normal Python package, installed like any other MCP server, that runs as its
-own MCP server process. It talks to the *existing, unmodified*
-[blender_mcp](../../blender_mcp) add-on over the same TCP socket blender_mcp itself uses,
-sending it generated Python code to execute inside Blender:
+## Approach: a bridge add-on of our own
+
+MPFB's Blender-side logic lives in a **companion Blender extension, the MPFB Bridge**, which
+runs a command server on a port of its own and dispatches a **closed vocabulary** of named
+commands. mpfb-mcp is a thin client: it validates arguments, sends a command name and its
+parameters, and shapes the answer into an MCP response.
 
 ```
 Claude / other MCP client
    |
-   |-- stdio --> blender_mcp  (generic Blender tools)   --\
-   |                                                       >-- TCP :9876 --> blender_mcp add-on --> exec() in Blender
-   |-- stdio --> mpfb-mcp     (MPFB-specific tools)     --/                                            |
-                                                                                                        v
-                                                                                             MPFB services (bl_ext.*.mpfb)
+   |-- stdio --> mpfb-mcp   (MPFB-specific tools; validates, then sends a command)
+                    |
+                    |  {"command": "...", "params": {...}} + NUL, over TCP 127.0.0.1:9877
+                    v
+            MPFB Bridge add-on   -- looks the name up in a fixed table, and runs nothing else
+                    |
+                    v
+            MPFB services (bl_ext.*.mpfb), reached by the sys.modules scan MPFB documents
 ```
 
-The user enables MPFB and the blender_mcp add-on in Blender as usual, starts blender_mcp's
-socket server from its preferences, and configures **two** MCP servers in their client. No new
-Blender extension, no fork of blender_mcp, and no coordination of install order between MPFB
-and blender_mcp is required. See [architecture.md](architecture.md) for how this is
-implemented.
+Four properties follow, and they are the whole argument for this shape:
+
+- **No caller-supplied code is executed, ever.** A request names a command; a name that is not
+  in the table is refused with an error listing the ones that are. This is a claim a sceptical
+  user can check by reading one short file, which is why the vocabulary is a literal table in a
+  module of its own. Both general-purpose Blender MCP add-ons are, by construction, arbitrary
+  code execution into Blender; that is defensible for a proof of concept and awkward as a
+  recommendation to a hobbyist.
+- **The wire carries parameters, not programs**, so what a call costs stops being a function of
+  how much source describes it. The session source cache, the fragment hashing and the
+  re-send-once recovery all exist to manage a tax that this shape does not levy.
+- **MPFB is not modified, and does not know the bridge exists.** The bridge reaches it through
+  `MPFB_CONTEXTUAL_INFORMATION` and the `sys.modules` scan MPFB documents and uses in its own
+  test suite — the supported entry point for exactly this, not a trick. MPFB's manifest, its
+  extension listing, its review cycle and its release cadence are untouched.
+- **Installation is the consent.** A user who does not want an AI control surface near their
+  character generator simply never installs the bridge. That is the cleanest available answer to
+  the community question, and it is worth more than it looks: it converts an argument about
+  principle into an argument about nothing.
+
+The honest costs, stated here because they are real and will be raised. It is **one more thing
+to install** — one click if the bridge is listed on the extension platform, against zero for
+folding the logic into MPFB. It creates a **compatibility matrix** (MPFB × bridge × mpfb-mcp)
+that a single package would not have, which is why the bridge reports a protocol version from
+its very first command. And **separation is real but partial**: a bridge published by MPFB's
+maintainer, named after MPFB and linked from makehumancommunity.org will be read as endorsement
+whatever the packaging says.
+
+Folding the bridge into MPFB later is deliberately **not** ruled out. If it proves itself — used,
+stable, uncontested — that is a much easier conversation than it would be today, because by then
+it is a known quantity rather than a proposal. The reverse move is not available, which is the
+entire reason for starting outside. The three options and the argument between them are in
+[PIVOT_INTO_MPFB.md](../feature-requests/done/028-pivot-to-specific-addon/PIVOT_INTO_MPFB.md).
+
+## What runs today
+
+**Everything above describes where the system is going. What executes right now is different**,
+and a reader must not be misled about which machine they are standing in front of.
+
+Today every tool assembles a Python *program* on the client side and sends it to blender lab's
+[blender_mcp](../../blender_mcp) add-on, which `exec()`s it inside Blender. That machine is
+described in full, and plainly marked as the one being retired, under
+[The generated-code path](architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired).
+It works: twenty-five tools, all of them verified against a real Blender.
+
+The two coexist on purpose. Each child effort of FR 028 lands with **both paths still working**,
+so they can be compared side by side on a real Blender rather than swapped on faith. The
+generated-code path is deleted only when the last tool has left it. Until then:
+
+| | Generated-code path | Bridge |
+|---|---|---|
+| Status | what every tool uses today | a proof of concept, one command |
+| Blender-side add-on | blender lab's `blender_mcp`, unmodified | `bridge/mpfb_bridge`, ours |
+| What crosses the wire | an assembled Python program | a command name and its parameters |
+| Executes caller-supplied code | yes, by construction | no |
+| Port | 9876 | 9877 |
 
 ## What makes something a tool
 
@@ -84,6 +149,16 @@ with which of MPFB's several defaults. These are the tests a candidate tool has 
   call. See
   [A tool reports an ordering constraint it cannot enforce](mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce).
 
+**One tool is one bridge command, and the unit stays the intent.** This is the rule the bridge
+inherits rather than a new one, and it is stated here because a closed vocabulary invites exactly
+the wrong simplification: a command set that mirrors MPFB's service layer, leaving the agent to
+sequence it. Two consequences are load-bearing. A **batched** tool stays one command —
+`mpfb_set_targets` takes lists because a round trip costs orders of magnitude more than a target
+does, and splitting it would reintroduce the cost the pivot removes. And a tool that does
+**multi-step reasoning** before acting stays one command: the refit blocker decides whether a
+refit would silently leave the rig behind, and an agent asked to make that decision across three
+round trips will get it wrong.
+
 ## Target tool catalog
 
 The surface is four capability areas. What matters is that an agent can get through all of them
@@ -99,7 +174,9 @@ answer changes.
 
 [README.md](../README.md) lists the twenty-five that exist, grouped this way;
 [CLAUDE.md](../CLAUDE.md#the-twenty-five-tools) gives one line each and points at the module
-docstring that explains it.
+docstring that explains it. **Twenty-five tools become twenty-five bridge commands**, one for
+one, as the migration proceeds — the count above is the count the bridge is aiming at, and a
+migration that changed it would be changing the product rather than the transport.
 
 **What is still missing**, and why each is worth having:
 
@@ -123,21 +200,30 @@ Scoped and queued work is in
 decided, is in [HISTORY.md](../feature-requests/HISTORY.md). A new tool gets its own feature
 request when it is scoped.
 
-## Resolved: which "blender mcp"? Both
+<a id="resolved-which-blender-mcp-both"></a>
 
-There are two unrelated projects called "blender mcp": blender lab's implementation (the
-primary backend, at `../../blender_mcp`, which this project piggybacks on) and a separate,
-more feature-rich [community implementation](https://github.com/ahujasid/blender-mcp), a local
-clone of which is available at `../../ahujasid-blender-mcp`. Some users have the latter
-installed instead of the former.
+## Superseded: which "blender mcp"? Neither, in the end
 
-**Supporting both as backends is a goal.** blender lab's stays the reference one — it is what
-the tools are written and live-verified against — but a user who already runs the community
-add-on should be able to point mpfb-mcp at it rather than install a second one.
+There are two unrelated projects called "blender mcp": blender lab's implementation (at
+`../../blender_mcp`, which the generated-code path uses today) and a separate, more feature-rich
+[community implementation](https://github.com/ahujasid/blender-mcp), a local clone of which is
+available at `../../ahujasid-blender-mcp`. Some users have the latter installed instead of the
+former.
 
-Comparing the two add-ons showed this to be a contained change rather than a second
-implementation: they differ in framing, in the envelope they answer with, and in how a result
-gets back, but nothing about that reaches a tool. The seam and what it costs are in
-[Supporting a second backend](architecture.md#supporting-a-second-backend). The work is not
-scoped into a feature request yet; see
-[NEXT_STEPS.md](../feature-requests/NEXT_STEPS.md#second-backend-the-community-blender-mcp).
+**Supporting both used to be a goal. It is not any more.** The bridge removes the dependency
+that an adapter between them existed to abstract: once no program crosses the socket, there is no
+third-party add-on in the path to choose between. Comparing the two remains a useful piece of
+work — it is what established that the difference which matters is the *result channel* rather
+than the framing — but the adapter it was pointing at is not going to be built.
+
+Two things that comparison produced outlive it. The seam it designed, **below the transport and
+invisible to tools**, is what the bridge is now built behind; see
+[Supporting a second backend](architecture.md#supporting-a-second-backend). And its finding that
+**backend selection must be explicit configuration, never autodetection** carries over unchanged
+and matters more than before: both existing add-ons answer on 9876, the bridge answers on 9877,
+and no single probe distinguishes any of them.
+
+A user who runs the community add-on is not left out — they are pointed at the bridge, which is
+one extension rather than two and does not execute what it is sent. That is a better answer than
+the adapter would have been. The superseded entry is recorded in
+[NEXT_STEPS.md](../feature-requests/NEXT_STEPS.md#superseded-second-backend-the-community-blender-mcp).

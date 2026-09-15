@@ -2,6 +2,16 @@
 
 **Status:** Accepted
 
+> **Written against the generated-code path, and that is still correct.**
+> [FR 028](../done/028-pivot-to-specific-addon/README.md) decided that MPFB's Blender-side logic
+> moves into a bridge add-on, but it migrated no tool and the generated-code path is what every
+> tool uses today — so a payload, a shared fragment and `send_code()` all still mean what they
+> mean here. The one thing to weigh is **scheduling**: a tool that lands before
+> [the migration](../NEXT_STEPS.md#a-larger-pivot-an-mpfb-specific-bridge-add-on) reaches its
+> capability area is a tool the migration then has to carry. That is a reason to sequence, not a
+> reason to wait, and nothing in this request needs rewriting either way.
+
+
 A character these twenty-five tools build has a face that cannot do anything. It has a phenotype, detail
 morphs, a rig, garments and a skin — and one fixed, neutral expression, because the `!ex-` shape
 keys that drive an ARKit face are the one part of MPFB's modelling surface no tool reaches.

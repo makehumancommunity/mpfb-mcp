@@ -40,7 +40,15 @@ lifecycle that on completion folds durable decisions into `specifications/`, mov
 
 ## Project status
 
-Proof of concept. **Twenty-five tools are implemented, and all twenty-five have been run against a
+Proof of concept, and **mid-pivot**: the Blender-side logic is moving out of generated Python
+and into a companion add-on of our own, the MPFB Bridge in [bridge/](bridge). That is
+[FR 028](feature-requests/done/028-pivot-to-specific-addon/README.md), which landed the decision and a
+working transport and migrated no tool; the six efforts that do the migration are in
+[NEXT_STEPS.md](feature-requests/NEXT_STEPS.md#a-larger-pivot-an-mpfb-specific-bridge-add-on).
+**Everything below describes what runs today**, which is the generated-code path, and will keep
+running until the last tool has moved.
+
+**Twenty-five tools are implemented, and all twenty-five have been run against a
 real Blender.** [README.md](README.md) lists them by purpose;
 [HISTORY.md](feature-requests/HISTORY.md) tells the story of each effort, including what the live
 run found; [vision.md](specifications/vision.md#target-tool-catalog) says what is planned beyond
@@ -81,6 +89,12 @@ python3 -m unittest discover -s tests -v
 
 # Run a single test
 python3 -m unittest tests.test_create_human.CreateHumanToolTests.test_default_call_uses_mpfb_default_macro_dict -v
+
+# Run the bridge's own tests. Different harness, different command: pytest inside a
+# headless Blender, because the add-on under test is a Blender extension. Needs the
+# add-on enabled and symlinked to this checkout, and pytest in Blender's own Python
+# (bridge/test/README.md). `unittest discover -s tests` must never find these.
+BLENDER_EXE=$(which blender) bridge/test/execute_tests_headless.bash
 ```
 
 `mcp[cli]` is pinned to `<2` ([pyproject.toml](pyproject.toml)) — mcp 2.x renamed `FastMCP` to
@@ -102,7 +116,7 @@ times faster and costs nothing else. This is the dominant cost of every tool in 
 model and its measurement are in
 [architecture.md](specifications/architecture.md#what-a-call-costs-is-the-size-of-its-program), and
 the upstream fix is
-[in NEXT_STEPS.md](feature-requests/NEXT_STEPS.md#file-the-4-kb-chunked-read-against-blender_mcp).
+[in NEXT_STEPS.md](feature-requests/NEXT_STEPS.md#handle-the-4-kb-chunked-read-against-blender_mcp).
 
 Two further environment variables, both **off by default**, make a call visible
 ([observability.py](src/mpfbmcp/observability.py)). They are mpfb-mcp's own, which is why they do
@@ -143,6 +157,28 @@ mpfb-mcp tool  →  assemble Python source (codegen/)  →  send_code() over TCP
                                                                   ↓
                                                           MPFB HumanService, etc.
 ```
+
+<a id="the-bridge"></a>
+
+**And, alongside it, the machine that replaces this one.** `bridge/` holds the MPFB Bridge, a
+Blender extension of our own that dispatches named commands instead of executing programs. It is
+**not** part of the pip package — `pyproject.toml` searches `src/` only, so a top-level `bridge/`
+is outside its root entirely and needs no packaging change — and it has its own linting, typing
+and test setup, taken from MPFB rather than from this repository:
+
+```
+mpfb-mcp tool  →  {"command": ..., "params": {...}}  →  TCP 127.0.0.1:9877
+                                                                  ↓
+                                          mpfb_bridge: look the name up in a fixed table
+                                                                  ↓
+                                                          MPFB HumanService, etc.
+```
+
+| Path | What it is |
+|------|------------|
+| [bridge/mpfb_bridge/](bridge/mpfb_bridge) | The add-on. `command_server.py` is the socket and the framing and imports no `bpy`; `commands.py` is the closed vocabulary, and is the one file to read to know everything the add-on can be asked to do; `mpfb_resolution.py` is the `sys.modules` scan; `ui.py` and `timer.py` are the Blender-facing halves. Operator ids are prefixed `mpfb_bridge.`, **never** `mpfb.` |
+| [bridge/test/](bridge/test) | Its harness: pytest in a headless Blender, MPFB's arrangement. Not discovered by `unittest discover -s tests`, and must never be |
+| `bridge/.pylintrc`, `bridge/pyrightconfig.json`, `bridge/requirements-dev.txt` | MPFB's, copied and retargeted. Where this repository's conventions and MPFB's disagree about add-on code, MPFB's win |
 
 The principles behind this layout are in
 [specifications/architecture.md](specifications/architecture.md); the table below is the concrete
@@ -237,6 +273,11 @@ These are the specific local checks, and each exists because the alternative fai
 
 Stdlib `unittest`, no pytest, 886 tests. Two layers per tool: the wrapper with `send_code`
 mocked, then the assembled source `exec()`'d against stub Blender and stub MPFB services.
+**`bridge/` has a second harness of its own** — pytest inside a headless Blender, MPFB's
+arrangement rather than this one — and the split is at the directory boundary: a bridge test
+imports `bpy` and would fail at import, so `unittest discover -s tests` must never find one. See
+[testing.md](specifications/testing.md#two-harnesses-split-at-the-directory-boundary) and
+[bridge/test/README.md](bridge/test/README.md).
 **Read [specifications/testing.md](specifications/testing.md) before adding or changing a
 test** — in particular the rule that stubs reproduce MPFB's real behaviour rather than
 convenient values, and the list of what the suite can never establish.
@@ -300,11 +341,13 @@ MPFB-extension bootstrap, the deliberate protocol duplication) rather than resta
 
 ## Backends
 
-There are two unrelated projects called "blender mcp"; mpfb-mcp piggybacks on blender lab's
-implementation, not the more feature-rich community one some users may have installed instead.
-Supporting **both** is a goal, with blender lab's remaining the reference backend. Nothing of it
-is implemented yet. See
-[vision.md](specifications/vision.md#resolved-which-blender-mcp-both) for the resolution and the
-shape the second backend would take, and
-[NEXT_STEPS.md](feature-requests/NEXT_STEPS.md#second-backend-the-community-blender-mcp) for the
-entry.
+**Today every tool talks to blender lab's `blender_mcp` add-on**, which is the only backend that
+exists in code. There are two unrelated projects called "blender mcp", and supporting both used
+to be a goal; it is not any more.
+[FR 028](feature-requests/done/028-pivot-to-specific-addon/README.md) replaced that plan with a
+companion add-on of our own — see [bridge/](#the-bridge) below — which removes the third-party
+add-on from the path rather than abstracting over which one it is. See
+[vision.md](specifications/vision.md#superseded-which-blender-mcp-neither-in-the-end) for the
+decision and
+[NEXT_STEPS.md](feature-requests/NEXT_STEPS.md#superseded-second-backend-the-community-blender-mcp)
+for the superseded entry, which is kept rather than deleted.
