@@ -31,6 +31,13 @@ assigned when a request is started, not here.
 
 ### 1. Bridge transport and skeleton
 
+**Scoped as [FR 029](029-bridge-transport-and-skeleton/README.md) (Accepted)**, which additionally
+takes on the headless drive mechanism named below — not only as the pipeline feature it is, but
+because the bridge's own suite runs inside `blender --background`, where the server refuses to
+start, so today no test in it makes a socket round trip. It also raises the add-on's
+`blender_version_min` to `5.0.0`, which is a decision FR 028 made differently, and splits
+`commands.py` into one module per command before there is more than one to split.
+
 Grow FR 028's proof of concept into a real add-on: a preferences panel that does more than start
 and stop, a settled error envelope, the protocol-version handshake checked at both ends, and the
 command table with enough structure to hold twenty-five entries rather than one. The transport
