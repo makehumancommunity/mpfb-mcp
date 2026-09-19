@@ -47,9 +47,12 @@ from . import get_macro_details
 from . import get_mpfb_status
 from . import get_object_info
 from . import get_status
+from . import list_asset_materials
+from . import list_assets
 from . import list_commands
 from . import list_objects
 from . import list_presets
+from . import list_rigs
 from .command import Command
 
 COMMANDS = {
@@ -88,6 +91,18 @@ COMMANDS = {
         # thing it reports about.
         requires_mpfb=False,
         summary=get_status.SUMMARY),
+    "list_asset_materials": Command(
+        name="list_asset_materials",
+        handler=list_asset_materials.list_asset_materials,
+        params=list_asset_materials.PARAMS,
+        requires_mpfb=True,
+        summary=list_asset_materials.SUMMARY),
+    "list_assets": Command(
+        name="list_assets",
+        handler=list_assets.list_assets,
+        params=list_assets.PARAMS,
+        requires_mpfb=True,
+        summary=list_assets.SUMMARY),
     "list_commands": Command(
         name="list_commands",
         handler=list_commands.list_commands,
@@ -113,4 +128,10 @@ COMMANDS = {
         params=list_presets.PARAMS,
         requires_mpfb=True,
         summary=list_presets.SUMMARY),
+    "list_rigs": Command(
+        name="list_rigs",
+        handler=list_rigs.list_rigs,
+        params=list_rigs.PARAMS,
+        requires_mpfb=True,
+        summary=list_rigs.SUMMARY),
 }

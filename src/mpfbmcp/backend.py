@@ -92,6 +92,11 @@ MIGRATED_COMMANDS = {
     # Batch B: the first migrated tool carrying a shared fragment, which is
     # what the `shared` / `cached_shared` arguments above exist for.
     "list_presets.py": "list_presets",
+    # Batch C: the asset library, and the two fragments whose whole purpose is
+    # that a catalogue and an acting tool agree about what an entry means.
+    "list_rigs.py": "list_rigs",
+    "list_assets.py": "list_assets",
+    "list_asset_materials.py": "list_asset_materials",
 }
 
 

@@ -33,8 +33,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 
 def _validated_name(name: object) -> str:
@@ -95,14 +94,14 @@ def register(mcp: FastMCP) -> None:
         An object that is not an asset comes back as `found: false`, or with an
         empty list and an explanation, never as an error.
         """
-        code = codegen.assemble(
+        # `result` (built in codegen/payloads/list_asset_materials.py) is plain
+        # JSON-safe data, so strict_json=True surfaces a clear error if that ever
+        # stops being true.
+        return backend.send(
             "list_asset_materials.py",
             bootstrap="raising",
             params={
                 "name": _validated_name(name),
             },
+            strict_json=True,
         )
-        # `result` (built in codegen/payloads/list_asset_materials.py) is plain
-        # JSON-safe data, so strict_json=True surfaces a clear error if that ever
-        # stops being true.
-        return send_code(code, strict_json=True)

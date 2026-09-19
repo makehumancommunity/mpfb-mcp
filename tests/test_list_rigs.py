@@ -4,16 +4,29 @@
 Tests for the mpfb_list_rigs tool: argument validation, and the generated code's
 enumeration of MPFB's rig directories.
 
-Two layers, as in tests/test_get_status.py: the tool wrapper with send_code
-mocked, then the assembled source executed against the stub services in
-tests/blender_stubs.py. The rig tree those run against is a real temporary
-directory rather than a mocked filesystem, because the payload's whole job is
-os.listdir() and os.path.isfile() - mocking those away would leave nothing under
-test.
+Migrated by FR 031, so three layers rather than two (see
+``tests/test_list_objects.py``, the template): the wrapper with ``send_code``
+mocked on the seam, the bridge path against ``tests/fake_bridge.py``, and the
+payload executed against the stub services in ``tests/blender_stubs.py``.
 
-The tree deliberately reproduces the asymmetries a real MPFB install has, since
-they are what the payload is written around: a rig with no weights file of its
-own, a weights file with no rig, and a rig with no entry in the UI enum.
+**The payload layer is frozen**, and it is the one in this suite with the most
+to lose by staying: ``ListRigsGeneratedCodeTests`` is where
+``test_add_rig.py``'s claim that the catalogue's weights prediction equals the
+adder's outcome is anchored, through the ``RigTestCase`` they share. Both halves
+of that pair are still payloads after this effort, so both survive untouched;
+what keeps the *bridge* half honest meanwhile is
+``tests/test_fragment_drift.py``, which compares ``rig_lookup.py`` against
+``bridge/mpfb_bridge/shared/rig_lookup.py`` on every run.
+
+The rig tree these run against is a real temporary directory rather than a
+mocked filesystem, because the payload's whole job is ``os.listdir()`` and
+``os.path.isfile()`` - mocking those away would leave nothing under test. It
+deliberately reproduces the asymmetries a real MPFB install has: a rig with no
+weights file of its own, a weights file with no rig, and a rig with no entry in
+the UI enum. ``bridge/test/tests/kkk_list_rigs_test.py`` builds the same tree
+and points MPFB's own ``LocationService`` at it.
+
+The share of this module that goes with the payload: 300 of its 474 lines, 63%.
 
 Run with::
 
@@ -28,6 +41,9 @@ import unittest
 from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
+
+from mpfbmcp import backend
+from tests import fake_bridge
 
 from mpfbmcp import codegen
 from mpfbmcp.tools import list_rigs
@@ -56,7 +72,7 @@ class RefreshValidationTests(unittest.TestCase):
         self.tool = _tool_callable()
 
     def test_default_call_sends_refresh_false(self):
-        with mock.patch.object(list_rigs, "send_code") as send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool()
         source = send_code.call_args[0][0]
@@ -64,19 +80,22 @@ class RefreshValidationTests(unittest.TestCase):
         self.assertIn(json.dumps({"refresh": False}), source)
 
     def test_refresh_true_is_carried_across(self):
-        with mock.patch.object(list_rigs, "send_code") as send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(refresh=True)
         self.assertIn(json.dumps({"refresh": True}), send_code.call_args[0][0])
 
-    def test_response_envelope_is_returned_unchanged(self):
-        envelope = {"status": "error", "message": "no MPFB"}
-        with mock.patch.object(list_rigs, "send_code") as send_code:
-            send_code.return_value = envelope
-            self.assertIs(self.tool(), envelope)
+    def test_a_failure_reaches_the_caller_with_a_slug_to_branch_on(self):
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
+            send_code.return_value = {"status": "error", "message": "no MPFB"}
+            response = self.tool()
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["message"], "no MPFB")
+        self.assertEqual(response["error"], backend.ERROR_COMMAND_FAILED)
 
     def test_strict_json_is_requested(self):
-        with mock.patch.object(list_rigs, "send_code") as send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool()
         self.assertIs(send_code.call_args[1]["strict_json"], True)
@@ -86,10 +105,68 @@ class RefreshValidationTests(unittest.TestCase):
         # failed to build; accepting either would make refresh="false" rescan.
         for bad in (1, 0, "true", "false", None, [], object()):
             with self.subTest(refresh=bad):
-                with mock.patch.object(list_rigs, "send_code") as send_code:
+                with mock.patch("mpfbmcp.backend.send_code") as send_code:
                     with self.assertRaises(ValueError):
                         self.tool(refresh=bad)
                 send_code.assert_not_called()
+
+
+
+
+class ListRigsOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """What cannot cross the socket, and nothing else.
+
+    Everything this tool *answers* - which files are listed, which weights the
+    fallback table resolves to, what happens when Rigify is off - is checked
+    against a real MPFB in ``bridge/test/tests/kkk_list_rigs_test.py``.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.tool = _tool_callable()
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        self.bridge = self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "list_rigs": fake_bridge.ok_envelope("list_rigs", {"count": 0}),
+        })
+
+    def test_the_tool_sends_the_list_rigs_command(self):
+        self.tool()
+
+        self.assertEqual(self.bridge.commands()[-1], "list_rigs")
+        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {"refresh": False})
+
+    def test_the_shared_fragment_does_not_reach_the_bridge(self):
+        # rig_lookup.py is a property of how a *program* is assembled. On the
+        # bridge it is a module the command imports, so the request is exactly
+        # the parameters.
+        self.tool(refresh=True)
+
+        request = self.bridge.decoded_requests()[-1]
+        self.assertEqual(request["params"], {"refresh": True})
+        self.assertNotIn("rig_lookup", str(request))
+
+    def test_local_validation_runs_before_a_transport_is_chosen(self):
+        for bad in (1, 0, "true", "false", None, [], object()):
+            with self.subTest(refresh=bad):
+                with self.assertRaises(ValueError):
+                    self.tool(refresh=bad)
+
+        self.assertEqual(self.bridge.requests, [],
+                         "a locally invalid call must not be sent to any backend")
+
+    def test_a_bridge_error_envelope_reaches_the_caller_intact(self):
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope(
+                "mpfb_unavailable", "The command needs MPFB, which is not usable here.",
+                command="list_rigs", state="absent"))
+
+        response = self.tool()
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "mpfb_unavailable")
 
 
 class ListRigsGeneratedCodeTests(RigTestCase):

@@ -32,8 +32,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 # A page of 1000 entries is already more than an agent can usefully read; the
 # ceiling is here so that an over-broad call is capped rather than answered with
@@ -169,7 +168,7 @@ def register(mcp: FastMCP) -> None:
         # JSON-safe data - notably the cached items' `thumb` preview object is
         # dropped rather than reported - so strict_json=True to surface a clear
         # error if that ever stops being true.
-        code = codegen.assemble(
+        return backend.send(
             "list_assets.py",
             bootstrap="raising",
             params={
@@ -191,5 +190,5 @@ def register(mcp: FastMCP) -> None:
             # section table, so the catalogue and the action cannot disagree
             # about what an entry means.
             shared=["asset_sections.py"],
+            strict_json=True,
         )
-        return send_code(code, strict_json=True)

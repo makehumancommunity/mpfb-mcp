@@ -133,13 +133,16 @@ class RoutingTests(BothBackendsTestCase):
         self.assertEqual(self.bridge.decoded_requests()[-1]["params"], params)
 
     def test_an_unmigrated_tool_stays_on_the_generated_path_in_both(self) -> None:
+        # `create_human.py` is a mutating tool, so it stays unmigrated until
+        # stage 4 and this test keeps a subject for as long as the table has
+        # anything left in it to be the point of.
         for preference in (None, backend.BACKEND_BRIDGE):
             with self.subTest(backend=preference):
                 self.addon.requests.clear()
                 self.bridge.requests.clear()
                 self.prefer(preference)
 
-                backend.send("list_rigs.py", params={})
+                backend.send("create_human.py", params={})
 
                 self.assertEqual(len(self.addon.requests), 1)
                 self.assertEqual(self.bridge.requests, [],

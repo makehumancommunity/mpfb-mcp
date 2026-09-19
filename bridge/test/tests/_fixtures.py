@@ -39,6 +39,8 @@ assets into their own MPFB - is how a suite becomes unrunnable.
 __all__ = (
     "Character",
     "answer",
+    "build_asset_library",
+    "build_rig_tree",
     "dispatch",
     "linked_plain_object",
     "only_these_data_roots",
@@ -46,9 +48,11 @@ __all__ = (
     "resolution_module",
     "result",
     "services_or_skip",
-    "typed_child",
     "supplied_resolution",
+    "typed_child",
     "write",
+    "write_mhclo",
+    "write_mhmat",
 )
 
 import contextlib
@@ -158,6 +162,99 @@ def linked_plain_object(name):
     plain = bpy.data.objects.new(name, bpy.data.meshes.new(name + "Mesh"))
     bpy.context.scene.collection.objects.link(plain)
     return plain
+
+
+def write_mhmat(path, name=None):
+    """A real MHMAT file, carrying only the lines anything here reads back."""
+    return write(path, "# MakeHuman Material Definition\nname {:s}\n".format(
+        name or os.path.splitext(os.path.basename(path))[0]))
+
+
+def write_mhclo(path, material=True, uuid=None):
+    """A real MHCLO file, carrying only the metadata lines a catalogue reads.
+
+    Moved from ``tests/blender_stubs.py``'s ``write_mhclo()``, trimmed to what a
+    read-only command can see: the geometry is left out because nothing here
+    imports the asset, and ``material`` decides whether the file names one -
+    which is what ``list_asset_materials``' ``default_material_reason`` turns on.
+    """
+    base = os.path.splitext(path)[0]
+    lines = ["# MakeHuman clothes file", "name " + os.path.basename(base)]
+    if material:
+        material_name = os.path.basename(base) + ".mhmat"
+        lines.append("material " + material_name)
+        write_mhmat(os.path.join(os.path.dirname(path), material_name))
+    if uuid:
+        lines.append("uuid " + uuid)
+    lines.append("verts 0")
+    return write(path, "\n".join(lines) + "\n")
+
+
+def build_asset_library(root):
+    """An asset library with the shapes a real one has, under one directory.
+
+    Moved from ``tests/blender_stubs.py``'s ``MeshAssetTestCase`` rather than
+    reinvented, and it keeps that fixture's deliberate asymmetries because each
+    is a branch some command takes:
+
+    - ``fedora`` is the ordinary asset, with **two alternative materials** beside
+      it, which is what ``list_asset_materials`` is for;
+    - ``plain`` names **no material at all**, which is the
+      ``mhclo_names_no_material`` branch;
+    - a **second root** holds another ``fedora.mhclo``, because
+      ``find_asset_absolute_path()`` matches on basename and the ambiguity that
+      produces is a fact about MPFB rather than about any one command;
+    - the sections are spread across ``clothes``, ``hair``, ``eyes`` and
+      ``skins``, so a subdir filter has something to exclude.
+
+    Returns ``(system_root, user_root)`` - two data roots, to be handed to
+    :func:`only_these_data_roots`.
+    """
+    system_root = os.path.join(root, "system", "assets")
+    user_root = os.path.join(root, "user", "assets")
+
+    write_mhclo(os.path.join(system_root, "clothes", "fedora", "fedora.mhclo"),
+                uuid="fedora-uuid")
+    write_mhmat(os.path.join(system_root, "clothes", "fedora", "fedora_red.mhmat"))
+    write_mhmat(os.path.join(system_root, "clothes", "fedora", "fedora_blue.mhmat"))
+    write_mhclo(os.path.join(system_root, "clothes", "plain", "plain.mhclo"), material=False)
+    write_mhclo(os.path.join(system_root, "hair", "ponytail", "ponytail.mhclo"))
+    write_mhclo(os.path.join(system_root, "eyes", "lowpoly", "lowpoly.mhclo"))
+    write_mhmat(os.path.join(system_root, "skins", "young", "young.mhmat"))
+
+    # The same basename under a second root: two packs shipping fedora.mhclo.
+    write_mhclo(os.path.join(user_root, "clothes", "fedora", "fedora.mhclo"))
+
+    return (system_root, user_root)
+
+
+def build_rig_tree(root):
+    """``<mpfb data>/rigs`` with the asymmetries a real install has.
+
+    Moved from ``tests/blender_stubs.py``'s ``RigTestCase``, and it keeps that
+    fixture's three deliberate oddities, each of which is a branch:
+
+    - ``default`` has weights of its own and ``default_no_toes`` does not,
+      which is what makes MPFB's weights **fallback table** observable rather
+      than assumed;
+    - ``weights.orphan.json`` sits beside no rig, so a weights file must not be
+      listed as a rig;
+    - no UI enum is written, so every entry's ``label`` is null - which is the
+      state of any rig a user drops in, and the reason the *directory* rather
+      than the enum is the authority.
+
+    Returns the ``<mpfb data>`` directory the tree hangs under.
+    """
+    mpfb_data = os.path.join(root, "mpfb-data")
+    standard = os.path.join(mpfb_data, "rigs", "standard")
+    rigify = os.path.join(mpfb_data, "rigs", "rigify")
+    for name in ("default", "default_no_toes", "cmu_mb"):
+        write(os.path.join(standard, "rig." + name + ".json"), '{"bones": {}}\n')
+    write(os.path.join(standard, "weights.default.json"), "{}\n")
+    write(os.path.join(standard, "weights.orphan.json"), "{}\n")
+    write(os.path.join(rigify, "rig.human.json"), '{"bones": {}}\n')
+    write(os.path.join(rigify, "weights.human.json"), "{}\n")
+    return mpfb_data
 
 
 def typed_child(services, parent, name, object_type):

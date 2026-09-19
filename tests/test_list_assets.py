@@ -4,7 +4,18 @@
 Tests for the mpfb_list_assets tool: argument validation, and the generated
 code's filtering, paging and pack attribution over MPFB's asset cache.
 
-Two layers, as in tests/test_get_status.py: the tool wrapper with send_code
+Migrated by FR 031, so three layers rather than two (see
+``tests/test_list_objects.py``, the template): the wrapper with ``send_code``
+mocked on the seam, the bridge path against ``tests/fake_bridge.py``, and the
+payload against the stubs. **The payload layer is frozen.** What keeps the
+bridge half honest is ``tests/test_fragment_drift.py``, which compares
+``asset_sections.py`` against ``bridge/mpfb_bridge/shared/asset_sections.py``
+on every run, and ``bridge/test/tests/lll_list_assets_test.py``, which puts the
+questions below to a real MPFB over an asset library the test builds.
+
+The share of this module that goes with the payload: 325 of its 574 lines, 57%.
+
+Formerly two layers, as in tests/test_get_status.py: the tool wrapper with send_code
 mocked, then the assembled source executed against the stub services in
 tests/blender_stubs.py. Unlike tests/test_list_rigs.py there is no temporary
 directory here, because this payload never touches the filesystem - it asks
@@ -29,6 +40,9 @@ import unittest
 from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
+
+from mpfbmcp import backend
+from tests import fake_bridge
 
 from mpfbmcp.tools import list_assets
 
@@ -57,7 +71,7 @@ class ArgumentValidationTests(unittest.TestCase):
         self.tool = _tool_callable()
 
     def _sent_params(self, **kwargs):
-        with mock.patch.object(list_assets, "send_code") as send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(**kwargs)
         source = send_code.call_args[0][0]
@@ -104,7 +118,7 @@ class ArgumentValidationTests(unittest.TestCase):
         for argument in ("asset_subdir", "name_contains", "pack"):
             for bad in (1, True, [], object()):
                 with self.subTest(argument=argument, value=bad):
-                    with mock.patch.object(list_assets, "send_code") as send_code:
+                    with mock.patch("mpfbmcp.backend.send_code") as send_code:
                         with self.assertRaises(ValueError):
                             self.tool(**{argument: bad})
                     send_code.assert_not_called()
@@ -115,7 +129,7 @@ class ArgumentValidationTests(unittest.TestCase):
         for argument in ("asset_subdir", "name_contains", "pack"):
             for bad in ("", "   ", "\t"):
                 with self.subTest(argument=argument, value=bad):
-                    with mock.patch.object(list_assets, "send_code") as send_code:
+                    with mock.patch("mpfbmcp.backend.send_code") as send_code:
                         with self.assertRaises(ValueError):
                             self.tool(**{argument: bad})
                     send_code.assert_not_called()
@@ -135,7 +149,7 @@ class ArgumentValidationTests(unittest.TestCase):
         )
         for kwargs in bad_calls:
             with self.subTest(**kwargs):
-                with mock.patch.object(list_assets, "send_code") as send_code:
+                with mock.patch("mpfbmcp.backend.send_code") as send_code:
                     with self.assertRaises(ValueError):
                         self.tool(**kwargs)
                 send_code.assert_not_called()
@@ -147,22 +161,88 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_non_bool_refresh_is_rejected_locally(self):
         for bad in (1, 0, "true", "false", None, []):
             with self.subTest(refresh=bad):
-                with mock.patch.object(list_assets, "send_code") as send_code:
+                with mock.patch("mpfbmcp.backend.send_code") as send_code:
                     with self.assertRaises(ValueError):
                         self.tool(refresh=bad)
                 send_code.assert_not_called()
 
-    def test_response_envelope_is_returned_unchanged(self):
-        envelope = {"status": "error", "message": "no MPFB"}
-        with mock.patch.object(list_assets, "send_code") as send_code:
-            send_code.return_value = envelope
-            self.assertIs(self.tool(), envelope)
+    def test_a_failure_reaches_the_caller_with_a_slug_to_branch_on(self):
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
+            send_code.return_value = {"status": "error", "message": "no MPFB"}
+            response = self.tool()
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["message"], "no MPFB")
+        self.assertEqual(response["error"], backend.ERROR_COMMAND_FAILED)
 
     def test_strict_json_is_requested(self):
-        with mock.patch.object(list_assets, "send_code") as send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool()
         self.assertIs(send_code.call_args[1]["strict_json"], True)
+
+
+
+
+class ListAssetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """What cannot cross the socket, and nothing else.
+
+    Everything this tool *answers* - the section table, the cap, the paging
+    order, the pack attribution - is checked against a real MPFB in
+    ``bridge/test/tests/lll_list_assets_test.py``.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.tool = _tool_callable()
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        self.bridge = self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "list_assets": fake_bridge.ok_envelope("list_assets", {"count": 0}),
+        })
+
+    def test_the_tool_sends_the_list_assets_command_with_every_parameter(self):
+        self.tool()
+
+        self.assertEqual(self.bridge.commands()[-1], "list_assets")
+        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {
+            "asset_subdir": None, "name_contains": None, "pack": None,
+            "limit": 200, "offset": 0, "refresh": False})
+
+    def test_arguments_cross_the_wire_verbatim(self):
+        self.tool(asset_subdir="clothes", name_contains="fedora", pack="system",
+                  limit=5, offset=10, refresh=True)
+
+        request = self.bridge.decoded_requests()[-1]
+        self.assertEqual(request["params"], {
+            "asset_subdir": "clothes", "name_contains": "fedora", "pack": "system",
+            "limit": 5, "offset": 10, "refresh": True})
+        # asset_sections.py is a property of how a program is assembled; on the
+        # bridge it is a module the command imports.
+        self.assertNotIn("asset_sections", str(request))
+
+    def test_local_validation_runs_before_a_transport_is_chosen(self):
+        for arguments in ({"limit": True}, {"limit": -1}, {"offset": True},
+                          {"limit": 1001}, {"refresh": "false"}, {"asset_subdir": "  "}):
+            with self.subTest(**arguments):
+                with self.assertRaises(ValueError):
+                    self.tool(**arguments)
+
+        self.assertEqual(self.bridge.requests, [],
+                         "a locally invalid call must not be sent to any backend")
+
+    def test_a_bridge_error_envelope_reaches_the_caller_intact(self):
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope(
+                "mpfb_unavailable", "The command needs MPFB, which is not usable here.",
+                command="list_assets", state="absent"))
+
+        response = self.tool()
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "mpfb_unavailable")
 
 
 class ListAssetsGeneratedCodeTests(GeneratedCodeTestCase):

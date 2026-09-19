@@ -74,6 +74,8 @@ _BRIDGE_SHARED = _REPOSITORY_ROOT / "bridge" / "mpfb_bridge" / "shared"
 # `refit_blocker.py`, belong to mutating tools and arrive in stage 4.
 MIGRATED_FRAGMENTS = {
     "preset_files.py": "preset_files.py",
+    "rig_lookup.py": "rig_lookup.py",
+    "asset_sections.py": "asset_sections.py",
 }
 
 # The parameter names a bridge function is handed its context through. Two,
