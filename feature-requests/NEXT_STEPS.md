@@ -87,35 +87,52 @@ the harness's own scene bookkeeping goes over `send_code()`. It is written down 
 
 ### 3. Introspection and catalogues migrated
 
-The read-only tools, in batches by capability area — **a catalogue and the tool acting on it are
+**Scoped as [FR 031](031-introspection-and-catalogues-migrated/README.md) (Accepted).** The
+read-only tools, in batches by capability area — **a catalogue and the tool acting on it are
 designed as a pair and must move together**, because the whole point of the pairing is that the
-identifiers agree. Nine of them were in scope when this was written; `mpfb_list_objects` went with
-[stage 2](#2-the-server-side-backend-seam) as its dull first migration, so eight remain, and the
-cheapest of them is gone — the estimates here should not be read off it.
+identifiers agree. `mpfb_list_objects` went with [stage 2](#2-the-server-side-backend-seam) as its
+dull first migration, and the cheapest of them is therefore gone — the estimates here should not
+be read off it.
+
+**Nine tools, not the eight this entry used to say.** The count that produced "eight" left
+`mpfb_get_status` in stage 4, where it was tallied among "the fourteen mutating tools" and is not
+one; it is introspection, it moves here, and moving it is also when the collision FR 030 flagged
+gets settled — the bridge's own `get_status` command reports the *bridge*. So stage 4 inherits
+thirteen mutating tools plus the two documentation ones.
 
 **Each one is a line added to the seam's table** (`backend.MIGRATED_COMMANDS`) and nothing else on
-mpfb-mcp's side, which is what stage 2 bought. Whether to move the other twenty-four tools onto
-`backend.send()` in bulk first is this effort's call; stage 2 refused to, because it would have
-touched twenty-four tool modules for no behavioural change in the one stage whose job was to
-establish that the seam works at all.
+mpfb-mcp's side — **except that the seam cannot carry a shared fragment at all**, which FR 031
+found and has to fix before any of the five fragment-carrying tools can move: `backend.send()`
+takes `payload`, `params` and `bootstrap`, and three of these tools go through
+`shared_cache.send()`, which stage 2 deliberately kept off the seam. Whether to move the other
+tools onto `backend.send()` in bulk first was this effort's call and the call is **no**: stage 4
+has to edit each of those tool modules anyway, so a bulk move only front-loads the same edit while
+rewriting 134 `send_code` patch targets across the suite.
 
 **This is where the 14.2k lines of tests are decided, and it is the part of the pivot most likely
 to be under-estimated.** Payload logic that becomes add-on code stops being "source `exec()`'d
 against stub Blender and stub MPFB" and becomes ordinary Python in an add-on, testable against a
-real install. That is an improvement and a large rewrite at the same time. The four shared
-fragments these tools use — `target_categories.py`, `rig_lookup.py`, `asset_sections.py`,
-`modifier_reading.py` — become modules two commands import, which is what a fragment was always
-trying to be. [testing.md](../specifications/testing.md) has already been rewritten — stage 2
-migrated a tool, so the deferral landed there — and what this effort inherits is the rule rather
-than the job of writing it: everything the add-on side can check is checked there, and the closed
-list of what stays in `tests/` is in
+real install. That is an improvement and a large rewrite at the same time — and note which
+direction it runs in first: the payloads and their frozen test layers stay while the generated path
+does, so **this effort makes the suite bigger, not smaller**. The shared fragments these tools use
+become modules two commands import, which is what a fragment was always trying to be. There are
+**five**, not the four this entry used to list: `target_categories.py`, `rig_lookup.py`,
+`asset_sections.py` and `modifier_reading.py`, plus `preset_files.py` — which
+`mpfb_list_presets` uses here and both preset writers use in stage 4, and which is additionally
+duplicated on mpfb-mcp's own side in `preset_names.py`. Every one of the five straddles this stage
+boundary, so for the duration each exists twice and an `ast`-level drift check is what keeps the
+pairing guarantee true. [testing.md](../specifications/testing.md) has already been rewritten —
+stage 2 migrated a tool, so the deferral landed there — and what this effort inherits is the rule
+rather than the job of writing it: everything the add-on side can check is checked there, and the
+closed list of what stays in `tests/` is in
 [A migrated tool is tested where it runs](../specifications/testing.md#a-migrated-tool-is-tested-where-it-runs).
 
 ### 4. Creation and modification migrated
 
-The fourteen mutating tools plus the two documentation ones. `mpfb_list_docs` has nothing to
-migrate — it never crosses the socket — and `mpfb_list_urls` is the awkward one, since it is the
-only tool that catches a connection failure and answers anyway.
+The thirteen mutating tools plus the two documentation ones — `mpfb_get_status` used to be
+counted here and is [stage 3's](#3-introspection-and-catalogues-migrated). `mpfb_list_docs` has
+nothing to migrate — it never crosses the socket — and `mpfb_list_urls` is the awkward one, since
+it is the only tool that catches a connection failure and answers anyway.
 
 `mpfb_set_asset_material` is the interesting case and FR 028 already established that it
 survives: four flat scalars and a body of service calls, no open-ended access needed. The
