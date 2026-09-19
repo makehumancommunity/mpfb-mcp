@@ -53,6 +53,8 @@ written, or about how much of MPFB works in a headless Blender.
 
 ### 2. The server-side backend seam
 
+**Scoped as [FR 030](030-backend-seam/README.md) (Accepted).**
+
 mpfb-mcp learns to talk to the bridge. The seam is an adapter *below* the send, so no tool module
 learns which transport it is on —
 [Supporting a second backend](../specifications/architecture.md#supporting-a-second-backend)
