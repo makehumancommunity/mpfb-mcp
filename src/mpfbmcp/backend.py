@@ -89,6 +89,9 @@ MIGRATED_COMMANDS = {
     "get_status.py": "get_mpfb_status",
     "get_object_info.py": "get_object_info",
     "get_macro_details.py": "get_macro_details",
+    # Batch B: the first migrated tool carrying a shared fragment, which is
+    # what the `shared` / `cached_shared` arguments above exist for.
+    "list_presets.py": "list_presets",
 }
 
 

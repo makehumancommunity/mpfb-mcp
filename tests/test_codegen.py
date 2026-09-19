@@ -22,10 +22,27 @@ __all__ = ()
 # out - this module is itself read by the assertion below.
 Q3 = chr(39) * 3
 
+import pathlib
 import unittest
 from unittest import mock
 
 from mpfbmcp import codegen
+
+_BRIDGE_SHARED = pathlib.Path(__file__).resolve().parent.parent / "bridge" / "mpfb_bridge" / "shared"
+
+
+def _bridge_shared_namespace(name: str) -> dict:
+    """One of the bridge's shared modules, executed here rather than imported.
+
+    The bridge is a Blender extension and is outside this package's root
+    entirely, so there is nothing to import. Executing the source is enough for
+    the rules that are plain Python over plain data, which is what the checks
+    below are about, and it keeps this module free of ``bpy``.
+    """
+    namespace: dict = {}
+    source = (_BRIDGE_SHARED / name).read_text(encoding="utf-8")
+    exec(compile(source, str(_BRIDGE_SHARED / name), "exec"), namespace)  # noqa: S102
+    return namespace
 
 # Every payload for a tool that changes a character, and therefore every payload
 # that owes its caller the uniform ``performed`` flag. Written out rather than
@@ -410,13 +427,23 @@ class PerformedFragmentTests(unittest.TestCase):
 
 
 class PresetNameRuleDriftTests(unittest.TestCase):
-    """The one rule that lives on both sides of the socket, run as two.
+    """The one rule that lives on both sides of the socket, run as **three**.
 
     ``mpfbmcp.preset_names`` is the authoritative check - requirement 8 puts it
     before the program is built, because a name that becomes a path is a shape
     knowable here - and ``codegen/shared/preset_files.py`` carries the same rule
-    as the last statement before ``open()``. Two copies, so the two are run over
-    one table of names and held to the same verdicts.
+    as the last statement before ``open()``. Since FR 031 migrated
+    ``mpfb_list_presets`` there is a third: ``bridge/mpfb_bridge/shared/preset_files.py``,
+    which is the last statement before ``open()`` on the bridge, and which is
+    there because a listening socket is reachable by anything on this machine
+    and not only by mpfb-mcp. So all three are run over one table of names and
+    held to the same verdicts.
+
+    ``tests/test_fragment_drift.py`` compares the fragment and the bridge module
+    as *source*; this compares all three as *behaviour*, over names chosen to
+    break a character-by-character rule. Both are worth having: the first would
+    not notice the tool-side copy drifting, and the second would not notice a
+    function neither side's table of names happens to reach.
 
     Why this check rather than the usual "no payload keeps an implementation of
     its own": the payloads genuinely do share one implementation, through the
@@ -442,31 +469,43 @@ class PresetNameRuleDriftTests(unittest.TestCase):
         exec(codegen.read_shared("preset_files.py"), namespace)  # noqa: S102
         self.fragment_rejection = namespace["preset_name_rejection"]
         self.fragment_namespace = namespace
+        self.bridge_namespace = _bridge_shared_namespace("preset_files.py")
+        self.bridge_rejection = self.bridge_namespace["preset_name_rejection"]
 
-    def test_both_sides_accept_and_refuse_exactly_the_same_names(self) -> None:
+    def _rules(self) -> dict:
+        """The three implementations, by where they run."""
         from mpfbmcp import preset_names  # pylint: disable=import-outside-toplevel
-        for name in self.NAMES:
-            with self.subTest(name=name):
-                self.assertEqual(
-                    preset_names.preset_name_rejection(name) is None,
-                    self.fragment_rejection(name) is None)
+        return {
+            "mpfbmcp.preset_names": preset_names.preset_name_rejection,
+            "codegen/shared/preset_files.py": self.fragment_rejection,
+            "bridge/mpfb_bridge/shared/preset_files.py": self.bridge_rejection,
+        }
 
-    def test_both_sides_give_the_same_reason(self) -> None:
+    def test_all_three_accept_and_refuse_exactly_the_same_names(self) -> None:
+        rules = self._rules()
+        authoritative = rules["mpfbmcp.preset_names"]
+        for name in self.NAMES:
+            for where, rule in rules.items():
+                with self.subTest(name=name, rule=where):
+                    self.assertEqual(authoritative(name) is None, rule(name) is None)
+
+    def test_all_three_give_the_same_reason(self) -> None:
         # Not merely the same verdict: the sentence is what a caller is shown,
         # and two different explanations for one rule is the drift starting.
-        from mpfbmcp import preset_names  # pylint: disable=import-outside-toplevel
+        rules = self._rules()
+        authoritative = rules["mpfbmcp.preset_names"]
         for name in self.NAMES:
-            with self.subTest(name=name):
-                self.assertEqual(
-                    preset_names.preset_name_rejection(name),
-                    self.fragment_rejection(name))
+            for where, rule in rules.items():
+                with self.subTest(name=name, rule=where):
+                    self.assertEqual(authoritative(name), rule(name))
 
-    def test_the_bound_and_the_pattern_are_the_same_on_both_sides(self) -> None:
+    def test_the_bound_and_the_pattern_are_the_same_on_all_three(self) -> None:
         from mpfbmcp import preset_names  # pylint: disable=import-outside-toplevel
-        self.assertEqual(preset_names.PRESET_NAME_MAX_LENGTH,
-                         self.fragment_namespace["PRESET_NAME_MAX_LENGTH"])
-        self.assertEqual(preset_names.PRESET_NAME_PATTERN,
-                         self.fragment_namespace["PRESET_NAME_PATTERN"])
+        for namespace in (self.fragment_namespace, self.bridge_namespace):
+            self.assertEqual(preset_names.PRESET_NAME_MAX_LENGTH,
+                             namespace["PRESET_NAME_MAX_LENGTH"])
+            self.assertEqual(preset_names.PRESET_NAME_PATTERN,
+                             namespace["PRESET_NAME_PATTERN"])
 
     def test_no_accepted_name_can_leave_the_config_directory(self) -> None:
         # The property the rule exists for, asserted rather than inferred from

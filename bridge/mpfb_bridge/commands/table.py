@@ -25,6 +25,14 @@ and the command it becomes are findable from each other. The difference is that
 a tool module registers itself with the MCP server and a command module
 registers nothing at all, for the reason in the paragraph above.
 
+**A second directory has appeared beside this one, and it does not weaken the
+claim above.** ``shared/`` holds the concepts two or more commands model
+identically - the preset name rule, MPFB's asset section table, the modeling
+category scan. **Nothing in it is reachable from the wire**: no module there has
+a handler, a ``PARAMS`` or an entry below, and a command imports one the way it
+imports ``os``. The vocabulary is still exactly the keys of :data:`COMMANDS`,
+and reading this file is still enough to know it.
+
 Where the record's fields live is a deliberate split too. ``params`` is long and
 belongs beside the handler it constrains; ``requires_mpfb`` and ``summary`` are
 short and are spelled out *here*, so that the sceptic reading one file learns
@@ -41,6 +49,7 @@ from . import get_object_info
 from . import get_status
 from . import list_commands
 from . import list_objects
+from . import list_presets
 from .command import Command
 
 COMMANDS = {
@@ -98,4 +107,10 @@ COMMANDS = {
         # plausible-looking lie rather than a missing answer.
         requires_mpfb=True,
         summary=list_objects.SUMMARY),
+    "list_presets": Command(
+        name="list_presets",
+        handler=list_presets.list_presets,
+        params=list_presets.PARAMS,
+        requires_mpfb=True,
+        summary=list_presets.SUMMARY),
 }

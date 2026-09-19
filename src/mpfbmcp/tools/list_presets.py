@@ -27,8 +27,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 
 def _validated_refresh(refresh: object) -> bool:
@@ -89,7 +88,10 @@ def register(mcp: FastMCP) -> None:
             `refreshed`, `listing_failed` (a sentence when MPFB could not read
             the directory at all) and `message`.
         """
-        code = codegen.assemble(
+        # `result` (built in codegen/payloads/list_presets.py) is plain JSON-safe
+        # data, so strict_json=True surfaces a clear error if that ever stops
+        # being true.
+        return backend.send(
             "list_presets.py",
             bootstrap="raising",
             params={"refresh": _validated_refresh(refresh)},
@@ -97,8 +99,5 @@ def register(mcp: FastMCP) -> None:
             # for which names are legal, one construction of the path they
             # address. A preset this tool names must be one those two can open.
             shared=["preset_files.py"],
+            strict_json=True,
         )
-        # `result` (built in codegen/payloads/list_presets.py) is plain JSON-safe
-        # data, so strict_json=True surfaces a clear error if that ever stops
-        # being true.
-        return send_code(code, strict_json=True)
