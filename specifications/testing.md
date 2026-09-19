@@ -14,9 +14,10 @@ for why the boundary is where it is.
 
 There are two kinds of check, and they answer different questions:
 
-- The **unit suite** (`tests/`) answers *"is this the program we meant to send, and does it do
-  the right thing with the answers it gets back?"* It runs anywhere, in about nine seconds, and
-  it is what a change is expected to keep green.
+- The **unit suite** (`tests/`) answers *"is this the request we meant to send, and does it do
+  the right thing with the answers it gets back?"* — a program on the generated path, a command
+  and its parameters on the bridge. It runs anywhere, in seconds, and it is what a change is
+  expected to keep green.
 - The **live smoke run** ([verification/](../verification/)) answers *"does every tool still
   work at all?"* It needs a running Blender, takes well under a minute, and is described below.
   *"Does MPFB behave as we read it in its source?"* is a different question, answered once, by
@@ -29,7 +30,9 @@ There are two kinds of check, and they answer different questions:
 ## The live harness is named and re-runnable, not a session
 
 Exercising a tool against real MPFB requires a running Blender with MPFB and blender_mcp
-installed and enabled. That is a verification step outside the unit suite — but a **named and
+installed and enabled — and, while the migration is in progress, the MPFB Bridge as well for a run
+in the bridge configuration, since `verification/harness.py`'s own scene bookkeeping goes over
+`send_code()`. That is a verification step outside the unit suite — but a **named and
 re-runnable** one, not a manual session. It lives in [verification/](../verification/) and is one
 command.
 
@@ -130,20 +133,26 @@ the worst kind of failure, because it looks like a broken suite rather than a mi
 bridge tests live under `bridge/` and never under `tests/`, and the two are discovered by two
 different commands that share nothing.
 
-**Coverage is not wired up in the bridge harness yet, and should be.** MPFB produces a coverage
-report by having an `a1_coverage.pth` in Blender's `site-packages` start `coverage` *before* the
-add-on is imported, which is what makes `class` and `def` lines count as covered. Adopting it is
-not a copy: no script in the mpfb2 repository actually creates that `.pth` file — MPFB's own
-`run_to_install_pytest.py` installs pytest and pytest-cov and nothing else — so the bridge would
-have to write that step itself. The content is one line, `import coverage;
-coverage.process_startup()`, plus a `.coveragerc` and the combine-and-report pass afterwards. It
-was deliberately left out of FR 028, where it would have measured a handful of tests against a
-proof of concept; it is worth having by the time the bridge holds migrated commands, and the
-effort that first migrates one is the natural place for it.
+**Coverage is wired up in the bridge harness**, as of the effort that first migrated a command.
+MPFB produces its report by having an `a1_coverage.pth` in Blender's `site-packages` start
+`coverage` *before* the add-on is imported, which is what makes `class` and `def` lines count as
+covered; the bridge does the same, with the one part that is not a copy written here — no script in
+the mpfb2 repository creates that `.pth`, so `bridge/test/run_to_install_pytest.py` does, guarded
+so that it does nothing unless `COVERAGE_PROCESS_START` is set and survives a Blender whose Python
+has no coverage. Three properties are worth keeping when it is next touched:
+
+- **A missing coverage tool must never fail a passing suite.** The report is produced after
+  Blender exits and the run's exit code is the tests', not the reporting step's.
+- **An existing `.pth` is left alone.** The file is shared with anything else measuring coverage in
+  that Blender — MPFB's own harness installs one — and overwriting somebody's working arrangement
+  to install an equivalent would be rude and invisible.
+- **Nothing is excluded by pattern.** The uncovered lines in `timer.py` and `ui.py` are a true
+  statement about what a headless suite can reach, and hiding them would make the number
+  comforting rather than useful.
 
 ## The unit suite is two layers
 
-Stdlib `unittest`, no pytest. Each tool's test module exercises the same tool twice:
+Stdlib `unittest`, no pytest. An **unmigrated** tool's test module exercises the same tool twice:
 
 1. **The wrapper**, with `send_code` mocked. This is where argument validation, defaulting and
    the decision of *what to send* are tested. The sync callable behind the tool is reached via
@@ -156,6 +165,37 @@ Stdlib `unittest`, no pytest. Each tool's test module exercises the same tool tw
 Both layers are needed because the interesting logic is split across them by design (see
 [Validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket)):
 the tool module knows shapes, the payload knows MPFB.
+
+### A migrated tool is tested where it runs
+
+**After a tool is migrated, everything that can be checked on the add-on side is checked there**,
+in `bridge/test/`, against a real MPFB in a headless Blender. This is the largest thing the pivot
+buys and the least visible, and it is a rule rather than a preference because the alternative
+decays: deciding case by case is how twenty-three migrations end up with twenty-three different
+answers.
+
+What stays in `tests/` is a **closed list** — what genuinely cannot cross the socket:
+
+- the tool's own local argument validation, which runs before a transport is chosen;
+- what goes on the wire for a given call;
+- the seam's routing, handshake and envelope mapping;
+- the record.
+
+**A new client-side test asserting something about MPFB's behaviour is a test in the wrong harness,
+however well it passes.** Which type names match, what an empty scene answers, what
+`get_object_type()` returns for an untyped object: all of that belongs to the bridge's suite once
+the command exists, because a check against a real install is better evidence than the same check
+against a stub written by whoever wrote the code under test. Moving a check strengthens it even
+when the assertions are copied across unchanged — and the migration is the only moment at which
+the move is free.
+
+**During the transition a migrated tool has a third layer, and it is frozen.** The payload and its
+stub-executed tests stay while the generated path stays, because the payload is half of what the
+migration's own live comparison compares. It is not extended and nothing is added to it; it is
+deleted with the payload when the path is retired. FR 030 measured what that costs and what it
+returns for the first tool: `tests/test_list_objects.py`'s payload layer is 27% of that module, for
+a payload whose whole logic is a filter and a substring test — a floor rather than a rate, since
+the tools with real branching in them are the ones stage 3 has to estimate.
 
 ## Stubs reproduce MPFB's behaviour, never convenient values
 
@@ -250,7 +290,16 @@ both are silent when got wrong:
 ## What the suite can never establish
 
 Stated once here rather than repeated in every module, because the list is a property of the
-architecture and not of any one test:
+architecture and not of any one test.
+
+**It is a list about the *unit suite*, and the pivot is shortening it.** Every item below was
+written when everything Blender-side was out of reach from any harness in this repository. For a
+**migrated** tool that is no longer true: its logic is add-on code, the bridge's suite runs against
+a real MPFB, and the corresponding item stops being a limitation and becomes a test somebody has to
+write. `mpfb_list_objects` is the first of them — whether MPFB's own `object_is()` really matches a
+substring, and whether `get_object_type()` really answers `""`, were claims resting on a reading of
+MPFB's source until `bridge/test/tests/fff_list_objects_test.py` asked MPFB. Read what follows as
+the list for what has not moved yet:
 
 - **No stub builds a node tree.** Nothing in the suite establishes that any of the five skin
   types produces the material MPFB's own skin library panel produces.

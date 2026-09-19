@@ -21,8 +21,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 
 def _validated_object_type(object_type: object) -> str | None:
@@ -87,12 +86,12 @@ def register(mcp: FastMCP) -> None:
         cache: loading another .blend, or the user deleting an object,
         invalidates it entirely.
         """
-        # `result` (built in codegen/payloads/list_objects.py) is always plain
-        # JSON-safe data, so strict_json=True to surface a clear error if that
-        # ever stops being true, rather than silently falling back to `repr`.
-        code = codegen.assemble(
+        # `result` is always plain JSON-safe data, so strict_json=True to
+        # surface a clear error if that ever stops being true, rather than
+        # silently falling back to `repr`.
+        return backend.send(
             "list_objects.py",
             bootstrap="raising",
             params={"object_type": _validated_object_type(object_type)},
+            strict_json=True,
         )
-        return send_code(code, strict_json=True)

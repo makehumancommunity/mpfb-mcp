@@ -31,6 +31,7 @@ the ones before it work.
 | `ccc_dispatch_test.py` | What a request becomes before a handler sees it: the order of the checks, the `mpfb_unavailable` precondition with both non-`ok` states supplied rather than waited for, the handshake, and that a handler which raises does not take the server down |
 | `ddd_roundtrip_test.py` | **A real request over a real socket.** Client on a thread, dispatch on the main one, which is the add-on's production shape. This is what the headless drive mechanism bought: before it, the transport was the one part of the add-on its own tests could not reach |
 | `eee_metadata_test.py` | The two claims kept in step by hand — the reported version against the manifest, and `list_commands` against the table the dispatcher actually uses |
+| `fff_list_objects_test.py` | **The first module here whose subject is MPFB rather than the transport.** `list_objects` against a real install: the substring type match, an unrecognised type, `""` coerced to `null`, the `_ALL_TYPES` fallback, an object outside the current scene, and the `mpfb_unavailable` refusal. It also sets the three conventions the remaining twenty-three commands inherit — build a character with `HumanService.create_human()` and a snapshot-and-delete cleanup, skip with a reason when the install lacks a prerequisite, and supply a broken MPFB rather than waiting for one |
 
 **What this suite cannot establish** is that the *timer-driven* path answers the same as the
 blocking one, because there is no event loop here to drive a timer. That comparison belongs
@@ -56,7 +57,9 @@ Two:
 
 2. pytest must be installed into Blender's bundled Python. Open
    [`run_to_install_pytest.py`](run_to_install_pytest.py) in Blender's script editor and run
-   it once. You need write permission to Blender's python directory.
+   it once. You need write permission to Blender's python directory. It installs `coverage`
+   too, and the `.pth` that starts it — see [Coverage](#coverage); neither is needed to run
+   the tests.
 
 ## Why there is a `pytest.ini` here
 
@@ -64,12 +67,23 @@ To pin pytest's rootdir to this directory. Without it pytest adopts the reposito
 `pyproject.toml` as its config file, so `[tool.pytest.ini_options]` added there later for an
 unrelated reason would silently apply to this run. The two harnesses share nothing on purpose.
 
-## No coverage, for now
+## Coverage
 
-MPFB's harness produces a coverage report; this one does not. MPFB activates coverage
-through an `a1_coverage.pth` in Blender's `site-packages` that starts `coverage` *before*
-the add-on is imported — and no script in the mpfb2 repository creates that file, so
-adopting it means writing that step rather than copying it. It is worth having and is
-recorded as such in
-[../../specifications/testing.md](../../specifications/testing.md); it is deferred to the
-effort that first migrates a real command, where there will be something worth measuring.
+`execute_tests_headless.bash` writes an HTML and a JSON report into `coverage/` when Blender's own
+Python can produce one. The mechanism is MPFB's: `COVERAGE_PROCESS_START` names
+[`.coveragerc`](.coveragerc), and an `a1_coverage.pth` in Blender's `site-packages` starts coverage
+*before* the add-on is imported — without which every `class` and `def` line in it counts as
+missed, since the module was executed before measurement began. No script in the mpfb2 repository
+creates that `.pth`, so [`run_to_install_pytest.py`](run_to_install_pytest.py) writes it, and three
+things about that are deliberate:
+
+- **It is inert unless the environment asks for coverage**, and it survives a Blender whose Python
+  has no `coverage` installed. A bare `import coverage` in a `.pth` would break every start of that
+  Blender the day somebody uninstalls it.
+- **An existing `a1_coverage.pth` is left alone.** MPFB's own harness installs one, and
+  overwriting somebody's working arrangement to install an equivalent would be rude and invisible.
+- **A missing coverage tool cannot fail a passing suite.** The report is produced after Blender
+  exits, and the script's exit code is the tests'.
+
+Nothing is excluded by pattern, so the uncovered lines in `timer.py` and `ui.py` show up as what
+they are: the parts a headless suite cannot reach. FR 030 measured 77% overall with them in.

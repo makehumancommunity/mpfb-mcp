@@ -1,21 +1,31 @@
 """
 The record of what crossed the socket, and this package's logger.
 
-Every tool does the same three things: assemble a program, hand it to
-``connection.send_code()``, and return the envelope that comes back. Nothing
-kept the program afterwards and nothing recorded the response, so a failure
-inside Blender arrived as a traceback naming a line number in a program that no
-longer existed on either side of the socket. This module is that record. It
-attaches at ``send_code()`` and nowhere else, which is what keeps it out of the
-twenty tool modules, out of the payloads and out of ``codegen``.
+A tool's call is a request that crosses a socket and an envelope that comes
+back. Nothing kept the request afterwards and nothing recorded the response, so
+a failure inside Blender arrived as a traceback naming a line number in a
+program that no longer existed on either side of the socket. This module is
+that record. It attaches at the socket boundary and nowhere else, which is what
+keeps it out of the twenty-five tool modules, out of the payloads and out of
+``codegen``.
+
+**The attachment point does not move; the unit does.** There are two transports
+now, and a request is a *program* on the generated path and a *command and its
+parameters* on the bridge. Both are opened the same way and before the socket
+call, both write one file, and both add one line to the same index in call
+order - so a session that mixes the two reads as one sequence of calls rather
+than as two logs that have to be interleaved by hand. What differs is the
+file's extension and the word the error annotation uses for it, because calling
+a JSON request a "program" would be a small lie told on every failure.
 
 Two environment variables drive it, both off by default:
 
 ``MPFB_MCP_RECORD_DIR``
-    Names a directory to write a per-call record into: the exact program, the
-    full response envelope, and one line in a tab-separated index. Unset, no
-    directory is created, no file is opened, nothing is formatted, and the
-    bytes on the wire are identical.
+    Names a directory to write a per-call record into: the exact request - the
+    program on the generated path, the JSON on the bridge, byte for byte as it
+    went on the wire - the full response envelope, and one line in a
+    tab-separated index. Unset, no directory is created, no file is opened,
+    nothing is formatted, and the bytes on the wire are identical.
 
 ``MPFB_MCP_LOG_LEVEL``
     Attaches a ``stderr`` handler to this package's logger at that level. At
@@ -66,8 +76,10 @@ __all__ = (
     "LOG_LEVEL_VARIABLE",
     "RECORD_DIRECTORY_VARIABLE",
     "begin",
+    "begin_command",
     "configure_from_environment",
     "get_logger",
+    "tool_name_from_command",
     "tool_name_from_program",
 )
 
@@ -109,6 +121,15 @@ _UNKNOWN_TOOL_NAME = "unnamed"
 
 _UNSAFE_IN_A_FILENAME = re.compile(r"[^A-Za-z0-9_.-]")
 
+# What each transport's request file is called, and what a failure calls it.
+# The response file is ``.json`` on both paths and keeps that name, so a mixed
+# run's directory listing pairs a request with its answer by sequence number
+# whichever transport carried it.
+_PROGRAM_EXTENSION = ".py"
+_PROGRAM_KEY = "program"
+_REQUEST_EXTENSION = "-request.json"
+_REQUEST_KEY = "request"
+
 _LOG = logging.getLogger(__name__)
 
 # Rebuilt by configure_from_environment(); None means the record is off.
@@ -142,10 +163,31 @@ def tool_name_from_program(code: str) -> str:
     name = match.group("name").strip()
     if name.endswith(".py"):
         name = name[:-len(".py")]
-    # The name becomes part of a filename, and a hand-assembled program could
-    # put anything after the marker.
-    name = _UNSAFE_IN_A_FILENAME.sub("_", name)
-    return name or _UNKNOWN_TOOL_NAME
+    return _safe_file_name(name)
+
+
+def tool_name_from_command(command: str) -> str:
+    """Name a bridge call from the command it dispatches.
+
+    The command names the call directly, so there is nothing to parse: a
+    payload seam marker exists because a program carries no other statement of
+    what it is, and a request that names its command needs no such device.
+    Payload and command share a name by convention - ``list_objects.py`` becomes
+    ``list_objects`` - so a mixed run's index stays sorted by the same word
+    whichever transport a line came from.
+    """
+    return _safe_file_name(str(command).strip())
+
+
+def _safe_file_name(name: str) -> str:
+    """One call's name, reduced to something that cannot escape a directory.
+
+    Nothing in this package produces a name needing this. A hand-assembled
+    program could put anything after the payload marker, and a command name
+    reaches here from a caller's argument; either way the name becomes part of
+    a filename.
+    """
+    return _UNSAFE_IN_A_FILENAME.sub("_", name) or _UNKNOWN_TOOL_NAME
 
 
 def configure_from_environment() -> None:
@@ -162,22 +204,40 @@ def configure_from_environment() -> None:
 
 
 def begin(code: str) -> "_CallRecord | _DisabledRecord":
-    """Open a record for one call, writing the program *before* it is sent.
+    """Open a record for one generated-code call, writing the program first.
 
-    Writing the program up front is the point rather than an implementation
+    Writing the request up front is the point rather than an implementation
     detail: a call that hangs, times out or takes Blender down still leaves
-    behind the program that did it. Writing both files together after the
-    response arrives would lose exactly the cases this exists for.
+    behind what caused it. Writing both files together after the response
+    arrives would lose exactly the cases this exists for.
 
     Returns a shared do-nothing record when neither the record nor an
     INFO-level log is enabled, so that the disabled path - the one every
     existing test exercises - performs no formatting, no ``perf_counter()``
     bracketing that feeds nothing, and no directory probing.
     """
+    return _begin(tool_name_from_program(code), code, _PROGRAM_EXTENSION, _PROGRAM_KEY)
+
+
+def begin_command(command: str, request: str) -> "_CallRecord | _DisabledRecord":
+    """Open a record for one bridge call, writing the request first.
+
+    ``request`` is the serialized JSON, and it is written verbatim - the same
+    string the client is about to put on the wire, so the record cannot drift
+    from the call it describes. That is the same property the generated path's
+    program file has, and it is why the request is not re-serialized here for
+    readability: a record that is *nearly* what was sent is a record that has
+    to be argued with.
+    """
+    return _begin(tool_name_from_command(command), request, _REQUEST_EXTENSION, _REQUEST_KEY)
+
+
+def _begin(tool: str, request: str, extension: str,
+           annotation_key: str) -> "_CallRecord | _DisabledRecord":
     recorder = _recorder
     if recorder is None and not _logging_per_call:
         return _DISABLED_RECORD
-    return _CallRecord(recorder, code)
+    return _CallRecord(recorder, tool, request, extension, annotation_key)
 
 
 class _DisabledRecord:
@@ -197,26 +257,35 @@ _DISABLED_RECORD = _DisabledRecord()
 
 
 class _CallRecord:
-    """One call: the program on disk before it is sent, the envelope after.
+    """One call: the request on disk before it is sent, the envelope after.
+
+    The same record serves both transports, which is the point: what differs
+    between a program and a command is the extension of one file and the word
+    an error annotation uses for it, and everything else - the sequence number,
+    the timestamp, the index line, the duration, the log line - is a property of
+    *a call* rather than of how it travelled.
 
     Also handles the configuration where ``MPFB_MCP_LOG_LEVEL`` is set but
     ``MPFB_MCP_RECORD_DIR`` is not - there is a duration and a log line, but no
     files and no index. ``directory`` is then ``None``.
     """
 
-    def __init__(self, recorder: "_Recorder | None", code: str) -> None:
+    def __init__(self, recorder: "_Recorder | None", tool: str, request: str,
+                 extension: str, annotation_key: str) -> None:
         self._recorder = recorder
-        self.tool = tool_name_from_program(code)
-        self.program_bytes = len(code.encode("utf-8"))
+        self._annotation_key = annotation_key
+        self.tool = tool
+        self.request_bytes = len(request.encode("utf-8"))
         self.sequence = 0
-        self.program_path: str | None = None
+        self.request_path: str | None = None
         self.response_path: str | None = None
         self.timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat(
             timespec="milliseconds")
         if recorder is not None:
             self.sequence = recorder.next_sequence_number()
-            self.program_path = recorder.write_program(self.sequence, self.tool, code)
-        # Taken last, so that writing the program is not counted as part of the
+            self.request_path = recorder.write_request(
+                self.sequence, self.tool, request, extension)
+        # Taken last, so that writing the request is not counted as part of the
         # round trip it is about to measure.
         self._started = time.perf_counter()
 
@@ -231,36 +300,40 @@ class _CallRecord:
         self._append_index_line(duration, status, response_bytes)
         _LOG.info(
             "%s: %d bytes sent, %s in %s ms",
-            self.tool, self.program_bytes, status, duration)
+            self.tool, self.request_bytes, status, duration)
 
     def failed(self, exception: BaseException) -> None:
         """Record a call that raised rather than returning an envelope.
 
-        There is a program and a duration but no response file, and the index
+        There is a request and a duration but no response file, and the index
         says ``no-response`` rather than leaving the missing file unexplained.
         """
         duration = self._elapsed_milliseconds()
         self._append_index_line(duration, "no-response", _INDEX_MISSING)
         _LOG.info(
             "%s: %d bytes sent, no response after %s ms (%s)",
-            self.tool, self.program_bytes, duration, exception)
+            self.tool, self.request_bytes, duration, exception)
 
     def annotate(self, response: dict[str, object]) -> dict[str, object]:
         """Name the record's files on an error envelope, and only there.
 
-        Tools return blender_mcp's envelope as-is, which is a standing
+        A tool returns the envelope it was given, which is a standing
         convention rather than an accident, so this is deliberately narrow: an
         error envelope only, and only while the record is enabled. The reason
         to do it at all is that whoever reads the failure is usually an agent
         rather than the person who set the variable, and a failure that does
         not say where its own evidence landed wastes the record.
+
+        The key naming the request file is the transport's word for it -
+        ``program`` for generated code, ``request`` for a bridge command - so
+        that an agent reading a failure is told what it is about to open.
         """
-        if self.program_path is None:
+        if self.request_path is None:
             return response
         try:
             if not isinstance(response, dict) or response.get("status") != "error":
                 return response
-            record: dict[str, object] = {"program": self.program_path}
+            record: dict[str, object] = {self._annotation_key: self.request_path}
             if self.response_path is not None:
                 record["response"] = self.response_path
             response["mpfb_mcp_record"] = record
@@ -275,7 +348,7 @@ class _CallRecord:
         if self._recorder is None:
             return
         self._recorder.append_index_line("{:04d}\t{:s}\t{:s}\t{:d}\t{:s}\t{:s}\t{:s}\n".format(
-            self.sequence, self.timestamp, self.tool, self.program_bytes,
+            self.sequence, self.timestamp, self.tool, self.request_bytes,
             duration, status, response_bytes))
 
 
@@ -299,21 +372,25 @@ class _Recorder:
             self._sequence += 1
             return self._sequence
 
-    def write_program(self, sequence: int, tool: str, code: str) -> str | None:
-        """Write the program byte-for-byte as it was handed to ``send_code()``.
+    def write_request(self, sequence: int, tool: str, request: str,
+                      extension: str) -> str | None:
+        """Write the request byte-for-byte as it was handed to the transport.
 
-        No prettifying, no truncation, no re-wrapping: the one job this file
-        has is to be the thing a traceback's line number can be resolved
-        against, and a 52 KB file with its middle elided cannot do it.
+        No prettifying, no truncation, no re-wrapping, and that holds for both
+        transports. On the generated path the one job this file has is to be
+        the thing a traceback's line number can be resolved against, and a
+        52 KB file with its middle elided cannot do it; on the bridge the job
+        is to be the request that can be replayed, which an indented copy of it
+        is not.
         """
-        path = self._path_for(sequence, tool, ".py")
+        path = self._path_for(sequence, tool, extension)
         if path is None:
             return None
         try:
             with open(path, "w", encoding="utf-8", newline="") as stream:
-                stream.write(code)
+                stream.write(request)
         except OSError as ex:
-            _warn_once("Could not write the program record: {:s}".format(str(ex)))
+            _warn_once("Could not write the request record: {:s}".format(str(ex)))
             return None
         return path
 

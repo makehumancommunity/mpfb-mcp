@@ -7,3 +7,6 @@ venv/
 build/
 dist/
 verification/results/
+bridge/test/.coverage
+bridge/test/.coverage.*
+bridge/test/coverage/

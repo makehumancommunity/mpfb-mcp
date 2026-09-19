@@ -4,14 +4,21 @@
 
 > **Written against the generated-code path, and that is still correct.**
 > [FR 028](../done/028-pivot-to-specific-addon/README.md) decided that MPFB's Blender-side logic
-> moves into a bridge add-on and
-> [FR 029](../done/029-bridge-transport-and-skeleton/README.md) built the add-on out to where
-> commands can be added to it, but neither migrated a tool and the generated-code path is what
-> every tool uses today — so a payload, a shared fragment and `send_code()` all still mean what they
-> mean here. The one thing to weigh is **scheduling**: a tool that lands before
-> [the migration](../NEXT_STEPS.md#a-larger-pivot-an-mpfb-specific-bridge-add-on) reaches its
-> capability area is a tool the migration then has to carry. That is a reason to sequence, not a
-> reason to wait, and nothing in this request needs rewriting either way.
+> moves into a bridge add-on, [FR 029](../done/029-bridge-transport-and-skeleton/README.md) built
+> the add-on out to where commands can be added to it, and
+> [FR 030](../done/030-backend-seam/README.md) built the seam on mpfb-mcp's side and migrated
+> exactly one tool across it. Twenty-four tools — including every tool this request touches — are
+> still on the generated-code path, and in the default configuration so is the twenty-fifth, so a
+> payload, a shared fragment and `send_code()` all still mean what they mean here.
+>
+> Two things to weigh, neither of which needs this text rewritten. **Scheduling**: a tool that
+> lands before [the migration](../NEXT_STEPS.md#a-larger-pivot-an-mpfb-specific-bridge-add-on)
+> reaches its capability area is a tool the migration then has to carry — a reason to sequence,
+> not a reason to wait. And **there is now a choice**: a new tool could be written as a bridge
+> command from the start, registered in `backend.MIGRATED_COMMANDS`, rather than as a payload to
+> be migrated later. Whether that is worth doing depends on when this request runs relative to its
+> capability area's migration stage, and it is that request's call to make explicitly rather than
+> by default.
 
 
 [FR 011](../done/011-skin-and-materials/README.md) documented the alternative-material listing as

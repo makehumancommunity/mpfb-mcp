@@ -26,8 +26,24 @@ without it. The run also writes its full result — the printed lines are capped
 into `verification/results/`, overridable with `MPFB_MCP_VERIFICATION_RESULTS`.
 
 Requirements: a running Blender with MPFB and the blender_mcp add-on enabled and its socket server
-started (see [CLAUDE.md](../CLAUDE.md#commands)). Nothing else is required. Where the install
-lacks a prerequisite — no MHCLO assets, no skins, Rigify disabled — the affected tools report
+started (see [CLAUDE.md](../CLAUDE.md#commands)). Nothing else is required in the default
+configuration.
+
+**A run with `MPFB_MCP_BACKEND=bridge` needs both add-ons, and that is transitional.** One tool,
+`mpfb_list_objects`, has a bridge command since
+[FR 030](../feature-requests/done/030-backend-seam/README.md), while this harness's own scene
+bookkeeping — the scratch scene, the snapshots, the cleanup — goes through `send_code()` directly,
+because it is instrument rather than tool and it goes away with the generated path. So a bridge-
+configuration run needs MPFB, blender_mcp **and** the MPFB Bridge enabled in one Blender, with both
+socket servers started (9876 and 9877). That is fine and temporary; stating it is cheaper than
+meeting it as a puzzle. The run is otherwise identical, and the two configurations must both pass:
+
+```bash
+PYTHONPATH=. python3 verification/smoke.py
+MPFB_MCP_BACKEND=bridge PYTHONPATH=. python3 verification/smoke.py
+```
+
+Where the install lacks a prerequisite — no MHCLO assets, no skins, Rigify disabled — the affected tools report
 `skipped` **with the reason**, the run still passes, and the summary names every tool it could not
 exercise. A skip never reads as a pass.
 

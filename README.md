@@ -6,7 +6,15 @@ MPFB-related code.
 
 ## Status
 
-Proof of concept. Twenty-five tools are implemented.
+Proof of concept, and mid-pivot. Twenty-five tools are implemented.
+
+The Blender-side logic is moving out of generated Python and into a companion add-on of our own,
+the **MPFB Bridge** in [bridge/](bridge), which dispatches named commands instead of executing
+programs. One tool, `mpfb_list_objects`, has made the crossing; the other twenty-four still send
+programs to blender_mcp, and so does that one unless `MPFB_MCP_BACKEND=bridge` says otherwise. The
+default is the system that already worked, so an upgrade changes nothing until it is configured to.
+See [CLAUDE.md](CLAUDE.md#commands) for the two environment variables and
+[NEXT_STEPS.md](feature-requests/NEXT_STEPS.md) for what remains.
 
 **Introspection** — read-only, and each of them always answers rather than failing:
 

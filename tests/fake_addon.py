@@ -96,7 +96,13 @@ class EnvVarTestCase(unittest.TestCase):
                         responder=None) -> FakeAddonServer:
         """Start a fake add-on on a free port and point the environment at it."""
         server = FakeAddonServer(response=response, responder=responder)
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        # A short poll interval because ``shutdown()`` waits for the loop to
+        # notice, and the default half-second is paid once per test that starts
+        # one of these. That was a rounding error while two modules used this
+        # and is not one now that a test can start a fake add-on *and* a fake
+        # bridge to assert which of them was spoken to.
+        thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01},
+                                  daemon=True)
         thread.start()
         self.addCleanup(server.server_close)
         self.addCleanup(server.shutdown)

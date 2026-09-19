@@ -42,11 +42,14 @@ lifecycle that on completion folds durable decisions into `specifications/`, mov
 
 Proof of concept, and **mid-pivot**: the Blender-side logic is moving out of generated Python
 and into a companion add-on of our own, the MPFB Bridge in [bridge/](bridge). That is
-[FR 028](feature-requests/done/028-pivot-to-specific-addon/README.md), which landed the decision and a
-working transport and migrated no tool; the six efforts that do the migration are in
+[FR 028](feature-requests/done/028-pivot-to-specific-addon/README.md), which landed the decision and
+a working transport and migrated no tool. Since
+[FR 030](feature-requests/done/030-backend-seam/README.md) there is a **seam** below the send
+([backend.py](src/mpfbmcp/backend.py)) and **one tool migrated across it**, `mpfb_list_objects`,
+which is where the two-backend arrangement under Commands comes from. The remaining efforts are in
 [NEXT_STEPS.md](feature-requests/NEXT_STEPS.md#a-larger-pivot-an-mpfb-specific-bridge-add-on).
-**Everything below describes what runs today**, which is the generated-code path, and will keep
-running until the last tool has moved.
+**Everything below describes what runs today**: the generated-code path for twenty-four tools,
+and for all twenty-five in the default configuration, until the last tool has moved.
 
 **Twenty-five tools are implemented, and all twenty-five have been run against a
 real Blender.** [README.md](README.md) lists them by purpose;
@@ -94,6 +97,8 @@ python3 -m unittest tests.test_create_human.CreateHumanToolTests.test_default_ca
 # headless Blender, because the add-on under test is a Blender extension. Needs the
 # add-on enabled and symlinked to this checkout, and pytest in Blender's own Python
 # (bridge/test/README.md). `unittest discover -s tests` must never find these.
+# Writes a coverage report into bridge/test/coverage/ when Blender's Python has
+# coverage and the a1_coverage.pth; without them the tests run unchanged.
 BLENDER_EXE=$(which blender) bridge/test/execute_tests_headless.bash
 
 # Run the bridge in a Blender with no screen. The GUI start operator refuses
@@ -105,6 +110,29 @@ blender --background --command mpfb_bridge
 `mcp[cli]` is pinned to `<2` ([pyproject.toml](pyproject.toml)) — mcp 2.x renamed `FastMCP` to
 `MCPServer` and changed other APIs this code (and the currently-on-disk blender_mcp) is written
 against. Check whether blender_mcp has migrated before bumping this.
+
+**Which backend a tool talks to is configuration, and the default is the system that already
+worked.** `MPFB_MCP_BACKEND` is `blender_mcp` (the default) or `bridge`; an unrecognised name is an
+error rather than a silent fallback. `MPFB_BRIDGE_HOST` / `MPFB_BRIDGE_PORT` address the bridge,
+defaulting to `127.0.0.1` and `9877`. Only tools named in `backend.MIGRATED_COMMANDS` have a bridge
+command at all — one, `mpfb_list_objects` — and the rest take the generated path whatever is set:
+
+```bash
+# Every tool exactly as before. Twenty-four have no other path.
+mpfb-mcp
+
+# mpfb_list_objects over the bridge; the other twenty-four unchanged.
+MPFB_MCP_BACKEND=bridge mpfb-mcp
+```
+
+**Transitional, and it goes away with the generated path**: a Blender that serves both backends
+needs *both* add-ons enabled and *both* socket servers started — blender_mcp on 9876 and the MPFB
+Bridge on 9877. That is what [verification/](verification/README.md) needs for a run in the bridge
+configuration, since its scene bookkeeping goes over `send_code()`, and what
+[FR 030's own check](feature-requests/done/030-backend-seam/check_backend_seam.py) needs in order
+to compare the two paths at all. One configuration mistake is worth knowing about and is not
+guarded against: `BLENDER_MCP_PORT=9877` points the generated-code client at an add-on that does
+not execute programs, and the resulting `malformed_request` is the diagnosis.
 
 To exercise a tool against real Blender: start Blender with MPFB and the blender_mcp add-on
 installed and enabled, start the add-on's socket server from its preferences panel (default
@@ -182,7 +210,7 @@ mpfb-mcp tool  →  {"command": ..., "params": {...}}  →  TCP 127.0.0.1:9877
 | Path | What it is |
 |------|------------|
 | [bridge/mpfb_bridge/](bridge/mpfb_bridge) | The add-on. `command_server.py` is the socket, the framing and the dispatch, and imports no `bpy`; `commands/table.py` is the closed vocabulary and is the one file to read to know everything the add-on can be asked to do, with one module per command beside it; `validation.py` is what a command declares it takes; `mpfb_resolution.py` is the `sys.modules` scan; `stats.py` is what the panel paints; `ui.py`, `timer.py` and `cli.py` are the Blender-facing halves — `timer.py` drives the server in a windowed Blender and `cli.py` in a headless one. Operator ids are prefixed `mpfb_bridge.`, **never** `mpfb.` |
-| [bridge/test/](bridge/test) | Its harness: pytest in a headless Blender, MPFB's arrangement. Not discovered by `unittest discover -s tests`, and must never be |
+| [bridge/test/](bridge/test) | Its harness: pytest in a headless Blender, MPFB's arrangement. Not discovered by `unittest discover -s tests`, and must never be. Since FR 030 it also produces a coverage report, through a `.coveragerc` here and an `a1_coverage.pth` that `run_to_install_pytest.py` writes into Blender's own site-packages |
 | `bridge/.pylintrc`, `bridge/pyrightconfig.json`, `bridge/requirements-dev.txt` | MPFB's, copied and retargeted. Where this repository's conventions and MPFB's disagree about add-on code, MPFB's win |
 
 The principles behind this layout are in
@@ -191,8 +219,10 @@ map, and carries only what is not stated there or in its sibling specifications.
 
 | Module | What it is, and the local detail |
 |--------|----------------------------------|
+| [backend.py](src/mpfbmcp/backend.py) | **The seam**, and the one file that knows there are two transports. Reads `MPFB_MCP_BACKEND`, holds `MIGRATED_COMMANDS` — the payload-to-command table that *is* the list of what has been migrated — and gives a generated-code error envelope the `error: "command_failed"` slug the bridge writes itself. A tool calls `backend.send()` with what it used to hand `codegen.assemble()`; no tool module learns which transport it is on. ([rationale](specifications/architecture.md#supporting-a-second-backend)) |
+| [bridge_connection.py](src/mpfbmcp/bridge_connection.py) | The bridge's wire client: JSON + NUL framing, `MPFB_BRIDGE_HOST`/`MPFB_BRIDGE_PORT`, and **the client half of the handshake** — every request declares `protocol_version`, and the first call per `(host, port)` probes `get_status` for `min_supported_protocol_version`, memoised thereafter and dropped on a connection failure. A sibling of `connection.py` rather than a modification of it: the two protocols differ, and its own `PROTOCOL_VERSION` is a hand-kept duplicate of the add-on's. ([rationale](specifications/architecture.md#the-wire)) |
 | [connection.py](src/mpfbmcp/connection.py) | The wire client: JSON request + NUL-delimiter framing, `BLENDER_MCP_HOST`/`BLENDER_MCP_PORT`. A deliberate standalone **duplicate** of blender_mcp's protocol, not an import of it, so mpfb-mcp installs without a blender_mcp checkout. **If blender_mcp's wire protocol changes, this must be updated to match by hand.** ([rationale](specifications/architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp)) |
-| [observability.py](src/mpfbmcp/observability.py) | The per-call record and this package's logger. Hangs off `send_code()` and nowhere else. The program is written to disk **before** the socket call, so a call that hangs, times out or takes Blender down still leaves the program that did it. **Never write to stdout from anywhere in this package** — it is the JSON-RPC channel. ([rationale](specifications/observability.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program)) |
+| [observability.py](src/mpfbmcp/observability.py) | The per-call record and this package's logger. Hangs off the two send functions and nowhere else; `begin()` opens a record for a program and `begin_command()` for a bridge request, into one directory and one index in call order. The program is written to disk **before** the socket call, so a call that hangs, times out or takes Blender down still leaves the program that did it. **Never write to stdout from anywhere in this package** — it is the JSON-RPC channel. ([rationale](specifications/observability.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program)) |
 | [codegen/](src/mpfbmcp/codegen) | Assembles the source executed inside Blender, in a fixed order: bootstrap, parameter prelude, optional shared fragments, payload. One entry point: `codegen.assemble("create_human.py", bootstrap="raising", params={...}, shared=["rig_lookup.py"])`. Fragments passed as `cached_shared=[...]` instead go through the session source cache below. ([rationale](specifications/architecture.md#code-generation-layout)) |
 | [codegen/shared_loader.py](src/mpfbmcp/codegen/shared_loader.py) | The other part still written as a string, and the reason: **a program costs ~250 ms per 4 KB on the wire (~1 s idle) whatever it does**, because the add-on reads one 4 KB chunk per timer tick. `SHARED_SOURCE_LOADER` lets a fragment be sent once per Blender session and named thereafter, keyed by a hash of its own source in a `sys.modules` module of ours. **What is cached is source, never what a fragment computed** — so nothing can be stale and no tool needs a `refresh`. ([rationale](specifications/architecture.md#generated-code-may-keep-its-own-source-inside-blender)) |
 | [shared_cache.py](src/mpfbmcp/shared_cache.py) | The tool side of that: `send()` decides whether this call carries its fragments' source, and re-sends once if Blender turns out not to hold them (Blender restarted). Used by the four tools that share `target_categories.py`; a tool not using it is unaffected. |
@@ -224,7 +254,7 @@ one.
 |------|-------------------------------|
 | `mpfb_get_status` | Absence is an answer: classifies the install `absent`/`not_initialized`/`ok` rather than failing. The only user of `MPFB_STATUS_BOOTSTRAP`. |
 | `mpfb_create_human` | Wraps `HumanService.create_human()`. Eleven flat macro sliders rather than a nested dict. |
-| `mpfb_list_objects` | Which MakeHuman objects are in the scene. Validates argument *shape*, never the type vocabulary — the payload answers that with `type_recognized`/`known_types`. |
+| `mpfb_list_objects` | Which MakeHuman objects are in the scene. Validates argument *shape*, never the type vocabulary — the far side answers that with `type_recognized`/`known_types`. **The one migrated tool**: it has a bridge command (`bridge/mpfb_bridge/commands/list_objects.py`) as well as a payload, and takes the bridge when `MPFB_MCP_BACKEND=bridge`. The two were compared field by field against one Blender by FR 030. |
 | `mpfb_get_object_info` | What an object is, what it was made from, what belongs with it. Three `asset_info` shapes, three resolution outcomes each. |
 | `mpfb_list_rigs` | Catalogue. Predicts, per rig, which file would load and whose weights come with it — via `rig_lookup.py`, so `mpfb_add_rig` cannot disagree. |
 | `mpfb_list_assets` | Catalogue, and the first answer that does not fit: filtered, capped and paged. Reports `pack` (from a directory convention) and both the passable `path` and the portable `fragment`. |
@@ -276,8 +306,11 @@ These are the specific local checks, and each exists because the alternative fai
 
 ## Tests
 
-Stdlib `unittest`, no pytest, 886 tests. Two layers per tool: the wrapper with `send_code`
-mocked, then the assembled source `exec()`'d against stub Blender and stub MPFB services.
+Stdlib `unittest`, no pytest, 945 tests. Two layers per tool: the wrapper with `send_code`
+mocked, then the assembled source `exec()`'d against stub Blender and stub MPFB services. **The
+one migrated tool has three** — wrapper, bridge path, payload — and the payload layer is
+[frozen](specifications/testing.md#a-migrated-tool-is-tested-where-it-runs), because everything
+about what that tool *answers* is now checked against a real MPFB in `bridge/test/`.
 **`bridge/` has a second harness of its own** — pytest inside a headless Blender, MPFB's
 arrangement rather than this one — and the split is at the directory boundary: a bridge test
 imports `bpy` and would fail at import, so `unittest discover -s tests` must never find one. See
@@ -290,15 +323,18 @@ convenient values, and the list of what the suite can never establish.
 | Module | What it covers |
 |--------|----------------|
 | [fake_addon.py](tests/fake_addon.py) | No tests. The throwaway `socketserver.TCPServer` standing in for the add-on, plus env-var bookkeeping. Can answer differently per request, answer nothing and close, and keep the raw request bytes. |
+| [fake_bridge.py](tests/fake_bridge.py) | No tests. The same three abilities for the *bridge*, plus two it needs: an answer delivered in chunks, and a raw-bytes answer for a reply that is not a well-formed frame. A sibling rather than an extension of `fake_addon`, because a fake serving both protocols would have to be told which one it was being. |
 | [blender_stubs.py](tests/blender_stubs.py) | No tests. The stub scene and stub services every payload below is executed against, plus the shared `GeneratedCodeTestCase`, `DetailTargetTestCase`, `RigTestCase` and `MeshAssetTestCase`. Its docstring enumerates every MPFB quirk it reproduces and why. |
 | [test_connection.py](tests/test_connection.py) | The wire protocol: framing, error envelopes, host/port env vars. |
+| [test_bridge_connection.py](tests/test_bridge_connection.py) | The bridge's wire protocol and the handshake: framing across a split `recv()`, a refused connection naming the preferences panel, one probe per address rather than one per call, a mismatch in both directions naming which end to upgrade, and the hand-kept `PROTOCOL_VERSION` read out of the add-on's source (skipped where that source is absent). |
+| [test_backend.py](tests/test_backend.py) | The seam: the default, an unrecognised value failing rather than falling back, a migrated tool following the preference and an unmigrated one unable to leave the generated path, and the envelope mapping. Routing is asserted by *which fake server was spoken to*, not by which mock was called. |
 | [test_observability.py](tests/test_observability.py) | The one component fully testable on this side of the socket, and held to a higher bar accordingly. |
 | [test_description_budget.py](tests/test_description_budget.py) | What an MCP client downloads before any work happens, measured against a ceiling. Run as a script it prints the per-tool table instead. |
 | [test_shared_cache.py](tests/test_shared_cache.py) | The session source cache, both ends: what a program does with a fragment Blender does not hold, and what `shared_cache.send()` does about it. Its one behavioural claim is that a target installed between two calls is still seen — which caching *source* keeps for free and caching *answers* would not have. |
 | [test_codegen.py](tests/test_codegen.py) | Assembly: every payload compiles standalone and both ways through the source cache, the right bootstrap is selected, `PARAMS` round-trips. Also the three fragments that can be run directly — `performed.py`, `refit_blocker.py`, `modifier_reading.py` — and, for each, the drift check that no payload keeps an implementation of its own. |
 | [test_create_human.py](tests/test_create_human.py) | Parameter validation and generated source, `send_code` mocked. |
 | [test_get_status.py](tests/test_get_status.py) | The three-state branching, `exec()`'d against stubbed `bpy` and `sys.modules` entries. |
-| [test_list_objects.py](tests/test_list_objects.py), [test_get_object_info.py](tests/test_get_object_info.py) | Subject resolution by name and by active object, the relationship walk, three `asset_info` shapes. |
+| [test_list_objects.py](tests/test_list_objects.py), [test_get_object_info.py](tests/test_get_object_info.py) | Subject resolution by name and by active object, the relationship walk, three `asset_info` shapes. `test_list_objects` is the migrated one and reads as the template for the twenty-three to come: a thin bridge-path class, and a payload class marked frozen. |
 | [test_list_rigs.py](tests/test_list_rigs.py) | Over a real `tempfile` rig tree — the payload's job *is* `os.listdir()`. Carries a rig with no weights of its own, a weights file with no rig, a rig absent from the UI enum. |
 | [test_list_targets.py](tests/test_list_targets.py) | Over a real `tempfile` target tree, carrying the two-source merge, the `.target.gz` MPFB's own scan misses, and a name long enough to be encoded. Since FR 017 the tree is scanned by `target_categories.py`, so the catalogue and the tools acting on it read one implementation. |
 | [test_list_assets.py](tests/test_list_assets.py) | The opposite choice: this payload asks `AssetService`, so the *service* is what the stub reproduces, quirks first. |

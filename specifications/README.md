@@ -34,14 +34,16 @@ on.
 mpfb-mcp's Blender-side logic is moving out of generated Python sent over a third party's add-on
 socket and into a companion add-on of our own, the **MPFB Bridge**, with a closed command
 vocabulary. `vision.md` and `architecture.md` were rewritten to describe the bridge; the
-generated-code path is **what every tool actually uses today**, and it is documented — not merely
+generated-code path is **what twenty-four of the twenty-five tools use today**, and what all
+twenty-five use unless the backend is configured otherwise, and it is documented — not merely
 mentioned — under
 [The generated-code path](architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired),
 where it is plainly marked as being retired. The other six documents are largely indifferent to
 which transport is underneath, and say so where they are not.
 
-Neither half is aspirational prose about a machine nobody has built: the bridge exists as a proof
-of concept, and the generated-code path runs twenty-five tools. What is *planned* is the migration
+Neither half is aspirational prose about a machine nobody has built: the bridge exists, answers
+one migrated tool's calls and has been compared field by field against the path it replaces, and
+the generated-code path runs the other twenty-four. What is *planned* is the migration
 between them, and that lives in
 [NEXT_STEPS.md](../feature-requests/NEXT_STEPS.md#a-larger-pivot-an-mpfb-specific-bridge-add-on)
 rather than here.

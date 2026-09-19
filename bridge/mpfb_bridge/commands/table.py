@@ -37,6 +37,7 @@ __all__ = (
 
 from . import get_status
 from . import list_commands
+from . import list_objects
 from .command import Command
 
 COMMANDS = {
@@ -58,4 +59,14 @@ COMMANDS = {
         # against a broken install should still get an answer.
         requires_mpfb=False,
         summary=list_commands.SUMMARY),
+    "list_objects": Command(
+        name="list_objects",
+        handler=list_objects.list_objects,
+        params=list_objects.PARAMS,
+        # True, and the first in this table. Everything this command can say is
+        # read out of MPFB's ObjectService, so a Blender without MPFB has no
+        # answer to give - and "no MakeHuman objects in this scene" would be a
+        # plausible-looking lie rather than a missing answer.
+        requires_mpfb=True,
+        summary=list_objects.SUMMARY),
 }

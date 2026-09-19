@@ -14,16 +14,18 @@ records what has already landed and why. When an effort below is finished, move 
 [HISTORY.md](HISTORY.md#fr-028--the-pivot-to-a-bridge-add-on-decided-and-proved) for what it
 landed. It made the decision and proved the transport, and
 [FR 029](done/029-bridge-transport-and-skeleton/README.md) grew the add-on into something
-twenty-five commands can be added to. The five efforts below are what remains, and they run in
-order.**
+twenty-five commands can be added to, and [FR 030](done/030-backend-seam/README.md) built the
+seam on mpfb-mcp's side and migrated the first tool across it. The four efforts below are what
+remains, and they run in order.**
 
 The fundamental principle of the solution changed: instead of assembling Python programs and
 sending them over a third party's MCP add-on socket, MPFB's Blender-side logic moves into a
 companion add-on of our own — the **MPFB Bridge**, in [`bridge/`](../bridge) — with a closed
 command vocabulary and its own socket, and mpfb-mcp becomes a thin client. FR 028 *planned* that
 pivot: it proved the transport, rewrote [vision.md](../specifications/vision.md) and
-[architecture.md](../specifications/architecture.md), and migrated no tool. What runs today is
-still the generated-code path, documented as such in
+[architecture.md](../specifications/architecture.md), and migrated no tool. What runs today is the
+generated-code path for twenty-four tools and for all twenty-five in the default configuration,
+documented as such in
 [The generated-code path](../specifications/architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired).
 
 **Every one of these lands with both paths still working.** That is the property the whole staged
@@ -51,40 +53,51 @@ verified to give identical answers, so nothing below has to test both.
 **What it explicitly did not establish**: anything about the twenty-three commands still to be
 written, or about how much of MPFB works in a headless Blender.
 
-### 2. The server-side backend seam
+<a id="2-the-server-side-backend-seam"></a>
 
-**Scoped as [FR 030](030-backend-seam/README.md) (Accepted).**
+### ~~2. The server-side backend seam~~ — done
 
-mpfb-mcp learns to talk to the bridge. The seam is an adapter *below* the send, so no tool module
-learns which transport it is on —
-[Supporting a second backend](../specifications/architecture.md#supporting-a-second-backend)
-already says where it goes, having been designed for a different second backend and spent on this
-one instead.
+**[FR 030](done/030-backend-seam/README.md) landed it** — see
+[HISTORY.md](HISTORY.md#fr-030--the-backend-seam-and-the-first-migrated-tool). The seam
+(`src/mpfbmcp/backend.py`), the bridge's wire client and the client half of the handshake
+(`src/mpfbmcp/bridge_connection.py`), `MPFB_MCP_BACKEND` / `MPFB_BRIDGE_HOST` / `MPFB_BRIDGE_PORT`,
+the record's unit becoming a request rather than a program, and **one tool migrated** —
+`mpfb_list_objects`, chosen for being dull.
 
-**The client half of the protocol handshake belongs to this effort.** FR 029 built the bridge's
-half — every answer carries `protocol_version`, `get_status` also reports
-`min_supported_protocol_version`, and a request declaring a version outside the range is refused
-with `protocol_mismatch` — and left the checking to whoever first speaks to it, which is this.
+**Four things it settled that the efforts below inherit.** The two paths were compared field by
+field against one Blender and agree, which is the claim stages 3 to 5 rest on and which had never
+been checked. The migration's cost is known: 4,664 bytes of program against 83 bytes of JSON,
+461 ms against 58 ms at the add-on's default tick. Where a migrated tool is tested is now a rule
+rather than a judgement — everything the add-on side can check is checked there, against a real
+MPFB, and what stays in `tests/` is a closed list
+([testing.md](../specifications/testing.md#a-migrated-tool-is-tested-where-it-runs)). And the
+seam's table is the migration's progress bar: **stage 3 and stage 4 add lines to it, and stage 5
+empties it.**
 
-**Backend selection is explicit configuration, never autodetection**, and that bullet is the one
-that constrains this effort directly: both third-party add-ons answer on 9876, the bridge answers
-on 9877, and no single probe distinguishes any of them — a NUL-terminated ping leaves the
-community add-on's parser waiting, while an unterminated one leaves blender lab's doing the same.
-mpfb-mcp must be *told*.
+**What it explicitly did not establish**: anything about a batched, mutating, fragment-carrying or
+file-writing tool, and nothing about what happens to 14.2k lines of tests when a payload with real
+logic in it becomes add-on code. The one measurement it can offer is a floor — the migrated tool's
+payload layer was 27% of its test module, for 87 lines of payload whose logic is a filter and a
+substring test.
 
-One tool is migrated here, chosen for being dull rather than representative, and both paths are
-run side by side on a real Blender so the answers can be compared rather than assumed equal.
-[observability.md](../specifications/observability.md) is rewritten by this effort: the record's
-unit stops being a program. So are
-[responses.md](../specifications/responses.md) and
-[tool-interface.md](../specifications/tool-interface.md), whose "returns blender_mcp's envelope
-as-is" needs a new referent.
+**One transitional cost it created**, which stages 3 and 4 live with: a `verification/` run in the
+bridge configuration needs *both* add-ons enabled and both servers started in one Blender, because
+the harness's own scene bookkeeping goes over `send_code()`. It is written down in
+[verification/README.md](../verification/README.md) and it goes away with the generated path.
 
 ### 3. Introspection and catalogues migrated
 
-The nine read-only tools, in batches by capability area — **a catalogue and the tool acting on it
-are designed as a pair and must move together**, because the whole point of the pairing is that
-the identifiers agree.
+The read-only tools, in batches by capability area — **a catalogue and the tool acting on it are
+designed as a pair and must move together**, because the whole point of the pairing is that the
+identifiers agree. Nine of them were in scope when this was written; `mpfb_list_objects` went with
+[stage 2](#2-the-server-side-backend-seam) as its dull first migration, so eight remain, and the
+cheapest of them is gone — the estimates here should not be read off it.
+
+**Each one is a line added to the seam's table** (`backend.MIGRATED_COMMANDS`) and nothing else on
+mpfb-mcp's side, which is what stage 2 bought. Whether to move the other twenty-four tools onto
+`backend.send()` in bulk first is this effort's call; stage 2 refused to, because it would have
+touched twenty-four tool modules for no behavioural change in the one stage whose job was to
+establish that the seam works at all.
 
 **This is where the 14.2k lines of tests are decided, and it is the part of the pivot most likely
 to be under-estimated.** Payload logic that becomes add-on code stops being "source `exec()`'d
@@ -92,8 +105,11 @@ against stub Blender and stub MPFB" and becomes ordinary Python in an add-on, te
 real install. That is an improvement and a large rewrite at the same time. The four shared
 fragments these tools use — `target_categories.py`, `rig_lookup.py`, `asset_sections.py`,
 `modifier_reading.py` — become modules two commands import, which is what a fragment was always
-trying to be. [testing.md](../specifications/testing.md) is rewritten by whichever effort
-migrates the first tool.
+trying to be. [testing.md](../specifications/testing.md) has already been rewritten — stage 2
+migrated a tool, so the deferral landed there — and what this effort inherits is the rule rather
+than the job of writing it: everything the add-on side can check is checked there, and the closed
+list of what stays in `tests/` is in
+[A migrated tool is tested where it runs](../specifications/testing.md#a-migrated-tool-is-tested-where-it-runs).
 
 ### 4. Creation and modification migrated
 
@@ -110,8 +126,13 @@ module is the worst case of them.
 
 ### 5. Retire the generated-code path
 
-Delete `codegen/`, the session source cache and the seven shared fragments; fold what they taught
-into the specifications rather than losing it; drop blender_mcp from the install instructions.
+Delete `codegen/`, the session source cache and the seven shared fragments; empty the seam's
+`MIGRATED_COMMANDS` table and with it the last branch that knows there were two transports; fold
+what they taught into the specifications rather than losing it; drop blender_mcp from the install
+instructions — including the transitional two-add-on prerequisite
+[verification/README.md](../verification/README.md) now carries. Each payload deleted takes its
+frozen stub-executed test layer with it, which stage 2 measured at 27% of one test module for the
+dullest tool in the package.
 This is also when
 [The generated-code path](../specifications/architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired)
 stops being a section of architecture.md and becomes something HISTORY.md remembers.

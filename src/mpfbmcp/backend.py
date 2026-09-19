@@ -1,0 +1,159 @@
+"""
+The seam: which transport a tool's call travels over, decided below the send.
+
+**A tool says what it wants done; this module decides how the request
+travels.** That is the whole of the design, and the value of it is entirely in
+what a tool does *not* contain: no branch on a backend, no second parameters
+dict, no import of a transport client. A tool calls ``backend.send()`` with
+exactly what it was already handing to ``codegen.assemble()`` - the payload's
+filename, its parameters, its bootstrap - and this module either assembles that
+program and sends it to blender_mcp, or looks the payload up in
+:data:`MIGRATED_COMMANDS` and sends a named command to the MPFB Bridge instead.
+If supporting the bridge ever requires editing a tool module, the seam is in
+the wrong place; see
+[Supporting a second backend](../../specifications/architecture.md#supporting-a-second-backend).
+
+**The backend is configuration, never a probe.** ``MPFB_MCP_BACKEND`` names it.
+Both third-party MCP add-ons answer on 9876 and the bridge on 9877, and no
+single probe distinguishes any of them - a NUL-terminated ping leaves the
+community add-on's parser waiting for the rest of a message, while an
+unterminated one leaves blender lab's doing the same. An unrecognised name is
+an **error rather than a fallback**: a typo that quietly leaves every call on
+the old path is indistinguishable from the bridge not working, which is the
+most expensive shape a configuration mistake can take.
+
+**One table says what has been migrated.** :data:`MIGRATED_COMMANDS` maps a
+payload's filename to the bridge command that replaces it. A payload in it
+travels over whichever transport is configured; a payload not in it travels the
+generated path in *both* configurations, because there is nothing else it could
+do. The table is therefore the migration's progress bar, and the last stage of
+the pivot deletes it by emptying it.
+
+**The envelope is this package's, and both transports produce it.** ``status``,
+``result`` and ``message`` keep their spellings and their meanings, so no
+existing caller changes. What is added is ``error``, the slug a caller branches
+on, which the bridge writes itself and which an error from the generated path
+is given here - ``command_failed``, which is a statement of fact rather than a
+guess, since a blender_mcp error envelope is always a program that raised
+inside Blender. Nothing else is synthesised: ``protocol_version`` is a fact
+about the bridge's protocol and is absent from a generated-code answer rather
+than invented for it.
+"""
+
+from __future__ import annotations
+
+__all__ = (
+    "BACKENDS",
+    "BACKEND_BLENDER_MCP",
+    "BACKEND_BRIDGE",
+    "BACKEND_VARIABLE",
+    "ERROR_COMMAND_FAILED",
+    "MIGRATED_COMMANDS",
+    "as_common_envelope",
+    "command_for",
+    "preferred_backend",
+    "send",
+)
+
+import os
+
+from mpfbmcp import bridge_connection, codegen
+from mpfbmcp.connection import send_code
+
+BACKEND_VARIABLE = "MPFB_MCP_BACKEND"
+
+BACKEND_BLENDER_MCP = "blender_mcp"
+BACKEND_BRIDGE = "bridge"
+
+# In preference order for a reader rather than for the code: the first is the
+# default, and stays the default until the last tool has been migrated.
+BACKENDS = (BACKEND_BLENDER_MCP, BACKEND_BRIDGE)
+
+# What a generated-code failure is called in this package's envelope. The same
+# spelling the bridge uses for the same thing, deliberately: a caller branching
+# on ``error`` must not have to learn which transport answered it.
+ERROR_COMMAND_FAILED = "command_failed"
+
+# Payload filename -> bridge command name. **This is the list of what has been
+# migrated**, and it is meant to be read as one: one line per tool that has
+# moved, in the order they moved. A tool absent from it has no bridge command
+# and takes the generated path whatever is configured.
+MIGRATED_COMMANDS = {
+    "list_objects.py": "list_objects",
+}
+
+
+def preferred_backend() -> str:
+    """Which backend this process has been configured to use.
+
+    Defaults to blender_mcp, which is what makes an upgrade invisible to
+    somebody who configures nothing: twenty-four tools have no other path
+    anyway, and the twenty-fifth behaves exactly as it did.
+    """
+    configured = os.environ.get(BACKEND_VARIABLE, "").strip()
+    if not configured:
+        return BACKEND_BLENDER_MCP
+    if configured not in BACKENDS:
+        raise ValueError(
+            "{:s}={!r} is not a backend this server knows. Set it to one of {:s}, or leave it "
+            "unset for {:s}.".format(
+                BACKEND_VARIABLE, configured, ", ".join(BACKENDS), BACKEND_BLENDER_MCP))
+    return configured
+
+
+def command_for(payload: str) -> str | None:
+    """The bridge command that has replaced one payload, or ``None``."""
+    return MIGRATED_COMMANDS.get(payload)
+
+
+def send(payload: str, *, params: dict[str, object] | None = None,
+         bootstrap: str = "raising", strict_json: bool = True) -> dict[str, object]:
+    """Perform one tool's call over whichever transport is configured.
+
+    ``payload``, ``params`` and ``bootstrap`` are what the tool would have
+    handed to ``codegen.assemble()``, and they are unchanged by a migration:
+    **both sides receive the tool's already-validated arguments and neither
+    reshapes them**. There is deliberately no escape hatch for a tool whose two
+    paths would want different parameters. If one ever does, that is a fact
+    worth surfacing as a design problem in that tool's own effort rather than a
+    flexibility worth carrying here unused.
+
+    ``strict_json`` belongs to the generated path alone - it asks blender_mcp
+    to fail loudly rather than fall back to ``repr`` for a result that is not
+    JSON-safe. The bridge does the equivalent unconditionally, serializing a
+    result before it commits to an answer.
+    """
+    command = command_for(payload)
+    if command is not None and preferred_backend() == BACKEND_BRIDGE:
+        return bridge_connection.send_command(command, params or {})
+
+    code = codegen.assemble(payload, bootstrap=bootstrap, params=params or {})
+    return as_common_envelope(send_code(code, strict_json=strict_json))
+
+
+def as_common_envelope(response: object) -> object:
+    """Give a generated-code error the slug this package's envelope carries.
+
+    Narrow on purpose, in both directions. A **success** envelope is returned
+    exactly as it arrived, in every configuration - which is the rule
+    [a success envelope is untouched](../../specifications/observability.md)
+    states for diagnostics and which holds here for the same reason. And an
+    envelope that already carries an ``error`` is left alone, since the only
+    thing that puts one there is the bridge, which knows better than this
+    function what went wrong.
+
+    The mapping happens here rather than in ``connection.py`` because that
+    module's claim to be a faithful duplicate of blender_mcp's protocol is what
+    lets an upstream change be mirrored by hand. The additions stay around the
+    protocol, exactly as the observability additions did.
+    """
+    if not isinstance(response, dict) or response.get("status") != "error":
+        return response
+    if "error" in response:
+        return response
+    # Rebuilt rather than mutated, so that ``error`` sits beside ``status``
+    # where a reader looks for it, and so that a caller still holding the
+    # original dict is not surprised by a key appearing in it.
+    mapped: dict[str, object] = {"status": "error", "error": ERROR_COMMAND_FAILED}
+    mapped.update({key: value for key, value in response.items() if key != "status"})
+    return mapped

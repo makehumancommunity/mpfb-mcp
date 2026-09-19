@@ -5,9 +5,15 @@
 > governs. See [Status of these documents](README.md#status-of-these-documents).
 
 **What a tool accepts, and how things are named on the way in.** Two questions run through this
-document. What may a tool decide for itself before the socket, and what must it leave to the
-generated code? And when a tool hands the caller an identifier, what obligation does that create
-for the tool that consumes it?
+document. What may a tool decide for itself before the socket, and what must it leave to the far
+side of it? And when a tool hands the caller an identifier, what obligation does that create for
+the tool that consumes it?
+
+"The far side" is generated code on the tools that have not been migrated and a bridge command on
+those that have, and **nothing in this document depends on which**. A tool does not know which
+transport carries its call — that is the whole of
+[Supporting a second backend](architecture.md#supporting-a-second-backend) — so a rule about what a
+tool may decide is a rule about the tool, not about the program it used to assemble.
 
 The counterpart document is [responses.md](responses.md), which covers what comes back;
 [mutating-tools.md](mutating-tools.md) covers the extra obligations of a tool that changes
@@ -39,7 +45,8 @@ ceiling, so the next drift is a failing test rather than a discovery.
   concept and not the key (`objects_removed`, `rig_object_name`, `asset_info.material_source`).
   A shorter description a caller has to guess against is worse than a long one.
 - **What every tool would otherwise repeat belongs in the server instructions**, which are sent
-  once rather than twenty-five times: the response envelope, the `name`/active-object subject
+  once rather than twenty-five times: the response envelope — including that a failure carries a
+  short `error` slug to branch on beside the human `message` — the `name`/active-object subject
   convention, that a refusal is an answer carrying `found`, `ready` and `blocked_by`, the uniform
   `performed` flag, and that a capped listing always reports `truncated` and `total_count`. A
   tool then says only where it differs from the convention — which is the part worth reading.
@@ -65,8 +72,17 @@ ceiling, so the next drift is a failing test rather than a discovery.
 ## Validate before crossing the socket
 
 Where a tool takes structured input (e.g. macro-detail sliders, which are only meaningful in
-`0.0`-`1.0`), validate it in the tool function *before* generating and sending code. A bad
-call should fail fast and locally, not round-trip to Blender to fail there.
+`0.0`-`1.0`), validate it in the tool function *before* anything is sent. A bad call should fail
+fast and locally, not round-trip to Blender to fail there.
+
+**The rule now stands in front of two sockets, and is unchanged by that.** Local validation runs
+before a transport is even chosen, which is what keeps a migrated tool's refusals identical to an
+unmigrated one's. The bridge then validates again, and that duplication is
+[deliberate rather than redundant](architecture.md#both-ends-validate-deliberately): a listening
+socket is reachable by anything on the machine and the add-on cannot assume its caller checked,
+while mpfb-mcp cannot skip checking because that is what turns a silent wrong answer into a named
+argument error. The division of labour is the same on both sides of both sockets — **shape here,
+vocabulary there**.
 
 The same holds for the *shape* of a string argument: reject a non-string, or an empty or
 whitespace-only one, and never quietly treat an explicitly empty value as an omitted one, since

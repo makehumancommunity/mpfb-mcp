@@ -4,7 +4,7 @@
 > necessarily the current implementation; where the code diverges, the intent stated here
 > governs. See [Status of these documents](README.md#status-of-these-documents).
 
-**What a tool says back.** The envelope is blender_mcp's and is not negotiable; everything else
+**What a tool says back.** The envelope is this package's and is not negotiable; everything else
 here is about a single failure mode — a response that a caller reads as a complete, recorded,
 authoritative answer when it is none of those. A capped list read as the whole truth, a `[]` read
 as "none" when it meant "not computed", a derived value quoted back to the user as fact, a
@@ -15,10 +15,35 @@ additionally owes its caller is in [mutating-tools.md](mutating-tools.md).
 
 ## Response shape
 
-Tools return blender_mcp's response envelope largely as-is: `{"status": "ok", "result": ...}`
-or `{"status": "error", "message": ...}` (optionally `stdout`/`stderr`). Callers — including
-future mpfb-mcp tools composing on top of others — must check `status` rather than assume
-success. This mirrors blender_mcp's own tools and avoids inventing a second error convention.
+Tools return `{"status": "ok", "result": ...}` or
+`{"status": "error", "error": "<slug>", "message": ...}` (optionally `stdout`/`stderr`). Callers —
+including future mpfb-mcp tools composing on top of others — must check `status` rather than assume
+success.
+
+**The envelope started as blender_mcp's and is now this package's, with the same spellings.**
+`status`, `result` and `message` mean exactly what they meant and are spelled exactly as they were,
+which is why the backend seam could be introduced without a single existing caller or test
+changing. What the bridge added is `error`, and it is now part of the contract on both transports:
+
+- **A caller branches on `status`, then on `error`, and never on `message`.** The slug is the
+  contract; the human sentence beside it may be reworded without notice. The vocabulary is the
+  bridge's nine slugs ([the wire](architecture.md#the-wire)), of which two carry most of the meaning
+  a caller acts on: `invalid_params` says the request was wrong and names the parameter, and
+  `mpfb_unavailable` says the request was fine and the install is not.
+- **A generated-code error is given `error: "command_failed"` by the seam.** That is a statement of
+  fact rather than a guess — a blender_mcp error envelope is always a program that raised inside
+  Blender — and it is what makes "branch on `error`" true for a caller that has no idea which
+  transport answered it. **Uniformity of failure across two protocols is the point**: two
+  transports with two error vocabularies visible to callers would undo the main benefit of having a
+  seam at all.
+- **Nothing else is synthesised, in either direction.** A success envelope is returned exactly as
+  it arrived. `protocol_version` is a fact about the bridge's protocol and is *absent* from a
+  generated-code answer rather than invented for it, and the mapping never overwrites a slug the
+  bridge chose.
+- **Which backend answered is not in the envelope.** It is in the log line and in the record, which
+  is where a question about the transport belongs — and a `backend` field would have to be added to
+  an unmigrated tool's answer to be useful, which is exactly the tool edit the seam exists to
+  forbid ([Supporting a second backend](architecture.md#supporting-a-second-backend)).
 
 **`null` and `[]` are different answers, and the difference is load-bearing.** `[]` means "none
 of them"; `null` means "not known" or "not computed". FR 006 established it; FR 013's live run
@@ -131,6 +156,12 @@ Most tools have one source: they ask MPFB, and the answer is MPFB's. Where a too
 one** — a live read with a local fallback behind it — the caller is going to quote the answer to a
 user, and "MPFB says this URL" and "mpfb-mcp's copy of what MPFB said some months ago says this
 URL" are different claims. **A caller must never have to infer which one it got.**
+
+**This is about two sources of an answer, not two routes to one source.** Which backend carried a
+call is not a source in this sense: the generated path and the bridge both end in the same MPFB
+inside the same Blender, and FR 030 measured them answering identically field by field. So there is
+no `backend` field, and the rule below is not an argument for one — the question it exists to
+answer is "who is making this claim", and for a migrated tool the answer is MPFB either way.
 
 - **Name the source in a field of its own**, not by the presence or absence of some other field.
   `source_of_truth` is `"mpfb"` or `"builtin_fallback"`; the reason for a degradation sits beside it

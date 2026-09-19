@@ -13,13 +13,32 @@ The concrete environment variables and what they write are in
 
 ## Diagnostics attach at the socket boundary, never to the program
 
-Every tool assembles a program, hands it to `send_code()` and returns the envelope. That single
-function is therefore the only place diagnostics belong, and the rule is worth stating as a
-constraint rather than as a preference: **if observing a call requires editing a tool module, a
-payload or `codegen/`, the design is wrong.** Twenty-one tools crossing one function is what makes a
-per-call record a change in one file; it is also what stops "which tool called this" needing an
-extra argument, since the seam marker of
-[Code-generation layout](architecture.md#code-generation-layout) already names the payload.
+Every tool sends a request across a socket and returns the envelope that comes back. That crossing
+is therefore the only place diagnostics belong, and the rule is worth stating as a constraint
+rather than as a preference: **if observing a call requires editing a tool module, a payload,
+`codegen/` or a bridge command, the design is wrong.** Twenty-five tools crossing two functions —
+`connection.send_code()` and `bridge_connection.send_command()` — is what makes a per-call record a
+change in one module; it is also what stops "which tool called this" needing an extra argument.
+
+**The attachment point does not move across the pivot; the unit does.** A request is a *program* on
+the generated path and a *command with its parameters* on the bridge, and the record writes
+whichever it was, before the socket call, for the reason it always did: a call that hangs, times
+out or takes Blender down still leaves behind what caused it. Three things follow, and they are the
+whole of what the second transport changes here:
+
+- **The file is what went on the wire, byte for byte, either way.** A program is written
+  unprettified so a traceback's line number resolves against it; a bridge request is written
+  unindented so it is the request that can be replayed rather than nearly it.
+- **The tool's name comes from the command rather than from a payload seam marker.** A program
+  carries no other statement of what it is, which is why
+  [Code-generation layout](architecture.md#code-generation-layout)'s marker exists; a request that
+  names its command needs no such device. Payload and command share a name by convention, so a
+  mixed run's index stays sorted by the same word whichever transport a line came from.
+- **One index, one directory, in call order.** `index.tsv` keeps its columns and their meanings,
+  with `bytes` counting the request on both paths. A second record format for a second transport
+  would make the transition the thing hardest to observe, at the moment observation is worth most.
+
+Everything below is unchanged by the pivot unless it says otherwise:
 
 - **The generated program is never altered in order to observe it.** A diagnostic setting that
   changed the source would make "the exact program that ran" conditional on configuration, which is
@@ -27,7 +46,9 @@ extra argument, since the seam marker of
   resolved against. Decomposing a round trip into transport, `exec`/compile and MPFB's own work is
   therefore *not* done this way; a payload can print its own timings into the envelope's `stdout`
   during a session that wants them.
-- **A retry leaves two records, and that is the point.** A call whose program refers to a shared
+- **A retry leaves two records, and that is the point.** This is a fact about the generated path
+  rather than about the record in general — nothing on the bridge retries, because the session
+  source cache it recovers from is generated-path machinery. A call whose program refers to a shared
   fragment Blender turns out not to hold comes back as an error envelope and is sent again with the
   source in it (see
   [Generated code may keep its own source inside Blender](architecture.md#generated-code-may-keep-its-own-source-inside-blender)).
@@ -40,6 +61,13 @@ extra argument, since the seam marker of
   to agree; anything blender_mcp knows nothing about is mpfb-mcp's own and is named accordingly.
   Keeping the two apart is also what lets `connection.py` go on describing itself as a faithful
   duplicate of blender_mcp's protocol: the additions are around the protocol, not in it.
+
+  Applying that rule to the two variables the backend seam added: **which backend to use is
+  mpfb-mcp's own decision**, so `MPFB_MCP_BACKEND`; **the bridge's address names the add-on being
+  addressed**, the same logic that names `BLENDER_MCP_HOST`, so `MPFB_BRIDGE_HOST` and
+  `MPFB_BRIDGE_PORT`. That second one is a judgement call rather than a derivation — the bridge
+  reads its address from its preferences and not from the environment today — and if it ever does
+  read the environment, these are the two names it should read.
 - **Off means unchanged.** A diagnostic that is not enabled creates no directory, opens no file,
   formats nothing and puts the same bytes on the wire. An MCP server writing files nobody asked
   for, into a location nobody chose, is a surprise; and the disabled path is the one the whole test
@@ -63,8 +91,11 @@ extra argument, since the seam marker of
   say so in the documentation, and never default such a directory to somewhere inside the
   repository.
 - **The caller-visible surface stays narrow.**
-  [Response shape](responses.md#response-shape) says tools return blender_mcp's envelope as-is.
+  [Response shape](responses.md#response-shape) says a tool returns the envelope it was given.
   A diagnostic may add to an *error* envelope, and only while the record that produced the
   information is enabled — because whoever reads a failure is usually an
   agent rather than the person who configured the record, and a failure that does not say where its
-  own evidence landed wastes it. A success envelope is untouched in every configuration.
+  own evidence landed wastes it. A success envelope is untouched in every configuration, on both
+  transports. The key naming the request file is the transport's own word for it — `program` for
+  generated code, `request` for a bridge command — so that an agent reading a failure is told what
+  it is about to open rather than having to infer it from an extension.

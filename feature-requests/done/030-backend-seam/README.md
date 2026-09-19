@@ -1,16 +1,16 @@
 # The server-side backend seam
 
-**Status:** Accepted
+**Status:** Done
 
-[FR 028](../done/028-pivot-to-specific-addon/README.md) decided that MPFB's Blender-side logic
+[FR 028](../028-pivot-to-specific-addon/README.md) decided that MPFB's Blender-side logic
 belongs in a companion add-on and proved the transport;
-[FR 029](../done/029-bridge-transport-and-skeleton/README.md) grew that add-on into something
+[FR 029](../029-bridge-transport-and-skeleton/README.md) grew that add-on into something
 twenty-five commands can be added to. Neither touched `src/mpfbmcp/`, deliberately, and the
 consequence is that **nothing on mpfb-mcp's side has ever spoken to the bridge**. This is
-[stage 2 of the pivot](../NEXT_STEPS.md#2-the-server-side-backend-seam): mpfb-mcp learns to.
+[stage 2 of the pivot](../../NEXT_STEPS.md#2-the-server-side-backend-seam): mpfb-mcp learns to.
 
 **The seam is an adapter below the send.**
-[Supporting a second backend](../../specifications/architecture.md#supporting-a-second-backend)
+[Supporting a second backend](../../../specifications/architecture.md#supporting-a-second-backend)
 already says where it goes, having been designed for a different second backend and spent on this
 one instead. The property it exists to preserve is that no tool module learns which transport it
 is on — and the test of that is a diff, not an argument.
@@ -38,13 +38,70 @@ cannot cross the socket.** One tool is migrated here; the discipline is establis
 because a precedent set at the first tool is what the remaining twenty-three copy.
 
 Three specifications are rewritten here, all three because a sentence in them is about to become
-false: [observability.md](../../specifications/observability.md), whose record's unit stops being a
-program; [responses.md](../../specifications/responses.md) and
-[tool-interface.md](../../specifications/tool-interface.md), whose "returns blender_mcp's envelope
+false: [observability.md](../../../specifications/observability.md), whose record's unit stops being a
+program; [responses.md](../../../specifications/responses.md) and
+[tool-interface.md](../../../specifications/tool-interface.md), whose "returns blender_mcp's envelope
 as-is" needs a new referent. A fourth is rewritten because
-[stage 3's own text](../NEXT_STEPS.md#3-introspection-and-catalogues-migrated) assigns it to
+[stage 3's own text](../../NEXT_STEPS.md#3-introspection-and-catalogues-migrated) assigns it to
 "whichever effort migrates the first tool", and that turns out to be this one — see
 [Affected specifications](#affected-specifications).
+
+## What landed, and what the live run found
+
+**Status: Done, and verified.** Both halves of what this request's own lifecycle asks for were
+run: [check_backend_seam.py](check_backend_seam.py) against a Blender with all three add-ons —
+**30 checks, 0 failed** — and [verification/](../../../verification/) in **both** configurations, 27
+passed / 0 failed / 1 skipped each, 49.4 s on the generated path and 47.8 s with
+`MPFB_MCP_BACKEND=bridge`. Blender 5.1.0, MPFB 2.0.17, bridge 0.3.0, protocol 1.
+
+**The two paths agree, field by field.** Ten comparisons — an empty scene and a scene with a
+character, each unfiltered, by exact type, by substring, by a real type matching nothing, and by a
+misspelling — and every one of them equal, including `known_types`, `type_recognized` and the
+per-object `object_type`/`blender_type` pairs. `--self-compare` fails as it must: handed two runs
+of one backend it refuses to call the result a comparison, so "identical" cannot mean "the second
+run was never made".
+
+**The cost, measured rather than assumed.** The same tool, the same client, the same Blender, five
+calls each:
+
+| Path | blender_mcp at its 0.25 s default | blender_mcp at 0.05 s | bridge (0.05 s) |
+|------|-----------------------------------|-----------------------|-----------------|
+| mean | 461 ms | 103 ms | 58 ms |
+| min | 288 ms | 101 ms | 51 ms |
+
+The request sizes say why: **4,664 bytes of program against 83 bytes of JSON**. At the add-on's
+default tick the program is two 4 KB chunks at ~250 ms each, which is the whole of the difference
+between the first column and the third; tuned to 0.05 s the gap narrows to a factor of two, which
+is what a program costs when the transport is no longer the bottleneck. Both numbers are worth
+keeping: the first is the configuration a user gets, the second is the best case for the path
+being retired.
+
+**`mpfb_unavailable` reaches the tool legibly**, exercised from outside the add-on for the first
+time. Against a `--factory-startup` Blender with the bridge and no MPFB (started by
+[serve_without_mpfb.py](serve_without_mpfb.py), which exists because `--factory-startup` also
+disables the extension that would provide `--command mpfb_bridge`), the tool answers
+`status: error`, `error: "mpfb_unavailable"`, and a message naming the command and saying what to
+install. Nothing invented a count of zero, which is the failure that would have mattered.
+
+**Where the tests went, which is the finding stage 3 should read.** The twelve assertions about
+what `mpfb_list_objects` *answers* now run against a real MPFB in a headless Blender
+(`bridge/test/tests/fff_list_objects_test.py`), and two of them turned out to be claims about MPFB
+that had never been put to MPFB: that `object_is()` matches a substring, and that
+`get_object_type()` answers `""`. What stayed on mpfb-mcp's side is four tests of what cannot cross
+the socket. The payload's own layer is frozen at 74 of `tests/test_list_objects.py`'s 275 lines —
+**27%** — which is what stage 5 deletes with the payload. Read that as a floor: this is the dullest
+tool in the package, 87 lines of payload whose logic is a filter and a substring test.
+
+The unit suite went from 886 to **945** tests and got *faster* (10.2 s to 2.8 s), because the fake
+servers' `shutdown()` poll interval turned out to be half a second per test that starts one — a
+rounding error while two modules used a fake and not one now that a test starts a fake add-on and a
+fake bridge to assert which of them was spoken to. The bridge suite went from 35 to **47**, and now
+reports coverage: 77% overall, 98% of the new command.
+
+**Two things this effort deliberately did not establish**, restated here because they are what
+somebody planning stage 3 will want and will not find: nothing about a batched, mutating,
+fragment-carrying or file-writing tool, and nothing about what happens to 14.2k lines of tests when
+a payload with real logic in it becomes add-on code.
 
 ## Goals
 
@@ -168,21 +225,21 @@ cheaper for this one having stayed small.
 11. **Nothing that works today stops working.** With nothing configured, every one of the
     twenty-five tools behaves exactly as it does now, including `mpfb_list_objects`. The unit
     suite still runs to completion on a machine with no Blender and no bridge; its count moves
-    only upward, by the tests this effort adds. [verification/](../../verification/) passes in the
+    only upward, by the tests this effort adds. [verification/](../../../verification/) passes in the
     default configuration with no edit to `smoke.py`, and its coverage rule still derives from the
     registry — no tool is added or removed here.
 
 12. **The smoke run is executed in both configurations, and the transitional prerequisite is
     written down.** This is the sharp consequence of migrating one tool out of twenty-five:
-    [verification/harness.py](../../verification/harness.py) builds its scratch scene, its
+    [verification/harness.py](../../../verification/harness.py) builds its scratch scene, its
     snapshots and its cleanup through `send_code()` directly, so a run in which `mpfb_list_objects`
     crosses the bridge needs **both** add-ons enabled and both servers started in one Blender.
     That is fine and temporary, and it must be stated in
-    [verification/README.md](../../verification/README.md) rather than met as a puzzle. The harness's
+    [verification/README.md](../../../verification/README.md) rather than met as a puzzle. The harness's
     own probes stay on `send_code()`: they are scene bookkeeping, not tool calls, and they go away
     with the generated path in stage 5.
 
-13. **The second install path is documented.** [CLAUDE.md](../../CLAUDE.md) gains the two new
+13. **The second install path is documented.** [CLAUDE.md](../../../CLAUDE.md) gains the two new
     environment variables under Commands, and the transitional arrangement — both add-ons, two
     ports, one Blender — stated once where the existing setup instructions are.
 
@@ -205,11 +262,11 @@ cheaper for this one having stayed small.
   dies with the path it serves.
 - **A `backend` field in a success envelope.** Considered and refused: a success envelope is
   untouched in every configuration
-  ([observability.md](../../specifications/observability.md)), and adding the field to
+  ([observability.md](../../../specifications/observability.md)), and adding the field to
   `mpfb_get_status`' answer would mean editing an unmigrated tool, which requirement 3 exists to
   forbid. Which backend answered is in the log line and in the record, which is where a question
   about the transport belongs. Note the tension with
-  [a response says which source answered it](../../specifications/responses.md#a-response-says-which-source-answered-it)
+  [a response says which source answered it](../../../specifications/responses.md#a-response-says-which-source-answered-it)
   and resolve it in the spec: that rule is about **two sources of an answer**, MPFB and a vendored
   copy, not about two routes to the same source.
 - **A bridge-side per-call record.** FR 029 deferred it to whenever there are commands worth
@@ -257,7 +314,7 @@ cheaper for this one having stayed small.
 
 **Where the new code goes.** Two new modules on the client side, one new command on the bridge
 side, and edits to three existing files. Nothing shared is restructured:
-[adding a tool touches exactly three things](../../CLAUDE.md#architecture) and migrating one should
+[adding a tool touches exactly three things](../../../CLAUDE.md#architecture) and migrating one should
 touch no more.
 
 | Module | What it is |
@@ -295,17 +352,17 @@ trips of the cheapest tool in the package, which is precisely the tool being mig
 the effort in which somebody first has to hold both in mind. The command reports the bridge — its
 version, the protocol it speaks, the state of MPFB as the *add-on* sees it. The tool reports MPFB
 in three tiers including asset roots and configured paths, and is not migrated here. Say so in
-[the wire](../../specifications/architecture.md#the-wire) rather than leaving the collision to be
+[the wire](../../../specifications/architecture.md#the-wire) rather than leaving the collision to be
 re-derived; stage 4 has to resolve it properly when the tool moves.
 
 **The command must not import MPFB's submodules, and this is the first command where the
 temptation is concrete.** `_ALL_TYPES` is a module-level name in `objectservice.py`, not a member
 of `ObjectService` and not in `SERVICES`, and as add-on code the bridge *could* simply import it.
 It must not:
-[never import MPFB submodules directly](../../specifications/architecture.md#never-import-mpfb-submodules-directly)
+[never import MPFB submodules directly](../../../specifications/architecture.md#never-import-mpfb-submodules-directly)
 survives the pivot unchanged, and the supported route is the one the payload already uses —
 `sys.modules[ObjectService.__module__]` with a `getattr` fallback, which is
-[reading module-level names MPFB does not publish](../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish)
+[reading module-level names MPFB does not publish](../../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish)
 verbatim. The fallback matters for the same reason it does today: reporting last year's type list
 is a better answer than failing the call.
 
@@ -316,7 +373,7 @@ different transport — note that the bridge's own `_CLIENT_TIMEOUT` of 10 s is 
 one request's bytes and is not the same quantity.
 
 **Environment variable naming, and the rule it follows.**
-[observability.md](../../specifications/observability.md) says mpfb-mcp's own settings carry the
+[observability.md](../../../specifications/observability.md) says mpfb-mcp's own settings carry the
 `MPFB_MCP_` prefix and that `BLENDER_MCP_HOST` / `BLENDER_MCP_PORT` are spelled the way they are
 because both processes address the same add-on. Applying that rule: which backend to use is
 mpfb-mcp's own decision, so `MPFB_MCP_BACKEND`; the bridge's address names the add-on being
@@ -331,7 +388,7 @@ that does not execute programs. The failure is loud and the message is the bridg
 `malformed_request`, which is legible enough; a guard against it would be autodetection by another
 name.
 
-**Anchors.** [FR 028](../done/028-pivot-to-specific-addon/README.md) found that heading anchors in
+**Anchors.** [FR 028](../028-pivot-to-specific-addon/README.md) found that heading anchors in
 `architecture.md` are linked from `src/mpfbmcp/` docstrings and from finished requests, so a
 rewrite that renames a heading breaks links it cannot see. Three of the four specs rewritten here
 carry anchors referenced elsewhere. Check before renaming, and use an explicit `<a id>` where the
@@ -341,66 +398,66 @@ heading text must change — which is what FR 028 did twice.
 
 Rewritten by **this** request:
 
-- [observability.md](../../specifications/observability.md) — named by the stage text, and the
+- [observability.md](../../../specifications/observability.md) — named by the stage text, and the
   rewrite is narrower than it sounds. The attachment point does not move and cannot: the socket is
   still the only boundary every tool crosses, and
-  [Diagnostics attach at the socket boundary, never to the program](../../specifications/observability.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program)
+  [Diagnostics attach at the socket boundary, never to the program](../../../specifications/observability.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program)
   is more true after this, not less. What changes is the *unit*: "every tool assembles a program,
   hands it to `send_code()`" becomes two sentences, and the bullet about a retry leaving two
   records stays as a fact about the generated path rather than about the record in general. The
   paragraph on `MPFB_MCP_` prefixes gains the two new variables and keeps its reasoning.
-- [responses.md](../../specifications/responses.md) — "The envelope is blender_mcp's and is not
+- [responses.md](../../../specifications/responses.md) — "The envelope is blender_mcp's and is not
   negotiable" is about to be false in its first clause and true in its second.
-  [Response shape](../../specifications/responses.md#response-shape) becomes a description of
+  [Response shape](../../../specifications/responses.md#response-shape) becomes a description of
   *this package's* envelope, with `error` in it, the mapping rule for the generated path, and the
   unchanged instruction that a caller checks `status`. The `null` versus `[]` rule and everything
   below it is untouched.
-- [tool-interface.md](../../specifications/tool-interface.md) — the "returns blender_mcp's envelope
+- [tool-interface.md](../../../specifications/tool-interface.md) — the "returns blender_mcp's envelope
   as-is" referent, and nothing else.
-  [Validate before crossing the socket](../../specifications/tool-interface.md#validate-before-crossing-the-socket)
+  [Validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket)
   is unaffected in substance and gains one clarification: the rule now holds in front of two
   sockets, and the bridge validating again is
-  [deliberate](../../specifications/architecture.md#both-ends-validate-deliberately) rather than
+  [deliberate](../../../specifications/architecture.md#both-ends-validate-deliberately) rather than
   redundant.
-- [testing.md](../../specifications/testing.md) — **this is the effort that first migrates a
+- [testing.md](../../../specifications/testing.md) — **this is the effort that first migrates a
   tool**, which means two deferrals land here rather than in stage 3.
-  [Stage 3's own text](../NEXT_STEPS.md#3-introspection-and-catalogues-migrated) says "testing.md is
+  [Stage 3's own text](../../NEXT_STEPS.md#3-introspection-and-catalogues-migrated) says "testing.md is
   rewritten by whichever effort migrates the first tool" and was written assuming that would be
   stage 3; stage 2 migrates one, so it is this. The change to
-  [The unit suite is two layers](../../specifications/testing.md#the-unit-suite-is-two-layers) is
+  [The unit suite is two layers](../../../specifications/testing.md#the-unit-suite-is-two-layers) is
   the substantive one: a migrated tool has a *third* layer for the duration of the transition and
   one layer afterwards, and where its Blender-side logic is tested moves from stubs to a real
   install. **The rule requirement 7 states is what should be folded in**, in the plainest form it
   can be given: after a tool is migrated, everything that can be checked on the add-on side is
   checked there, and what remains on mpfb-mcp's side is named as a closed list rather than left to
   each effort's judgement.
-  [What the suite can never establish](../../specifications/testing.md#what-the-suite-can-never-establish)
+  [What the suite can never establish](../../../specifications/testing.md#what-the-suite-can-never-establish)
   needs the other half of that edit — it is a list written when *everything* Blender-side was out
   of reach, and for a migrated tool most of it stops being true. The second deferral is the bridge
   harness's coverage, in
-  [Two harnesses, split at the directory boundary](../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary),
+  [Two harnesses, split at the directory boundary](../../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary),
   which FR 028 pointed at "the effort that first migrates a command".
-- [architecture.md](../../specifications/architecture.md) — two sections.
-  [Supporting a second backend](../../specifications/architecture.md#supporting-a-second-backend)
+- [architecture.md](../../../specifications/architecture.md) — two sections.
+  [Supporting a second backend](../../../specifications/architecture.md#supporting-a-second-backend)
   stops describing a seam that was designed and starts describing one that exists, names the two
   variables, and keeps its heading and its anchor.
-  [The generated-code path](../../specifications/architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired)
-  gains the fact that one tool no longer uses it. [The wire](../../specifications/architecture.md#the-wire)
+  [The generated-code path](../../../specifications/architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired)
+  gains the fact that one tool no longer uses it. [The wire](../../../specifications/architecture.md#the-wire)
   gains the client's side of the handshake and the sentence distinguishing the bridge's
   `get_status` command from the `mpfb_get_status` tool.
 
 **Explicitly not this request's.**
-[mpfb-integration.md](../../specifications/mpfb-integration.md) is untouched for the reason FR 028
+[mpfb-integration.md](../../../specifications/mpfb-integration.md) is untouched for the reason FR 028
 and FR 029 both gave: what MPFB does wrong does not depend on how the call arrives.
-[mutating-tools.md](../../specifications/mutating-tools.md) is untouched because the migrated tool
+[mutating-tools.md](../../../specifications/mutating-tools.md) is untouched because the migrated tool
 mutates nothing — the first mutating tool to cross the bridge is stage 4's, and that is the effort
 that should check whether anything there assumes a program.
-[vision.md](../../specifications/vision.md) needs nothing: the end state has not changed.
+[vision.md](../../../specifications/vision.md) needs nothing: the end state has not changed.
 
-[CLAUDE.md](../../CLAUDE.md) gains the two environment variables and the transitional two-add-on
+[CLAUDE.md](../../../CLAUDE.md) gains the two environment variables and the transitional two-add-on
 setup under Commands, two rows in its module table, and an amendment to the `mpfb_list_objects`
 row in the tool table saying which path it now takes. Map edits only; no narrative paragraph
-([why](../CLAUDE.md#lifecycle)).
+([why](../../CLAUDE.md#lifecycle)).
 
 ## Tests
 
@@ -464,9 +521,9 @@ twenty-three different answers.
   Two practical things this is the effort to settle, since twenty-three commands inherit them:
   **how a test builds a character to look at** in a headless Blender (MPFB's own suite is the
   model, and how much of MPFB works without a screen is
-  [explicitly unestablished](../done/029-bridge-transport-and-skeleton/README.md)), and **what a
+  [explicitly unestablished](../029-bridge-transport-and-skeleton/README.md)), and **what a
   test does when the install it runs against lacks a prerequisite** — skip with a reason, never
-  pass quietly, which is the rule [verification/](../../verification/) already follows.
+  pass quietly, which is the rule [verification/](../../../verification/) already follows.
 - **Coverage**, per the deferral above: the `a1_coverage.pth` that starts `coverage` before the
   add-on is imported, a `.coveragerc`, and the combine-and-report pass. No script in mpfb2 creates
   that file, so this is an adaptation rather than a copy.
@@ -487,9 +544,9 @@ with MPFB, the bridge and blender_mcp all enabled. What it establishes that no u
   number here is the same tool over both transports from the same client, which is the first
   like-for-like comparison this project can make.
 
-**No smoke item is added.** [verification/](../../verification/) holds one item per registered
+**No smoke item is added.** [verification/](../../../verification/) holds one item per registered
 tool, this effort registers none, and
-[tests/test_verification_smoke.py](../../tests/test_verification_smoke.py) enforces exactly that
+[tests/test_verification_smoke.py](../../../tests/test_verification_smoke.py) enforces exactly that
 correspondence. What `verification/README.md` gains is the transitional prerequisite of
 requirement 12, and the run is performed twice — once per backend — with both passing.
 
@@ -502,21 +559,21 @@ small by construction.
 
 ## References
 
-- [NEXT_STEPS.md, stage 2](../NEXT_STEPS.md#2-the-server-side-backend-seam) — the entry this
+- [NEXT_STEPS.md, stage 2](../../NEXT_STEPS.md#2-the-server-side-backend-seam) — the entry this
   request implements, including the three items it names as belonging here.
-- [FR 028](../done/028-pivot-to-specific-addon/README.md) — the decision, and
-  [its analysis of where the seam goes](../../specifications/architecture.md#supporting-a-second-backend),
+- [FR 028](../028-pivot-to-specific-addon/README.md) — the decision, and
+  [its analysis of where the seam goes](../../../specifications/architecture.md#supporting-a-second-backend),
   which was written for a different second backend and is spent on this one.
-- [FR 029](../done/029-bridge-transport-and-skeleton/README.md) — the bridge's half of everything
+- [FR 029](../029-bridge-transport-and-skeleton/README.md) — the bridge's half of everything
   this request completes: the parameter contract, `requires_mpfb`, `list_commands`, the version
   handshake, and the two drive mechanisms proved to give identical answers.
-- [`bridge/mpfb_bridge/command_server.py`](../../bridge/mpfb_bridge/command_server.py) —
+- [`bridge/mpfb_bridge/command_server.py`](../../../bridge/mpfb_bridge/command_server.py) —
   `dispatch()`, `_check_protocol_version()`, `PROTOCOL_VERSION` and
   `MIN_SUPPORTED_PROTOCOL_VERSION`, and the nine error slugs a client must be ready for.
-- [`src/mpfbmcp/connection.py`](../../src/mpfbmcp/connection.py) — the client to model and the
+- [`src/mpfbmcp/connection.py`](../../../src/mpfbmcp/connection.py) — the client to model and the
   claim not to break: a faithful duplicate of blender_mcp's protocol, with the additions around it
   rather than in it.
-- [`src/mpfbmcp/shared_cache.py`](../../src/mpfbmcp/shared_cache.py) — the memo pattern the
+- [`src/mpfbmcp/shared_cache.py`](../../../src/mpfbmcp/shared_cache.py) — the memo pattern the
   handshake cache follows, including why a miss is an ordinary outcome rather than a contradiction.
-- [`src/mpfbmcp/codegen/payloads/list_objects.py`](../../src/mpfbmcp/codegen/payloads/list_objects.py)
+- [`src/mpfbmcp/codegen/payloads/list_objects.py`](../../../src/mpfbmcp/codegen/payloads/list_objects.py)
   — what the new command must reproduce, quirks included.

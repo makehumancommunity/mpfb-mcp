@@ -1,0 +1,26 @@
+# Coverage for the add-on, measured from inside Blender. MPFB's test/.coveragerc
+# is the model; what differs is the source tree and the omissions, since this
+# add-on has no bundled third-party modules to exclude.
+#
+# `parallel = True` is not optional here: coverage starts in Blender's process
+# through the a1_coverage.pth that run_to_install_pytest.py installs, and writes
+# a .coverage.<host>.<pid> file at exit, which execute_tests_headless.bash then
+# combines. Without it the second run of anything overwrites the first.
+[run]
+parallel = True
+source = ../mpfb_bridge
+omit =
+    */test/*
+
+[report]
+# A line the add-on cannot reach without a screen is still a line somebody has
+# to read, so nothing is excluded by pattern. The uncovered lines in the timer
+# and the UI are a true statement about what this suite can check, and hiding
+# them would make the number comforting rather than useful.
+show_missing = False
+
+[html]
+directory = coverage
+
+[json]
+output = coverage/coverage.json

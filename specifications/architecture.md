@@ -197,6 +197,27 @@ install to fix.
   encoded fails as a clear error envelope rather than as an exception halfway through writing a
   response the caller has already begun reading.
 
+**The client's half of the handshake**, which `bridge_connection` holds: every request declares its
+`protocol_version`, which costs nothing and earns the bridge's own `protocol_mismatch` refusal for
+free, and the **first call to a given address issues one `get_status`**. That probe is the only
+thing that reads `min_supported_protocol_version`, and so the only thing that can tell a user
+*which end to upgrade* rather than merely that two numbers differ; a version this client cannot
+work with then fails every call to that address with one sentence naming both. Two constraints keep
+it honest. **The probe must not become a round trip per call** — it is memoised per `(host, port)`,
+which makes it a claim about what this process learned, exactly as `shared_cache`'s memo is, and
+wrong in the same ordinary way when Blender restarts, so a connection failure drops it. And **the
+probe is issued through the wire client directly, never through the seam**, or the first call in a
+process would probe in order to probe. A bridge that answers but reports no version is talked to
+anyway: a handshake exists to catch a mismatch, not to invent one.
+
+**The bridge's `get_status` command and mpfb-mcp's `mpfb_get_status` tool are different things**,
+and the collision is worth naming before somebody assumes the tool was migrated when the command
+appeared. The command reports *the bridge* — its version, the protocol it speaks, and the state of
+MPFB as the add-on sees it — and is what the handshake probes. The tool reports *MPFB*, in three
+tiers including asset roots and configured paths, and is still on the generated path. The effort
+that migrates it has to resolve the overlap properly rather than letting one answer stand in for
+the other.
+
 ### Both ends validate, deliberately
 
 mpfb-mcp keeps its local shape checks — the bool-strictness, the range rules, the non-negative
@@ -232,11 +253,16 @@ written by hand at a terminal stays possible. MPFB, the bridge and mpfb-mcp are 
 released pieces, and that matrix is a real cost of this packaging choice — the only cheap defence
 is a handshake that exists from the first command.
 
-**The bridge's half of the handshake is what exists; the client's half is the backend seam's.**
-Nothing on mpfb-mcp's side checks the version yet, because nothing on mpfb-mcp's side talks to the
-bridge yet. The bridge's own version is reported too, and must equal the `version` in
-`blender_manifest.toml` — kept in step by hand, since nothing in the extension format publishes
-one to the other, and asserted by a test rather than by a comment.
+**Both halves of the handshake now exist**: the bridge's, above, and the client's, in
+[the wire](#the-wire). One number is duplicated across the two — `PROTOCOL_VERSION`, which
+`bridge_connection` declares and the add-on serves — and it is kept in step by hand for the reason
+`connection.py` duplicates blender_mcp's protocol: `bridge/` is a Blender extension that imports
+`bpy`, and making the pip package depend on it would undo
+[no direct dependency](#no-direct-dependency-on-mpfb-or-blender_mcp). A unit test reads the add-on's
+source and asserts the two agree, skipping where that source is not beside the package. The
+bridge's own version is reported too, and must equal the `version` in `blender_manifest.toml` —
+kept in step by hand, since nothing in the extension format publishes one to the other, and
+asserted by a test rather than by a comment.
 
 ## No direct dependency on MPFB or blender_mcp
 
@@ -301,33 +327,51 @@ unreachable bridge as of an unreachable blender_mcp.
 
 ## Supporting a second backend
 
-**This seam was designed for a different second backend, and is being spent on the bridge
-instead.** The original plan was an adapter that let mpfb-mcp drive the community
+**This seam was designed for a different second backend and was spent on the bridge instead.** The
+original plan was an adapter that let mpfb-mcp drive the community
 [blender-mcp](https://github.com/ahujasid/blender-mcp) add-on as well as blender lab's; that goal
 is superseded (see
 [vision.md](vision.md#superseded-which-blender-mcp-neither-in-the-end)), because once no program
 crosses the socket there is no third-party add-on in the path to abstract over. What the analysis
-established about *where the seam goes* is what carries forward, and it is worth more now than it
-was then.
+established about *where the seam goes* carried forward unchanged, and
+[FR 030](../feature-requests/done/030-backend-seam/README.md) built it:
+`src/mpfbmcp/backend.py` is the seam and `src/mpfbmcp/bridge_connection.py` is the bridge's wire
+client.
 
 - **The seam is an adapter *below* the send, not a second connection module each tool picks
-  between.** Backend choice must not be visible above the socket boundary: tools stay unchanged,
-  and [Response shape](responses.md#response-shape)'s rule that a tool returns the envelope as-is
-  holds on both. If supporting a backend requires editing a tool, the seam is in the wrong place —
-  the same test
+  between.** Backend choice is not visible above the socket boundary: tools stay unchanged, and
+  [Response shape](responses.md#response-shape)'s rule that a tool returns the envelope it was
+  given holds on both. If supporting a backend requires editing a tool, the seam is in the wrong
+  place — the same test
   [Diagnostics attach at the socket boundary](observability.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program)
   applies to observability. **The bridge is a backend behind exactly this seam**: a migrated tool
   sends a command and arguments instead of a program, `codegen/` is bypassed for it, and no tool
-  module learns which transport it is talking to.
-- **Backend selection is explicit configuration, never autodetection.** Both third-party add-ons
-  default to port 9876 and the bridge answers on 9877, so the address distinguishes nothing
-  reliably, and no single probe distinguishes them either — a NUL-terminated ping leaves the
-  community add-on's parser waiting for the rest of a message, while an unterminated one leaves
-  blender lab's doing the same. This bullet is the one that survives verbatim and it constrains the
-  migration directly: mpfb-mcp must be *told* it is talking to a bridge.
+  module learns which transport it is talking to. A tool calls `backend.send()` with what it was
+  already handing to `codegen.assemble()` — the payload's filename, its parameters, its bootstrap —
+  and **the same parameters reach both sides, unreshaped**. There is deliberately no escape hatch
+  for a tool whose two paths would want different ones; if one ever needs that, it is a design
+  problem to surface in that tool's own effort rather than a flexibility to carry unused.
+- **Backend selection is explicit configuration, never autodetection.** `MPFB_MCP_BACKEND` is
+  `blender_mcp` (the default) or `bridge`, and `MPFB_BRIDGE_HOST` / `MPFB_BRIDGE_PORT` give the
+  bridge's address. Both third-party add-ons default to port 9876 and the bridge answers on 9877,
+  so the address distinguishes nothing reliably, and no single probe distinguishes them either — a
+  NUL-terminated ping leaves the community add-on's parser waiting for the rest of a message, while
+  an unterminated one leaves blender lab's doing the same. **An unrecognised backend name is an
+  error, not a silent fallback**: a typo that quietly leaves every call on the old path is
+  indistinguishable from the bridge not working, which is the most expensive shape a configuration
+  mistake can take.
+- **One table is the migration's progress bar.** The seam holds the payload-to-command mapping in
+  one readable file. A tool in it goes over the configured transport; a tool not in it goes over the
+  generated path in *both* configurations, because there is nothing else it could do. The last
+  stage of the pivot deletes the table by emptying it.
+- **The default configuration is the working system.** Somebody who upgrades and sets no variable
+  must not be able to tell the seam exists. That is what replaces the reversibility the two
+  preceding efforts could offer and this one could not: FR 030 is the first stage that changed
+  `src/mpfbmcp/`, so `bridge/` is no longer removable without consequence.
 - **Observability keeps its attachment point and changes its unit.** The per-call record hangs off
   the send and nowhere else, which does not change; what it records stops being a program and
-  becomes a command and its parameters.
+  becomes a command and its parameters. See
+  [observability.md](observability.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program).
 
 <a id="resolving-mpfb-from-generated-code"></a>
 
@@ -461,9 +505,13 @@ about that survivable.
 
 ## The generated-code path: what runs today, and is being retired
 
-**Everything in this part describes the machine that every one of the twenty-five tools currently
-uses.** It is not historical and it is not aspirational; it is what executes when a tool is called
-today. It is also what
+**Everything in this part describes the machine that twenty-four of the twenty-five tools use,
+and that all twenty-five use in the default configuration.** It is not historical and it is not
+aspirational; it is what executes when a tool is called today. The exception is
+`mpfb_list_objects`, which has a bridge command as well and takes it when the bridge is the
+configured backend ([Supporting a second backend](#supporting-a-second-backend)) — its payload and
+that command are maintained side by side until the generated path is retired, because they are the
+two halves of the comparison that says the bridge answers the same. It is also what
 [FR 028](../feature-requests/done/028-pivot-to-specific-addon/README.md) decided to replace, and it will
 be deleted — `codegen/`, the session source cache and the shared fragments together — by the child
 effort that migrates the last tool. Until then it is maintained, and a change to a tool that has

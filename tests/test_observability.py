@@ -18,6 +18,13 @@ fake add-on look at the filesystem while it holds the request, since an
 implementation that writes both files together after the response arrives
 passes every other test here.
 
+Since FR 030 there are two transports and therefore two kinds of request, and
+``BridgeRecordTests`` at the end is about what must be true of *both*: one
+index, in call order, with the same columns, whichever backend a line came
+from. The ordering claim is made again there rather than assumed to carry over,
+because it is the one an implementation is most likely to get right once and
+wrong the second time.
+
 Run with::
 
     python -m unittest tests.test_observability -v
@@ -35,8 +42,8 @@ import sys
 import tempfile
 import unittest
 
-from mpfbmcp import codegen, connection, observability
-from tests import fake_addon
+from mpfbmcp import backend, bridge_connection, codegen, connection, observability
+from tests import fake_addon, fake_bridge
 
 
 class ObservabilityTestCase(fake_addon.EnvVarTestCase):
@@ -314,6 +321,162 @@ class RecordTests(ObservabilityTestCase):
         self.assertGreater(int(size), 0)
         with open(path, encoding="utf-8") as stream:
             self.assertIn("object object at", stream.read())
+
+
+class BridgeRecordTests(ObservabilityTestCase, fake_bridge.BridgeTestCase):
+    """The record of a bridge call: same directory, same index, different unit."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.set_env_var(backend.BACKEND_VARIABLE, None)
+
+    def _bridge(self, result=None):
+        return self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "list_objects": fake_bridge.ok_envelope(
+                "list_objects", {"count": 0} if result is None else result),
+        })
+
+    def test_the_request_is_written_as_the_json_that_went_on_the_wire(self) -> None:
+        root = self.enable_record()
+        server = self._bridge()
+
+        bridge_connection.send_command("list_objects", {"object_type": "Basemesh"})
+
+        directory = self.run_directory(root)
+        path = os.path.join(directory, "0002-list_objects-request.json")
+        with open(path, encoding="utf-8") as stream:
+            written = stream.read()
+        self.assertEqual(json.loads(written),
+                         {"command": "list_objects",
+                          "params": {"object_type": "Basemesh"},
+                          "protocol_version": bridge_connection.PROTOCOL_VERSION})
+        # Byte for byte what was sent, which is the property the program file
+        # has on the other path: a record that is nearly the request is one
+        # that has to be argued with.
+        self.assertEqual(written.encode("utf-8"),
+                         server.requests[-1].partition(b"\0")[0])
+
+    def test_the_record_is_named_for_the_command(self) -> None:
+        root = self.enable_record()
+        self._bridge()
+
+        bridge_connection.send_command("list_objects")
+
+        files = sorted(os.listdir(self.run_directory(root)))
+        self.assertIn("0001-get_status-request.json", files)
+        self.assertIn("0002-list_objects-request.json", files)
+        self.assertIn("0002-list_objects.json", files)
+
+    def test_the_request_is_on_disk_before_the_bridge_answers(self) -> None:
+        root = self.enable_record()
+        seen: dict[str, object] = {}
+
+        def look_while_holding_the_request(request):
+            command = str(request.get("command"))
+            if command == "list_objects":
+                directory = os.path.join(root, os.listdir(root)[0])
+                seen["files"] = sorted(os.listdir(directory))
+            result = (fake_bridge.status_result() if command == "get_status"
+                      else {"count": 0})
+            return fake_bridge.ok_envelope(command, result)
+
+        self.run_fake_bridge(responder=look_while_holding_the_request)
+
+        bridge_connection.send_command("list_objects")
+
+        self.assertIn("0002-list_objects-request.json", seen["files"])
+        self.assertNotIn("0002-list_objects.json", seen["files"])
+
+    def test_a_call_that_never_answers_still_leaves_its_request(self) -> None:
+        root = self.enable_record()
+        self.run_fake_bridge(responder=lambda request: None)
+
+        with self.assertRaises(ConnectionError):
+            bridge_connection.send_command("list_objects")
+
+        directory = self.run_directory(root)
+        # The probe is the call that failed, since it goes first.
+        self.assertTrue(os.path.isfile(
+            os.path.join(directory, "0001-get_status-request.json")))
+        self.assertEqual(self.index_lines(root)[1].split("\t")[5], "no-response")
+
+    def test_a_run_mixing_the_backends_produces_one_index_in_call_order(self) -> None:
+        root = self.enable_record()
+        self.run_fake_server({"status": "ok", "result": {"count": 0}})
+        self._bridge()
+
+        self.set_env_var(backend.BACKEND_VARIABLE, None)
+        backend.send("list_objects.py", params={"object_type": None})
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        backend.send("list_objects.py", params={"object_type": None})
+
+        lines = self.index_lines(root)[1:]
+        self.assertEqual([line.split("\t")[2] for line in lines],
+                         ["list_objects", "get_status", "list_objects"])
+        self.assertEqual([line.split("\t")[0] for line in lines],
+                         ["0001", "0002", "0003"])
+        for line in lines:
+            fields = line.split("\t")
+            self.assertEqual(len(fields), 7, "the columns are the same on both paths")
+            self.assertGreater(int(fields[3]), 0, "bytes counts the request either way")
+            self.assertEqual(fields[5], "ok")
+
+    def test_an_error_envelope_names_the_request_rather_than_a_program(self) -> None:
+        root = self.enable_record()
+        self.run_fake_bridge(responder=lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope("command_failed", "it raised inside Blender")))
+
+        response = bridge_connection.send_command("list_objects")
+
+        directory = self.run_directory(root)
+        self.assertEqual(response["mpfb_mcp_record"], {
+            "request": os.path.join(directory, "0002-list_objects-request.json"),
+            "response": os.path.join(directory, "0002-list_objects.json"),
+        })
+
+    def test_off_still_means_unchanged_on_the_bridge(self) -> None:
+        request = {"object_type": None}
+
+        off = self._bridge()
+        bridge_connection.send_command("list_objects", request)
+
+        self.enable_record()
+        bridge_connection.forget_handshakes()
+        on = self._bridge()
+        bridge_connection.send_command("list_objects", request)
+
+        self.assertEqual(off.requests, on.requests)
+
+    def test_a_bridge_call_logs_one_line_naming_the_command(self) -> None:
+        self._bridge()
+        self.enable_log("INFO")
+
+        with self.assertLogs(observability.LOGGER_ROOT, level="INFO") as captured:
+            bridge_connection.send_command("list_objects")
+
+        self.assertEqual(len(captured.output), 2, "the probe is a call and is logged as one")
+        self.assertIn("get_status", captured.output[0])
+        self.assertIn("list_objects", captured.output[1])
+
+
+class CommandNameTests(unittest.TestCase):
+    """Naming a record for a command, where a program is named by its marker."""
+
+    def test_a_command_names_its_own_record(self) -> None:
+        self.assertEqual(observability.tool_name_from_command("list_objects"), "list_objects")
+
+    def test_a_command_name_cannot_escape_the_run_directory(self) -> None:
+        # Nothing in this package sends such a command name; the argument is a
+        # string and it becomes part of a filename.
+        name = observability.tool_name_from_command("../../etc/passwd")
+        self.assertEqual(os.path.basename(name), name)
+        self.assertNotIn(os.sep, name)
+
+    def test_an_empty_command_gets_a_neutral_name(self) -> None:
+        self.assertEqual(observability.tool_name_from_command("   "), "unnamed")
 
 
 class FailureIsSwallowedTests(ObservabilityTestCase):

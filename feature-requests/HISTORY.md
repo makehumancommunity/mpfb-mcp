@@ -1623,3 +1623,83 @@ four attack shapes were re-run against the new dispatcher on both paths and all 
 the `params`-smuggling one now refused rather than ignored, which is strictly better. The unit
 suite stayed at 886 and `src/mpfbmcp/` was not touched; pylint rates the add-on 9.38/10 against
 MPFB's unmodified rcfile, the residue being the two categories MPFB's own source produces.
+
+## [FR 030](done/030-backend-seam/README.md) — the backend seam, and the first migrated tool
+
+**The stage where mpfb-mcp learned to talk to the bridge, and the first that cannot be deleted
+without consequence.** FR 028 and FR 029 both ended with `bridge/` removable and the running
+system untouched; this one changed `src/mpfbmcp/`. What replaces the reversibility is a default:
+`MPFB_MCP_BACKEND` is `blender_mcp` unless told otherwise, and a user who upgrades and configures
+nothing gets exactly the system they had.
+
+**The seam is an adapter below the send, and the test of that is a diff.** `backend.send()` takes
+what a tool was already handing to `codegen.assemble()` — the payload's filename, its parameters,
+its bootstrap — and either assembles that program or looks the payload up in one table and sends a
+named command instead. `git diff` on the migrated tool shows its send call replaced and nothing
+else; the other twenty-four tool modules show no diff at all. The seam reads the configuration
+rather than probing, because no probe distinguishes the three candidate ports, and **an
+unrecognised backend name is an error rather than a fallback**: a typo that quietly leaves every
+call on the old path is indistinguishable from the bridge not working.
+
+**The client half of the handshake, which FR 029 left to whoever first spoke to the bridge.**
+Every request declares its `protocol_version`, which earns the bridge's own `protocol_mismatch`
+refusal for free, and the first call to an address issues one `get_status` — the only thing that
+reads `min_supported_protocol_version` and so the only thing that can say *which end to upgrade*
+rather than merely that two numbers differ. The memo is per `(host, port)` and is dropped on a
+connection failure, exactly as `shared_cache._PRIMED` is a claim about what this process learned;
+and the probe goes through the wire client directly, never through the seam, or the first call in
+a process would probe in order to probe.
+
+**The envelope became this package's, with the same spellings.** `status`, `result` and `message`
+kept their meanings, so no existing caller or test changed. What the bridge added is `error`, and
+a generated-code failure is now given `error: "command_failed"` by the seam — a statement of fact
+rather than a guess, since a blender_mcp error envelope is always a program that raised inside
+Blender. A success envelope is untouched on both paths, and nothing is synthesised:
+`protocol_version` is a fact about the bridge's protocol and is absent from a generated-code answer
+rather than invented for it. A `backend` field was considered and refused — which backend answered
+is in the log line and the record, and putting it in `mpfb_get_status`' answer would have meant
+editing an unmigrated tool.
+
+**`mpfb_list_objects` was migrated, chosen for being dull rather than representative**, and the
+bridge command reproduces the payload's quirks rather than tidying them: `_ALL_TYPES` read off the
+service's module with a stale local vocabulary as fallback, MPFB's case-insensitive substring
+matching, `get_object_type()`'s `""` coerced to `null`, only the current scene searched. It is the
+first command in the table with `requires_mpfb=True`, so FR 029's `mpfb_unavailable` precondition
+was exercised from outside the add-on for the first time. The temptation this command made concrete
+was resisted: `_ALL_TYPES` is a module-level name the add-on *could* simply import, and
+[never import MPFB submodules directly](../specifications/architecture.md#never-import-mpfb-submodules-directly)
+survives the pivot unchanged.
+
+**The record's unit stopped being a program.** A bridge call writes its request as the JSON that
+went on the wire, byte for byte, before the socket call and for the same reason a program is
+written before one. The attachment point did not move and could not — the socket is still the only
+boundary every tool crosses — and a run mixing the two backends produces one index in one directory
+in call order, with `bytes` counting the request either way. Off still means unchanged.
+
+**Where a migrated tool is tested is the largest thing this effort settled, and it is worth more
+than the tool.** MPFB is reachable only from inside Blender, so for twenty-five tools the
+Blender-side logic had been checked by `exec()`-ing a payload against a stub `bpy` and stub
+services — a harness that can prove the code does what its author expected and nothing about MPFB.
+As add-on code that logic is ordinary Python in an extension, so the twelve assertions about what
+`mpfb_list_objects` answers now run against a real MPFB in a headless Blender, and two of them
+turned out to be claims about MPFB that had never been put to MPFB: that `object_is()` matches a
+substring, and that `get_object_type()` answers `""`. What stays on mpfb-mcp's side is now a closed
+list — local validation, the bytes on the wire, the seam, the record — and the payload's own test
+layer is **frozen** until stage 5 deletes it with the payload. FR 028's deferred coverage wiring
+landed here too: 77% of the add-on, 98% of the new command.
+
+Verified against Blender 5.1.0, MPFB 2.0.17 and bridge 0.3.0 on 2026-09-19. The effort's own
+[`check_backend_seam.py`](done/030-backend-seam/check_backend_seam.py) compared the two paths field
+by field over an empty scene and a scene with a character, unfiltered, by exact type, by substring,
+by a type matching nothing and by a misspelling — **30 checks, 0 failed, every result identical** —
+and `--self-compare` fails as it must when handed two runs of one backend, so "identical" cannot
+mean "the second run was never made". The cost, from one client in one run: **4,664 bytes of
+program against 83 bytes of JSON**, and 461 ms against 58 ms at the add-on's 0.25 s default, 103 ms
+against 58 ms with it tuned to 0.05 s. `mpfb_unavailable` was exercised against a
+`--factory-startup` Blender running the bridge with no MPFB and reaches the tool as an install to
+fix rather than as an empty scene. [verification/](../verification/) passed in **both**
+configurations with no edit to `smoke.py` — 27 passed, 0 failed, 1 skipped, 49.4 s and 47.8 s — and
+the transitional prerequisite it creates, both add-ons in one Blender, is written down rather than
+left to be met as a puzzle. The unit suite went from 886 tests to **945** and from 10.2 s to 2.8 s,
+the second number being an accident worth keeping: the fake servers' `shutdown()` poll interval was
+costing half a second per test that started one.
