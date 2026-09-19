@@ -25,7 +25,10 @@ copy it:
 - **How a test builds a character to look at** is ``HumanService.create_human()``
   and a snapshot-and-delete cleanup, which is MPFB's own arrangement in
   ``mpfb2/test/tests/eee_ui/_helpers/scene_fixtures.py``. It works without a
-  screen, which was not established before this module ran.
+  screen, which was not established before this module ran. FR 031 moved that
+  arrangement, the skip and the dispatch helper into
+  [`_fixtures.py`](_fixtures.py), where the eight commands that came next share
+  them; this module now reads them from there rather than keeping its own.
 - **A Blender with no MPFB is part of the test rather than an obstacle to it**,
   reached by supplying the resolution the dispatcher would have found.
 
@@ -37,78 +40,23 @@ precondition and the handler, in that order.
 import sys
 
 import bpy
-import pytest
 
 from . import bridge_module
 from . import dynamic_import
-
-
-def _services_or_skip():
-    """MPFB's services, or skip this test saying why it could not run."""
-    resolution = dynamic_import("mpfb_resolution", "resolve")()
-    if not resolution.is_ok:
-        pytest.skip("MPFB is {:s} in this Blender: {:s}".format(
-            resolution.state, resolution.message))
-    return resolution.services
+from ._fixtures import Character as _Character
+from ._fixtures import dispatch
+from ._fixtures import linked_plain_object as _linked_plain_object
+from ._fixtures import result as _fixture_result
+from ._fixtures import services_or_skip as _services_or_skip
+from ._fixtures import supplied_resolution
 
 
 def _answer(params=None):
-    """Dispatch one ``list_objects`` request and return its envelope.
-
-    The dispatcher answers out of the table it was *started* with, so the
-    server is started on an OS-assigned port - port 0, so this cannot collide
-    with a bridge the developer happens to be running on 9877.
-    """
-    commands = dynamic_import("commands", "COMMANDS")
-    command_server = bridge_module("command_server")
-    if command_server.is_running():
-        command_server.stop()
-    command_server.start("127.0.0.1", 0, commands)
-    try:
-        request = {"command": "list_objects"}
-        if params is not None:
-            request["params"] = params
-        return command_server.dispatch(request)
-    finally:
-        command_server.stop()
+    return dispatch("list_objects", params)
 
 
 def _result(params=None):
-    answer = _answer(params)
-    assert answer["status"] == "ok", "list_objects should have succeeded, got {!r}".format(answer)
-    return answer["result"]
-
-
-class _Character:
-    """One MPFB character, deleted again however the test ends.
-
-    MPFB's own fixtures record the object names before the call and remove
-    whatever is new, rather than tracking what ``create_human()`` returned: a
-    character is several objects and only the basemesh comes back.
-    """
-
-    def __init__(self):
-        self.basemesh = None
-        self._before = None
-
-    def __enter__(self):
-        services = _services_or_skip()
-        self._before = set(blender_object.name for blender_object in bpy.data.objects)
-        self.basemesh = services["HumanService"].create_human()
-        assert self.basemesh is not None, "HumanService.create_human() produced nothing"
-        return self
-
-    def __exit__(self, *args):
-        for blender_object in list(bpy.data.objects):
-            if blender_object.name not in self._before:
-                bpy.data.objects.remove(blender_object, do_unlink=True)
-
-
-def _linked_plain_object(name):
-    """An ordinary Blender object in the scene, carrying no MPFB type."""
-    plain = bpy.data.objects.new(name, bpy.data.meshes.new(name + "Mesh"))
-    bpy.context.scene.collection.objects.link(plain)
-    return plain
+    return _fixture_result("list_objects", params)
 
 
 def test_a_scene_with_no_makehuman_objects_answers_none_of_them():
@@ -259,19 +207,13 @@ def test_the_command_is_refused_rather_than_answered_when_mpfb_is_absent():
     """command_server.dispatch() with requires_mpfb and no MPFB"""
     command_server = bridge_module("command_server")
     resolution_module = bridge_module("mpfb_resolution")
-    resolution_class = dynamic_import("mpfb_resolution", "Resolution")
-    original = resolution_module.resolve
 
     # The first command in the table with requires_mpfb=True, so this is the
     # first time that precondition is exercised from outside its own test. The
     # state is supplied rather than waited for: this Blender may well have a
     # perfectly good MPFB in it.
-    resolution_module.resolve = lambda: resolution_class(
-        resolution_module.STATE_ABSENT, None, None, [])
-    try:
+    with supplied_resolution(resolution_module.STATE_ABSENT):
         answer = _answer()
-    finally:
-        resolution_module.resolve = original
 
     assert answer["status"] == "error", "A command needing MPFB cannot answer without it"
     assert answer["error"] == command_server.ERROR_MPFB_UNAVAILABLE, \

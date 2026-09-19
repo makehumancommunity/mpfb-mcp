@@ -5,10 +5,19 @@ The four modeling-target tools carry 26 KB of shared fragments that are
 byte-identical from one call to the next, and a generated program costs about
 250 ms per 4 KB on the wire whatever it contains (see
 specifications/architecture.md#what-a-call-costs-is-the-size-of-its-program).
-This module is the tool side of the arrangement that stops paying for them
-twice: ``codegen``'s loader keeps a fragment's source inside Blender under a
-hash of itself, and ``send()`` below decides whether a given call has to carry
-that source or may refer to it.
+This module is the generated path's half of the arrangement that stops paying
+for them twice: ``codegen``'s loader keeps a fragment's source inside Blender
+under a hash of itself, and ``send()`` below decides whether a given call has to
+carry that source or may refer to it.
+
+**Nothing outside :mod:`mpfbmcp.backend` calls this.** It used to be what a
+tool imported, and since FR 031 it is what the seam consults on the generated
+path - so a tool names its fragments once, in the ``backend.send()`` call it
+makes whatever transport it is on, and a tool that migrates keeps the cache for
+the tools left behind rather than taking it with it. **It is still
+generated-path machinery and it still dies with that path**: a bridge request
+carries parameters and nothing else, so there is no source for it to cache and
+nothing here to port.
 
 Three things about it are decisions rather than details.
 
@@ -64,22 +73,30 @@ def _is_cache_miss(response: dict[str, object]) -> bool:
             and CACHE_MISS_MARKER in str(response.get("message") or ""))
 
 
-def send(payload: str, params: dict[str, object], *, shared: list[str],
-         bootstrap: str = "raising") -> dict[str, object]:
+def send(payload: str, params: dict[str, object], *,
+         cached_shared: list[str],
+         shared: list[str] | None = None,
+         bootstrap: str = "raising",
+         strict_json: bool = True) -> dict[str, object]:
     """Assemble and send one payload, carrying its fragments' source if needed.
 
-    Always ``strict_json``: every payload reaching here builds plain JSON-safe
-    data, and a value that stops being so should surface as a clear error rather
-    than as a repr.
+    ``cached_shared`` are the fragments that go through the cache; ``shared``
+    are ordinary ones, concatenated in full on every call, and are passed
+    through untouched so that the seam can hand this everything a tool named
+    without first sorting out which kind each is.
+
+    ``strict_json`` is the seam's, and every caller so far asks for it: every
+    payload reaching here builds plain JSON-safe data, and a value that stops
+    being so should surface as a clear error rather than as a repr.
     """
-    keys = _keys(shared)
+    keys = _keys(cached_shared)
     carry_sources = not all(key in _PRIMED for key in keys)
 
     for attempt in (1, 2):
         code = codegen.assemble(
-            payload, bootstrap=bootstrap, params=params,
-            cached_shared=shared, carry_sources=carry_sources)
-        response = send_code(code, strict_json=True)
+            payload, bootstrap=bootstrap, params=params, shared=shared,
+            cached_shared=cached_shared, carry_sources=carry_sources)
+        response = send_code(code, strict_json=strict_json)
         if carry_sources:
             _PRIMED.update(keys)
         if attempt == 2 or not _is_cache_miss(response):

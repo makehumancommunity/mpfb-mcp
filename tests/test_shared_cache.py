@@ -152,7 +152,7 @@ class SendTests(DetailTargetTestCase):
         with mock.patch.object(shared_cache, "send_code", self.fake_send_code):
             return shared_cache.send(
                 "list_targets.py", dict(LIST_TARGETS_PARAMS),
-                shared=["target_categories.py"], **kwargs)
+                cached_shared=["target_categories.py"], **kwargs)
 
     def carried(self, index):
         return "(carried)" in self.programs[index]
@@ -216,7 +216,7 @@ class SendTests(DetailTargetTestCase):
             send_code.return_value = envelope
             self.assertIs(shared_cache.send(
                 "list_targets.py", dict(LIST_TARGETS_PARAMS),
-                shared=["target_categories.py"]), envelope)
+                cached_shared=["target_categories.py"]), envelope)
 
         self.assertEqual(send_code.call_count, 2)
 
@@ -226,7 +226,7 @@ class SendTests(DetailTargetTestCase):
             send_code.return_value = envelope
             self.assertIs(shared_cache.send(
                 "list_targets.py", dict(LIST_TARGETS_PARAMS),
-                shared=["target_categories.py"]), envelope)
+                cached_shared=["target_categories.py"]), envelope)
 
         self.assertEqual(send_code.call_count, 1)
 
@@ -246,9 +246,9 @@ class SendTests(DetailTargetTestCase):
         # retry has to reason about.
         with mock.patch.object(shared_cache, "send_code", self.fake_send_code):
             shared_cache.send("list_targets.py", dict(LIST_TARGETS_PARAMS),
-                              shared=["target_categories.py"])
+                              cached_shared=["target_categories.py"])
             shared_cache.send("list_targets.py", dict(LIST_TARGETS_PARAMS),
-                              shared=["target_categories.py", "performed.py"])
+                              cached_shared=["target_categories.py", "performed.py"])
 
         self.assertTrue(self.carried(1))
 
@@ -256,7 +256,7 @@ class SendTests(DetailTargetTestCase):
         with mock.patch.object(shared_cache, "send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             shared_cache.send("list_targets.py", dict(LIST_TARGETS_PARAMS),
-                              shared=["target_categories.py"])
+                              cached_shared=["target_categories.py"])
 
         self.assertIs(send_code.call_args[1]["strict_json"], True)
 

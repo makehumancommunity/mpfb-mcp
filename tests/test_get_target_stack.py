@@ -29,7 +29,7 @@ from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
 
-from mpfbmcp import codegen, shared_cache
+from mpfbmcp import backend, codegen, shared_cache
 from mpfbmcp.tools import get_target_stack
 
 from tests.blender_stubs import DetailTargetTestCase, LONG_USER_TARGET, StubObject
@@ -77,11 +77,18 @@ class ArgumentValidationTests(unittest.TestCase):
             "name_contains": "nose", "limit": 5, "offset": 10}),
             send_code.call_args[0][0])
 
-    def test_response_envelope_is_returned_unchanged(self):
-        envelope = {"status": "error", "message": "no MPFB"}
+    def test_a_failure_reaches_the_caller_with_a_slug_to_branch_on(self):
+        # The envelope is this package's: `status` and `message` are unchanged,
+        # and `error` is what a caller branches on whichever transport answered.
+        # Since FR 031 this tool's fragments go through the seam rather than
+        # around it, so the mapping applies to a cached-fragment call too.
         with mock.patch.object(shared_cache, "send_code") as send_code:
-            send_code.return_value = envelope
-            self.assertIs(self.tool(), envelope)
+            send_code.return_value = {"status": "error", "message": "no MPFB"}
+            response = self.tool()
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["message"], "no MPFB")
+        self.assertEqual(response["error"], backend.ERROR_COMMAND_FAILED)
 
     def test_strict_json_is_requested(self):
         with mock.patch.object(shared_cache, "send_code") as send_code:

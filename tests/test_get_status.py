@@ -1,15 +1,31 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Tests for the mpfb_get_status tool: the tool wrapper, and the generated code's
-three-state classification.
+Tests for the mpfb_get_status tool, migrated by FR 031 and therefore in three
+layers rather than two (see ``tests/test_list_objects.py``, the template).
 
-The generated code cannot be run against real MPFB from here (see
-specifications/architecture.md), but unlike the other tools' generated code it
-carries real branching logic, so it is worth executing locally against stubbed
-``sys.modules`` entries and a stubbed ``bpy``. That checks the branching and
-the shape of ``result``; it says nothing about whether real MPFB returns the
-values we assume, which remains a manual check against a running Blender.
+1. **The wrapper**, with ``send_code`` mocked on the seam. This tool takes no
+   arguments at all, so what is left here is the smallest a wrapper layer gets:
+   the bootstrap it asks for, and that the envelope reaches the caller.
+2. **The bridge path**, against ``tests/fake_bridge.py``. Thin, and one of its
+   four tests exists only for this tool: the command it sends is
+   ``get_mpfb_status`` and **not** ``get_status``, which the bridge already
+   uses for its own state. A tool that sent ``get_status`` would get a
+   plausible-looking answer about the wrong piece of software.
+3. **The payload**, ``exec()``-ed against stubbed ``sys.modules`` entries and a
+   stubbed ``bpy``. **Frozen.** It stays while the payload stays, because the
+   payload is half of what FR 031's live comparison compares, and it is deleted
+   with the payload when the generated path is retired. Nothing is added to it:
+   a new assertion about MPFB's behaviour belongs in
+   ``bridge/test/tests/ggg_get_mpfb_status_test.py``, where it is made against
+   a real install rather than against stubs written by whoever wrote the code
+   under test.
+
+The share of this module that goes with the payload: 203 of its 410 lines, 50%
+- the three stub services, the assembled-source checks and the execution tests
+- against a 122-line payload whose logic is a three-way classification. Read it
+beside ``mpfb_list_objects``' 27%: that tool's payload is a filter and a
+substring test, and this is what the rate looks like once a payload branches.
 
 Run with::
 
@@ -28,8 +44,9 @@ from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
 
-from mpfbmcp import codegen
+from mpfbmcp import backend, codegen
 from mpfbmcp.tools import get_status
+from tests import fake_bridge
 
 # SystemService's module, which is where MPFB keeps LOWEST_FUNCTIONAL_BLENDER_VERSION
 # (a module-level constant, not a class member). Must not itself end in "mpfb", or
@@ -157,7 +174,7 @@ class GetStatusToolTests(unittest.TestCase):
     def setUp(self) -> None:
         self.mpfb_get_status = _register_and_get_tool()
 
-    @mock.patch("mpfbmcp.tools.get_status.send_code")
+    @mock.patch("mpfbmcp.backend.send_code")
     def test_takes_no_arguments_and_requests_strict_json(self, mock_send_code: mock.Mock) -> None:
         mock_send_code.return_value = {"status": "ok", "result": {"state": "ok"}}
 
@@ -168,7 +185,7 @@ class GetStatusToolTests(unittest.TestCase):
         self.assertTrue(kwargs.get("strict_json"))
         self.assertIn("_mpfb_state", code)
 
-    @mock.patch("mpfbmcp.tools.get_status.send_code")
+    @mock.patch("mpfbmcp.backend.send_code")
     def test_response_is_passed_through_unchanged(self, mock_send_code: mock.Mock) -> None:
         # The tool must not interpret or reshape the envelope: graceful absence
         # lives in the generated code, not in Python on this side of the socket.
@@ -177,13 +194,90 @@ class GetStatusToolTests(unittest.TestCase):
 
         self.assertEqual(self.mpfb_get_status(), envelope)
 
-    def test_error_envelope_is_also_passed_through(self) -> None:
-        envelope = {"status": "error", "message": "boom"}
-        with mock.patch("mpfbmcp.tools.get_status.send_code", return_value=envelope):
-            self.assertEqual(self.mpfb_get_status(), envelope)
+    def test_a_failure_reaches_the_caller_with_a_slug_to_branch_on(self) -> None:
+        # `status` and `message` are unchanged and `error` is what a caller
+        # branches on whichever transport answered. The mapping is
+        # tests/test_backend.py's.
+        with mock.patch("mpfbmcp.backend.send_code",
+                        return_value={"status": "error", "message": "boom"}):
+            response = self.mpfb_get_status()
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["message"], "boom")
+        self.assertEqual(response["error"], backend.ERROR_COMMAND_FAILED)
+
+
+class GetStatusOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """What cannot cross the socket, and nothing else.
+
+    Everything this tool *answers* - the three states, the tiers of fields, the
+    disabled-but-loaded case - is checked against a real MPFB in the bridge's
+    own suite.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.mpfb_get_status = _register_and_get_tool()
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        self.bridge = self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "get_mpfb_status": fake_bridge.ok_envelope(
+                "get_mpfb_status", {"state": "ok", "candidate_modules": []}),
+        })
+
+    def test_the_tool_sends_get_mpfb_status_and_not_get_status(self) -> None:
+        # The one naming exception in MIGRATED_COMMANDS, asserted where it would
+        # actually bite: `get_status` is the bridge's own state, and a tool
+        # sending it would get a well-formed answer about the wrong software.
+        self.mpfb_get_status()
+
+        # The first `get_status` is the handshake probe, which every first call
+        # to an address makes; the command this tool sent is the last one.
+        self.assertEqual(self.bridge.commands()[-1], "get_mpfb_status")
+        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {})
+
+    def test_the_answer_reaches_the_caller_as_it_arrived(self) -> None:
+        response = self.mpfb_get_status()
+
+        self.assertEqual(response["status"], "ok")
+        self.assertEqual(response["result"]["state"], "ok")
+
+    def test_absence_is_still_a_successful_answer_over_the_bridge(self) -> None:
+        # The whole value of this tool, and the reason its command declares
+        # requires_mpfb=False: a Blender with no MPFB answers rather than
+        # refusing. The bridge's precondition would have produced an
+        # mpfb_unavailable envelope instead.
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.ok_envelope("get_mpfb_status", {
+                "state": "absent",
+                "message": "MPFB is not loaded in this Blender instance",
+                "candidate_modules": []}))
+
+        response = self.mpfb_get_status()
+
+        self.assertEqual(response["status"], "ok")
+        self.assertEqual(response["result"]["state"], "absent")
+
+    def test_a_bridge_error_envelope_reaches_the_caller_intact(self) -> None:
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope(
+                "command_failed", "The command raised while running inside Blender.",
+                command="get_mpfb_status"))
+
+        response = self.mpfb_get_status()
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "command_failed")
 
 
 class GetStatusCodeTests(unittest.TestCase):
+    """The payload against the stubs. **Frozen**: see this module's docstring."""
+
+
     def test_generated_code_compiles(self) -> None:
         compile(_get_status_code(), "<generated>", "exec")
 

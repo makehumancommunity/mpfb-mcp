@@ -35,12 +35,41 @@ __all__ = (
     "COMMANDS",
 )
 
+from . import get_macro_details
+from . import get_mpfb_status
+from . import get_object_info
 from . import get_status
 from . import list_commands
 from . import list_objects
 from .command import Command
 
 COMMANDS = {
+    "get_macro_details": Command(
+        name="get_macro_details",
+        handler=get_macro_details.get_macro_details,
+        params=get_macro_details.PARAMS,
+        requires_mpfb=True,
+        summary=get_macro_details.SUMMARY),
+    "get_mpfb_status": Command(
+        name="get_mpfb_status",
+        handler=get_mpfb_status.get_mpfb_status,
+        params=get_mpfb_status.PARAMS,
+        # False, and the first migrated command for which it is. This is the
+        # command whose whole value is that MPFB's absence is a successful
+        # answer, so it must not be gated on the thing it reports about - and
+        # note the name, which breaks the otherwise exact payload-to-command
+        # correspondence on purpose. ``get_status`` below is about *this
+        # add-on*; this one is about *MPFB*, and two commands answering
+        # "status" about two different pieces of software would be a collision
+        # that is cheap now and permanent later.
+        requires_mpfb=False,
+        summary=get_mpfb_status.SUMMARY),
+    "get_object_info": Command(
+        name="get_object_info",
+        handler=get_object_info.get_object_info,
+        params=get_object_info.PARAMS,
+        requires_mpfb=True,
+        summary=get_object_info.SUMMARY),
     "get_status": Command(
         name="get_status",
         handler=get_status.get_status,

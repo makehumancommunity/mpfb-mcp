@@ -37,7 +37,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import shared_cache
+from mpfbmcp import backend
 
 _MODIFIER_KEYS = ("section", "category", "value", "side")
 _TARGET_KEYS = ("shapekey_name", "value")
@@ -224,9 +224,9 @@ def register(mcp: FastMCP) -> None:
         # `result` (built in codegen/payloads/set_targets.py) is plain
         # JSON-safe data - shape key values and paths are coerced there - which
         # is what send() asks for on the way out.
-        return shared_cache.send(
+        return backend.send(
             "set_targets.py",
-            shared=["target_categories.py", "refit_blocker.py", "performed.py"],
+            cached_shared=["target_categories.py", "refit_blocker.py", "performed.py"],
             params={
                 "name": _validated_name(name),
                 "modifiers": _validated_modifiers(modifiers),

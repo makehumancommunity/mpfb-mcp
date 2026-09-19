@@ -22,8 +22,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 
 def _validated_name(name: object) -> str | None:
@@ -113,9 +112,9 @@ def register(mcp: FastMCP) -> None:
         # plain JSON-safe data, so strict_json=True to surface a clear error if
         # that ever stops being true, rather than silently falling back to
         # `repr`.
-        code = codegen.assemble(
+        return backend.send(
             "get_object_info.py",
             bootstrap="raising",
             params={"name": _validated_name(name)},
+            strict_json=True,
         )
-        return send_code(code, strict_json=True)

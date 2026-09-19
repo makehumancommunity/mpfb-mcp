@@ -1,19 +1,25 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Tests for the mpfb_get_macro_details tool: argument validation, and the
-generated code's subject resolution, reading and drift reporting.
+Tests for the mpfb_get_macro_details tool, migrated by FR 031 and therefore in
+three layers rather than two (see ``tests/test_list_objects.py``, the template).
 
-The generated code cannot be run against real MPFB from here (see
-specifications/architecture.md), so it is executed against the stubs in
-tests/blender_stubs.py. That checks the branching and the shape of ``result``;
-it says nothing about whether real MPFB returns the values we assume, which
-remains a manual check against a running Blender.
+1. **The wrapper**, with ``send_code`` mocked on the seam: argument validation,
+   and what goes on the wire.
+2. **The bridge path**, against ``tests/fake_bridge.py``. Thin on purpose.
+3. **The payload**, ``exec()``-ed against the stubs in
+   ``tests/blender_stubs.py``. **Frozen.** It stays while the payload stays,
+   because the payload is half of what FR 031's live comparison compares, and
+   it is deleted with the payload when the generated path is retired.
 
-The cases worth naming here are the ones the tool exists for: resolving the
-basemesh from *any* member of the character's family, reporting the raw race
-sum rather than a normalized one, and reporting the derived target stack beside
-the shape keys actually on the mesh so that a drifted character is visible.
+The cases the tool exists for - resolving the basemesh from *any* member of the
+character's family, reporting the raw race sum rather than a normalized one,
+and reporting the derived target stack beside the shape keys actually on the
+mesh so that a drifted character is visible - are now asserted against a real
+MPFB in ``bridge/test/tests/iii_get_macro_details_test.py``. What is here is
+the same claims against stubs, kept while the payload is kept.
+
+The share of this module that goes with the payload: 222 of its 386 lines, 58%.
 
 Run with::
 
@@ -27,7 +33,9 @@ from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
 
+from mpfbmcp import backend
 from mpfbmcp.tools import get_macro_details
+from tests import fake_bridge
 from tests.blender_stubs import GeneratedCodeTestCase, StubObject
 
 
@@ -44,7 +52,7 @@ class GetMacroDetailsToolTests(unittest.TestCase):
     def setUp(self) -> None:
         self.mpfb_get_macro_details = _register_and_get_tool()
 
-    @mock.patch("mpfbmcp.tools.get_macro_details.send_code")
+    @mock.patch("mpfbmcp.backend.send_code")
     def test_omitted_name_is_sent_as_null(self, mock_send_code: mock.Mock) -> None:
         mock_send_code.return_value = {"status": "ok", "result": {"found": False}}
 
@@ -54,7 +62,7 @@ class GetMacroDetailsToolTests(unittest.TestCase):
         self.assertTrue(kwargs.get("strict_json"))
         self.assertEqual(_params_in(code), {"name": None})
 
-    @mock.patch("mpfbmcp.tools.get_macro_details.send_code")
+    @mock.patch("mpfbmcp.backend.send_code")
     def test_name_is_passed_through_verbatim(self, mock_send_code: mock.Mock) -> None:
         mock_send_code.return_value = {"status": "ok", "result": {"found": True}}
 
@@ -66,7 +74,7 @@ class GetMacroDetailsToolTests(unittest.TestCase):
     def test_blank_name_is_rejected_locally(self) -> None:
         # An explicitly empty name and an omitted one arise from different
         # mistakes, so the empty one never falls back to the active object.
-        with mock.patch("mpfbmcp.tools.get_macro_details.send_code") as mock_send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as mock_send_code:
             for blank in ("", "   ", "\t"):
                 with self.subTest(name=blank):
                     with self.assertRaises(ValueError):
@@ -74,7 +82,7 @@ class GetMacroDetailsToolTests(unittest.TestCase):
             mock_send_code.assert_not_called()
 
     def test_non_string_name_is_rejected_locally(self) -> None:
-        with mock.patch("mpfbmcp.tools.get_macro_details.send_code") as mock_send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as mock_send_code:
             for bad in (1, 1.5, True, ["Human"]):
                 with self.subTest(name=bad):
                     with self.assertRaises(ValueError):
@@ -82,8 +90,69 @@ class GetMacroDetailsToolTests(unittest.TestCase):
             mock_send_code.assert_not_called()
 
 
+class GetMacroDetailsOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """What cannot cross the socket, and nothing else.
+
+    Everything this tool *answers* - what resolves to a basemesh, what the
+    macro dict holds, how the stack is derived and when drift is reported - is
+    checked against a real MPFB in the bridge's own suite.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.mpfb_get_macro_details = _register_and_get_tool()
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        self.bridge = self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "get_macro_details": fake_bridge.ok_envelope("get_macro_details", {"found": False}),
+        })
+
+    def test_the_tool_sends_the_get_macro_details_command(self) -> None:
+        self.mpfb_get_macro_details()
+
+        self.assertEqual(self.bridge.commands()[-1], "get_macro_details")
+        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {"name": None})
+
+    def test_a_name_crosses_the_wire_verbatim(self) -> None:
+        self.mpfb_get_macro_details("Human.body")
+
+        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {"name": "Human.body"})
+
+    def test_local_validation_runs_before_a_transport_is_chosen(self) -> None:
+        # A blank name and an omitted one arise from different mistakes, so the
+        # blank one is refused rather than treated as "use the active object" -
+        # and that refusal is the tool's, not the transport's.
+        for blank in ("", "   ", "\t"):
+            with self.subTest(name=blank):
+                with self.assertRaises(ValueError):
+                    self.mpfb_get_macro_details(blank)
+
+        with self.assertRaises(ValueError):
+            self.mpfb_get_macro_details(12)
+
+        self.assertEqual(self.bridge.requests, [],
+                         "a locally invalid call must not be sent to any backend")
+
+    def test_a_bridge_error_envelope_reaches_the_caller_intact(self) -> None:
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope(
+                "mpfb_unavailable", "The command needs MPFB, which is not usable here.",
+                command="get_macro_details", state="absent"))
+
+        response = self.mpfb_get_macro_details()
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "mpfb_unavailable")
+        self.assertEqual(response["state"], "absent")
+
+
 class GeneratedGetMacroDetailsTests(GeneratedCodeTestCase):
-    """Runs the payload against the stub scene."""
+    """Runs the payload against the stub scene.
+
+    **Frozen**: see this module's docstring.
+    """
 
     def build_character(self, **basemesh_kwargs):
         """A rigged, dressed character: rig -> basemesh -> shirt."""

@@ -17,8 +17,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 
 def register(mcp: FastMCP) -> None:
@@ -66,5 +65,4 @@ def register(mcp: FastMCP) -> None:
         # `result` (built in codegen/payloads/get_status.py) is always plain
         # JSON-safe data, so strict_json=True to surface a clear error if that
         # ever stops being true, rather than silently falling back to `repr`.
-        code = codegen.assemble("get_status.py", bootstrap="non_raising")
-        return send_code(code, strict_json=True)
+        return backend.send("get_status.py", bootstrap="non_raising", strict_json=True)

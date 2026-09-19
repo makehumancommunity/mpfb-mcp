@@ -32,7 +32,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import shared_cache
+from mpfbmcp import backend
 
 # A page of 1000 entries is already more than an agent can usefully read; the
 # ceiling is here so that an over-broad call is capped rather than answered with
@@ -154,9 +154,9 @@ def register(mcp: FastMCP) -> None:
         # JSON-safe data - every path is coerced with str(), since
         # find_asset_files_matching_pattern() hands back pathlib.Path objects -
         # which is what send() asks for on the way out.
-        return shared_cache.send(
+        return backend.send(
             "list_targets.py",
-            shared=["target_categories.py"],
+            cached_shared=["target_categories.py"],
             params={
                 "section": _validated_text(
                     section, "section",

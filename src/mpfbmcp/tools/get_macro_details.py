@@ -30,8 +30,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 
 def _validated_name(name: object) -> str | None:
@@ -102,12 +101,12 @@ def register(mcp: FastMCP) -> None:
           - `basemesh_name`, `subject_name` and `subject_resolved_by` ("name"
             or "active").
         """
-        code = codegen.assemble(
-            "get_macro_details.py",
-            bootstrap="raising",
-            params={"name": _validated_name(name)},
-        )
         # `result` (built in codegen/payloads/get_macro_details.py) is plain
         # JSON-safe data - the property values are coerced to float there - so
         # strict_json=True surfaces a clear error if that ever stops being true.
-        return send_code(code, strict_json=True)
+        return backend.send(
+            "get_macro_details.py",
+            bootstrap="raising",
+            params={"name": _validated_name(name)},
+            strict_json=True,
+        )

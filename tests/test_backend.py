@@ -31,6 +31,11 @@ from mpfbmcp import backend, bridge_connection
 from tests import fake_bridge
 
 
+# The payloads whose bridge command is deliberately not named after them. One,
+# and it is one because the bridge already answers `get_status` about itself.
+_RENAMED_ON_THE_BRIDGE = {"get_status.py": "get_mpfb_status"}
+
+
 def _program_of(request: bytes) -> str:
     """The code out of one blender_mcp request, as the add-on would read it."""
     return json.loads(request.partition(b"\0")[0].decode("utf-8"))["code"]
@@ -149,9 +154,21 @@ class RoutingTests(BothBackendsTestCase):
         for payload, command in backend.MIGRATED_COMMANDS.items():
             with self.subTest(payload=payload):
                 self.assertIn(payload, payloads)
+                if payload in _RENAMED_ON_THE_BRIDGE:
+                    self.assertEqual(command, _RENAMED_ON_THE_BRIDGE[payload])
+                    continue
                 # Payload and command share a name, which is what lets a mixed
                 # record be sorted by one word.
                 self.assertEqual(command, payload[:-len(".py")])
+
+    def test_the_one_renamed_command_is_the_one_that_had_to_be(self) -> None:
+        # Spelled out rather than tolerated by the loop above: the bridge's own
+        # `get_status` reports the bridge, and this one reports MPFB. Any
+        # further exception is a naming decision somebody should have to make
+        # on purpose, so the exception list is asserted rather than consulted.
+        self.assertEqual(_RENAMED_ON_THE_BRIDGE, {"get_status.py": "get_mpfb_status"})
+        for payload in _RENAMED_ON_THE_BRIDGE:
+            self.assertIn(payload, backend.MIGRATED_COMMANDS)
 
 
 class EnvelopeTests(BothBackendsTestCase):

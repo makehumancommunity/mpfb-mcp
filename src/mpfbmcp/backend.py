@@ -57,7 +57,7 @@ __all__ = (
 
 import os
 
-from mpfbmcp import bridge_connection, codegen
+from mpfbmcp import bridge_connection, codegen, shared_cache
 from mpfbmcp.connection import send_code
 
 BACKEND_VARIABLE = "MPFB_MCP_BACKEND"
@@ -80,6 +80,15 @@ ERROR_COMMAND_FAILED = "command_failed"
 # and takes the generated path whatever is configured.
 MIGRATED_COMMANDS = {
     "list_objects.py": "list_objects",
+    # FR 031, batch A: the introspection tools, which carry no shared fragment.
+    # ``get_status.py`` is the one entry whose command is **not** its payload's
+    # name, and the exception is deliberate: the bridge already has a
+    # ``get_status`` reporting the *bridge*, and this one reports *MPFB*. Two
+    # commands answering "status" about two different pieces of software is a
+    # collision that is cheap now and permanent later.
+    "get_status.py": "get_mpfb_status",
+    "get_object_info.py": "get_object_info",
+    "get_macro_details.py": "get_macro_details",
 }
 
 
@@ -107,7 +116,9 @@ def command_for(payload: str) -> str | None:
 
 
 def send(payload: str, *, params: dict[str, object] | None = None,
-         bootstrap: str = "raising", strict_json: bool = True) -> dict[str, object]:
+         bootstrap: str = "raising", strict_json: bool = True,
+         shared: list[str] | None = None,
+         cached_shared: list[str] | None = None) -> dict[str, object]:
     """Perform one tool's call over whichever transport is configured.
 
     ``payload``, ``params`` and ``bootstrap`` are what the tool would have
@@ -118,6 +129,16 @@ def send(payload: str, *, params: dict[str, object] | None = None,
     worth surfacing as a design problem in that tool's own effort rather than a
     flexibility worth carrying here unused.
 
+    ``shared`` and ``cached_shared`` are likewise passed straight through -
+    **on the generated path**, where a fragment is a file concatenated ahead of
+    a payload and ``cached_shared`` additionally means "send its source once per
+    Blender session" (see :mod:`mpfbmcp.shared_cache`). On the bridge path they
+    are **ignored**, because the bridge assembles nothing: what a fragment
+    models has become a module in ``bridge/mpfb_bridge/shared/`` that the
+    command imports. A tool therefore names its fragments the same way whatever
+    transport it is on, which is what keeps the seam below the send for the five
+    migrated tools that carry them.
+
     ``strict_json`` belongs to the generated path alone - it asks blender_mcp
     to fail loudly rather than fall back to ``repr`` for a result that is not
     JSON-safe. The bridge does the equivalent unconditionally, serializing a
@@ -127,7 +148,16 @@ def send(payload: str, *, params: dict[str, object] | None = None,
     if command is not None and preferred_backend() == BACKEND_BRIDGE:
         return bridge_connection.send_command(command, params or {})
 
-    code = codegen.assemble(payload, bootstrap=bootstrap, params=params or {})
+    if cached_shared:
+        # The session source cache is generated-path machinery and lives below
+        # this seam rather than beside the tools, which is what lets a tool
+        # carrying fragments be migrated without the tools left behind losing
+        # it. It dies with the generated path.
+        return as_common_envelope(shared_cache.send(
+            payload, params or {}, shared=shared, cached_shared=cached_shared,
+            bootstrap=bootstrap, strict_json=strict_json))
+
+    code = codegen.assemble(payload, bootstrap=bootstrap, params=params or {}, shared=shared)
     return as_common_envelope(send_code(code, strict_json=strict_json))
 
 
