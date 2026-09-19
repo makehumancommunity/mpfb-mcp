@@ -38,9 +38,12 @@ assets into their own MPFB - is how a suite becomes unrunnable.
 
 __all__ = (
     "Character",
+    "DETAIL_TARGET_JSON",
+    "LONG_USER_TARGET",
     "answer",
     "build_asset_library",
     "build_rig_tree",
+    "build_target_tree",
     "dispatch",
     "linked_plain_object",
     "only_these_data_roots",
@@ -56,6 +59,7 @@ __all__ = (
 )
 
 import contextlib
+import json
 import os
 import sys
 
@@ -164,6 +168,22 @@ def linked_plain_object(name):
     return plain
 
 
+# What a fake target file holds. Nothing in this suite loads one - a read-only
+# command sees a filename and a directory, never the vertex deltas - so the
+# content only has to be non-empty.
+TARGET_CONTENT = "dummy target data"
+
+
+def write(path, content=""):
+    """Create one file, and the directories above it. Returns the path."""
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(content)
+    return path
+
+
 def write_mhmat(path, name=None):
     """A real MHMAT file, carrying only the lines anything here reads back."""
     return write(path, "# MakeHuman Material Definition\nname {:s}\n".format(
@@ -257,6 +277,219 @@ def build_rig_tree(root):
     return mpfb_data
 
 
+# MPFB's own ``target.json`` shape, trimmed to five sections that between them
+# cover every category kind a command has to get right. Lifted from
+# ``tests/blender_stubs.py``'s ``DETAIL_TARGET_JSON`` rather than rewritten:
+#
+# - ``arms`` holds a **sided, opposed** category (four target files behind one
+#   slider) and an unsided opposed one;
+# - ``nose`` holds an unsided opposed category;
+# - ``chin`` holds a category with **no "opposites" key at all**, which is the
+#   0.0-1.0 kind;
+# - ``ears`` is sided and has only its **left-hand files on disk**, so a
+#   resolution failure is in the fixture rather than only in theory;
+# - ``measure`` has **no categories**, and is the section that must answer
+#   "no matches" rather than falling through to the user-target listing.
+DETAIL_TARGET_JSON = {
+    'arms': {
+        'categories': [
+            {
+                'has_left_and_right': True,
+                'label': 'lowerarm-scale-depth-decr-incr',
+                'name': 'lowerarm-scale-depth-decr-incr',
+                'opposites': {
+                    'negative-left': 'l-lowerarm-scale-depth-decr',
+                    'negative-right': 'r-lowerarm-scale-depth-decr',
+                    'negative-unsided': '',
+                    'positive-left': 'l-lowerarm-scale-depth-incr',
+                    'positive-right': 'r-lowerarm-scale-depth-incr',
+                    'positive-unsided': '',
+                },
+                'targets': [
+                    'l-lowerarm-scale-depth-decr',
+                    'r-lowerarm-scale-depth-incr',
+                    'r-lowerarm-scale-depth-decr',
+                    'l-lowerarm-scale-depth-incr',
+                ],
+            },
+            {
+                'has_left_and_right': False,
+                'label': 'upperarm-fat-decr-incr',
+                'name': 'upperarm-fat-decr-incr',
+                'opposites': {
+                    'negative-left': '',
+                    'negative-right': '',
+                    'negative-unsided': 'upperarm-fat-decr',
+                    'positive-left': '',
+                    'positive-right': '',
+                    'positive-unsided': 'upperarm-fat-incr',
+                },
+                'targets': [
+                    'upperarm-fat-decr',
+                    'upperarm-fat-incr',
+                ],
+            },
+        ],
+        'include_per_default': True,
+        'label': 'Arms',
+        'unsorted': [],
+    },
+    'chin': {
+        'categories': [
+            {
+                'has_left_and_right': False,
+                'label': 'chin-triangle',
+                'name': 'chin-triangle',
+                'targets': [
+                    'chin-triangle',
+                ],
+            },
+        ],
+        'include_per_default': True,
+        'label': 'Chin',
+        'unsorted': [],
+    },
+    'ears': {
+        'categories': [
+            {
+                'has_left_and_right': True,
+                'label': 'ear-lobe-decr-incr',
+                'name': 'ear-lobe-decr-incr',
+                'opposites': {
+                    'negative-left': 'l-ear-lobe-decr',
+                    'negative-right': 'r-ear-lobe-decr',
+                    'negative-unsided': '',
+                    'positive-left': 'l-ear-lobe-incr',
+                    'positive-right': 'r-ear-lobe-incr',
+                    'positive-unsided': '',
+                },
+                'targets': [
+                    'l-ear-lobe-decr',
+                    'l-ear-lobe-incr',
+                    'r-ear-lobe-decr',
+                    'r-ear-lobe-incr',
+                ],
+            },
+        ],
+        'include_per_default': True,
+        'label': 'Ears',
+        'unsorted': [],
+    },
+    'measure': {
+        'categories': [],
+        'include_per_default': False,
+        'label': 'measure',
+        'unsorted': [],
+    },
+    'nose': {
+        'categories': [
+            {
+                'has_left_and_right': False,
+                'label': 'nose-scale-depth-decr-incr',
+                'name': 'nose-scale-depth-decr-incr',
+                'opposites': {
+                    'negative-left': '',
+                    'negative-right': '',
+                    'negative-unsided': 'nose-scale-depth-decr',
+                    'positive-left': '',
+                    'positive-right': '',
+                    'positive-unsided': 'nose-scale-depth-incr',
+                },
+                'targets': [
+                    'nose-scale-depth-decr',
+                    'nose-scale-depth-incr',
+                ],
+            },
+        ],
+        'include_per_default': True,
+        'label': 'Nose',
+        'unsorted': [],
+    },
+}
+
+# Over 60 characters once the extension is stripped, and built from words in
+# MPFB's encoding table, so its shape key name provably differs from its
+# filename. Addressing it by filename fails *silently*, which is the whole
+# reason ``list_targets`` reports ``shapekey_name``.
+LONG_USER_TARGET = (
+    "young-female-average-caucasian-uncommon-proportions-weight-height-experiment")
+
+
+def build_target_tree(root):
+    """A bundled target index and the user directories beside it.
+
+    Moved from ``tests/blender_stubs.py``'s ``DetailTargetTestCase`` rather
+    than reinvented, and it keeps every one of that fixture's awkward shapes,
+    because each is a branch some command exists to get right:
+
+    - a section name present in **both** the bundled index and a user
+      directory, which MPFB merges rather than keeping apart;
+    - a section that exists only as a user directory;
+    - a ``.target.gz`` in a user targets directory, which MPFB's own scan
+      matches only ``*.target`` and therefore cannot see;
+    - a target whose name **contains "basis"**, which ``TargetService`` cannot
+      address at all;
+    - a name long enough that its shape key name is encoded and no longer
+      equals its filename;
+    - a bundled directory ``target.json`` never mentions, and one holding no
+      target file at all.
+
+    Returns a dict of the paths a test needs to assert against.
+    """
+    mpfb_data = os.path.join(root, "mpfb", "data")
+    system_targets = os.path.join(mpfb_data, "targets")
+    target_json_path = os.path.join(system_targets, "target.json")
+    write(target_json_path, json.dumps(DETAIL_TARGET_JSON))
+
+    # Gzipped, as every bundled target on a real install is.
+    for name in ("l-lowerarm-scale-depth-decr", "l-lowerarm-scale-depth-incr",
+                 "r-lowerarm-scale-depth-decr", "r-lowerarm-scale-depth-incr",
+                 "upperarm-fat-decr"):
+        write(os.path.join(system_targets, "arms", name + ".target.gz"), TARGET_CONTENT)
+    # The one bundled target that is *not* gzipped, which is the case
+    # _set_opposed_modifier_value() would hand a non-existent path.
+    write(os.path.join(system_targets, "arms", "upperarm-fat-incr.target"), TARGET_CONTENT)
+    for name in ("nose-scale-depth-decr", "nose-scale-depth-incr"):
+        write(os.path.join(system_targets, "nose", name + ".target.gz"), TARGET_CONTENT)
+    write(os.path.join(system_targets, "chin", "chin-triangle.target.gz"), TARGET_CONTENT)
+    # Left only: the right-hand files of this category are deliberately absent.
+    for name in ("l-ear-lobe-decr", "l-ear-lobe-incr"):
+        write(os.path.join(system_targets, "ears", name + ".target.gz"), TARGET_CONTENT)
+    # A bundled directory target.json never mentions, and one holding nothing.
+    write(os.path.join(system_targets, "asym", "asym-brow-1-l.target.gz"), TARGET_CONTENT)
+    os.makedirs(os.path.join(system_targets, "_images"), exist_ok=True)
+
+    user_data = os.path.join(root, "user", "data")
+    user_targets = os.path.join(user_data, "targets")
+    user_custom = os.path.join(user_data, "custom")
+
+    # A user directory sharing its name with a bundled section: MPFB appends
+    # these into that section rather than making a second one.
+    write(os.path.join(user_targets, "arms", "elvs_arm_bulk.target"), TARGET_CONTENT)
+    # A section that exists only as a user directory.
+    write(os.path.join(user_targets, "animal", "cat_ears.target"), TARGET_CONTENT)
+    write(os.path.join(user_targets, "animal", LONG_USER_TARGET + ".target"), TARGET_CONTENT)
+    # A gzipped target in a user targets directory: on disk, loadable, and
+    # invisible to MPFB's own scan, which matches only "*.target".
+    write(os.path.join(user_targets, "animal", "winged.target.gz"), TARGET_CONTENT)
+    # Contains "basis", so MPFB's own get_target_stack() cannot see the shape
+    # key this produces - and neither can any MPFB read or write.
+    write(os.path.join(user_targets, "animal", "basis-nose-widen.target"), TARGET_CONTENT)
+    # The custom section proper. The gzipped one is where MPFB's category name
+    # ("vwide.gz") and the catalogue's shapekey_name ("vwide") diverge.
+    write(os.path.join(user_custom, "closed_eyes.target"), TARGET_CONTENT)
+    write(os.path.join(user_custom, "vwide.target.gz"), TARGET_CONTENT)
+
+    return {
+        "mpfb_data": mpfb_data,
+        "system_targets": system_targets,
+        "target_json_path": target_json_path,
+        "user_data": user_data,
+        "user_targets": user_targets,
+        "user_custom": user_custom,
+    }
+
+
 def typed_child(services, parent, name, object_type):
     """One MPFB-typed object parented to another, for a family to be walked.
 
@@ -279,16 +512,6 @@ def typed_child(services, parent, name, object_type):
     assert services["ObjectService"].get_object_type(child) == object_type, \
         "MPFB should read back the type just written"
     return child
-
-
-def write(path, content=""):
-    """Create one file, and the directories above it. Returns the path."""
-    directory = os.path.dirname(path)
-    if directory:
-        os.makedirs(directory, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as handle:
-        handle.write(content)
-    return path
 
 
 # The LocationService fields a fixture may point somewhere else, by the keyword

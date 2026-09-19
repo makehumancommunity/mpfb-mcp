@@ -4,7 +4,17 @@
 Tests for the mpfb_get_target_stack tool: argument validation, and the
 generated code's two views of a character's shape keys.
 
-Two layers, as established: the tool wrapper with send_code mocked, then the
+Migrated by FR 031, so three layers rather than two (see
+``tests/test_list_objects.py``, the template). **The payload layer is frozen**,
+and it is where ``test_symmetrize_targets.py``'s claim that every category
+reading agrees is anchored - both halves of that pair are still payloads after
+this effort, so both survive untouched. What keeps the *bridge* half honest
+meanwhile is ``tests/test_fragment_drift.py``, which compares
+``modifier_reading.py`` against its bridge module on every run.
+
+The share of this module that goes with the payload: 351 of its 553 lines, 63%.
+
+Formerly two layers: the tool wrapper with send_code mocked, then the
 assembled source - shared fragment included, so what runs here is the same
 program the tool sends - executed against the stub scene and the real temporary
 target tree in tests/blender_stubs.py.
@@ -28,6 +38,8 @@ import unittest
 from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
+
+from tests import fake_bridge
 
 from mpfbmcp import backend, codegen, shared_cache
 from mpfbmcp.tools import get_target_stack
@@ -130,6 +142,68 @@ class ArgumentValidationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.tool(limit=get_target_stack.MAX_LIMIT + 1)
         send_code.assert_not_called()
+
+
+
+
+class GetTargetStackOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """What cannot cross the socket, and nothing else.
+
+    Everything this tool *answers* - the two views, the "basis" exclusion, how a
+    category reads - is checked against a real MPFB in
+    ``bridge/test/tests/ooo_get_target_stack_test.py``.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.tool = _tool_callable()
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        self.bridge = self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "get_target_stack": fake_bridge.ok_envelope("get_target_stack", {"count": 0}),
+        })
+
+    def test_the_tool_sends_the_get_target_stack_command(self):
+        self.tool()
+
+        self.assertEqual(self.bridge.commands()[-1], "get_target_stack")
+        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {
+            "name": None, "include_macro": False, "include_expressions": False,
+            "name_contains": None, "limit": 200, "offset": 0})
+
+    def test_the_two_cached_fragments_do_not_reach_the_bridge(self):
+        # Two fragments rather than one, and neither crosses: on the bridge
+        # they are modules the command imports.
+        self.tool(name="Human", include_macro=True, limit=5)
+
+        request = self.bridge.decoded_requests()[-1]
+        self.assertEqual(request["params"]["name"], "Human")
+        self.assertEqual(request["params"]["include_macro"], True)
+        self.assertNotIn("target_categories", str(request))
+        self.assertNotIn("modifier_reading", str(request))
+
+    def test_local_validation_runs_before_a_transport_is_chosen(self):
+        for arguments in ({"include_macro": "true"}, {"include_expressions": 1},
+                          {"limit": True}, {"limit": -1}, {"name": "  "}):
+            with self.subTest(**arguments):
+                with self.assertRaises(ValueError):
+                    self.tool(**arguments)
+
+        self.assertEqual(self.bridge.requests, [],
+                         "a locally invalid call must not be sent to any backend")
+
+    def test_a_bridge_error_envelope_reaches_the_caller_intact(self):
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope(
+                "mpfb_unavailable", "The command needs MPFB, which is not usable here.",
+                command="get_target_stack", state="absent"))
+
+        response = self.tool()
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "mpfb_unavailable")
 
 
 class GeneratedGetTargetStackTests(DetailTargetTestCase):

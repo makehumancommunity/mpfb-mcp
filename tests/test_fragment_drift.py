@@ -18,16 +18,20 @@ what is left through ``ast.unparse``. No Blender, no ``bpy``, no socket: it is
 about two files in this repository and runs on every unit run, which is the
 only frequency at which a drift check is worth anything.
 
-**One declared substitution, and it is the only one.** A fragment finds MPFB in
-a module global the bootstrap bound above it; a bridge module is *handed* MPFB,
-because an add-on module that resolved services at import would hold them
-across a disable and re-enable. That one difference has three syntactic shapes,
-and :class:`_Injected` undoes all three:
+**One declared substitution, and it is the only one.** A fragment finds what it
+needs in a module global bound above it - MPFB's services from the bootstrap,
+and, for ``target_categories.py``, a category table built at import time. A
+bridge module is *handed* both, because an add-on module that resolved services
+at import would hold them across a disable and re-enable, and one that scanned
+the target directories at import would answer from a snapshot taken when
+Blender started. So a bridge function takes what the fragment found above it as
+leading parameters named in :data:`_INJECTED_PARAMETERS`, and that one
+difference has three syntactic shapes which :class:`_Injected` undoes:
 
-- a leading parameter named in :data:`_INJECTED_PARAMETERS`;
-- a leading statement unpacking that parameter - ``LocationService =
+- leading parameters so named;
+- leading statements unpacking one of them - ``LocationService =
   services["LocationService"]``, ``TARGET_SECTIONS = tables.sections``;
-- that parameter passed as the leading argument to a sibling function.
+- those parameters passed as the leading arguments to a sibling function.
 
 Nothing else is normalised. A renamed local, a reordered branch or a changed
 constant is a difference and is reported as one.
@@ -76,13 +80,15 @@ MIGRATED_FRAGMENTS = {
     "preset_files.py": "preset_files.py",
     "rig_lookup.py": "rig_lookup.py",
     "asset_sections.py": "asset_sections.py",
+    "target_categories.py": "target_categories.py",
+    "modifier_reading.py": "modifier_reading.py",
 }
 
-# The parameter names a bridge function is handed its context through. Two,
-# and each is one concept: `services` is MPFB's SERVICES dict, which the
-# bootstrap bound as `_MPFB_SERVICES` on the other side; `tables` is what a
-# fragment computed at import time into module globals and a command computes
-# per call.
+# The parameter names a bridge function is handed its context through. Two, and
+# each is one concept: `services` is MPFB's SERVICES dict, which the bootstrap
+# bound as `_MPFB_SERVICES` on the other side; `tables` is what a fragment
+# computed at import time into module globals and a command computes per call.
+# A function may take both, in that order.
 _INJECTED_PARAMETERS = ("services", "tables")
 
 # fragment -> {name: why it cannot be compared}. Asserted rather than consulted:
@@ -104,38 +110,54 @@ class _Injected(ast.NodeTransformer):
 
     def __init__(self, sibling_functions: set[str]) -> None:
         self.sibling_functions = sibling_functions
-        self.injected: str | None = None
+        self.injected: set[str] | None = None
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.AST:  # noqa: N802
         arguments = node.args.args
-        if arguments and arguments[0].arg in _INJECTED_PARAMETERS:
-            self.injected = arguments[0].arg
-            node.args.args = arguments[1:]
+        injected = []
+        while arguments and arguments[0].arg in _INJECTED_PARAMETERS:
+            injected.append(arguments[0].arg)
+            arguments = arguments[1:]
+        # Saved and restored rather than cleared, because a *nested* def -
+        # `build_target_index`'s `record()` - closes over its parent's
+        # parameters and the statements after it are still in that scope. A
+        # transformer that cleared on the way out of the inner one would stop
+        # normalising halfway through the outer one, silently.
+        previous = self.injected
+        if injected:
+            self.injected = set(injected)
+            node.args.args = arguments
             node.body = _without_unpacking(node.body, self.injected)
         node = self.generic_visit(node)  # type: ignore[assignment]
-        self.injected = None
+        self.injected = previous
         return node
 
     def visit_Call(self, node: ast.Call) -> ast.AST:  # noqa: N802
         self.generic_visit(node)
-        if self.injected is None or not node.args:
-            return node
-        first = node.args[0]
         called = node.func
-        if (isinstance(called, ast.Name) and called.id in self.sibling_functions
-                and isinstance(first, ast.Name) and first.id == self.injected):
-            node.args = node.args[1:]
+        if (self.injected is None
+                or not isinstance(called, ast.Name)
+                or called.id not in self.sibling_functions):
+            return node
+        # Only a *leading* run of them, so an injected name passed as an
+        # ordinary argument further along would still be a difference.
+        arguments = node.args
+        while (arguments and isinstance(arguments[0], ast.Name)
+               and arguments[0].id in self.injected):
+            arguments = arguments[1:]
+        node.args = arguments
         return node
 
 
-def _without_unpacking(body: list[ast.stmt], injected: str) -> list[ast.stmt]:
+def _without_unpacking(body: list[ast.stmt], injected: set[str]) -> list[ast.stmt]:
     """Drop the leading ``X = <injected>...`` statements from a function body."""
     index = 0
     for statement in body:
         if (isinstance(statement, ast.Assign)
                 and len(statement.targets) == 1
                 and isinstance(statement.targets[0], ast.Name)
-                and _names_in(statement.value) == {injected}):
+                and _names_in(statement.value) <= injected
+                and _names_in(statement.value)):
             index += 1
             continue
         break

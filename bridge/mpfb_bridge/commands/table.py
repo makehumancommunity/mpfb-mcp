@@ -46,6 +46,7 @@ __all__ = (
 from . import get_macro_details
 from . import get_mpfb_status
 from . import get_object_info
+from . import get_target_stack
 from . import get_status
 from . import list_asset_materials
 from . import list_assets
@@ -53,6 +54,7 @@ from . import list_commands
 from . import list_objects
 from . import list_presets
 from . import list_rigs
+from . import list_targets
 from .command import Command
 
 COMMANDS = {
@@ -82,6 +84,12 @@ COMMANDS = {
         params=get_object_info.PARAMS,
         requires_mpfb=True,
         summary=get_object_info.SUMMARY),
+    "get_target_stack": Command(
+        name="get_target_stack",
+        handler=get_target_stack.get_target_stack,
+        params=get_target_stack.PARAMS,
+        requires_mpfb=True,
+        summary=get_target_stack.SUMMARY),
     "get_status": Command(
         name="get_status",
         handler=get_status.get_status,
@@ -134,4 +142,10 @@ COMMANDS = {
         params=list_rigs.PARAMS,
         requires_mpfb=True,
         summary=list_rigs.SUMMARY),
+    "list_targets": Command(
+        name="list_targets",
+        handler=list_targets.list_targets,
+        params=list_targets.PARAMS,
+        requires_mpfb=True,
+        summary=list_targets.SUMMARY),
 }

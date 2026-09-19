@@ -4,8 +4,18 @@
 Tests for the mpfb_list_targets tool: argument validation, and the generated
 code's two-source scan of the bundled index and the user target directories.
 
-Two layers, as in tests/test_get_status.py: the tool wrapper with send_code
-mocked, then the assembled source executed against the stub services in
+Migrated by FR 031, so three layers rather than two (see
+``tests/test_list_objects.py``, the template). **The payload layer is frozen**,
+and this is the tool whose migration mattered most to measure: it carried 26 KB
+of shared fragment source on a cold call, which is the number
+``src/mpfbmcp/shared_cache.py`` exists because of, and over the bridge it is a
+single JSON request. What it *answers* is now asked of a real MPFB in
+``bridge/test/tests/nnn_list_targets_test.py``.
+
+The share of this module that goes with the payload: 420 of its 719 lines, 58%.
+
+Formerly two layers, as in tests/test_get_status.py: the tool wrapper with
+send_code mocked, then the assembled source executed against the stub services in
 tests/blender_stubs.py. As in tests/test_list_rigs.py the tree those run against
 is a real temporary directory, because most of this payload is filesystem logic
 - os.walk(), os.listdir(), an rglob through the stub AssetService - and mocking
@@ -33,6 +43,8 @@ import unittest
 from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
+
+from tests import fake_bridge
 
 from mpfbmcp import backend, codegen, shared_cache
 from mpfbmcp.tools import list_targets
@@ -215,6 +227,70 @@ class ArgumentValidationTests(unittest.TestCase):
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(section="no-such-section")
         send_code.assert_called_once()
+
+
+
+
+class ListTargetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """What cannot cross the socket, and nothing else.
+
+    Everything this tool *answers* - the two-source merge, the over-60-character
+    encoding, the gzipped target MPFB's own scan misses - is checked against a
+    real MPFB in ``bridge/test/tests/nnn_list_targets_test.py``.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.tool = _tool_callable()
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        self.bridge = self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "list_targets": fake_bridge.ok_envelope("list_targets", {"count": 0}),
+        })
+
+    def test_the_tool_sends_the_list_targets_command(self):
+        self.tool()
+
+        self.assertEqual(self.bridge.commands()[-1], "list_targets")
+        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {
+            "section": None, "name_contains": None, "limit": 200, "offset": 0})
+
+    def test_the_cached_fragment_does_not_reach_the_bridge(self):
+        # The one tool the session source cache was built for. On the bridge
+        # there is no source to cache: target_categories.py is a module the
+        # command imports, and the request is exactly the parameters. Nothing
+        # of `shared_cache`'s machinery - the loader, the fingerprint, the
+        # carried/reused marker - appears on this wire.
+        self.tool(section="arms", name_contains="Nose", limit=5, offset=10)
+
+        request = self.bridge.decoded_requests()[-1]
+        self.assertEqual(request["params"], {
+            "section": "arms", "name_contains": "Nose", "limit": 5, "offset": 10})
+        self.assertNotIn("target_categories", str(request))
+        self.assertNotIn("cached shared", str(request))
+
+    def test_local_validation_runs_before_a_transport_is_chosen(self):
+        for arguments in ({"limit": True}, {"limit": -1}, {"limit": 1001},
+                          {"offset": True}, {"section": "  "}, {"name_contains": ""}):
+            with self.subTest(**arguments):
+                with self.assertRaises(ValueError):
+                    self.tool(**arguments)
+
+        self.assertEqual(self.bridge.requests, [],
+                         "a locally invalid call must not be sent to any backend")
+
+    def test_a_bridge_error_envelope_reaches_the_caller_intact(self):
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope(
+                "mpfb_unavailable", "The command needs MPFB, which is not usable here.",
+                command="list_targets", state="absent"))
+
+        response = self.tool()
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "mpfb_unavailable")
 
 
 class ListTargetsGeneratedCodeTests(GeneratedCodeTestCase):

@@ -97,6 +97,11 @@ MIGRATED_COMMANDS = {
     "list_rigs.py": "list_rigs",
     "list_assets.py": "list_assets",
     "list_asset_materials.py": "list_asset_materials",
+    # Batch D: the two heaviest, and the ones whose migration removes the
+    # session source cache's reason for existing - between them they carried
+    # 26 KB of fragment source on every cold call.
+    "list_targets.py": "list_targets",
+    "get_target_stack.py": "get_target_stack",
 }
 
 
