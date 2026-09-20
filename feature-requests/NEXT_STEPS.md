@@ -65,74 +65,58 @@ the record's unit becoming a request rather than a program, and **one tool migra
 `mpfb_list_objects`, chosen for being dull.
 
 **Four things it settled that the efforts below inherit.** The two paths were compared field by
-field against one Blender and agree, which is the claim stages 3 to 5 rest on and which had never
+field against one Blender and agree, which is the claim every stage below rests on and which had never
 been checked. The migration's cost is known: 4,664 bytes of program against 83 bytes of JSON,
 461 ms against 58 ms at the add-on's default tick. Where a migrated tool is tested is now a rule
 rather than a judgement — everything the add-on side can check is checked there, against a real
 MPFB, and what stays in `tests/` is a closed list
 ([testing.md](../specifications/testing.md#a-migrated-tool-is-tested-where-it-runs)). And the
-seam's table is the migration's progress bar: **stage 3 and stage 4 add lines to it, and stage 5
+seam's table is the migration's progress bar: **the stages below add lines to it and the last one
 empties it.**
 
 **What it explicitly did not establish**: anything about a batched, mutating, fragment-carrying or
 file-writing tool, and nothing about what happens to 14.2k lines of tests when a payload with real
-logic in it becomes add-on code. The one measurement it can offer is a floor — the migrated tool's
-payload layer was 27% of its test module, for 87 lines of payload whose logic is a filter and a
-substring test.
+logic in it becomes add-on code. The one measurement it could offer was a floor — the migrated
+tool's payload layer was 27% of its test module, for 87 lines of payload whose logic is a filter
+and a substring test. **FR 031 answered the fragment and test questions**; the mutating, batched
+and file-writing ones are still open and belong to the stage below.
 
-**One transitional cost it created**, which stages 3 and 4 live with: a `verification/` run in the
+**One transitional cost it created**, which every stage below lives with: a `verification/` run in the
 bridge configuration needs *both* add-ons enabled and both servers started in one Blender, because
 the harness's own scene bookkeeping goes over `send_code()`. It is written down in
 [verification/README.md](../verification/README.md) and it goes away with the generated path.
 
-### 3. Introspection and catalogues migrated
+### 3. Creation and modification migrated
 
-**Scoped as [FR 031](031-introspection-and-catalogues-migrated/README.md) (Accepted).** The
-read-only tools, in batches by capability area — **a catalogue and the tool acting on it are
-designed as a pair and must move together**, because the whole point of the pairing is that the
-identifiers agree. `mpfb_list_objects` went with [stage 2](#2-the-server-side-backend-seam) as its
-dull first migration, and the cheapest of them is therefore gone — the estimates here should not
-be read off it.
+**Stage 3 (introspection and catalogues) landed as
+[FR 031](done/031-introspection-and-catalogues-migrated/README.md); see
+[HISTORY.md](HISTORY.md).** Ten tools have bridge commands, which is every read-only tool that
+crosses the socket, and the numbering below has closed up behind it.
 
-**Nine tools, not the eight this entry used to say.** The count that produced "eight" left
-`mpfb_get_status` in stage 4, where it was tallied among "the fourteen mutating tools" and is not
-one; it is introspection, it moves here, and moving it is also when the collision FR 030 flagged
-gets settled — the bridge's own `get_status` command reports the *bridge*. So stage 4 inherits
-thirteen mutating tools plus the two documentation ones.
+**Fifteen tools are left**: the thirteen mutating ones plus the two documentation ones.
+`mpfb_list_docs` has nothing to migrate — it never crosses the socket — and `mpfb_list_urls` is the
+awkward one, since it is the only tool that catches a connection failure and answers anyway.
 
-**Each one is a line added to the seam's table** (`backend.MIGRATED_COMMANDS`) and nothing else on
-mpfb-mcp's side — **except that the seam cannot carry a shared fragment at all**, which FR 031
-found and has to fix before any of the five fragment-carrying tools can move: `backend.send()`
-takes `payload`, `params` and `bootstrap`, and three of these tools go through
-`shared_cache.send()`, which stage 2 deliberately kept off the seam. Whether to move the other
-tools onto `backend.send()` in bulk first was this effort's call and the call is **no**: stage 4
-has to edit each of those tool modules anyway, so a bulk move only front-loads the same edit while
-rewriting 134 `send_code` patch targets across the suite.
+**What FR 031 leaves ready, and what it deliberately did not do.** `backend.send()` now carries
+`shared` and `cached_shared`, and `shared_cache` sits below the seam rather than beside the tools,
+so a fragment-carrying tool can migrate without the tools left behind losing the session source
+cache — `mpfb_set_targets` and `mpfb_symmetrize_targets` are exactly that case and still work
+unchanged. `bridge/mpfb_bridge/shared/` exists and holds five modules; the two fragments left,
+`performed.py` and `refit_blocker.py`, belong to mutating tools and arrive with them.
+[tests/test_fragment_drift.py](../tests/test_fragment_drift.py) is what keeps a migrated
+catalogue's promise true while the tool it promises about has not moved, and the remaining pairs it
+straddles are `list_rigs`/`add_rig`, `list_assets`/`add_asset` and
+`get_target_stack`/`symmetrize_targets`. The sixteen unmigrated tools were **not** moved onto
+`backend.send()` in bulk: this stage has to edit each of those modules anyway, so a bulk move only
+front-loads the same edit while rewriting 134 `send_code` patch targets across the suite.
 
-**This is where the 14.2k lines of tests are decided, and it is the part of the pivot most likely
-to be under-estimated.** Payload logic that becomes add-on code stops being "source `exec()`'d
-against stub Blender and stub MPFB" and becomes ordinary Python in an add-on, testable against a
-real install. That is an improvement and a large rewrite at the same time — and note which
-direction it runs in first: the payloads and their frozen test layers stay while the generated path
-does, so **this effort makes the suite bigger, not smaller**. The shared fragments these tools use
-become modules two commands import, which is what a fragment was always trying to be. There are
-**five**, not the four this entry used to list: `target_categories.py`, `rig_lookup.py`,
-`asset_sections.py` and `modifier_reading.py`, plus `preset_files.py` — which
-`mpfb_list_presets` uses here and both preset writers use in stage 4, and which is additionally
-duplicated on mpfb-mcp's own side in `preset_names.py`. Every one of the five straddles this stage
-boundary, so for the duration each exists twice and an `ast`-level drift check is what keeps the
-pairing guarantee true. [testing.md](../specifications/testing.md) has already been rewritten —
-stage 2 migrated a tool, so the deferral landed there — and what this effort inherits is the rule
-rather than the job of writing it: everything the add-on side can check is checked there, and the
-closed list of what stays in `tests/` is in
-[A migrated tool is tested where it runs](../specifications/testing.md#a-migrated-tool-is-tested-where-it-runs).
-
-### 4. Creation and modification migrated
-
-The thirteen mutating tools plus the two documentation ones — `mpfb_get_status` used to be
-counted here and is [stage 3's](#3-introspection-and-catalogues-migrated). `mpfb_list_docs` has
-nothing to migrate — it never crosses the socket — and `mpfb_list_urls` is the awkward one, since
-it is the only tool that catches a connection failure and answers anyway.
+**What FR 031 establishes nothing about.** Read-only, no mutation, nothing written outside the
+`.blend`, no batched argument. It establishes that catalogues agree across both paths and that
+fragments survive becoming modules; it establishes nothing about a tool that *changes* a
+character, and this stage should be planned as though it had not happened in that respect. What it
+does hand over is a rate: the payload layer is roughly **60%** of a migrated tool's test module
+(see [testing.md](../specifications/testing.md#a-migrated-tool-is-tested-where-it-runs)), and the
+suite gets bigger before it gets smaller.
 
 `mpfb_set_asset_material` is the interesting case and FR 028 already established that it
 survives: four flat scalars and a body of service calls, no open-ended access needed. The
@@ -141,7 +125,7 @@ temptation this effort must resist is the one being an add-on creates —
 rather than keeping the reimplementation. Don't; the reasons are unchanged and a UI operator
 module is the worst case of them.
 
-### 5. Retire the generated-code path
+### 4. Retire the generated-code path
 
 Delete `codegen/`, the session source cache and the seven shared fragments; empty the seam's
 `MIGRATED_COMMANDS` table and with it the last branch that knows there were two transports; fold
@@ -149,7 +133,10 @@ what they taught into the specifications rather than losing it; drop blender_mcp
 instructions — including the transitional two-add-on prerequisite
 [verification/README.md](../verification/README.md) now carries. Each payload deleted takes its
 frozen stub-executed test layer with it, which stage 2 measured at 27% of one test module for the
-dullest tool in the package.
+dullest tool in the package and FR 031 measured at roughly 60% across nine more.
+[tests/test_fragment_drift.py](../tests/test_fragment_drift.py) goes here too, and it goes for a
+good reason rather than a tidy one: it exists because a concept lives in two places at once, and
+after this stage it lives in one.
 This is also when
 [The generated-code path](../specifications/architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired)
 stops being a section of architecture.md and becomes something HISTORY.md remembers.
@@ -157,7 +144,7 @@ stops being a section of architecture.md and becomes something HISTORY.md rememb
 Worth filing upstream on the way out, for everyone else's benefit rather than ours: see
 [Handle the 4 KB chunked read](#handle-the-4-kb-chunked-read-against-blender_mcp) below.
 
-### 6. Publish and document
+### 5. Publish and document
 
 An extension-platform listing for the bridge, and a page on makehumancommunity.org stating
 plainly that it is local, that it is optional, and that nothing is uploaded. Both belong to the
@@ -264,7 +251,7 @@ own transport already drains its socket per tick rather than reading one chunk, 
 does not inherit the defect. What remains worth doing is **filing it upstream**: it is a real
 defect costing every other user of that add-on the same thing it cost this project, the fix is a
 loop, and reporting it is cheap. Do that on the way out, in
-[stage 5 of the pivot](#5-retire-the-generated-code-path), rather than letting it disappear with
+[the retirement stage of the pivot](#4-retire-the-generated-code-path), rather than letting it disappear with
 the code that suffered from it.
 
 The related question — whether the community add-on has the same problem — is now moot for this

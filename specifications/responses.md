@@ -159,9 +159,22 @@ URL" are different claims. **A caller must never have to infer which one it got.
 
 **This is about two sources of an answer, not two routes to one source.** Which backend carried a
 call is not a source in this sense: the generated path and the bridge both end in the same MPFB
-inside the same Blender, and FR 030 measured them answering identically field by field. So there is
-no `backend` field, and the rule below is not an argument for one — the question it exists to
-answer is "who is making this claim", and for a migrated tool the answer is MPFB either way.
+inside the same Blender, and FR 030 measured them answering identically field by field for one
+tool, FR 031 for nine more. So there is no `backend` field, and the rule below is not an argument
+for one — the question it exists to answer is "who is making this claim", and for a migrated tool
+the answer is MPFB either way.
+
+**Two of those nine make a statement about the source rather than only about the answer, and both
+survive the change of transport unchanged**, which is worth recording because it was checked rather
+than assumed. `mpfb_list_asset_materials` reports a scan MPFB caches per asset and invalidates
+never, so its answer is a **snapshot** and its `message` says so; the caching is MPFB's, not the
+transport's, and the same first call warms the same dict whichever way the request arrived. And
+`mpfb_list_presets` reports `missing_from_mpfb_list` — what MPFB's cached list *would gain* from a
+rescan — which is an observation of the filesystem beside MPFB's own answer, not a prediction, and
+is computed inside Blender in both configurations. A comparison of the two paths has to allow for
+the first: the first of two calls in one Blender warms a cache the second reads, so a difference
+there is a fact about MPFB rather than a migration defect, and FR 031's live check establishes
+self-consistency on one backend before it compares across two.
 
 - **Name the source in a field of its own**, not by the presence or absence of some other field.
   `source_of_truth` is `"mpfb"` or `"builtin_fallback"`; the reason for a degradation sits beside it

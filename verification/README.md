@@ -29,14 +29,16 @@ Requirements: a running Blender with MPFB and the blender_mcp add-on enabled and
 started (see [CLAUDE.md](../CLAUDE.md#commands)). Nothing else is required in the default
 configuration.
 
-**A run with `MPFB_MCP_BACKEND=bridge` needs both add-ons, and that is transitional.** One tool,
-`mpfb_list_objects`, has a bridge command since
-[FR 030](../feature-requests/done/030-backend-seam/README.md), while this harness's own scene
-bookkeeping — the scratch scene, the snapshots, the cleanup — goes through `send_code()` directly,
-because it is instrument rather than tool and it goes away with the generated path. So a bridge-
-configuration run needs MPFB, blender_mcp **and** the MPFB Bridge enabled in one Blender, with both
-socket servers started (9876 and 9877). That is fine and temporary; stating it is cheaper than
-meeting it as a puzzle. The run is otherwise identical, and the two configurations must both pass:
+**A run with `MPFB_MCP_BACKEND=bridge` needs both add-ons, and that is transitional.** Ten tools
+have a bridge command — one since
+[FR 030](../feature-requests/done/030-backend-seam/README.md) and nine more since
+[FR 031](../feature-requests/done/031-introspection-and-catalogues-migrated/README.md) — while this
+harness's own scene bookkeeping (the scratch scene, the snapshots, the cleanup) goes through
+`send_code()` directly, because it is instrument rather than tool and it goes away with the
+generated path. So a bridge-configuration run needs MPFB, blender_mcp **and** the MPFB Bridge
+enabled in one Blender, with both socket servers started (9876 and 9877). That is fine and
+temporary; stating it is cheaper than meeting it as a puzzle. The run is otherwise identical, and
+the two configurations must both pass:
 
 ```bash
 PYTHONPATH=. python3 verification/smoke.py

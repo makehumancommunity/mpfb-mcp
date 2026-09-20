@@ -1703,3 +1703,128 @@ the transitional prerequisite it creates, both add-ons in one Blender, is writte
 left to be met as a puzzle. The unit suite went from 886 tests to **945** and from 10.2 s to 2.8 s,
 the second number being an accident worth keeping: the fake servers' `shutdown()` poll interval was
 costing half a second per test that started one.
+
+## [FR 031](done/031-introspection-and-catalogues-migrated/README.md) — introspection and catalogues migrated
+
+**The stage where the pivot stopped being a demonstration.** FR 030 migrated one tool chosen for
+being dull; this migrated the other nine that cross the socket read-only, and with them the five
+shared fragments, the session source cache's place in the architecture, and the question of what
+happens to a test suite when a payload with real branching in it becomes add-on code.
+`MIGRATED_COMMANDS` now has ten lines, and **every read-only tool that talks to Blender has a
+bridge command**.
+
+**The seam learned to carry a fragment, which had to happen before anything else could.** FR 030's
+`backend.send()` took `payload`, `params` and `bootstrap` — and five of these nine tools name a
+shared fragment, three of them through `shared_cache.send()`, which FR 030 had deliberately kept
+off the seam. So `send()` gained `shared` and `cached_shared`, which it passes to `codegen` on the
+generated path and **ignores on the bridge**, because the bridge assembles nothing. `shared_cache`
+moved below the seam and stopped being something a tool module imports, which is the part that
+matters: `mpfb_set_targets` and `mpfb_symmetrize_targets` share `target_categories.py` with two
+tools that have now migrated, and they kept the cache without being touched. A `git diff` on each
+of the nine tool modules shows its send call replaced and nothing else — six to thirteen lines
+apiece, 41 insertions and 49 deletions across all eleven edited modules.
+
+**A shared concept on the bridge is a module, and visibly not a command.**
+`bridge/mpfb_bridge/shared/` holds five, mirroring `codegen/shared/` name for name so that a
+fragment and its replacement are findable from each other while both exist. Nothing in it is
+reachable from the wire — no handler, no `PARAMS`, no entry in `COMMANDS` — and `commands/table.py`
+says so, rather than leaving a reader to wonder what a second directory beside it means. What the
+bootstrap bound above a fragment became a parameter: `services`, and for `target_categories.py`
+also `tables`, because that fragment builds MPFB's category table at the top of every generated
+program and a module doing it at import would answer every request from a snapshot taken when
+Blender started. That is the defect
+[never import MPFB submodules directly](../specifications/architecture.md#never-import-mpfb-submodules-directly)
+exists to avoid, and being add-on code does not weaken it.
+
+**The pairing guarantee is now asserted rather than intended.** A fragment exists because two tools
+must agree — `mpfb_list_rigs` predicting which weights `mpfb_add_rig` will load,
+`mpfb_list_assets` reporting the vocabulary `mpfb_add_asset` resolves with — and a migration splits
+exactly those pairs. [tests/test_fragment_drift.py](../tests/test_fragment_drift.py) parses both
+files with `ast`, strips docstrings, undoes the one declared substitution and compares what is
+left: **44 functions and 12 constants, with nothing declared uncomparable.** It refuses to pass
+vacuously, it fails if a name listed as uncomparable turns out to compare cleanly, and it runs on
+every unit run with no Blender, because it is about two files in this repository.
+
+**Nine commands, each reproducing its payload rather than tidying it.** `mpfb_get_status`'s
+command is the one deliberate break in the naming convention — `get_mpfb_status`, because
+`get_status` reports the *bridge* — and it is the first migrated command declaring
+`requires_mpfb=False`, which is what lets MPFB's absence stay a successful answer. The quirks that
+had to survive did: `mpfb_list_assets`' cap-and-page and its directory-convention `pack`,
+`mpfb_list_targets`' two-source merge and its over-60-character encoding,
+`mpfb_get_target_stack` reading `key_blocks` directly, `mpfb_list_asset_materials`' answer being a
+cached snapshot, `mpfb_get_object_info`'s three `asset_info` shapes.
+
+**Six claims about MPFB turned out differently than the stubs asserted**, which is the clearest
+evidence there is that moving a test to where the code runs is worth the move. MPFB's default race
+weights are the literal `0.33` each, so they sum to 0.99 and *every* default character trips
+`mpfb_get_macro_details`' "that scales the phenotype" warning. `create_human()` builds a character
+of **one object** — no rig, no clothes, no relatives at all. `get_custom_rigs()` accepts a file
+only if it carries `identifying_bones`, and the skip is silent.
+`_get_opposed_modifier_value()` asks whether the positive target is *present*, not whether it is
+non-zero. `update_list_of_human_presets()` does a bare `os.listdir()` and raises on a missing
+config directory. And `TargetService` really cannot see a shape key whose name *contains* "basis".
+None of them was repaired: a tidy-up during a migration is indistinguishable, in the comparison,
+from a migration defect. They are recorded in
+[the request's own "What was found"](done/031-introspection-and-catalogues-migrated/README.md#what-was-found).
+
+**What it costs a test suite is now known rather than guessed.** The payload layer is roughly
+**60%** of a migrated tool's test module — 50% to 67% across the nine, against FR 030's 27% for the
+dullest tool in the package — and it is a floor, because a fixture shared with a tool that has not
+migrated is not counted. Nine bridge test modules and a fixtures module were added while nothing
+was deleted, so **the suite got bigger**: the unit suite went from 945 tests to 993 and the
+bridge's from 47 to 150, with the add-on's coverage at 80%. The fixtures the bridge's suite needs —
+a rig tree, an asset library, a config directory of presets, a target tree — were moved out of
+`tests/blender_stubs.py` rather than reinvented, and are pointed at through MPFB's own
+`LocationService` so that a run does not depend on which asset packs a machine happens to have.
+
+Verified against Blender 5.1.0, MPFB 2.0.17 and bridge 0.3.0 on 2026-09-20. The effort's own
+[`check_catalogue_migration.py`](done/031-introspection-and-catalogues-migrated/check_catalogue_migration.py)
+compared all nine tools over 25 argument sets against one Blender — every tool's default call,
+every filter, a misspelled section and a misspelled subdir, a paged answer, a name nothing carries,
+and the three subject-resolving tools with nothing active — **63 checks, 0 failed, 0 inconclusive,
+every result identical field by field**. `--self-compare` fails as it must when handed two runs of
+one backend. The two hazards requirement 9 named were handled rather than met by surprise:
+`refresh` is fixed across each pair and the generated path always goes first, so a rescan that
+changed something would show as a difference rather than hide one; and
+`mpfb_list_asset_materials` is checked for self-consistency on one backend *before* the two are
+compared, because MPFB caches that scan per asset — the comparison then runs over a real equipped
+garment, which the harness equips itself, since the cached path is unreachable without one.
+`mpfb_get_status` was exercised against a second, `--factory-startup` Blender running the bridge
+with no MPFB: it answers `state: "absent"` with the sentence saying what to fix, invents nothing
+from the services tier, and the other tools are refused there as `mpfb_unavailable` — 11 checks, 0
+failed.
+
+**The cost, from one client in one run, and it is the clearest statement the pivot can make.**
+Request bytes and the best of three timed calls, calibrated against what one tick of each add-on
+costs in that Blender (250 ms for blender_mcp at its 0.25 s default, 50 ms for the bridge at
+0.05 s):
+
+| tool | generated, cold | warm | bridge |
+|---|---|---|---|
+| `mpfb_get_status` | 7,309 B / 404 ms | 7,309 B / 502 ms | **44 B / 51 ms** |
+| `mpfb_get_macro_details` | 10,575 B / 630 ms | 10,575 B / 756 ms | **58 B / 51 ms** |
+| `mpfb_list_presets` | 18,010 B / 1,103 ms | 18,010 B / 1,256 ms | **57 B / 50 ms** |
+| `mpfb_list_assets` | 18,850 B / 1,268 ms | 18,850 B / 1,257 ms | **142 B / 51 ms** |
+| `mpfb_get_object_info` | 18,883 B / 1,077 ms | 18,883 B / 1,259 ms | **56 B / 50 ms** |
+| `mpfb_list_rigs` | 20,675 B / 1,416 ms | 20,675 B / 1,514 ms | **54 B / 51 ms** |
+| `mpfb_list_targets` | 34,952 B / 2,092 ms | 16,972 B / 1,267 ms | **106 B / 51 ms** |
+| `mpfb_get_target_stack` | 39,757 B / 2,688 ms | 17,867 B / 1,262 ms | **161 B / 50 ms** |
+
+The bottom two rows are the ones
+[`shared_cache.py`](../src/mpfbmcp/shared_cache.py) exists for, and they now say three things at
+once. The cold-to-warm gap **is** the session source cache — 17,980 and 21,890 bytes of fragment
+source, sent once per Blender session — and it is real, saving 825 ms and 1,426 ms on
+`mpfb_list_targets` and `mpfb_get_target_stack`. It is also, against the bridge, beside the point:
+39,757 bytes becomes **161**, a factor of 247, and 2,688 ms becomes 50, a factor of 54. Every
+generated row costs one blender_mcp tick per 4 KB of program, exactly as
+[the cost model](../specifications/architecture.md#what-a-call-costs-is-the-size-of-its-program)
+predicts, and every bridge row costs one tick. **One operational fact worth carrying**: an idle,
+unfocused GUI Blender was observed running its main loop at about 1 Hz however short an interval a
+timer asked for, which made both transports look ten to twenty times slower than they are — which
+is why the table above is calibrated against a measured tick rather than reported bare.
+
+[verification/](../verification/) passed in **both** configurations with no edit to `smoke.py` —
+27 passed, 0 failed, 1 skipped in both — and the bridge configuration is the faster of the two at
+**31.7 s against 49.7 s**, which is ten migrated tools out of twenty-five and the harness's own
+scene bookkeeping still on the generated path. The unit suite went from 945 tests to **993** and
+the bridge's from 47 to **150**, with the add-on at 80% coverage.

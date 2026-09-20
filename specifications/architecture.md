@@ -210,13 +210,20 @@ probe is issued through the wire client directly, never through the seam**, or t
 process would probe in order to probe. A bridge that answers but reports no version is talked to
 anyway: a handshake exists to catch a mismatch, not to invent one.
 
-**The bridge's `get_status` command and mpfb-mcp's `mpfb_get_status` tool are different things**,
-and the collision is worth naming before somebody assumes the tool was migrated when the command
-appeared. The command reports *the bridge* — its version, the protocol it speaks, and the state of
-MPFB as the add-on sees it — and is what the handshake probes. The tool reports *MPFB*, in three
-tiers including asset roots and configured paths, and is still on the generated path. The effort
-that migrates it has to resolve the overlap properly rather than letting one answer stand in for
-the other.
+**`get_status` and `get_mpfb_status` are two commands about two different pieces of software**,
+and the names are the resolution of a collision rather than an accident. `get_status` reports *the
+bridge* — its version, the protocol it speaks, and the state of MPFB as the add-on sees it — and
+is what the handshake probes. `get_mpfb_status` reports *MPFB*, in three tiers including asset
+roots and configured paths, and is what `mpfb_get_status` became when
+[FR 031](../feature-requests/done/031-introspection-and-catalogues-migrated/README.md) migrated it.
+
+This is the **one** place where a tool's bridge command is not named after its payload, and the
+exception is deliberate: two commands answering "status" about two different things is a collision
+that is cheap to avoid while there is one caller and permanent once there are several. It is
+written into `MIGRATED_COMMANDS`' own comment, into `commands/table.py` beside the entry, and into
+each command's `list_commands` summary, so that a reader meeting either one learns which is which
+without finding this paragraph. Both declare `requires_mpfb=False`, for the same reason: a status
+command gated on the thing it reports about answers only the question nobody needs to ask.
 
 ### Both ends validate, deliberately
 
@@ -368,6 +375,20 @@ client.
   must not be able to tell the seam exists. That is what replaces the reversibility the two
   preceding efforts could offer and this one could not: FR 030 is the first stage that changed
   `src/mpfbmcp/`, so `bridge/` is no longer removable without consequence.
+- **A shared fragment is a property of the generated path, and the seam knows it.** `backend.send()`
+  takes `shared` and `cached_shared` exactly as `codegen.assemble()` does, and a migrated tool
+  passes them whichever transport it is on — because the alternative is a tool that has to know.
+  On the generated path they are what they have always been; **on the bridge path they are
+  ignored**, since the bridge assembles nothing and what a fragment modelled has become a module
+  its command imports. Five of the ten tools migrated so far carry one, and none of their modules
+  contains a branch on a backend.
+- **The session source cache lives below the seam, not beside the tools.** `shared_cache.send()`
+  was what four tool modules imported; since FR 031 it is what `backend.send()` consults on the
+  generated path, and no tool module imports it. That is what lets a fragment-carrying tool migrate
+  **without the tools left behind losing the cache** — `mpfb_set_targets` and
+  `mpfb_symmetrize_targets` still share `target_categories.py` with two tools that have gone. It
+  remains generated-path machinery and it dies with that path: a bridge request carries parameters
+  and nothing else, so there is no source to cache and nothing to port.
 - **Observability keeps its attachment point and changes its unit.** The per-call record hangs off
   the send and nowhere else, which does not change; what it records stops being a program and
   becomes a command and its parameters. See
@@ -746,10 +767,44 @@ inherits it for the same reason.
   descend, so `payloads/*.py` ships nothing from a subdirectory of `payloads/` — which is why
   fragments live in a sibling directory with a glob of their own rather than under `payloads/`.
 
-**What a fragment becomes after the pivot** is worth stating, because it is the part of the
-migration most likely to be under-estimated. A concept two payloads model identically becomes a
-module two commands import — which is what a fragment was always trying to be, and is the reason
-the seven of them are the clearest map of what the bridge's shared code should look like.
+**What a fragment becomes after the pivot is no longer a prediction.**
+[FR 031](../feature-requests/done/031-introspection-and-catalogues-migrated/README.md) migrated
+five of the seven, and a concept two payloads model identically did become a module two commands
+import. Four things about how are worth keeping, because the two that remain — `performed.py` and
+`refit_blocker.py` — arrive with the mutating tools and should arrive the same way:
+
+- **A bridge shared module lives in `bridge/mpfb_bridge/shared/`, a sibling of `commands/`,
+  mirroring `codegen/shared/` name for name.** The mirror is for the migration: a fragment and the
+  module replacing it have to be findable from each other while both exist. **Nothing in that
+  directory is reachable from the wire** — no handler, no `PARAMS`, no entry in `COMMANDS` — which
+  is the property `commands/table.py` exists to make checkable, and that file says so rather than
+  leaving a reader to notice a second directory has appeared beside it.
+- **What the bootstrap bound above a fragment becomes a parameter.** A fragment reads
+  `_MPFB_SERVICES` from the module scope the assembler built; a bridge module is *handed*
+  `services`, because a module that resolved MPFB at import would hold a services dict across a
+  disable and re-enable — the stale state `mpfb_resolution.resolve()` is called per dispatch to
+  avoid. `target_categories.py` needs the same treatment for a second thing: the fragment builds
+  MPFB's category table at the top of a generated program, which is per call because the program
+  is, and the bridge module builds it per dispatched command into a record passed as `tables`. A
+  module-level scan would answer every request from a snapshot taken when Blender started, which is
+  the precise defect [never import MPFB submodules directly](#never-import-mpfb-submodules-directly)
+  rejects.
+- **The pairing guarantee is asserted across the stage boundary, not intended.** A fragment's whole
+  reason for existing is that two tools must agree — `mpfb_list_rigs` predicting what
+  `mpfb_add_rig` will load, `mpfb_list_assets` reporting the vocabulary `mpfb_add_asset` resolves
+  with — and a migration splits exactly those pairs, with one half a command and the other still a
+  payload. [tests/test_fragment_drift.py](../tests/test_fragment_drift.py) parses both files with
+  `ast`, strips docstrings and compares every function and every module-level constant, on every
+  unit run and with no Blender. The one declared normalisation is the parameter substitution
+  above; anything it cannot cover must be **named** in the test rather than skipped, and a name
+  listed as uncomparable that turns out to compare cleanly fails, so the list cannot rot into a
+  suppression file.
+- **A bridge shared module keeps the fragment's spelling, deliberately.** Its functions bind
+  `LocationService = services["LocationService"]` rather than a snake_case local, and its tables
+  keep their SCREAMING_CASE names, so that the bodies stay character-for-character comparable. That
+  costs one `# pylint: disable=invalid-name` per module and buys a drift check that runs for as
+  long as both halves exist. When the last payload goes, so does the reason, and the modules can be
+  renamed freely.
 
 ## One module per tool
 

@@ -1,9 +1,9 @@
 # Introspection and catalogues migrated
 
-**Status:** Accepted
+**Status:** Done
 
-[FR 030](../done/030-backend-seam/README.md) built the seam and migrated one tool across it,
-chosen for being dull. This is [stage 3 of the pivot](../NEXT_STEPS.md#3-introspection-and-catalogues-migrated):
+[FR 030](../030-backend-seam/README.md) built the seam and migrated one tool across it,
+chosen for being dull. This is [stage 3 of the pivot](../../NEXT_STEPS.md#3-introspection-and-catalogues-migrated):
 the rest of the read-only half of the package follows it, and the dullness stops.
 
 **Nine tools move here, not eight.** The stage text counted nine and subtracted
@@ -90,7 +90,7 @@ unmigrated tools onto `backend.send()` in bulk (see [Out of scope](#out-of-scope
    `mpfb_add_asset` resolves with — true while one half has migrated and the other has not.
    The check parses both files with `ast` and compares the functions that embody the rule,
    docstrings stripped and normalised through `ast.unparse`, which is the technique
-   [architecture.md's payload census](../../specifications/architecture.md#shared-fragments) already
+   [architecture.md's payload census](../../../specifications/architecture.md#shared-fragments) already
    used and `tests/test_reference_drift.py` already uses against another repository.
    **It must not claim more than it checks.** A fragment reads `_MPFB_SERVICES`, bound by the
    bootstrap, where a bridge module reads `resolution.services`; functions differing by that are
@@ -119,7 +119,7 @@ unmigrated tools onto `backend.send()` in bulk (see [Out of scope](#out-of-scope
    convention deliberately**: `get_mpfb_status`, because `get_status` is taken by the command that
    reports the bridge, and two commands answering "status" about two different pieces of software
    is the kind of collision that is cheap now and permanent later. The table, `list_commands`'
-   summaries and [the wire](../../specifications/architecture.md#the-wire) must all say which is
+   summaries and [the wire](../../../specifications/architecture.md#the-wire) must all say which is
    which.
 
 7. **The tools move in four batches, in this order, and each batch is complete before the next
@@ -134,7 +134,7 @@ unmigrated tools onto `backend.send()` in bulk (see [Out of scope](#out-of-scope
    | D | `mpfb_list_targets`, `mpfb_get_target_stack` | `target_categories.py`, `modifier_reading.py` | Largest last: 656 lines of payload over 512 of fragment, the two heaviest test modules in the suite, and the only tools whose migration removes the session source cache's reason for existing. |
 
 8. **Everything the add-on side can check is checked there, per
-   [the rule FR 030 landed](../../specifications/testing.md#a-migrated-tool-is-tested-where-it-runs),
+   [the rule FR 030 landed](../../../specifications/testing.md#a-migrated-tool-is-tested-where-it-runs),
    and the closed list is not reopened.** What stays in `tests/` for a migrated tool is its local
    validation, what goes on the wire, the seam and the record — plus, new here, the fragment drift
    check of requirement 4, which is about two files in this repository and reaches no Blender at
@@ -157,22 +157,22 @@ unmigrated tools onto `backend.send()` in bulk (see [Out of scope](#out-of-scope
     milliseconds, per tool, per transport, at the add-on's default tick and at 0.05 s — FR 030's
     table extended to nine rows. The fragment-carrying tools are the point: `mpfb_list_targets`
     carries 26 KB of shared source on a cold call, which is the number
-    [`shared_cache.py`](../../src/mpfbmcp/shared_cache.py) exists because of, and the warm/cold
+    [`shared_cache.py`](../../../src/mpfbmcp/shared_cache.py) exists because of, and the warm/cold
     pair on the generated path against a single JSON request on the bridge is the clearest
     statement the pivot can make about what it buys.
 
 11. **Nothing that works today stops working.** With nothing configured, all twenty-five tools
     behave exactly as they do now. The unit suite still runs to completion with no Blender and no
-    bridge. [verification/](../../verification/) passes in **both** configurations with no edit to
+    bridge. [verification/](../../../verification/) passes in **both** configurations with no edit to
     `smoke.py` — no tool is added or removed here, so
-    [tests/test_verification_smoke.py](../../tests/test_verification_smoke.py)'s correspondence rule
+    [tests/test_verification_smoke.py](../../../tests/test_verification_smoke.py)'s correspondence rule
     is unaffected — and the bridge-configuration run now sends ten of twenty-five tools over the
     bridge, still needing both add-ons for the reason
-    [verification/README.md](../../verification/README.md) already records.
+    [verification/README.md](../../../verification/README.md) already records.
 
 12. **The transition's arithmetic is written down where it is read.** `MIGRATED_COMMANDS` is the
-    progress bar; [CLAUDE.md](../../CLAUDE.md)'s tool table says which tools take which path;
-    [NEXT_STEPS.md](../NEXT_STEPS.md)'s stage 4 entry is corrected from "the fourteen mutating
+    progress bar; [CLAUDE.md](../../../CLAUDE.md)'s tool table says which tools take which path;
+    [NEXT_STEPS.md](../../NEXT_STEPS.md)'s stage 4 entry is corrected from "the fourteen mutating
     tools" to what is actually left.
 
 ### Out of scope, deliberately
@@ -237,8 +237,8 @@ nine command modules. Nothing else is restructured.
 
 | Module | What happens to it |
 |---|---|
-| [`src/mpfbmcp/backend.py`](../../src/mpfbmcp/backend.py) | `send()` gains `shared` / `cached_shared` and nine lines in `MIGRATED_COMMANDS`. Still the one file that knows there are two transports. |
-| [`src/mpfbmcp/shared_cache.py`](../../src/mpfbmcp/shared_cache.py) | Stops being a tool-facing entry point and becomes what the seam consults on the generated path. Memo, retry and reasoning unchanged. |
+| [`src/mpfbmcp/backend.py`](../../../src/mpfbmcp/backend.py) | `send()` gains `shared` / `cached_shared` and nine lines in `MIGRATED_COMMANDS`. Still the one file that knows there are two transports. |
+| [`src/mpfbmcp/shared_cache.py`](../../../src/mpfbmcp/shared_cache.py) | Stops being a tool-facing entry point and becomes what the seam consults on the generated path. Memo, retry and reasoning unchanged. |
 | `src/mpfbmcp/tools/*.py` (nine) | One send call each. Validation, docstrings and parameter shapes untouched. |
 | `tests/test_fragment_drift.py` (new) | Requirement 4. Client-side, no Blender, no `bpy`. |
 | `bridge/mpfb_bridge/shared/` (new) | Five modules, one per migrating fragment. Unreachable from the wire. |
@@ -252,7 +252,7 @@ MPFB through `resolution.services`, which every command handler already receives
 of the mechanical difference for four of the five. The exception is `target_categories.py`, whose
 `build_sections()` rebuilds what MPFB's `_modelsubpanels` builds at import time — the reason for
 which is
-[never import MPFB submodules directly](../../specifications/architecture.md#never-import-mpfb-submodules-directly),
+[never import MPFB submodules directly](../../../specifications/architecture.md#never-import-mpfb-submodules-directly),
 and **being add-on code does not weaken that rule**. The temptation is concrete and it is the same
 one FR 030 named for `_ALL_TYPES`: the bridge runs inside Blender and *could* simply import the UI
 module. It must not, and the second reason is the stronger one here — that scan is a snapshot from
@@ -260,10 +260,10 @@ when Blender started, so a target installed since would be invisible to a comman
 and visible to `mpfb_list_targets`, which scans per call.
 
 **`preset_files.py` is the one that also exists on this side, and it stays that way.**
-[`src/mpfbmcp/preset_names.py`](../../src/mpfbmcp/preset_names.py) is the authoritative check and
+[`src/mpfbmcp/preset_names.py`](../../../src/mpfbmcp/preset_names.py) is the authoritative check and
 runs before any transport is chosen; the bridge module restates it as the last statement before
 `open()`. Two copies are warranted because the consequence of a gap is silent, and
-[architecture.md already says this survives the pivot](../../specifications/architecture.md#shared-fragments).
+[architecture.md already says this survives the pivot](../../../specifications/architecture.md#shared-fragments).
 So after this batch there are briefly **three**: `preset_names.py`, the codegen fragment that
 stage-4 tools still carry, and the bridge module. `tests/test_codegen.py` already runs two of them
 over one table of names and compares the *sentences*; extending it to the third is the cheap move,
@@ -281,7 +281,7 @@ library with two roots holding the same `fedora.mhclo` in `MeshAssetTestCase`, a
 of presets in `PresetTestCase`. Those constructions are the asset worth moving, and they should be
 moved rather than reinvented: what changes is that MPFB's `LocationService` is pointed at the tree
 for real instead of a stub reporting it. **How much of MPFB works without a screen is still
-[explicitly unestablished](../done/029-bridge-transport-and-skeleton/README.md)**, and batch A is
+[explicitly unestablished](../029-bridge-transport-and-skeleton/README.md)**, and batch A is
 where that gets answered, since `mpfb_get_object_info` and `mpfb_get_macro_details` need a
 character in the scene. FR 030's rule holds for whatever is found: a test whose prerequisite is
 missing **skips with a reason and never passes quietly**.
@@ -298,44 +298,44 @@ found by one of these rather than by anything in stage 4.
 
 ## Affected specifications
 
-- [architecture.md](../../specifications/architecture.md) — three sections.
-  [Shared fragments](../../specifications/architecture.md#shared-fragments) currently ends with one
+- [architecture.md](../../../specifications/architecture.md) — three sections.
+  [Shared fragments](../../../specifications/architecture.md#shared-fragments) currently ends with one
   paragraph predicting what a fragment becomes after the pivot; five of them have become it, so
   that paragraph is replaced by what actually happened, including where a bridge shared module
   lives and why it is not in `commands/`.
-  [Supporting a second backend](../../specifications/architecture.md#supporting-a-second-backend)
+  [Supporting a second backend](../../../specifications/architecture.md#supporting-a-second-backend)
   gains the fragment-carrying call and `shared_cache`'s move below the seam.
-  [The wire](../../specifications/architecture.md#the-wire) gains the `get_status` /
+  [The wire](../../../specifications/architecture.md#the-wire) gains the `get_status` /
   `get_mpfb_status` distinction as a resolved fact rather than a flagged collision.
-- [testing.md](../../specifications/testing.md) — the rule was landed by FR 030 and is **applied**
+- [testing.md](../../../specifications/testing.md) — the rule was landed by FR 030 and is **applied**
   here, not rewritten. What it gains is the fixture-tree convention of requirement 8 and the
   drift check of requirement 4, which is a genuinely new *kind* of client-side test and belongs in
   the closed list explicitly rather than by implication.
-  [What the suite can never establish](../../specifications/testing.md#what-the-suite-can-never-establish)
+  [What the suite can never establish](../../../specifications/testing.md#what-the-suite-can-never-establish)
   needs its second pass: FR 030 edited it for one tool, and after this effort most of it is untrue
   for ten.
-- [responses.md](../../specifications/responses.md) —
-  [a response says which source answered it](../../specifications/responses.md#a-response-says-which-source-answered-it)
+- [responses.md](../../../specifications/responses.md) —
+  [a response says which source answered it](../../../specifications/responses.md#a-response-says-which-source-answered-it)
   should be checked against these nine rather than assumed to hold: `mpfb_list_asset_materials`'
   staleness and `mpfb_list_presets`' "what a rescan would gain" are both statements about the
   *source* of an answer, and they now cross a different transport.
-- [observability.md](../../specifications/observability.md) — small: the record's unit already
+- [observability.md](../../../specifications/observability.md) — small: the record's unit already
   became a request, and what changes is that a fragment-carrying call's record stops existing for
   nine tools. The `# --- cached shared: <name>@<hash> (carried|reused) ---` seam is a
   generated-path artefact and the spec should say it is one.
 
 **Explicitly not this request's.**
-[mutating-tools.md](../../specifications/mutating-tools.md) — nothing migrating here mutates.
-[mpfb-integration.md](../../specifications/mpfb-integration.md) — what MPFB does wrong does not
+[mutating-tools.md](../../../specifications/mutating-tools.md) — nothing migrating here mutates.
+[mpfb-integration.md](../../../specifications/mpfb-integration.md) — what MPFB does wrong does not
 depend on how the call arrives, for the third time.
-[vision.md](../../specifications/vision.md) — the end state has not changed.
-[tool-interface.md](../../specifications/tool-interface.md) — FR 030 gave it its new referent and
+[vision.md](../../../specifications/vision.md) — the end state has not changed.
+[tool-interface.md](../../../specifications/tool-interface.md) — FR 030 gave it its new referent and
 no tool's interface changes here.
 
-[CLAUDE.md](../../CLAUDE.md) gains: nine amended rows in the tool table saying which path each now
+[CLAUDE.md](../../../CLAUDE.md) gains: nine amended rows in the tool table saying which path each now
 takes, one row for `tests/test_fragment_drift.py`, one for the bridge's `shared/` directory in the
 bridge table, and the corrected count wherever "one tool migrated" is written. Map edits only; no
-narrative paragraph ([why](../CLAUDE.md#lifecycle)).
+narrative paragraph ([why](../../CLAUDE.md#lifecycle)).
 
 ## Tests
 
@@ -371,22 +371,77 @@ cost table of requirement 10; and that `get_mpfb_status` answers correctly again
 `--factory-startup` Blender with **no MPFB**, which is the one tool for which that is a success
 case rather than an error path — FR 030's `serve_without_mpfb.py` is the arrangement to reuse.
 
-**No smoke item is added.** [verification/](../../verification/) holds one item per registered tool
+**No smoke item is added.** [verification/](../../../verification/) holds one item per registered tool
 and this effort registers none; the run is performed in both configurations and both must pass.
 
 ## References
 
-- [NEXT_STEPS.md, stage 3](../NEXT_STEPS.md#3-introspection-and-catalogues-migrated) — the entry
-  this request implements, including the two counts it corrects.
-- [FR 030](../done/030-backend-seam/README.md) — the seam, the first migration, the testing rule,
+- [HISTORY.md](../../HISTORY.md) — what actually landed. The NEXT_STEPS entry this request
+  implemented, including the two counts it corrected, moved there when it did; the stages
+  after it were renumbered behind it.
+- [FR 030](../030-backend-seam/README.md) — the seam, the first migration, the testing rule,
   and the four deferrals landing here: `shared_cache` routing, the `get_status` naming collision,
   how a headless test builds a character, and what a test does with a missing prerequisite.
-- [FR 029](../done/029-bridge-transport-and-skeleton/README.md) — the command contract every one of
+- [FR 029](../029-bridge-transport-and-skeleton/README.md) — the command contract every one of
   these nine follows, and the unestablished question of how much MPFB works without a screen.
-- [`src/mpfbmcp/backend.py`](../../src/mpfbmcp/backend.py) and
-  [`src/mpfbmcp/shared_cache.py`](../../src/mpfbmcp/shared_cache.py) — the two modules requirements
+- [`src/mpfbmcp/backend.py`](../../../src/mpfbmcp/backend.py) and
+  [`src/mpfbmcp/shared_cache.py`](../../../src/mpfbmcp/shared_cache.py) — the two modules requirements
   1 and 2 change.
-- [`src/mpfbmcp/codegen/shared/`](../../src/mpfbmcp/codegen/shared) — the five fragments that
+- [`src/mpfbmcp/codegen/shared/`](../../../src/mpfbmcp/codegen/shared) — the five fragments that
   migrate, and the two that stay behind with the mutating tools that use them.
-- [`bridge/mpfb_bridge/commands/table.py`](../../bridge/mpfb_bridge/commands/table.py) — the closed
+- [`bridge/mpfb_bridge/commands/table.py`](../../../bridge/mpfb_bridge/commands/table.py) — the closed
   vocabulary, and the argument a `shared/` sibling must not weaken.
+
+
+## What was found
+
+Recorded here rather than only in the modules, because
+[the request is the place a finding is looked for](../../CLAUDE.md#lifecycle) and because FR 030's two
+findings are the precedent. **Six claims about MPFB turned out differently than the stubs asserted**,
+every one of them a claim that had rested on a reading of MPFB's source by whoever also wrote the
+code being checked. None of them is repaired here: a tidy-up during a migration is
+indistinguishable, in the comparison, from a migration defect.
+
+1. **MPFB's default race weights are the literal `0.33` each**, so they sum to 0.99 while
+   `mpfb_get_macro_details` calls anything further than 0.001 from 1.0 unnormalised. **Every**
+   default character therefore trips that tool's "that scales the phenotype" warning. Recorded in
+   `bridge/test/tests/iii_get_macro_details_test.py` as
+   `test_mpfbs_own_default_character_is_not_race_normalized`. Whether 0.001 is the right tolerance
+   is a question about the tool, with a caller-visible message attached, and belongs to whichever
+   effort decides to answer it.
+2. **`HumanService.create_human()` builds a character of one object.** No rig, no clothes, no
+   relatives at all - so every test about the relationship walk has to *make* a relative, which is
+   why `_fixtures.typed_child()` exists. It writes MPFB's own `object_type` property, which is what
+   MPFB does when it equips an asset; the alternative was equipping one, which is a mutating tool's
+   territory and stage 4's.
+3. **`AssetService.get_custom_rigs()` accepts a file only if it carries `identifying_bones`**, and
+   the skip is silent. That silence is precisely what `mpfb_list_rigs`'
+   `unrecognized_custom_rig_files` exists to report, and the fixture was written wrong first -
+   which is how the rule was found.
+4. **`_get_opposed_modifier_value()` asks whether the positive target is *present*, not whether it
+   is non-zero.** So a category whose `incr` shape key exists at 0.0 reads 0.0 however far `decr`
+   is pushed, and disappears from `mpfb_get_target_stack`'s `modifiers` rollup while both shape
+   keys are still in its `targets` list. Reproduced rather than summed:
+   `test_the_positive_target_wins_when_both_halves_are_present`.
+5. **`update_list_of_human_presets()` does a bare `os.listdir()` and raises on a missing config
+   directory**, which is the reason `mpfb_list_presets` checks the directory before asking MPFB
+   anything. Asserted against MPFB in
+   `test_a_missing_config_directory_says_the_install_is_broken`.
+6. **`TargetService.get_target_stack()` really does exclude a shape key whose name *contains*
+   "basis"**, and `has_target()` really cannot see one. This was the claim `mpfb_get_target_stack`'s
+   whole shape rests on - it reads `key_blocks` directly because of it - and it had never been put
+   to MPFB.
+
+Two more things were learned that are about the *harness* rather than about MPFB, and both are
+written into the fixtures so the next effort does not rediscover them. **A character must be built
+before `<mpfb data>` is redirected**, since `create_human()` reads `base.obj` out of it. And
+**`get_available_data_roots()` is a union of four locations**, so a test that points one at a
+fixture tree and inherits the other three answers partly from whatever the developer has installed
+- `_fixtures.only_these_data_roots()` is that, spelled once.
+
+## Verification status
+
+Done and verified. The effort's own live check is
+[`check_catalogue_migration.py`](check_catalogue_migration.py) in this subdir; what it established
+is in [HISTORY.md](../../HISTORY.md). No smoke item was added, because this request registers no tool,
+and [verification/](../../../verification/) passed in both configurations with no edit to `smoke.py`.

@@ -2,23 +2,33 @@
 
 **Status:** Accepted
 
-> **Written against the generated-code path, and that is still correct.**
+> **The pivot has now reached part of what this request touches.**
 > [FR 028](../done/028-pivot-to-specific-addon/README.md) decided that MPFB's Blender-side logic
 > moves into a bridge add-on, [FR 029](../done/029-bridge-transport-and-skeleton/README.md) built
-> the add-on out to where commands can be added to it, and
-> [FR 030](../done/030-backend-seam/README.md) built the seam on mpfb-mcp's side and migrated
-> exactly one tool across it. Twenty-four tools — including every tool this request touches — are
-> still on the generated-code path, and in the default configuration so is the twenty-fifth, so a
-> payload, a shared fragment and `send_code()` all still mean what they mean here.
+> the add-on out to where commands can be added to it,
+> [FR 030](../done/030-backend-seam/README.md) built the seam on mpfb-mcp's side and migrated one
+> tool across it, and [FR 031](../done/031-introspection-and-catalogues-migrated/README.md)
+> migrated the other nine read-only ones. **Ten tools now have a bridge command beside their
+> payload**, and fifteen — every mutating tool and the two documentation ones — do not. In the
+> default configuration all twenty-five still take the generated path, so a payload, a shared
+> fragment and `send_code()` all still mean what they mean here.
 >
-> Two things to weigh, neither of which needs this text rewritten. **Scheduling**: a tool that
-> lands before [the migration](../NEXT_STEPS.md#a-larger-pivot-an-mpfb-specific-bridge-add-on)
-> reaches its capability area is a tool the migration then has to carry — a reason to sequence,
-> not a reason to wait. And **there is now a choice**: a new tool could be written as a bridge
-> command from the start, registered in `backend.MIGRATED_COMMANDS`, rather than as a payload to
-> be migrated later. Whether that is worth doing depends on when this request runs relative to its
-> capability area's migration stage, and it is that request's call to make explicitly rather than
-> by default.
+> **One tool this request touches has migrated**: `mpfb_get_target_stack`, which already sees the
+> `!ex-` shape keys behind `include_expressions`, is now a bridge command as well as a payload. If
+> this request changes what that tool *answers*, it must change both for as long as both exist —
+> and the assertions about what it answers now belong in
+> `bridge/test/tests/ooo_get_target_stack_test.py` rather than in the frozen payload layer (see
+> [testing.md](../../specifications/testing.md#a-migrated-tool-is-tested-where-it-runs)). The two
+> tools this request *adds* are mutating and are stage 3's territory, untouched so far.
+>
+> Two things to weigh either way. **Scheduling**: a tool that lands before
+> [the migration](../NEXT_STEPS.md#a-larger-pivot-an-mpfb-specific-bridge-add-on) reaches its
+> capability area is a tool the migration then has to carry — a reason to sequence, not a reason
+> to wait. And **a new tool can now be written as a bridge command from the start**, registered in
+> `backend.MIGRATED_COMMANDS`, rather than as a payload to be migrated later; FR 031 left nine
+> worked examples of what such a command looks like, and
+> [`bridge/test/tests/_fixtures.py`](../../bridge/test/tests/_fixtures.py) holds what its tests
+> would need.
 
 
 A character these twenty-five tools build has a face that cannot do anything. It has a phenotype, detail

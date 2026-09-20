@@ -56,6 +56,14 @@ Everything below is unchanged by the pivot unless it says otherwise:
   the fragment, so a record showing that pair is showing a cold Blender rather than a defect.
   Nothing here special-cases it, which is what keeps the record a record of the socket rather than
   a narrative about it.
+- **The `# --- cached shared: <name>@<hash> (carried|reused) ---` seam is a generated-path
+  artefact**, and it is shrinking. It appears in a record only because the program it labels
+  exists; a bridge request carries parameters and nothing else, so for a migrated tool that line —
+  and the cold/warm distinction it makes visible — simply stops being in the record at all. Since
+  [FR 031](../feature-requests/done/031-introspection-and-catalogues-migrated/README.md) that is
+  true of `mpfb_list_targets` and `mpfb_get_target_stack` in the bridge configuration, which were
+  between them the largest programs this package ever sent. Reading an old record beside a new one,
+  the absence of that seam is the migration rather than a diagnostic that stopped working.
 - **mpfb-mcp's own settings carry an `MPFB_MCP_` prefix.** `BLENDER_MCP_HOST` / `BLENDER_MCP_PORT`
   are shared with blender_mcp deliberately, because both processes address the same add-on and have
   to agree; anything blender_mcp knows nothing about is mpfb-mcp's own and is named accordingly.

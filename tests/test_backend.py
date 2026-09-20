@@ -174,6 +174,105 @@ class RoutingTests(BothBackendsTestCase):
             self.assertIn(payload, backend.MIGRATED_COMMANDS)
 
 
+class FragmentTests(BothBackendsTestCase):
+    """What a tool carrying a shared fragment does on each path.
+
+    Five of the nine tools FR 031 migrated name a fragment, three of them
+    through the session source cache, and the requirement is that **a tool
+    passes the same call on both paths**: `shared` and `cached_shared` are what
+    they have always been on the generated path and are *ignored* on the bridge,
+    because a fragment is a property of how a program is assembled and the
+    bridge assembles nothing.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.bridge.responder = lambda request: fake_bridge.ok_envelope(
+            request.get("command"),
+            fake_bridge.status_result() if request.get("command") == "get_status"
+            else {"count": 0, "via": "bridge"})
+
+    def test_a_fragment_is_concatenated_on_the_generated_path(self) -> None:
+        self.prefer(None)
+
+        backend.send("list_presets.py", params={"refresh": False},
+                     shared=["preset_files.py"])
+
+        program = _program_of(self.addon.requests[0])
+        self.assertIn("# --- shared: preset_files.py ---", program)
+        self.assertIn("def preset_name_rejection(", program)
+
+    def test_a_fragment_does_not_reach_the_bridge(self) -> None:
+        self.prefer(backend.BACKEND_BRIDGE)
+
+        backend.send("list_presets.py", params={"refresh": False},
+                     shared=["preset_files.py"])
+
+        self.assertEqual(self.addon.requests, [])
+        request = self.bridge.decoded_requests()[-1]
+        self.assertEqual(request["command"], "list_presets")
+        self.assertEqual(request["params"], {"refresh": False})
+        # Not merely absent from `params`: nothing anywhere in the frame.
+        self.assertNotIn("preset_files", json.dumps(request))
+        self.assertNotIn("shared", request)
+
+    def test_a_cached_fragment_goes_through_the_cache_on_the_generated_path(self) -> None:
+        # The seam consults shared_cache rather than a tool importing it, which
+        # is what lets a tool migrate without the tools left behind losing the
+        # cache. The claim here is only that it was consulted: the cache's own
+        # behaviour is tests/test_shared_cache.py's.
+        self.prefer(None)
+
+        backend.send("list_targets.py", params={"section": None},
+                     cached_shared=["target_categories.py"])
+
+        program = _program_of(self.addon.requests[0])
+        self.assertIn("# --- shared loader ---", program)
+        self.assertIn("# --- cached shared: target_categories.py@", program)
+
+    def test_a_cached_fragment_does_not_reach_the_bridge(self) -> None:
+        self.prefer(backend.BACKEND_BRIDGE)
+
+        backend.send("list_targets.py", params={"section": None},
+                     cached_shared=["target_categories.py"])
+
+        self.assertEqual(self.addon.requests, [])
+        frame = json.dumps(self.bridge.decoded_requests()[-1])
+        self.assertNotIn("target_categories", frame)
+        self.assertNotIn("cached shared", frame)
+
+    def test_an_unmigrated_tool_keeps_the_cache_in_both_configurations(self) -> None:
+        # `set_targets.py` is a stage-4 tool sharing `target_categories.py` with
+        # the two that migrated here. Requirement 2 is that it did not lose the
+        # session source cache by the seam taking it over.
+        for preference in (None, backend.BACKEND_BRIDGE):
+            with self.subTest(backend=preference):
+                self.addon.requests.clear()
+                self.bridge.requests.clear()
+                self.prefer(preference)
+
+                backend.send("set_targets.py", params={},
+                             cached_shared=["target_categories.py"])
+
+                self.assertEqual(len(self.addon.requests), 1)
+                self.assertEqual(self.bridge.requests, [])
+                self.assertIn("# --- cached shared: target_categories.py@",
+                              _program_of(self.addon.requests[0]))
+
+    def test_a_tool_passes_the_same_call_whichever_path_it_is_on(self) -> None:
+        # The requirement stated as one assertion: identical arguments, and the
+        # only difference is which server was spoken to.
+        arguments = {"params": {"refresh": True}, "shared": ["preset_files.py"]}
+
+        self.prefer(None)
+        backend.send("list_presets.py", **arguments)
+        self.prefer(backend.BACKEND_BRIDGE)
+        backend.send("list_presets.py", **arguments)
+
+        self.assertEqual(len(self.addon.requests), 1)
+        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {"refresh": True})
+
+
 class EnvelopeTests(BothBackendsTestCase):
     def test_a_generated_error_is_given_the_command_failed_slug(self) -> None:
         self.prefer(None)

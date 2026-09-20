@@ -32,6 +32,17 @@ the vocabulary ``add_asset`` resolves with - has to survive a stage boundary
 with one half migrated and the other not, and "these two agree" is worth
 asserting rather than intending.
 
+**These modules carry their fragment's lint findings on purpose.** pylint has
+things to say about them - a missing docstring, an ``open()`` with no
+``encoding``, an unused loop variable - and every one of them is inherited
+character for character from the fragment. Fixing it here alone breaks the
+drift check; fixing it in both is a change to a payload's behaviour made during
+a migration, which is exactly what
+[FR 031](../../../feature-requests/done/031-introspection-and-catalogues-migrated/README.md)
+forbids, because a tidy-up is indistinguishable from a defect in the comparison
+the migration rests on. They become ordinary findings, fixable in one place, on
+the day the fragment is deleted.
+
 Five modules, one per migrating fragment: ``preset_files``, ``rig_lookup``,
 ``asset_sections``, ``target_categories`` and ``modifier_reading``. The two
 fragments that did not migrate - ``performed.py`` and ``refit_blocker.py`` -

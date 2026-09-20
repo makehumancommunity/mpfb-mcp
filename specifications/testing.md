@@ -179,7 +179,14 @@ What stays in `tests/` is a **closed list** — what genuinely cannot cross the 
 - the tool's own local argument validation, which runs before a transport is chosen;
 - what goes on the wire for a given call;
 - the seam's routing, handshake and envelope mapping;
-- the record.
+- the record;
+- **whether a fragment and the bridge module that replaced it still agree**, which is about two
+  files in this repository and reaches no Blender at all. That is
+  [tests/test_fragment_drift.py](../tests/test_fragment_drift.py), added by FR 031, and it is a
+  genuinely new *kind* of client-side test rather than an instance of the four above: it is the
+  only thing keeping a catalogue tool's promise true while the acting tool it promises about has
+  not migrated. It lives here for as long as any pair straddles the stage boundary, and goes when
+  the last payload does.
 
 **A new client-side test asserting something about MPFB's behaviour is a test in the wrong harness,
 however well it passes.** Which type names match, what an empty scene answers, what
@@ -195,7 +202,17 @@ migration's own live comparison compares. It is not extended and nothing is adde
 deleted with the payload when the path is retired. FR 030 measured what that costs and what it
 returns for the first tool: `tests/test_list_objects.py`'s payload layer is 27% of that module, for
 a payload whose whole logic is a filter and a substring test — a floor rather than a rate, since
-the tools with real branching in them are the ones stage 3 has to estimate.
+the tools with real branching in them are the ones stage 3 had to estimate.
+
+**FR 031 learned the rate over nine more, and it is roughly 60%.** Per module, payload layer as a
+share of the whole: `get_status` 50%, `get_object_info` 67%, `get_macro_details` 58%,
+`list_presets` 44%, `list_rigs` 63%, `list_assets` 57%, `list_asset_materials` 60%,
+`list_targets` 58%, `get_target_stack` 63%. Two things about that number are worth carrying into
+stage 5's estimate. It is a **floor**, because a fixture shared with a tool that has not migrated
+is not counted — `list_presets`' 44% is the lowest here for exactly that reason, since
+`PresetTestCase` goes with the two preset writers rather than with this tool. And the effort makes
+the suite **bigger, not smaller**: nine bridge test modules and a fixtures module were added while
+nothing was deleted, which is what "frozen" costs and is cheaper to say now than to explain later.
 
 ## Stubs reproduce MPFB's behaviour, never convenient values
 
@@ -292,14 +309,31 @@ both are silent when got wrong:
 Stated once here rather than repeated in every module, because the list is a property of the
 architecture and not of any one test.
 
-**It is a list about the *unit suite*, and the pivot is shortening it.** Every item below was
-written when everything Blender-side was out of reach from any harness in this repository. For a
-**migrated** tool that is no longer true: its logic is add-on code, the bridge's suite runs against
-a real MPFB, and the corresponding item stops being a limitation and becomes a test somebody has to
-write. `mpfb_list_objects` is the first of them — whether MPFB's own `object_is()` really matches a
-substring, and whether `get_object_type()` really answers `""`, were claims resting on a reading of
-MPFB's source until `bridge/test/tests/fff_list_objects_test.py` asked MPFB. Read what follows as
-the list for what has not moved yet:
+**It is a list about the *unit suite*, and the pivot has shortened it twice.** Every item below
+was written when everything Blender-side was out of reach from any harness in this repository. For
+a **migrated** tool that is no longer true: its logic is add-on code, the bridge's suite runs
+against a real MPFB, and the corresponding item stops being a limitation and becomes a test
+somebody has to write.
+
+Ten tools have moved, and the claims they carried were not merely re-asserted — **six of them
+turned out differently than the stub said**, which is the clearest evidence there is that the move
+is worth making:
+
+- `object_is()` really is a case-insensitive substring test and `get_object_type()` really answers
+  `""` for an untyped object (FR 030);
+- MPFB's **default race weights are the literal `0.33` each**, so they sum to 0.99 and *every*
+  default character trips `mpfb_get_macro_details`' "that scales the phenotype" warning;
+- `HumanService.create_human()` builds a character of **one object** — no rig, no clothes, no
+  relatives at all;
+- a custom rig file is accepted by `get_custom_rigs()` only if it carries `identifying_bones`, and
+  the skip is silent;
+- `_get_opposed_modifier_value()` asks whether the positive target is **present**, not whether it
+  is non-zero, so a category whose `incr` shape key exists at 0.0 reads 0.0 however far `decr` is
+  pushed;
+- `update_list_of_human_presets()` does a bare `os.listdir()` and **raises** on a missing config
+  directory, which is why `mpfb_list_presets` checks the directory before asking MPFB anything.
+
+Read what follows as the list for what has not moved yet:
 
 - **No stub builds a node tree.** Nothing in the suite establishes that any of the five skin
   types produces the material MPFB's own skin library panel produces.
