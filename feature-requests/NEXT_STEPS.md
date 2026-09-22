@@ -88,6 +88,13 @@ the harness's own scene bookkeeping goes over `send_code()`. It is written down 
 
 ### 3. Creation and modification migrated
 
+**Scoped as [FR 032](032-creation-and-modification-migrated/README.md) (Accepted), which is what
+[FR 033](033-retire-the-generated-code-path/README.md) waits for.** Fourteen commands rather than
+fifteen — `mpfb_list_docs` has nothing to migrate — staged in six batches behind a Rigify spike,
+with the two remaining fragments landing in the first. It also settles two things this text left
+open: the default backend flips to the bridge in its last commit, and the bridge suite's
+alphabetical test-module prefixes run out during it.
+
 **Stage 3 (introspection and catalogues) landed as
 [FR 031](done/031-introspection-and-catalogues-migrated/README.md); see
 [HISTORY.md](HISTORY.md).** Ten tools have bridge commands, which is every read-only tool that
@@ -126,6 +133,13 @@ rather than keeping the reimplementation. Don't; the reasons are unchanged and a
 module is the worst case of them.
 
 ### 4. Retire the generated-code path
+
+**Scoped as [FR 033](033-retire-the-generated-code-path/README.md) (Accepted), which cannot start
+until stage 3 is complete** — its first requirement is the check that says so. Four decisions it
+settles that this text left open: the seam survives as a single-transport `send()` rather than
+being deleted, `verification/`'s harness is rewritten on commands that already exist rather than
+the bridge growing instrument-serving ones, the frozen payload test layers are deleted without
+re-examination, and filing the 4 KB chunked read upstream is **not** part of it (see below).
 
 Delete `codegen/`, the session source cache and the seven shared fragments; empty the seam's
 `MIGRATED_COMMANDS` table and with it the last branch that knows there were two transports; fold
