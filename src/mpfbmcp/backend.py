@@ -123,6 +123,12 @@ MIGRATED_COMMANDS = {
     "generate_rigify_rig.py": "generate_rigify_rig",
     "add_asset.py": "add_asset",
     "remove_asset.py": "remove_asset",
+    # Batch D: materials. `set_asset_material` is the one command in the table
+    # with no service function behind it at all - the mechanism exists only in
+    # a UI operator, reimplemented from services with three of its quirks
+    # reproduced rather than tidied up.
+    "set_skin.py": "set_skin",
+    "set_asset_material.py": "set_asset_material",
 }
 
 

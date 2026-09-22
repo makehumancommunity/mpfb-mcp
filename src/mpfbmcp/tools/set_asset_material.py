@@ -37,8 +37,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 
 def _validated_name(name: object) -> str:
@@ -168,7 +167,11 @@ def register(mcp: FastMCP) -> None:
         checked_restore = _validated_flag("restore_default", restore_default)
         checked_path, checked_fragment = _validated_request(
             path, fragment, checked_restore)
-        code = codegen.assemble(
+        # `result` (built in codegen/payloads/set_asset_material.py, or by
+        # bridge/mpfb_bridge/commands/set_asset_material.py) is plain
+        # JSON-safe data, so strict_json=True surfaces a clear error if that ever
+        # stops being true.
+        return backend.send(
             "set_asset_material.py",
             bootstrap="raising",
             shared=["performed.py"],
@@ -178,8 +181,5 @@ def register(mcp: FastMCP) -> None:
                 "fragment": checked_fragment,
                 "restore_default": checked_restore,
             },
+            strict_json=True,
         )
-        # `result` (built in codegen/payloads/set_asset_material.py) is plain
-        # JSON-safe data, so strict_json=True surfaces a clear error if that ever
-        # stops being true.
-        return send_code(code, strict_json=True)

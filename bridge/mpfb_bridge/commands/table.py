@@ -61,7 +61,9 @@ from . import list_rigs
 from . import list_targets
 from . import refit_human
 from . import remove_asset
+from . import set_asset_material
 from . import set_macro_details
+from . import set_skin
 from . import set_targets
 from . import symmetrize_targets
 from .command import Command
@@ -198,12 +200,24 @@ COMMANDS = {
         params=remove_asset.PARAMS,
         requires_mpfb=True,
         summary=remove_asset.SUMMARY),
+    "set_asset_material": Command(
+        name="set_asset_material",
+        handler=set_asset_material.set_asset_material,
+        params=set_asset_material.PARAMS,
+        requires_mpfb=True,
+        summary=set_asset_material.SUMMARY),
     "set_macro_details": Command(
         name="set_macro_details",
         handler=set_macro_details.set_macro_details,
         params=set_macro_details.PARAMS,
         requires_mpfb=True,
         summary=set_macro_details.SUMMARY),
+    "set_skin": Command(
+        name="set_skin",
+        handler=set_skin.set_skin,
+        params=set_skin.PARAMS,
+        requires_mpfb=True,
+        summary=set_skin.SUMMARY),
     "set_targets": Command(
         name="set_targets",
         handler=set_targets.set_targets,

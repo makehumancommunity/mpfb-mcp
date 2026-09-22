@@ -46,8 +46,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 # MPFB's five skin models, from ui/apply_assets/assetlibrary/properties/skin_type.json.
 # Kept here only so that a typo cannot reach a function that deletes materials
@@ -225,7 +224,11 @@ def register(mcp: FastMCP) -> None:
         """
         checked_skin_type = _validated_skin_type(skin_type)
         checked_path, checked_fragment = _validated_source(path, fragment, checked_skin_type)
-        code = codegen.assemble(
+        # `result` (built in codegen/payloads/set_skin.py, or by
+        # bridge/mpfb_bridge/commands/set_skin.py) is plain JSON-safe
+        # data, so strict_json=True surfaces a clear error if that ever stops
+        # being true.
+        return backend.send(
             "set_skin.py",
             bootstrap="raising",
             params={
@@ -242,8 +245,5 @@ def register(mcp: FastMCP) -> None:
             # resolved against is MPFB's section table, and a second copy of it
             # here would make a just-listed skin look uninstalled.
             shared=["asset_sections.py", "performed.py"],
+            strict_json=True,
         )
-        # `result` (built in codegen/payloads/set_skin.py) is plain JSON-safe
-        # data, so strict_json=True surfaces a clear error if that ever stops
-        # being true.
-        return send_code(code, strict_json=True)
