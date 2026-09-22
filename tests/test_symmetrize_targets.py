@@ -4,9 +4,13 @@
 Tests for the mpfb_symmetrize_targets tool: argument validation, the dry run,
 and the category walk that makes an asymmetric detail stack symmetric.
 
-Two layers, as established: the tool wrapper with send_code mocked, then the
-assembled source - shared fragment included - executed against the stub scene
-and the real temporary target tree in tests/blender_stubs.py.
+Three layers since FR 032 migrated it (see ``tests/test_list_objects.py``, the
+template): the tool wrapper with ``send_code`` mocked on the seam; the **bridge
+path** against ``tests/fake_bridge.py``; and the assembled source - shared
+fragments included - executed against the stub scene and the real temporary
+target tree in tests/blender_stubs.py. That third layer is **frozen**, and what
+this tool actually does to a character is checked against a real MPFB in
+``bridge/test/tests/ppp_mutating/symmetrize_targets_test.py``.
 
 The operation has no MPFB equivalent - MPFB's own ``symmetry`` setting only
 mirrors changes made while it is on - so there is nothing to compare against,
@@ -30,6 +34,7 @@ from mcp.server.fastmcp import FastMCP
 from mpfbmcp import backend, codegen, shared_cache
 from mpfbmcp.tools import symmetrize_targets
 
+from tests import fake_bridge
 from tests.blender_stubs import (
     DetailTargetTestCase, StubHumanService, StubObject, StubObjectService,
     StubTargetService)
@@ -127,6 +132,76 @@ class ArgumentValidationTests(unittest.TestCase):
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(direction="left_to_right", section="no-such-section")
         send_code.assert_called_once()
+
+
+class SymmetrizeTargetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """What cannot cross the socket, and nothing else.
+
+    The category walk, the dry run agreeing with the real run, and the write
+    order are checked against a real MPFB in
+    ``bridge/test/tests/ppp_mutating/symmetrize_targets_test.py``. What is left
+    here is the one required argument in the package, and that it is refused
+    before a transport is chosen - which is what keeps the most destructive
+    tool here from guessing which half of a face to keep.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.call = _tool_callable()
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        self.bridge = self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "symmetrize_targets": fake_bridge.ok_envelope(
+                "symmetrize_targets", {"found": True, "changed": [], "performed": False}),
+        })
+
+    def test_the_tool_sends_the_symmetrize_targets_command(self) -> None:
+        self.call(direction="left_to_right")
+
+        self.assertEqual(self.bridge.commands()[-1], "symmetrize_targets")
+        params = self.bridge.decoded_requests()[-1]["params"]
+        self.assertEqual(params["direction"], "left_to_right")
+        self.assertEqual(params["dry_run"], False)
+        self.assertEqual(params["prune"], True)
+
+    def test_a_dry_run_is_carried_as_a_parameter_like_any_other(self) -> None:
+        self.call(direction="right_to_left", dry_run=True, section="nose")
+
+        params = self.bridge.decoded_requests()[-1]["params"]
+        self.assertEqual(params["dry_run"], True)
+        self.assertEqual(params["section"], "nose")
+
+    def test_the_required_direction_is_refused_before_a_transport_is_chosen(self) -> None:
+        # The package's only required argument, and the reason is that guessing
+        # wrong destroys work with no undo across the socket.
+        for value in (None, "", "leftward", 3):
+            with self.subTest(direction=value):
+                with self.assertRaises(ValueError):
+                    self.call(direction=value)
+
+        self.assertEqual(self.bridge.requests, [],
+                         "a locally invalid call must not be sent to any backend")
+
+    def test_no_shared_fragment_reaches_the_bridge(self) -> None:
+        self.call(direction="left_to_right")
+
+        request = self.bridge.decoded_requests()[-1]
+        self.assertNotIn("shared", request)
+        self.assertNotIn("cached_shared", request)
+        self.assertNotIn("modifier_reading", str(request))
+
+    def test_a_bridge_error_envelope_reaches_the_caller_intact(self) -> None:
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope(
+                "command_failed", "TargetService.set_target_value() raised.",
+                command="symmetrize_targets"))
+
+        response = self.call(direction="left_to_right")
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "command_failed")
 
 
 class GeneratedSymmetrizeTargetsTests(DetailTargetTestCase):

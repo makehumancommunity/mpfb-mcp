@@ -31,8 +31,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 # The tool's argument name paired with the MPFB property it writes. They differ
 # for the three race weights: MPFB stores them as plain "asian"/"caucasian"/
@@ -167,7 +166,11 @@ def register(mcp: FastMCP) -> None:
             if value is not None
         ]
 
-        code = codegen.assemble(
+        # `result` (built in codegen/payloads/set_macro_details.py, or by
+        # bridge/mpfb_bridge/commands/set_macro_details.py) is plain JSON-safe
+        # data - property values are coerced to float on both sides - so
+        # strict_json=True surfaces a clear error if that ever stops being true.
+        return backend.send(
             "set_macro_details.py",
             bootstrap="raising",
             shared=["refit_blocker.py", "performed.py"],
@@ -177,8 +180,5 @@ def register(mcp: FastMCP) -> None:
                 "prune": _validated_flag("prune", prune),
                 "refit": _validated_flag("refit", refit),
             },
+            strict_json=True,
         )
-        # `result` (built in codegen/payloads/set_macro_details.py) is plain
-        # JSON-safe data - property values are coerced to float there - so
-        # strict_json=True surfaces a clear error if that ever stops being true.
-        return send_code(code, strict_json=True)

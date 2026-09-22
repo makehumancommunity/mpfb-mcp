@@ -57,6 +57,9 @@ from . import list_presets
 from . import list_rigs
 from . import list_targets
 from . import refit_human
+from . import set_macro_details
+from . import set_targets
+from . import symmetrize_targets
 from .command import Command
 
 COMMANDS = {
@@ -167,4 +170,22 @@ COMMANDS = {
         params=refit_human.PARAMS,
         requires_mpfb=True,
         summary=refit_human.SUMMARY),
+    "set_macro_details": Command(
+        name="set_macro_details",
+        handler=set_macro_details.set_macro_details,
+        params=set_macro_details.PARAMS,
+        requires_mpfb=True,
+        summary=set_macro_details.SUMMARY),
+    "set_targets": Command(
+        name="set_targets",
+        handler=set_targets.set_targets,
+        params=set_targets.PARAMS,
+        requires_mpfb=True,
+        summary=set_targets.SUMMARY),
+    "symmetrize_targets": Command(
+        name="symmetrize_targets",
+        handler=symmetrize_targets.symmetrize_targets,
+        params=symmetrize_targets.PARAMS,
+        requires_mpfb=True,
+        summary=symmetrize_targets.SUMMARY),
 }

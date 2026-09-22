@@ -4,11 +4,18 @@
 Tests for the mpfb_set_targets tool: per-entry argument validation, the
 all-or-nothing resolution phase, and the write sequence itself.
 
-Two layers, as established: the tool wrapper with send_code mocked, then the
-assembled source - shared fragment included - executed against the stub scene
-and the real temporary target tree in tests/blender_stubs.py. The tree is real
-because most of what this payload does is decide *which file* a change would
-have to load, and from where.
+Three layers since FR 032 migrated it (see ``tests/test_list_objects.py``, the
+template): the tool wrapper with ``send_code`` mocked on the seam; the **bridge
+path** against ``tests/fake_bridge.py``; and the assembled source - shared
+fragments included - executed against the stub scene and the real temporary
+target tree in tests/blender_stubs.py. That third layer is **frozen**: it stays
+while the payload stays, because the payload is half of what FR 032's live
+comparison compares, and everything about what this tool *does* to a character
+is now checked against a real MPFB in
+``bridge/test/tests/ppp_mutating/set_targets_test.py``.
+
+The tree is real because most of what this payload does is decide *which file*
+a change would have to load, and from where.
 
 The stubs reproduce the three quirks the payload exists to work around, and none
 of them can be observed if the stub is helpful instead: set_target_value() is a
@@ -33,6 +40,7 @@ from mcp.server.fastmcp import FastMCP
 from mpfbmcp import backend, codegen, shared_cache
 from mpfbmcp.tools import set_targets
 
+from tests import fake_bridge
 from tests.blender_stubs import (
     DetailTargetTestCase, LONG_USER_TARGET, StubHumanService, StubObject,
     StubObjectService, StubTargetService)
@@ -193,6 +201,76 @@ class ArgumentValidationTests(unittest.TestCase):
                 {"section": "no-such-section", "category": "no-such-category",
                  "value": 0.5}])
         send_code.assert_called_once()
+
+
+class SetTargetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """What cannot cross the socket, and nothing else.
+
+    The all-or-nothing resolution phase, the write order and what a category
+    resolves to are all checked against a real MPFB in
+    ``bridge/test/tests/ppp_mutating/set_targets_test.py``. What is left here is
+    the per-entry validation the tool does before any transport is chosen, and
+    the fact that a **cached** fragment list leaves nothing on the bridge's
+    wire - which is this tool's own claim, since it is the heaviest carrier of
+    fragment source in the package.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.call = _tool_callable()
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        self.bridge = self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "set_targets": fake_bridge.ok_envelope(
+                "set_targets", {"found": True, "applied": [], "performed": False}),
+        })
+
+    def test_the_tool_sends_the_set_targets_command(self) -> None:
+        self.call(modifiers=[{"section": "nose", "category": "nose-scale-depth-decr-incr",
+                              "value": 0.4}])
+
+        self.assertEqual(self.bridge.commands()[-1], "set_targets")
+        params = self.bridge.decoded_requests()[-1]["params"]
+        self.assertEqual(params["modifiers"][0]["category"], "nose-scale-depth-decr-incr")
+        self.assertEqual(params["symmetry"], False)
+        self.assertEqual(params["prune"], True)
+        self.assertEqual(params["refit"], False)
+
+    def test_the_cached_fragments_leave_nothing_on_the_wire(self) -> None:
+        # This tool carried 26 KB of fragment source on a cold generated call.
+        # On the bridge it sends the entries and nothing else: `cached_shared`
+        # is machinery of the generated path, living below the seam.
+        self.call(targets=[{"shapekey_name": "chin-triangle", "value": 0.5}])
+
+        request = self.bridge.decoded_requests()[-1]
+        self.assertNotIn("shared", request)
+        self.assertNotIn("cached_shared", request)
+        self.assertNotIn("target_categories", str(request))
+
+    def test_per_entry_validation_runs_before_a_transport_is_chosen(self) -> None:
+        # A misspelled key is otherwise silent, and the two ranges differ: a
+        # modifier may be negative because a category can be a pair of
+        # opposites, while a raw shape key value cannot.
+        with self.assertRaises(ValueError):
+            self.call(modifiers=[{"section": "nose", "catagory": "x", "value": 0.1}])
+        with self.assertRaises(ValueError):
+            self.call(targets=[{"shapekey_name": "chin-triangle", "value": -0.5}])
+
+        self.assertEqual(self.bridge.requests, [],
+                         "a locally invalid call must not be sent to any backend")
+
+    def test_a_bridge_error_envelope_reaches_the_caller_intact(self) -> None:
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope(
+                "command_failed", "TargetService.load_target() raised.",
+                command="set_targets"))
+
+        response = self.call(targets=[{"shapekey_name": "chin-triangle", "value": 0.5}])
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "command_failed")
 
 
 class GeneratedSetTargetsTests(DetailTargetTestCase):

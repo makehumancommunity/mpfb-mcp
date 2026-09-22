@@ -253,16 +253,27 @@ class FragmentTests(BothBackendsTestCase):
         self.assertNotIn("cached shared", frame)
 
     def test_an_unmigrated_tool_keeps_the_cache_in_both_configurations(self) -> None:
-        # `set_targets.py` is a stage-4 tool sharing `target_categories.py` with
-        # the two that migrated here. Requirement 2 is that it did not lose the
-        # session source cache by the seam taking it over.
+        # The claim: a tool with no bridge command did not lose the session
+        # source cache by the seam taking it over. Its subject is **computed**
+        # for the reason `test_an_unmigrated_tool_stays_on_the_generated_path_in_both`
+        # computes its own - FR 032 is spending them, and the effort ends with
+        # none left.
+        from mpfbmcp import codegen  # pylint: disable=import-outside-toplevel
+
+        unmigrated = sorted(set(codegen.payload_names()) - set(backend.MIGRATED_COMMANDS))
+        if not unmigrated:
+            self.skipTest(
+                "every payload has a bridge command, so there is no tool left that could lose "
+                "the cache - which is also why FR 033 deletes it")
+        payload = unmigrated[0]
+
         for preference in (None, backend.BACKEND_BRIDGE):
-            with self.subTest(backend=preference):
+            with self.subTest(backend=preference, payload=payload):
                 self.addon.requests.clear()
                 self.bridge.requests.clear()
                 self.prefer(preference)
 
-                backend.send("set_targets.py", params={},
+                backend.send(payload, params={},
                              cached_shared=["target_categories.py"])
 
                 self.assertEqual(len(self.addon.requests), 1)

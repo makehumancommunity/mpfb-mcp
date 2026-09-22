@@ -59,6 +59,7 @@ __all__ = (
 )
 
 import contextlib
+import gzip
 import json
 import os
 import sys
@@ -168,10 +169,18 @@ def linked_plain_object(name):
     return plain
 
 
-# What a fake target file holds. Nothing in this suite loads one - a read-only
-# command sees a filename and a directory, never the vertex deltas - so the
-# content only has to be non-empty.
-TARGET_CONTENT = "dummy target data"
+# What a fake target file holds: MPFB's own format, one
+# "<vertex index> <x> <z> <-y>" line per moved vertex. Three lines, moving three
+# low-numbered vertices every hm08 basemesh has by a tenth of a unit.
+#
+# **This used to be the string "dummy target data", and FR 032 is why it is
+# not.** A read-only command sees a filename and a directory and never the
+# vertex deltas, so any non-empty content was enough for the fifteen modules
+# before this one. A *mutating* command calls ``TargetService.load_target()``,
+# which parses every line - and which opens a ".target.gz" with ``gzip``. So the
+# content has to be real, and :func:`write_target` has to actually compress the
+# ones whose name says they are compressed.
+TARGET_CONTENT = "0 0.1 0.0 0.0\n1 0.1 0.0 0.0\n2 0.1 0.0 0.0\n"
 
 
 def write(path, content=""):
@@ -181,6 +190,25 @@ def write(path, content=""):
         os.makedirs(directory, exist_ok=True)
     with open(path, "w", encoding="utf-8") as handle:
         handle.write(content)
+    return path
+
+
+def write_target(path, content=None):
+    """One target file, gzipped when its name ends in ".gz".
+
+    ``write()`` cannot do this: a ".target.gz" written as plain text is a file
+    every read-only command reports correctly and every mutating command fails
+    to open, with a ``BadGzipFile`` from inside MPFB rather than anything this
+    suite would recognise. Splitting the two keeps ``write()`` a plain-text
+    helper and puts the one rule that matters where a target is made.
+    """
+    if not str(path).endswith(".gz"):
+        return write(path, TARGET_CONTENT if content is None else content)
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    with gzip.open(path, "wb") as handle:
+        handle.write((TARGET_CONTENT if content is None else content).encode("utf-8"))
     return path
 
 
@@ -477,6 +505,9 @@ def build_target_tree(root):
     - a section that exists only as a user directory;
     - a ``.target.gz`` in a user targets directory, which MPFB's own scan
       matches only ``*.target`` and therefore cannot see;
+    - **real, parseable target data**, gzipped where the name says so, because
+      a mutating command loads one rather than merely listing it (see
+      :data:`TARGET_CONTENT`);
     - a target whose name **contains "basis"**, which ``TargetService`` cannot
       address at all;
     - a name long enough that its shape key name is encoded and no longer
@@ -495,18 +526,18 @@ def build_target_tree(root):
     for name in ("l-lowerarm-scale-depth-decr", "l-lowerarm-scale-depth-incr",
                  "r-lowerarm-scale-depth-decr", "r-lowerarm-scale-depth-incr",
                  "upperarm-fat-decr"):
-        write(os.path.join(system_targets, "arms", name + ".target.gz"), TARGET_CONTENT)
+        write_target(os.path.join(system_targets, "arms", name + ".target.gz"))
     # The one bundled target that is *not* gzipped, which is the case
     # _set_opposed_modifier_value() would hand a non-existent path.
-    write(os.path.join(system_targets, "arms", "upperarm-fat-incr.target"), TARGET_CONTENT)
+    write_target(os.path.join(system_targets, "arms", "upperarm-fat-incr.target"))
     for name in ("nose-scale-depth-decr", "nose-scale-depth-incr"):
-        write(os.path.join(system_targets, "nose", name + ".target.gz"), TARGET_CONTENT)
-    write(os.path.join(system_targets, "chin", "chin-triangle.target.gz"), TARGET_CONTENT)
+        write_target(os.path.join(system_targets, "nose", name + ".target.gz"))
+    write_target(os.path.join(system_targets, "chin", "chin-triangle.target.gz"))
     # Left only: the right-hand files of this category are deliberately absent.
     for name in ("l-ear-lobe-decr", "l-ear-lobe-incr"):
-        write(os.path.join(system_targets, "ears", name + ".target.gz"), TARGET_CONTENT)
+        write_target(os.path.join(system_targets, "ears", name + ".target.gz"))
     # A bundled directory target.json never mentions, and one holding nothing.
-    write(os.path.join(system_targets, "asym", "asym-brow-1-l.target.gz"), TARGET_CONTENT)
+    write_target(os.path.join(system_targets, "asym", "asym-brow-1-l.target.gz"))
     os.makedirs(os.path.join(system_targets, "_images"), exist_ok=True)
 
     user_data = os.path.join(root, "user", "data")
@@ -515,20 +546,20 @@ def build_target_tree(root):
 
     # A user directory sharing its name with a bundled section: MPFB appends
     # these into that section rather than making a second one.
-    write(os.path.join(user_targets, "arms", "elvs_arm_bulk.target"), TARGET_CONTENT)
+    write_target(os.path.join(user_targets, "arms", "elvs_arm_bulk.target"))
     # A section that exists only as a user directory.
-    write(os.path.join(user_targets, "animal", "cat_ears.target"), TARGET_CONTENT)
-    write(os.path.join(user_targets, "animal", LONG_USER_TARGET + ".target"), TARGET_CONTENT)
+    write_target(os.path.join(user_targets, "animal", "cat_ears.target"))
+    write_target(os.path.join(user_targets, "animal", LONG_USER_TARGET + ".target"))
     # A gzipped target in a user targets directory: on disk, loadable, and
     # invisible to MPFB's own scan, which matches only "*.target".
-    write(os.path.join(user_targets, "animal", "winged.target.gz"), TARGET_CONTENT)
+    write_target(os.path.join(user_targets, "animal", "winged.target.gz"))
     # Contains "basis", so MPFB's own get_target_stack() cannot see the shape
     # key this produces - and neither can any MPFB read or write.
-    write(os.path.join(user_targets, "animal", "basis-nose-widen.target"), TARGET_CONTENT)
+    write_target(os.path.join(user_targets, "animal", "basis-nose-widen.target"))
     # The custom section proper. The gzipped one is where MPFB's category name
     # ("vwide.gz") and the catalogue's shapekey_name ("vwide") diverge.
-    write(os.path.join(user_custom, "closed_eyes.target"), TARGET_CONTENT)
-    write(os.path.join(user_custom, "vwide.target.gz"), TARGET_CONTENT)
+    write_target(os.path.join(user_custom, "closed_eyes.target"))
+    write_target(os.path.join(user_custom, "vwide.target.gz"))
 
     return {
         "mpfb_data": mpfb_data,

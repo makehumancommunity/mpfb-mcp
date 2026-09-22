@@ -109,6 +109,13 @@ MIGRATED_COMMANDS = {
     # `bridge/mpfb_bridge/shared/`.
     "create_human.py": "create_human",
     "refit_human.py": "refit_human",
+    # Batch B: the modeling tools. The batched one and the destructive one are
+    # here, and between them they are where a mutating command's two hardest
+    # obligations get their second implementation - resolve every entry before
+    # writing any, and a dry run that reports changes it did not make.
+    "set_macro_details.py": "set_macro_details",
+    "set_targets.py": "set_targets",
+    "symmetrize_targets.py": "symmetrize_targets",
 }
 
 
