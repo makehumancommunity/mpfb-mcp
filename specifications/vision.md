@@ -8,7 +8,7 @@
 > to describe the bridge, and since
 > [FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md) the bridge is
 > what an unconfigured install runs.** The generated-code path is kept working one variable away
-> until [FR 033](../feature-requests/033-retire-the-generated-code-path/README.md) deletes it; see
+> until [FR 033](../feature-requests/done/033-retire-the-generated-code-path/README.md) deletes it; see
 > [What runs today](#what-runs-today).
 
 This document says why mpfb-mcp exists, how it gets there, and what decides whether something

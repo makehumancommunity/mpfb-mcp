@@ -2,33 +2,31 @@
 
 **Status:** Accepted
 
-> **The pivot has now reached part of what this request touches.**
-> [FR 028](../done/028-pivot-to-specific-addon/README.md) decided that MPFB's Blender-side logic
-> moves into a bridge add-on, [FR 029](../done/029-bridge-transport-and-skeleton/README.md) built
-> the add-on out to where commands can be added to it,
-> [FR 030](../done/030-backend-seam/README.md) built the seam on mpfb-mcp's side and migrated one
-> tool across it, and [FR 031](../done/031-introspection-and-catalogues-migrated/README.md)
-> migrated the other nine read-only ones. **Ten tools now have a bridge command beside their
-> payload**, and fifteen — every mutating tool and the two documentation ones — do not. In the
-> default configuration all twenty-five still take the generated path, so a payload, a shared
-> fragment and `send_code()` all still mean what they mean here.
+> **The pivot has landed in full, and this request predates it.** MPFB's Blender-side logic lives
+> in the MPFB Bridge add-on ([`bridge/`](../../bridge)); a tool names a command from a closed
+> vocabulary and hands over its parameters.
+> [FR 033](../done/033-retire-the-generated-code-path/README.md) deleted the generated-code path
+> and everything under it, so **wherever the text below says *payload*, read *command*, and
+> wherever it names `codegen/`, `send_code()` or a *shared fragment*, read
+> `bridge/mpfb_bridge/commands/`, `backend.send()` and `bridge/mpfb_bridge/shared/`.** The request
+> has not been rewritten — a request is a record of what was planned — and the translation is
+> mechanical.
 >
-> **One tool this request touches has migrated**: `mpfb_get_target_stack`, which already sees the
-> `!ex-` shape keys behind `include_expressions`, is now a bridge command as well as a payload. If
-> this request changes what that tool *answers*, it must change both for as long as both exist —
-> and the assertions about what it answers now belong in
-> `bridge/test/tests/ooo_get_target_stack_test.py` rather than in the frozen payload layer (see
-> [testing.md](../../specifications/testing.md#a-migrated-tool-is-tested-where-it-runs)). The two
-> tools this request *adds* are mutating and are stage 3's territory, untouched so far.
+> Three things that are genuinely different rather than renamed, and each changes work this
+> request estimates:
 >
-> Two things to weigh either way. **Scheduling**: a tool that lands before
-> [the migration](../NEXT_STEPS.md#a-larger-pivot-an-mpfb-specific-bridge-add-on) reaches its
-> capability area is a tool the migration then has to carry — a reason to sequence, not a reason
-> to wait. And **a new tool can now be written as a bridge command from the start**, registered in
-> `backend.MIGRATED_COMMANDS`, rather than as a payload to be migrated later; FR 031 left nine
-> worked examples of what such a command looks like, and
-> [`bridge/test/tests/_fixtures.py`](../../bridge/test/tests/_fixtures.py) holds what its tests
-> would need.
+> - **A new tool is a tool module, one `register()` call, a command module and one line in
+>   [`commands/table.py`](../../bridge/mpfb_bridge/commands/table.py).** There is no payload to
+>   write, no assembler to call and no fragment to name in an `assemble()` call; a command imports
+>   a shared module the way it imports `os`.
+> - **Assertions about what a tool *answers* go in `bridge/test/`**, against a real MPFB in a
+>   headless Blender, not against stubs in `tests/` — see
+>   [testing.md](../../specifications/testing.md#a-tool-is-tested-where-it-runs).
+>   [`bridge/test/tests/_fixtures.py`](../../bridge/test/tests/_fixtures.py) holds what such a test
+>   needs. What stays in `tests/` is the tool's own validation and what reaches the wire.
+> - **Program size is no longer a cost.** Any argument below that weighs how much generated source
+>   a design would send is arguing about a tax this shape does not levy; see
+>   [HISTORY.md](../HISTORY.md#fr-033--the-generated-code-path-retired) for what that tax was.
 
 
 A character these twenty-five tools build has a face that cannot do anything. It has a phenotype, detail

@@ -1,18 +1,18 @@
 # Retire the generated-code path
 
-**Status:** In progress
+**Status:** Done
 
-This is [stage 4 of the pivot](../NEXT_STEPS.md#4-retire-the-generated-code-path), and it is the
-only stage that deletes rather than adds. [FR 028](../done/028-pivot-to-specific-addon/README.md)
+This is [stage 4 of the pivot](../../NEXT_STEPS.md#4-retire-the-generated-code-path), and it is the
+only stage that deletes rather than adds. [FR 028](../028-pivot-to-specific-addon/README.md)
 decided that MPFB's Blender-side logic belongs in an add-on of our own,
-[FR 029](../done/029-bridge-transport-and-skeleton/README.md) built it,
-[FR 030](../done/030-backend-seam/README.md) built the seam and migrated one tool, and
-[FR 031](../done/031-introspection-and-catalogues-migrated/README.md) migrated nine more, and
-[FR 032](../done/032-creation-and-modification-migrated/README.md) migrated the remaining
+[FR 029](../029-bridge-transport-and-skeleton/README.md) built it,
+[FR 030](../030-backend-seam/README.md) built the seam and migrated one tool, and
+[FR 031](../031-introspection-and-catalogues-migrated/README.md) migrated nine more, and
+[FR 032](../032-creation-and-modification-migrated/README.md) migrated the remaining
 fourteen — fourteen rather than fifteen, because `mpfb_list_docs` never crossed the socket to begin
 with. **That has landed**, so every tool that crosses the socket has a bridge command, the default
 backend is the bridge, and a machine nothing uses is still being maintained: 9,416 lines under
-[codegen/](../../src/mpfbmcp/codegen), a wire client duplicating a third party's protocol, a
+[codegen/](../../../src/mpfbmcp/codegen), a wire client duplicating a third party's protocol, a
 session source cache, and something on the order of 6,000 lines of tests executing payloads
 against stubs — plus a second prerequisite in every install instruction and a second transport in
 almost every module docstring in the package.
@@ -33,7 +33,7 @@ been carrying nothing for a while rather than carrying everything until yesterda
 **Three things FR 032 left that are this effort's to collect**, none of which existed when this
 request was written:
 
-- [tests/generated_path.py](../../tests/generated_path.py) and the twenty-five `setUpModule`
+- [tests/generated_path.py](../../../tests/generated_path.py) and the twenty-five `setUpModule`
   lines that use it. It exists only because those modules had to say they were about a path that
   is no longer the default; with the path gone, so is the reason.
 - The measured share of a test module that goes with its payload, now known across all
@@ -42,19 +42,19 @@ request was written:
   `mpfb_list_urls` at 24%, because most of that module tests the client-side merge that stays, and
   `mpfb_create_human`, which has no payload layer at all.
 - The transitional two-add-on prerequisite in
-  [verification/README.md](../../verification/README.md), which FR 032 made the *default* one
+  [verification/README.md](../../../verification/README.md), which FR 032 made the *default* one
   rather than an alternative. Removing it is this effort's, and the README already says so.
 
 ## Goals
 
-**Primary. Delete the generated-code path.** [codegen/](../../src/mpfbmcp/codegen) entire — the
+**Primary. Delete the generated-code path.** [codegen/](../../../src/mpfbmcp/codegen) entire — the
 assembler, the bootstrap strings, the source loader, twenty-four payloads and seven shared
-fragments — plus [shared_cache.py](../../src/mpfbmcp/shared_cache.py) and
-[connection.py](../../src/mpfbmcp/connection.py), the `pyproject.toml` package-data that ships
+fragments — plus [shared_cache.py](../../../src/mpfbmcp/shared_cache.py) and
+[connection.py](../../../src/mpfbmcp/connection.py), the `pyproject.toml` package-data that ships
 payloads, and every test that exists to exercise any of it.
 
 **Primary. The seam keeps its name and its callers, and loses its branch.**
-[backend.py](../../src/mpfbmcp/backend.py) survives as a single-transport `send()`:
+[backend.py](../../../src/mpfbmcp/backend.py) survives as a single-transport `send()`:
 `MIGRATED_COMMANDS`, `MPFB_MCP_BACKEND`, `BACKENDS` and the envelope mapping go, and no tool module
 changes as a consequence. This was chosen over deleting the seam and having tools call
 `bridge_connection.send_command()` directly: one indirection is a cheaper thing to carry than
@@ -73,10 +73,10 @@ file. A finding does not become false because the code it was measured on is gon
 **Secondary. `verification/` runs against one add-on, in one configuration.** The transitional
 two-add-on prerequisite FR 030 created goes away here, which is what it was always going to do.
 
-**Explicitly not goals.** Migrating anything — [FR 032](../done/032-creation-and-modification-migrated/README.md)
+**Explicitly not goals.** Migrating anything — [FR 032](../032-creation-and-modification-migrated/README.md)
 must be complete before this starts (requirement 1). Changing any tool's name, description, arguments or answer. Changing anything in
 `bridge/` beyond what the harness rewrite needs. Touching
-[bridge_connection.py](../../src/mpfbmcp/bridge_connection.py)'s hand-kept `PROTOCOL_VERSION`
+[bridge_connection.py](../../../src/mpfbmcp/bridge_connection.py)'s hand-kept `PROTOCOL_VERSION`
 duplicate, which is a different duplication with a different reason and is not part of this.
 And **filing the 4 KB chunked read upstream**: NEXT_STEPS currently says to do it here, and that is
 being changed rather than honoured (requirement 11) — it is not an engineering task, it does not
@@ -87,7 +87,7 @@ gate anything, and attaching it to a deletion effort is how it ends up half-done
 1. **The effort refuses to start while any tool still has a payload.** The first thing written is
    the check that says so: every tool `build_server()` registers either has an entry in
    `MIGRATED_COMMANDS` or has no payload at all (`mpfb_list_docs`, and nothing else). If that does
-   not hold, [FR 032](../done/032-creation-and-modification-migrated/README.md) is not finished and
+   not hold, [FR 032](../032-creation-and-modification-migrated/README.md) is not finished and
    this request is not startable. This is a requirement
    rather than an assumption because the deletion is irreversible in practice — a payload deleted
    while its tool still needs it is not caught by any test that survives the same commit.
@@ -110,13 +110,13 @@ gate anything, and attaching it to a deletion effort is how it ends up half-done
 
    Two details that must not be skipped. `as_common_envelope()` exists to give a generated-code
    failure the `error` slug the bridge writes itself — confirm against
-   [command_server.py](../../bridge/mpfb_bridge/command_server.py) that every bridge error envelope
+   [command_server.py](../../../bridge/mpfb_bridge/command_server.py) that every bridge error envelope
    carries `error` before deleting the mapping, rather than inferring it from the docstring. And
    **`MPFB_MCP_BACKEND` becoming meaningless must not be silent**: a value left in somebody's
    MCP client configuration should produce one line through the `mpfbmcp` logger saying the
    variable is no longer read — never on stdout, which is the JSON-RPC channel.
 
-4. **The record has one unit again.** In [observability.py](../../src/mpfbmcp/observability.py):
+4. **The record has one unit again.** In [observability.py](../../../src/mpfbmcp/observability.py):
    `begin()`, `tool_name_from_program()`, the payload-seam marker convention, `_PROGRAM_KEY` and
    `_PROGRAM_EXTENSION` go with the programs they described. What must not change is the record a
    bridge call already writes: same directory layout, same `index.tsv` columns and meanings, same
@@ -125,7 +125,7 @@ gate anything, and attaching it to a deletion effort is how it ends up half-done
    distinction lose it.
 
 5. **`verification/` stops using `send_code()`, and says plainly what that costs.**
-   [harness.py](../../verification/harness.py)'s `probe()` is the harness's own channel into
+   [harness.py](../../../verification/harness.py)'s `probe()` is the harness's own channel into
    Blender and has no replacement in the bridge's closed vocabulary; the decision taken for this
    request is that **the harness is rewritten on commands that already exist rather than the
    bridge growing instrument-serving ones**. So `snapshot()`, `ensure_scratch_scene()`,
@@ -133,7 +133,7 @@ gate anything, and attaching it to a deletion effort is how it ends up half-done
    and the record's traceback item are each either re-expressed through an existing command or
    dropped.
 
-   **Each one that narrows is named in [verification/README.md](../../verification/README.md)**,
+   **Each one that narrows is named in [verification/README.md](../../../verification/README.md)**,
    in the section that already exists for what the smoke run deliberately does not check. The
    snapshot is the significant loss and should be described as one: today it compares twelve
    `bpy.data` collections plus `is_dirty` before and after, which is what turns "the run deleted
@@ -149,13 +149,13 @@ gate anything, and attaching it to a deletion effort is how it ends up half-done
 6. **The tests that exist to exercise the generated path are deleted outright.** Namely: every
    payload-layer test class in the twenty-four tool test modules (the "frozen" third layer FR 030
    and FR 031 created, measured at roughly 60% of a migrated module),
-   [test_codegen.py](../../tests/test_codegen.py),
-   [test_connection.py](../../tests/test_connection.py),
-   [test_shared_cache.py](../../tests/test_shared_cache.py),
-   [test_fragment_drift.py](../../tests/test_fragment_drift.py),
-   [fake_addon.py](../../tests/fake_addon.py) and
-   [blender_stubs.py](../../tests/blender_stubs.py). They are not re-examined for content:
-   [FR 032](../done/032-creation-and-modification-migrated/README.md) is the effort that moves a check
+   [test_codegen.py](../../../tests/test_codegen.py),
+   [test_connection.py](../../../tests/test_connection.py),
+   [test_shared_cache.py](../../../tests/test_shared_cache.py),
+   [test_fragment_drift.py](../../../tests/test_fragment_drift.py),
+   [fake_addon.py](../../../tests/fake_addon.py) and
+   [blender_stubs.py](../../../tests/blender_stubs.py). They are not re-examined for content:
+   [FR 032](../032-creation-and-modification-migrated/README.md) is the effort that moves a check
    into `bridge/test/`, and doing it again here would be doing it
    late and twice.
 
@@ -169,14 +169,14 @@ gate anything, and attaching it to a deletion effort is how it ends up half-done
      what only a payload needed goes.
    - `test_codegen.py` holds the class that runs the preset-name rule as **three** implementations
      over one table of names. The fragment dies, so the rule then lives in two places —
-     [preset_names.py](../../src/mpfbmcp/preset_names.py) and
-     [bridge/mpfb_bridge/shared/preset_files.py](../../bridge/mpfb_bridge/shared/preset_files.py) —
+     [preset_names.py](../../../src/mpfbmcp/preset_names.py) and
+     [bridge/mpfb_bridge/shared/preset_files.py](../../../bridge/mpfb_bridge/shared/preset_files.py) —
      and the reason it is checked at all is unchanged: a disagreement lets a preset be written
      under a name that cannot be loaded back. That class moves, as a two-way check, into a module
      that survives.
 
    `python3 -m unittest discover -s tests` must pass after the deletion, must still find no test
-   that imports `bpy`, and [test_verification_smoke.py](../../tests/test_verification_smoke.py)'s
+   that imports `bpy`, and [test_verification_smoke.py](../../../tests/test_verification_smoke.py)'s
    coverage rule — one smoke item per registered tool — must still hold.
 
 7. **`bridge/` is checked for what it inherited, not assumed clean.** The bridge's own modules and
@@ -195,7 +195,7 @@ gate anything, and attaching it to a deletion effort is how it ends up half-done
 
    returns nothing that describes the retired path as current. The check is a grep because the
    alternative is a judgement made thirty times, and the counting in this repository's own
-   documentation has drifted before ([FR 020](../done/020-trim-claude-md/README.md) found five
+   documentation has drifted before ([FR 020](../020-trim-claude-md/README.md) found five
    factual errors surviving in exactly this way). A hit that is genuinely about something else —
    the bridge's own payload-free wire, a URL containing the word — is fine and is left; a hit
    phrased in the present tense about a machine that no longer exists is not.
@@ -230,9 +230,9 @@ gate anything, and attaching it to a deletion effort is how it ends up half-done
    generated path either gets a bridge number or moves into `feature-requests/`.
 
 10. **What the path taught is folded before it is deleted.**
-    [architecture.md](../../specifications/architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired)'s
+    [architecture.md](../../../specifications/architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired)'s
     generated-code part stops being a section of a standing specification. Its durable content goes
-    to [HISTORY.md](../HISTORY.md) — the 4 KB-per-tick cost model and how it was measured, the
+    to [HISTORY.md](../../HISTORY.md) — the 4 KB-per-tick cost model and how it was measured, the
     session source cache's central lesson (**cache source, never what a fragment computed**, so
     nothing can go stale and no tool needs a `refresh`), and why a payload was a real file rather
     than a string literal. Three things in that part are **not** historical and must be kept, in
@@ -241,8 +241,8 @@ gate anything, and attaching it to a deletion effort is how it ends up half-done
     submodules are never imported directly; and that both ends validate.
 
 11. **NEXT_STEPS and HISTORY are left correct, including the entries this effort does not
-    perform.** Stage 4 moves out of [NEXT_STEPS.md](../NEXT_STEPS.md) into
-    [HISTORY.md](../HISTORY.md) per the [lifecycle](../CLAUDE.md#lifecycle); stage 5 (publish and
+    perform.** Stage 4 moves out of [NEXT_STEPS.md](../../NEXT_STEPS.md) into
+    [HISTORY.md](../../HISTORY.md) per the [lifecycle](../../CLAUDE.md#lifecycle); stage 5 (publish and
     document) remains and becomes the only open stage. Two other entries in that file point at
     machinery this effort removes and must be repaired rather than left dangling: **Handle the
     4 KB chunked read** says to file it "in the retirement stage", which is no longer true — it
@@ -315,7 +315,7 @@ NEXT_STEPS.md instead.
 
 All seven, which is itself a statement of how deep the two-transport assumption goes:
 
-- **[architecture.md](../../specifications/architecture.md)** — the largest edit. *The generated-code
+- **[architecture.md](../../../specifications/architecture.md)** — the largest edit. *The generated-code
   path* and its four subsections (*What a call costs is the size of its program*, *Code-generation
   layout*, *Generated code may keep its own source inside Blender*, *Shared fragments*) are removed
   per requirement 10. *No direct dependency on MPFB or blender_mcp* keeps its rule and loses its
@@ -324,31 +324,31 @@ All seven, which is itself a statement of how deep the two-transport assumption 
   decision it became rather than as a plan in progress. *Resolving MPFB* keeps its substance and
   stops being about generated code. *mpfb-mcp opens no network connection except the one to the
   add-on* keeps its rule and re-points its "the add-on" at the bridge.
-- **[testing.md](../../specifications/testing.md)** — *The unit suite is two layers* becomes one
+- **[testing.md](../../../specifications/testing.md)** — *The unit suite is two layers* becomes one
   layer plus the bridge's harness. *A migrated tool is tested where it runs* stops being about
   migration and becomes the standing rule for all tools, including the "frozen third layer"
   paragraphs and the 27%/60% measurements, which move to HISTORY. *Two harnesses, split at the
   directory boundary* is unaffected in substance and keeps its hard constraint. The closed list of
   what stays client-side loses its fragment-drift entry.
-- **[observability.md](../../specifications/observability.md)** — *Diagnostics attach at the socket
+- **[observability.md](../../../specifications/observability.md)** — *Diagnostics attach at the socket
   boundary, never to the program* keeps its rule and loses "twenty-five tools crossing two
   functions" and the three bullets about what the second transport changes. Its title's "never to
   the program" is worth re-reading: the rule is about not instrumenting inside Blender, which
   survives, but the wording is generated-path wording.
-- **[tool-interface.md](../../specifications/tool-interface.md)** — *How generated code addresses
+- **[tool-interface.md](../../../specifications/tool-interface.md)** — *How generated code addresses
   objects* is a section title naming a machine that is gone; the rules in it (name-based
   addressing, `in_current_scene`, `view_layer.objects.active`) are unchanged and true of bridge
   commands. Rename and reword. *Validate before crossing the socket* is unaffected.
-- **[mutating-tools.md](../../specifications/mutating-tools.md)**, **[responses.md](../../specifications/responses.md)**,
-  **[mpfb-integration.md](../../specifications/mpfb-integration.md)** — no structural change
+- **[mutating-tools.md](../../../specifications/mutating-tools.md)**, **[responses.md](../../../specifications/responses.md)**,
+  **[mpfb-integration.md](../../../specifications/mpfb-integration.md)** — no structural change
   expected; each mentions payloads, generated code or the round-trip cost in passing, and each
   needs requirement 8's grep run over it and requirement 9 applied to any number it quotes.
-- **[README.md](../../specifications/README.md)** — *Which machine these documents describe* is
+- **[README.md](../../../specifications/README.md)** — *Which machine these documents describe* is
   written explicitly about the transition and is rewritten to describe one machine.
 
-Outside `specifications/`: [CLAUDE.md](../../CLAUDE.md) (requirement 8),
-[README.md](../../README.md), [verification/README.md](../../verification/README.md)
-(requirement 5), [bridge/test/README.md](../../bridge/test/README.md) and `pyproject.toml`.
+Outside `specifications/`: [CLAUDE.md](../../../CLAUDE.md) (requirement 8),
+[README.md](../../../README.md), [verification/README.md](../../../verification/README.md)
+(requirement 5), [bridge/test/README.md](../../../bridge/test/README.md) and `pyproject.toml`.
 
 ## Tests
 
@@ -376,23 +376,86 @@ check, and it belongs in this subdir as `check_retirement.py`, run during the ef
 has something honest to compare against. That is the last useful thing the generated path ever
 does.
 
-Nothing is added to [verification/](../../verification/): this effort introduces no tool, and the
+Nothing is added to [verification/](../../../verification/): this effort introduces no tool, and the
 twenty-five items it already has are exactly what it needs.
+
+## Outcome
+
+**Landed as specified, with three deviations and one finding**, all recorded here rather than
+folded silently into the text above. The narrative of what it did is
+[HISTORY.md](../../HISTORY.md#fr-033--the-generated-code-path-retired); this section is the diff
+between what was planned and what happened.
+
+**Deviation 1: `bootstrap` went too.** Requirement 3 names three parameters to remove from
+`backend.send()` — `shared`, `cached_shared`, `strict_json`. `bootstrap` is a fourth and goes for
+the same reason: it selected between two prelude strings in `codegen/bootstrap.py`, which
+requirement 2 deletes, so keeping it would have left `send()` accepting an argument no code reads.
+
+**Deviation 2: the seam takes a command name rather than a payload filename.** Requirement 3 says
+`MIGRATED_COMMANDS` is removed and that the seam keeps its callers. Those cannot both hold with
+`send("list_objects.py", ...)`: turning a payload filename into a command name needs *some* table,
+because `get_status.py` maps to `get_mpfb_status`. So each tool's first argument changed from
+`"list_objects.py"` to `"list_objects"` — twenty-four one-token edits — and the table is gone
+rather than renamed.
+
+**Deviation 3: the seam, the record and the tests landed in one commit rather than three.** The
+Architecture section orders the seam third and the deletion fourth. They cannot be separated: the
+seam's parameters are precisely what the frozen payload test layers mock, so a commit that changed
+`send()` without deleting those tests leaves the suite red, which is worse for a bisect than one
+larger commit. `git revert` of the single deletion commit is also a better emergency answer than
+reverting three that only work together. The harness (commit 2) and the documentation (commit 4)
+landed separately as planned.
+
+**The finding requirement 5 anticipated: the scratch-scene discipline could not survive.** It is
+written up in [verification/README.md](../../../verification/README.md#what-fr-033-cost-this-instrument),
+summarised in HISTORY, and raised as
+[an open question](../../NEXT_STEPS.md#should-the-bridge-serve-its-own-test-harness) rather than
+answered by adding an `exec` command. The sharpest single fact about the narrowing is one the
+request did not anticipate: a full run leaves roughly **500 Rigify `WGT-` bone-widget objects**
+behind, and none of them is a MakeHuman object, so the replacement compare cannot see them at all.
+What it reports as left behind is five objects; the real figure is two orders of magnitude larger,
+and the README says so.
+
+## Verification
+
+**Verified**, in both senses the [process](../../CLAUDE.md#sections-inside-the-readmemd-file) asks
+for.
+
+The effort's own live check is [`check_retirement.py`](check_retirement.py), run against a headless
+Blender with MPFB and the MPFB Bridge enabled and **blender_mcp disabled in that process**
+(`addon_utils.check()` reporting `loaded` false, its operators gone) — the configuration this
+request exists to prove, and the first time it has been exercised. **14 checks, 0 failed**: the
+three deleted modules cannot be imported, the seam carries no name from the two-transport era, all
+twenty-five tools answer with nothing skipped, every tool's reported fields match the pre-deletion
+run outside the shapes an install legitimately varies, and the narrowed scene compare still makes
+the two claims it says it makes.
+
+[`check_precondition.py`](check_precondition.py) is requirement 1 and ran first, before anything
+was deleted: 25 tools registered, 24 in `MIGRATED_COMMANDS`, one payload-free and it is
+`mpfb_list_docs`.
+
+The pre-deletion baselines are in [`before/`](before/), captured with the rewritten harness while
+both transports still worked — **bridge 4.9 s, generated path 49.2 s, 27 items, 0 failed** on one
+Blender in one session, which is the last useful thing the generated path ever did and what
+`check_retirement.py` compares against.
+
+Every tool also has its smoke item in [verification/](../../../verification/), which is one command
+and 1.5 s to re-run.
 
 ## References
 
-- [NEXT_STEPS.md, stage 4](../NEXT_STEPS.md#4-retire-the-generated-code-path) — the entry this
+- [NEXT_STEPS.md, stage 4](../../NEXT_STEPS.md#4-retire-the-generated-code-path) — the entry this
   request implements.
-- [FR 028](../done/028-pivot-to-specific-addon/README.md) — the decision, and the analysis
+- [FR 028](../028-pivot-to-specific-addon/README.md) — the decision, and the analysis
   documents beside it.
-- [FR 032](../done/032-creation-and-modification-migrated/README.md) — the effort that must land
+- [FR 032](../032-creation-and-modification-migrated/README.md) — the effort that must land
   first, and which flips the default backend to the bridge so that this one deletes a path nobody
   has been using.
-- [FR 030](../done/030-backend-seam/README.md) — the seam, the first migration, and the
+- [FR 030](../030-backend-seam/README.md) — the seam, the first migration, and the
   461 ms/58 ms measurement requirement 9 needs.
-- [FR 031](../done/031-introspection-and-catalogues-migrated/README.md) — nine migrations, the
+- [FR 031](../031-introspection-and-catalogues-migrated/README.md) — nine migrations, the
   60% test-layer rate, and the fragment-drift check that dies here.
-- [FR 020](../done/020-trim-claude-md/README.md) — why requirement 8's acceptance check is a grep
+- [FR 020](../020-trim-claude-md/README.md) — why requirement 8's acceptance check is a grep
   rather than a reading.
-- [FR 023](../done/023-verification-smoke-test/README.md) — why this effort's live check is a
+- [FR 023](../023-verification-smoke-test/README.md) — why this effort's live check is a
   script in its own subdir and adds nothing permanent to `verification/`.
