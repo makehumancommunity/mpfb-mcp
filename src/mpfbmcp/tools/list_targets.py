@@ -150,13 +150,12 @@ def register(mcp: FastMCP) -> None:
         and `listed_in_mpfb_ui: false` marks a `*.target.gz` outside the
         `custom` section, loadable but skipped by MPFB's own scan.
         """
-        # `result` (built in codegen/payloads/list_targets.py) is always plain
-        # JSON-safe data - every path is coerced with str(), since
-        # find_asset_files_matching_pattern() hands back pathlib.Path objects -
-        # which is what send() asks for on the way out.
+        # `result` (built in bridge/mpfb_bridge/commands/list_targets.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "list_targets.py",
-            cached_shared=["target_categories.py"],
+            "list_targets",
             params={
                 "section": _validated_text(
                     section, "section",

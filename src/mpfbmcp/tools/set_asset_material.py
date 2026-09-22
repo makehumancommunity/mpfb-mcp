@@ -167,19 +167,16 @@ def register(mcp: FastMCP) -> None:
         checked_restore = _validated_flag("restore_default", restore_default)
         checked_path, checked_fragment = _validated_request(
             path, fragment, checked_restore)
-        # `result` (built in codegen/payloads/set_asset_material.py, or by
-        # bridge/mpfb_bridge/commands/set_asset_material.py) is plain
-        # JSON-safe data, so strict_json=True surfaces a clear error if that ever
-        # stops being true.
+        # `result` (built in bridge/mpfb_bridge/commands/set_asset_material.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "set_asset_material.py",
-            bootstrap="raising",
-            shared=["performed.py"],
+            "set_asset_material",
             params={
                 "name": _validated_name(name),
                 "path": checked_path,
                 "fragment": checked_fragment,
                 "restore_default": checked_restore,
             },
-            strict_json=True,
         )

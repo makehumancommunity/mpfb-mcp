@@ -108,13 +108,11 @@ def register(mcp: FastMCP) -> None:
         reality. And `mhclo_path` may point at a `.proxy` file, so do not
         decide what something is from the suffix.
         """
-        # `result` (built in codegen/payloads/get_object_info.py) is always
-        # plain JSON-safe data, so strict_json=True to surface a clear error if
-        # that ever stops being true, rather than silently falling back to
-        # `repr`.
+        # `result` (built in bridge/mpfb_bridge/commands/get_object_info.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "get_object_info.py",
-            bootstrap="raising",
+            "get_object_info",
             params={"name": _validated_name(name)},
-            strict_json=True,
         )

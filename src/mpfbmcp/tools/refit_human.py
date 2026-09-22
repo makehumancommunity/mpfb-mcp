@@ -85,14 +85,11 @@ def register(mcp: FastMCP) -> None:
         in edit mode answers with `ready: false`, and an unresolvable subject
         with `found: false`.
         """
-        # `result` (built in codegen/payloads/refit_human.py, or by
-        # bridge/mpfb_bridge/commands/refit_human.py) is plain JSON-safe data,
-        # so strict_json=True surfaces a clear error if that ever stops being
-        # true, rather than silently falling back to `repr`.
+        # `result` (built in bridge/mpfb_bridge/commands/refit_human.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "refit_human.py",
-            bootstrap="raising",
-            shared=["refit_blocker.py", "performed.py"],
+            "refit_human",
             params={"name": _validated_name(name)},
-            strict_json=True,
         )

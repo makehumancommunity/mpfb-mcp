@@ -62,7 +62,8 @@ def register(mcp: FastMCP) -> None:
         are scene-scoped and change when a different .blend is loaded. Re-call
         rather than cache.
         """
-        # `result` (built in codegen/payloads/get_status.py) is always plain
-        # JSON-safe data, so strict_json=True to surface a clear error if that
-        # ever stops being true, rather than silently falling back to `repr`.
-        return backend.send("get_status.py", bootstrap="non_raising", strict_json=True)
+        # `result` (built in bridge/mpfb_bridge/commands/get_mpfb_status.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
+        return backend.send("get_mpfb_status")

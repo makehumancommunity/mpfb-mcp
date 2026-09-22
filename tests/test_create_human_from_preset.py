@@ -3,7 +3,7 @@
 """
 ``mpfb_create_human_from_preset``: the overrides, the settings dict, and a round trip.
 
-Three layers since FR 032 migrated it: the wrapper with ``send_code`` mocked on
+Three layers since FR 032 migrated it: the wrapper with ``send_command`` mocked on
 the seam, the **bridge path** against ``tests/fake_bridge.py``, and the payload
 against the stubs - the last **frozen**, since it is half of what FR 032's live
 comparison compares.
@@ -38,24 +38,15 @@ __all__ = ()
 import unittest
 from unittest import mock
 
-from mpfbmcp import backend
 from mpfbmcp.tools import create_human_from_preset
 
 from tests import fake_bridge
-from tests.blender_stubs import PresetTestCase, StubHumanService
-from tests import generated_path
 
 
-# These tests are about the **generated path**: they mock `backend.send_code`
-# and assert about the program that reached it. FR 032 made the bridge the
-# default, so saying so is now necessary rather than implied.
-# See tests/generated_path.py.
-setUpModule = generated_path.pin
-tearDownModule = generated_path.unpin
 
 
 class CreateHumanFromPresetToolTests(unittest.TestCase):
-    """The wrapper, with ``send_code`` mocked."""
+    """The wrapper, with ``send_command`` mocked."""
 
     def setUp(self) -> None:
         class Recorder:
@@ -70,16 +61,18 @@ class CreateHumanFromPresetToolTests(unittest.TestCase):
         self.call = self.recorder.function
 
     def _run(self, **arguments):
+        """The parameters that reached the wire for one accepted call."""
         arguments.setdefault("name", "alice")
-        with mock.patch("mpfbmcp.backend.send_code") as send:
+        with mock.patch("mpfbmcp.bridge_connection.send_command") as send:
             send.return_value = {"status": "ok", "result": {}}
             self.call(**arguments)
             self.assertEqual(send.call_count, 1)
-            return send.call_args[0][0]
+            self.assertEqual(send.call_args[0][0], "create_human_from_preset")
+            return send.call_args[0][1]
 
     def _refused(self, **arguments):
         arguments.setdefault("name", "alice")
-        with mock.patch("mpfbmcp.backend.send_code") as send:
+        with mock.patch("mpfbmcp.bridge_connection.send_command") as send:
             with self.assertRaises(ValueError) as raised:
                 self.call(**arguments)
             self.assertEqual(send.call_count, 0)
@@ -94,20 +87,20 @@ class CreateHumanFromPresetToolTests(unittest.TestCase):
 
     def test_every_override_defaults_to_null(self) -> None:
         # "Not mentioned" and "set to the default" are different requests, and
-        # null is how the payload is told which one it got.
-        program = self._run()
+        # null is how the command is told which one it got.
+        params = self._run()
         for argument in ("override_rig", "override_skin_model", "override_clothes_model",
                          "override_eyes_model", "load_clothes", "scale",
                          "material_instances"):
             with self.subTest(argument=argument):
-                self.assertIn('"{}": null'.format(argument), program)
+                self.assertIsNone(params[argument])
 
-    def test_an_override_reaches_the_program(self) -> None:
-        self.assertIn('"override_rig": "NONE"', self._run(override_rig="NONE"))
-        self.assertIn('"load_clothes": false', self._run(load_clothes=False))
-        self.assertIn('"scale": 1.0', self._run(scale=1.0))
-        self.assertIn('"material_instances": "NEVER"',
-                      self._run(material_instances="NEVER"))
+    def test_an_override_reaches_the_command(self) -> None:
+        self.assertEqual(self._run(override_rig="NONE")["override_rig"], "NONE")
+        self.assertIs(self._run(load_clothes=False)["load_clothes"], False)
+        self.assertEqual(self._run(scale=1.0)["scale"], 1.0)
+        self.assertEqual(self._run(material_instances="NEVER")["material_instances"],
+                         "NEVER")
 
     def test_an_explicitly_empty_override_is_not_an_omission(self) -> None:
         for argument in ("override_rig", "override_skin_model", "override_clothes_model",
@@ -131,11 +124,6 @@ class CreateHumanFromPresetToolTests(unittest.TestCase):
             with self.subTest(scale=value):
                 self._refused(scale=value)
 
-    def test_the_program_carries_both_fragments(self) -> None:
-        program = self._run()
-        self.assertIn("preset_files.py", program)
-        self.assertIn("performed.py", program)
-
 
 class CreateHumanFromPresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
     """What cannot cross the socket, and nothing else.
@@ -156,7 +144,6 @@ class CreateHumanFromPresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
         recorder = Recorder()
         create_human_from_preset.register(recorder)
         self.call = recorder.function
-        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
         self.bridge = self.run_answering_bridge({
             "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
             "create_human_from_preset": fake_bridge.ok_envelope("create_human_from_preset", {"found": True, "created": True, "performed": True}),
@@ -211,309 +198,3 @@ class CreateHumanFromPresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
         self.assertEqual(response["status"], "error")
         self.assertEqual(response["error"], "mpfb_unavailable")
-
-
-class CreateHumanFromPresetPayloadTests(PresetTestCase):
-    """The assembled program against a real config directory and asset library."""
-
-    def run_load(self, name="alice", context_mode="OBJECT", **overrides):
-        params = dict(
-            name=name, override_rig=None, override_skin_model=None,
-            override_clothes_model=None, override_eyes_model=None,
-            load_clothes=None, scale=None, material_instances=None)
-        params.update(overrides)
-        return self.run_payload(
-            "create_human_from_preset.py", params,
-            scene_objects=(), shared=["preset_files.py", "performed.py"],
-            context_mode=context_mode)
-
-    # -- what is built ----------------------------------------------------
-
-    def test_a_character_is_created_and_named_after_the_preset(self) -> None:
-        result = self.run_load()
-        self.assertTrue(result["created"])
-        self.assertTrue(result["performed"])
-        self.assertEqual(result["basemesh_name"], "alice.body")
-        self.assertEqual(result["objects_created"], ["alice.body"])
-        self.assertEqual(result["path"], self.saved_presets["alice"])
-
-    def test_the_selection_it_leaves_behind_is_reported(self) -> None:
-        # There is no prior state to restore to: deserialization activates what
-        # it creates. Same exception mpfb_generate_rigify_rig has.
-        result = self.run_load()
-        self.assertEqual(result["active_object_after"], "alice.body")
-
-    def test_a_preset_carrying_assets_reports_what_was_equipped(self) -> None:
-        self.write_preset("dressed", self.preset_contents(
-            clothes=["fedora/fedora.mhclo"], hair="ponytail/ponytail.mhclo"))
-        result = self.run_load(name="dressed")
-        kinds = sorted(entry["kind"] for entry in result["equipped_assets"])
-        self.assertEqual(kinds, ["clothes", "hair"])
-        self.assertEqual(result["unresolved_assets"], [])
-
-    # -- refusals ---------------------------------------------------------
-
-    def test_a_missing_preset_names_the_ones_that_exist(self) -> None:
-        # A misspelled name is the likeliest failure, so the refusal ends the
-        # guessing rather than only reporting it.
-        result = self.run_load(name="alicce")
-        self.assertFalse(result["found"])
-        self.assertFalse(result["created"])
-        self.assertEqual(result["blocked_by"], "preset_not_found")
-        self.assertIn("alice", result["available_presets"])
-        self.assertEqual(result["available_preset_count"], 3)
-
-    def test_the_suggestions_come_from_the_directory_not_from_mpfbs_cache(self) -> None:
-        # A preset written moments ago in another Blender is offered here; the
-        # cache would not have it.
-        self.run_load()
-        self.write_preset("carol")
-        self.assertIn("carol", self.run_load(name="nope")["available_presets"])
-
-    def test_an_unreadable_preset_is_an_answer(self) -> None:
-        path = self.write_preset("broken")
-        with open(path, "w", encoding="utf-8") as handle:
-            handle.write("{ this is not json")
-        result = self.run_load(name="broken")
-        self.assertEqual(result["blocked_by"], "preset_unreadable")
-        self.assertTrue(result["file"]["exists"])
-
-    def test_edit_mode_is_a_precondition_rather_than_a_traceback(self) -> None:
-        result = self.run_load(context_mode="EDIT_MESH")
-        self.assertEqual(result["blocked_by"], "not_object_mode")
-        self.assertEqual(result["objects_created"], [])
-
-    def test_an_unknown_material_instances_value_is_refused_before_anything_is_built(self):
-        # _set_skin() tests this with substring matches, so an unrecognised one
-        # would silently mean NEVER rather than failing.
-        result = self.run_load(material_instances="SOMETIMES")
-        self.assertEqual(result["blocked_by"], "unknown_material_instances")
-        self.assertEqual(result["known_material_instances"],
-                         ["NEVER", "ENHANCED", "ENHANCEDMS"])
-        self.assertEqual(result["objects_created"], [])
-
-    def test_a_missing_config_directory_is_an_answer(self) -> None:
-        import shutil
-        shutil.rmtree(self.config_dir)
-        self.assertEqual(self.run_load()["blocked_by"], "config_dir_missing")
-
-    def test_an_incomplete_settings_default_is_refused_rather_than_risked(self) -> None:
-        # A version mismatch between MPFB and this tool. Loading would raise a
-        # KeyError from inside MPFB with a character half built.
-        original = StubHumanService.get_default_deserialization_settings
-
-        def partial():
-            settings = original()
-            del settings["subdiv_levels"]
-            return settings
-
-        StubHumanService.get_default_deserialization_settings = staticmethod(partial)
-        self.addCleanup(setattr, StubHumanService,
-                        "get_default_deserialization_settings", original)
-        result = self.run_load()
-        self.assertEqual(result["blocked_by"], "settings_incomplete")
-        self.assertEqual(result["missing_settings"], ["subdiv_levels"])
-        self.assertEqual(result["objects_created"], [])
-
-    # -- the settings dict ------------------------------------------------
-
-    def test_every_key_mpfb_subscripts_is_in_the_settings_dict(self) -> None:
-        # The one that matters. The stub subscripts all eight, so a payload that
-        # built the dict from literals and forgot one raises here.
-        self.run_load()
-        settings = StubHumanService.deserialize_calls[0]["settings"]
-        for key in ("mask_helpers", "detailed_helpers", "extra_vertex_groups",
-                    "feet_on_ground", "scale", "subdiv_levels", "load_clothes",
-                    "material_instances"):
-            with self.subTest(key=key):
-                self.assertIn(key, settings)
-
-    def test_the_two_keys_mpfbs_defaults_omit_are_added(self) -> None:
-        # override_clothes_model and override_eyes_model are honoured by
-        # deserialize_from_dict() and passed by MPFB's own panel, and are not in
-        # get_default_deserialization_settings(). The vocabulary is wider than
-        # the defaults.
-        defaults = StubHumanService.get_default_deserialization_settings()
-        self.assertNotIn("override_clothes_model", defaults)
-        self.assertNotIn("override_eyes_model", defaults)
-        self.run_load()
-        settings = StubHumanService.deserialize_calls[0]["settings"]
-        self.assertEqual(settings["override_clothes_model"], "PRESET")
-        self.assertEqual(settings["override_eyes_model"], "PRESET")
-
-    def test_an_omitted_override_leaves_mpfbs_preset_sentinel_in_place(self) -> None:
-        self.run_load()
-        settings = StubHumanService.deserialize_calls[0]["settings"]
-        self.assertEqual(settings["override_rig"], "PRESET")
-        self.assertEqual(settings["override_skin_model"], "PRESET")
-        self.assertEqual(settings["scale"], 0.1)
-        self.assertIs(settings["load_clothes"], True)
-
-    def test_each_override_reaches_the_settings_dict(self) -> None:
-        self.run_load(override_rig="NONE", override_skin_model="ENHANCED",
-                      override_clothes_model="GAMEENGINE",
-                      override_eyes_model="PROCEDURAL_EYES",
-                      load_clothes=False, scale=1.0, material_instances="ENHANCEDMS")
-        settings = StubHumanService.deserialize_calls[0]["settings"]
-        self.assertEqual(settings["override_rig"], "NONE")
-        self.assertEqual(settings["override_skin_model"], "ENHANCED")
-        self.assertEqual(settings["override_clothes_model"], "GAMEENGINE")
-        self.assertEqual(settings["override_eyes_model"], "PROCEDURAL_EYES")
-        self.assertIs(settings["load_clothes"], False)
-        self.assertEqual(settings["scale"], 1.0)
-        self.assertEqual(settings["material_instances"], "ENHANCEDMS")
-
-    def test_material_instances_follows_mpfbs_panel_not_its_service(self) -> None:
-        # The service default is NEVER and the panel the user actually sees
-        # defaults to ENHANCED. A character loaded here should be the character
-        # that panel would have produced - and both values come back.
-        result = self.run_load()
-        self.assertIsNone(result["material_instances_requested"])
-        self.assertEqual(result["material_instances_used"], "ENHANCED")
-        self.assertEqual(result["material_instances_service_default"], "NEVER")
-        self.assertEqual(
-            StubHumanService.deserialize_calls[0]["settings"]["material_instances"],
-            "ENHANCED")
-
-    # -- what the preset held --------------------------------------------
-
-    def test_each_override_is_reported_beside_the_value_the_preset_held(self) -> None:
-        self.write_preset("rigged", self.preset_contents(rig="default"))
-        result = self.run_load(name="rigged", override_rig="NONE")
-        entry = result["overrides"]["override_rig"]
-        self.assertEqual(entry["requested"], "NONE")
-        self.assertEqual(entry["preset_value"], "default")
-        self.assertEqual(entry["used"], "NONE")
-        self.assertIsNone(result["rig_object_name"])
-
-    def test_the_presets_own_rig_is_added_when_nothing_overrides_it(self) -> None:
-        self.write_preset("rigged", self.preset_contents(rig="default"))
-        result = self.run_load(name="rigged")
-        self.assertEqual(result["rig_object_name"], "rigged")
-        self.assertEqual(result["rig_identified_as"], "default")
-
-    def test_a_rigify_preset_says_the_rig_is_only_a_metarig(self) -> None:
-        self.write_preset("meta", self.preset_contents(rig="rigify.human"))
-        result = self.run_load(name="meta")
-        self.assertIn("meta", result["message"])
-        self.assertIn("mpfb_generate_rigify_rig", result["message"])
-
-    # -- assets MPFB drops silently ---------------------------------------
-
-    def test_an_asset_the_preset_names_and_this_blender_lacks_is_reported(self) -> None:
-        # MPFB logs a warning and carries on, so the character comes back
-        # missing its hair with nothing in the scene to say why.
-        self.write_preset("missing", self.preset_contents(
-            hair="notinstalled/notinstalled.mhclo", clothes=["fedora/fedora.mhclo"]))
-        result = self.run_load(name="missing")
-        self.assertTrue(result["created"])
-        self.assertEqual(len(result["unresolved_assets"]), 1)
-        unresolved = result["unresolved_assets"][0]
-        self.assertEqual(unresolved["kind"], "hair")
-        self.assertEqual(unresolved["asset_subdir"], "hair")
-        self.assertIsNone(unresolved["resolved_path"])
-        self.assertIn("not installed here", result["message"])
-
-    def test_a_skipped_garment_is_not_an_unresolved_one(self) -> None:
-        # "You asked not to load the clothes" and "the clothes are not
-        # installed" have to stay distinguishable in one answer.
-        self.write_preset("dressed", self.preset_contents(clothes=["fedora/fedora.mhclo"]))
-        result = self.run_load(name="dressed", load_clothes=False)
-        self.assertEqual(result["unresolved_assets"], [])
-        self.assertEqual([entry["kind"] for entry in result["equipped_assets"]], [])
-        self.assertIn("load_clothes was false", result["message"])
-
-    # -- the failure that is not a no-op ----------------------------------
-
-    def test_a_failure_part_way_through_names_what_was_left_behind(self) -> None:
-        # A character is built in stages, so a rig MPFB cannot find raises after
-        # create_human() has already run. There is no undo across the socket;
-        # the caller gets the names instead.
-        self.write_preset("orphan", self.preset_contents(rig="no_such_rig"))
-        result = self.run_load(name="orphan")
-        self.assertFalse(result["created"])
-        self.assertFalse(result["performed"])
-        self.assertEqual(result["blocked_by"], "deserialization_failed")
-        self.assertEqual(result["objects_created"], ["orphan.body"])
-        self.assertEqual(result["preset_rig"], "no_such_rig")
-        self.assertIn("mpfb_list_rigs", result["message"])
-        self.assertIn("override_rig", result["message"])
-
-    def test_the_failure_answer_still_says_what_is_active(self) -> None:
-        StubHumanService.deserialize_raises = RuntimeError("boom")
-        result = self.run_load()
-        self.assertEqual(result["blocked_by"], "deserialization_failed")
-        self.assertIn("boom", result["message"])
-        self.assertEqual(result["objects_created"], ["alice.body"])
-
-
-class PresetRoundTripTests(PresetTestCase):
-    """Save a character, load what was written, compare.
-
-    Both ends are stubs, so this says nothing about the character real MPFB
-    would build. What it does say is that the two payloads agree about the same
-    JSON - which neither payload's own tests can establish, because each of
-    those builds its own fixture at one end and asserts against it.
-    """
-
-    def save(self, name, **kwargs):
-        return self.run_payload(
-            "save_preset.py", dict(name=name, subject=None, overwrite=False),
-            scene_objects=self.objects, active=self.basemesh,
-            shared=["preset_files.py", "performed.py"], **kwargs)
-
-    def load(self, name, **overrides):
-        params = dict(
-            name=name, override_rig=None, override_skin_model=None,
-            override_clothes_model=None, override_eyes_model=None,
-            load_clothes=None, scale=None, material_instances=None)
-        params.update(overrides)
-        return self.run_payload(
-            "create_human_from_preset.py", params, scene_objects=(),
-            shared=["preset_files.py", "performed.py"])
-
-    def test_a_phenotype_survives_the_round_trip(self) -> None:
-        self.build_character(macro_details=dict(gender=0.8, age=0.2))
-        saved = self.save("trip")
-        self.assertTrue(saved["saved"])
-        loaded = self.load("trip")
-        self.assertTrue(loaded["created"])
-        phenotype = StubHumanService.deserialize_calls[0]["human_info"]["phenotype"]
-        self.assertEqual(phenotype["gender"], 0.8)
-        self.assertEqual(phenotype["age"], 0.2)
-
-    def test_a_rig_and_a_garment_survive_the_round_trip(self) -> None:
-        self.build_character(rig=True, dressed=True, rig_type="default")
-        saved = self.save("trip")
-        self.assertEqual(saved["contents"]["rig"], "default")
-        self.assertEqual(saved["contents"]["clothes"], ["fedora/fedora.mhclo"])
-
-        loaded = self.load("trip")
-        self.assertEqual(loaded["rig_identified_as"], "default")
-        self.assertEqual(
-            [entry["asset_source"] for entry in loaded["equipped_assets"]],
-            ["fedora/fedora.mhclo"])
-        self.assertEqual(loaded["unresolved_assets"], [])
-
-    def test_the_name_the_save_reports_is_the_name_the_load_takes(self) -> None:
-        # The whole point of one shared rule: a preset written under a name must
-        # be loadable under it, with no transformation in between.
-        self.build_character()
-        saved = self.save("round-trip.v2")
-        self.assertTrue(saved["saved"])
-        loaded = self.load(saved["name"])
-        self.assertTrue(loaded["created"])
-        self.assertEqual(loaded["path"], saved["path"])
-
-    def test_a_saved_preset_is_listed_and_addressable(self) -> None:
-        self.build_character()
-        self.save("trip")
-        listed = self.run_payload(
-            "list_presets.py", dict(refresh=True), shared=["preset_files.py"])
-        entry = [e for e in listed["presets"] if e["name"] == "trip"][0]
-        self.assertTrue(entry["addressable"])
-        self.assertTrue(self.load(entry["name"])["created"])
-
-
-if __name__ == "__main__":
-    unittest.main()

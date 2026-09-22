@@ -164,8 +164,7 @@ def register(mcp: FastMCP) -> None:
         call. No `truncated` or `total_count` to check.
         """
         try:
-            envelope = backend.send(
-                "list_urls.py", bootstrap="non_raising", strict_json=True)
+            envelope = backend.send("list_urls")
         except ConnectionError as failure:
             # Only the transport failure, and **both transports raise it in the
             # same situations** - which is what made this tool migratable at

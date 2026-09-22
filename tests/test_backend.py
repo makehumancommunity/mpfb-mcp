@@ -1,21 +1,27 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Tests for mpfbmcp.backend: which transport a call takes, and what comes back.
+Tests for mpfbmcp.backend: what a tool's call becomes, and what comes back.
 
-The seam is the one module that knows there are two transports, so this is the
-one module that may know it too. **What is under test is routing, not
-behaviour**: that a migrated tool follows the configured preference, that an
-unmigrated one cannot be made to leave the generated path however the
-environment is set, that an unrecognised backend fails instead of quietly
-falling back, and that an error envelope carries the same slug whichever side
-produced it.
+The seam is the one module that knows a call leaves this process, so this is
+the one module that may know it too. **What is under test is passage, not
+behaviour**: that the command name and the parameters a tool handed over are
+what arrives on the wire unreshaped, that the envelope is returned exactly as
+the bridge wrote it, and that an unreachable bridge is an exception rather than
+an envelope.
 
-The routing assertions are made by watching *which fake server was spoken to*
-rather than by patching the two send functions and checking which mock was
-called. The difference matters: a mock asserts that this module called what
-this module was expected to call, while a fake asserts that bytes arrived
-somewhere, which is the claim a tool's caller actually depends on.
+The assertions are made by watching *what arrived at a fake server* rather than
+by patching ``bridge_connection.send_command`` and checking which mock was
+called. The difference matters: a mock asserts that this module called what this
+module was expected to call, while a fake asserts that bytes arrived somewhere,
+which is the claim a tool's caller actually depends on.
+
+Two of these classes were larger until FR 033. Routing, the ``MIGRATED_COMMANDS``
+table, the fragment arguments and the envelope mapping were all about a second
+transport, and go with it; what is left is the seam doing the one thing it now
+does. The envelope tests stay, and their claim narrows usefully: nothing is
+synthesised, rewritten or dropped on the way through, so a caller reads exactly
+what the add-on wrote.
 
 Run with::
 
@@ -24,387 +30,138 @@ Run with::
 
 __all__ = ()
 
-import json
 import unittest
 
 from mpfbmcp import backend, bridge_connection
 from tests import fake_bridge
 
 
-# The payloads whose bridge command is deliberately not named after them. One,
-# and it is one because the bridge already answers `get_status` about itself.
-_RENAMED_ON_THE_BRIDGE = {"get_status.py": "get_mpfb_status"}
-
-
-def _program_of(request: bytes) -> str:
-    """The code out of one blender_mcp request, as the add-on would read it."""
-    return json.loads(request.partition(b"\0")[0].decode("utf-8"))["code"]
-
-
-class BothBackendsTestCase(fake_bridge.BridgeTestCase):
-    """A fake blender_mcp and a fake bridge, and the variable choosing between.
-
-    Both are started for every test in this group, because most of the claims
-    here are about the one that was *not* spoken to.
-    """
+class SeamTestCase(fake_bridge.BridgeTestCase):
+    """A fake bridge answering the two commands these tests send."""
 
     def setUp(self) -> None:
         super().setUp()
         self.set_env_var(backend.BACKEND_VARIABLE, None)
-        self.addon = self.run_fake_server(
-            {"status": "ok", "result": {"count": 0, "via": "blender_mcp"}})
+        backend._warned_about_backend_variable = False  # noqa: SLF001
         self.bridge = self.run_answering_bridge({
             "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
             "list_objects": fake_bridge.ok_envelope(
                 "list_objects", {"count": 0, "via": "bridge"}),
         })
 
-    def prefer(self, name: str | None) -> None:
-        self.set_env_var(backend.BACKEND_VARIABLE, name)
 
-
-class PreferenceTests(BothBackendsTestCase):
-    def test_the_default_is_the_bridge(self) -> None:
-        # Flipped by FR 032, and the last thing that effort did. What earned it
-        # is in `backend.preferred_backend()`'s own docstring.
-        self.prefer(None)
-
-        self.assertEqual(backend.preferred_backend(), backend.BACKEND_BRIDGE)
-
-    def test_an_empty_value_is_treated_as_unset(self) -> None:
-        # A shell exporting an empty variable is the ordinary way one ends up
-        # set to nothing, and that is not a configuration mistake.
-        self.prefer("   ")
-
-        self.assertEqual(backend.preferred_backend(), backend.BACKEND_BRIDGE)
-
-    def test_the_generated_path_is_still_one_word_away(self) -> None:
-        # The other half of the flip, and the half FR 033 depends on: the
-        # generated path stays and stays working, so the effort that deletes it
-        # deletes something that has been unused for a while.
-        self.prefer(backend.BACKEND_BLENDER_MCP)
-
-        self.assertEqual(backend.preferred_backend(), backend.BACKEND_BLENDER_MCP)
-
-    def test_an_unrecognised_backend_fails_rather_than_falling_back(self) -> None:
-        # A typo that quietly leaves every call on the old path is
-        # indistinguishable from the bridge not working, which is the most
-        # expensive shape a configuration mistake can take.
-        self.prefer("bridg")
-
-        with self.assertRaises(ValueError) as raised:
-            backend.send("list_objects.py", params={"object_type": None})
-
-        self.assertIn("bridg", str(raised.exception))
-        self.assertIn(backend.BACKEND_BRIDGE, str(raised.exception))
-        self.assertEqual(self.addon.requests, [], "nothing should have been sent")
-        self.assertEqual(self.bridge.requests, [], "and nothing to the bridge either")
-
-
-class RoutingTests(BothBackendsTestCase):
-    def test_a_migrated_tool_takes_the_generated_path_by_default(self) -> None:
-        self.prefer(backend.BACKEND_BLENDER_MCP)
-
-        response = backend.send("list_objects.py", params={"object_type": None})
-
-        self.assertEqual(response["result"]["via"], "blender_mcp")
-        self.assertEqual(len(self.addon.requests), 1)
-        self.assertEqual(self.bridge.requests, [])
-        self.assertIn("# --- payload: list_objects.py ---", _program_of(self.addon.requests[0]))
-
-    def test_a_migrated_tool_takes_the_bridge_when_it_is_preferred(self) -> None:
-        self.prefer(backend.BACKEND_BRIDGE)
-
-        response = backend.send("list_objects.py", params={"object_type": None})
+class PassageTests(SeamTestCase):
+    def test_a_call_reaches_the_bridge_under_the_command_it_named(self) -> None:
+        response = backend.send("list_objects", params={"object_type": None})
 
         self.assertEqual(response["result"]["via"], "bridge")
-        self.assertEqual(self.addon.requests, [])
+        # get_status first: the handshake probe, one per address per process.
         self.assertEqual(self.bridge.commands(), ["get_status", "list_objects"])
 
-    def test_the_params_are_the_same_dict_on_both_paths(self) -> None:
+    def test_the_params_arrive_unreshaped(self) -> None:
         # Both sides receive the tool's already-validated arguments and neither
-        # reshapes them. There is deliberately no per-path parameter mapping,
+        # reshapes them. There is deliberately no parameter mapping in the seam,
         # and this is what would fail if one were added.
         params = {"object_type": "Basemesh"}
 
-        self.prefer(backend.BACKEND_BLENDER_MCP)
-        backend.send("list_objects.py", params=params)
-        self.prefer(backend.BACKEND_BRIDGE)
-        backend.send("list_objects.py", params=params)
+        backend.send("list_objects", params=params)
 
-        program = _program_of(self.addon.requests[0])
-        generated = json.loads(program.split("PARAMS = json.loads(")[1].split(")\n")[0].strip("'"))
-        self.assertEqual(generated, params)
         self.assertEqual(self.bridge.decoded_requests()[-1]["params"], params)
 
-    def test_an_unmigrated_tool_stays_on_the_generated_path_in_both(self) -> None:
-        # The subject is **computed**, not named, because FR 032 is spending
-        # them: every payload it migrates is one fewer tool this test could be
-        # about, and the effort ends with none left. A hardcoded name would
-        # have to be edited once per batch and would stop meaning anything at
-        # the last one, silently.
-        from mpfbmcp import codegen  # pylint: disable=import-outside-toplevel
+    def test_no_params_becomes_an_empty_object_rather_than_null(self) -> None:
+        # The add-on's validation reads `params` as a mapping. Sending null
+        # would make every argument-free tool a malformed request.
+        backend.send("list_objects")
 
-        unmigrated = sorted(set(codegen.payload_names()) - set(backend.MIGRATED_COMMANDS))
-        if not unmigrated:
-            self.skipTest(
-                "every payload has a bridge command, which is FR 032's finish line and FR 033's "
-                "precondition - there is no unmigrated tool left to be the subject of this test")
+        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {})
 
-        payload = unmigrated[0]
-        for preference in (backend.BACKEND_BLENDER_MCP, backend.BACKEND_BRIDGE):
-            with self.subTest(backend=preference, payload=payload):
-                self.addon.requests.clear()
-                self.bridge.requests.clear()
-                self.prefer(preference)
+    def test_nothing_of_the_seam_appears_in_the_frame(self) -> None:
+        # The request is the command, its parameters and the protocol version.
+        # Anything else here would be the seam leaking into the wire.
+        backend.send("list_objects", params={"object_type": None})
 
-                backend.send(payload, params={})
-
-                self.assertEqual(len(self.addon.requests), 1)
-                self.assertEqual(self.bridge.requests, [],
-                                 "a tool with no command has nowhere else to go")
-
-    def test_the_table_names_a_command_for_every_payload_in_it(self) -> None:
-        # The table is the list of what has been migrated, so an entry naming a
-        # payload that does not exist would misreport the migration's progress.
-        from mpfbmcp import codegen  # pylint: disable=import-outside-toplevel
-
-        payloads = set(codegen.payload_names())
-        for payload, command in backend.MIGRATED_COMMANDS.items():
-            with self.subTest(payload=payload):
-                self.assertIn(payload, payloads)
-                if payload in _RENAMED_ON_THE_BRIDGE:
-                    self.assertEqual(command, _RENAMED_ON_THE_BRIDGE[payload])
-                    continue
-                # Payload and command share a name, which is what lets a mixed
-                # record be sorted by one word.
-                self.assertEqual(command, payload[:-len(".py")])
-
-    def test_the_one_renamed_command_is_the_one_that_had_to_be(self) -> None:
-        # Spelled out rather than tolerated by the loop above: the bridge's own
-        # `get_status` reports the bridge, and this one reports MPFB. Any
-        # further exception is a naming decision somebody should have to make
-        # on purpose, so the exception list is asserted rather than consulted.
-        self.assertEqual(_RENAMED_ON_THE_BRIDGE, {"get_status.py": "get_mpfb_status"})
-        for payload in _RENAMED_ON_THE_BRIDGE:
-            self.assertIn(payload, backend.MIGRATED_COMMANDS)
-
-
-class FragmentTests(BothBackendsTestCase):
-    """What a tool carrying a shared fragment does on each path.
-
-    Five of the nine tools FR 031 migrated name a fragment, three of them
-    through the session source cache, and the requirement is that **a tool
-    passes the same call on both paths**: `shared` and `cached_shared` are what
-    they have always been on the generated path and are *ignored* on the bridge,
-    because a fragment is a property of how a program is assembled and the
-    bridge assembles nothing.
-    """
-
-    def setUp(self) -> None:
-        super().setUp()
-        self.bridge.responder = lambda request: fake_bridge.ok_envelope(
-            request.get("command"),
-            fake_bridge.status_result() if request.get("command") == "get_status"
-            else {"count": 0, "via": "bridge"})
-
-    def test_a_fragment_is_concatenated_on_the_generated_path(self) -> None:
-        self.prefer(backend.BACKEND_BLENDER_MCP)
-
-        backend.send("list_presets.py", params={"refresh": False},
-                     shared=["preset_files.py"])
-
-        program = _program_of(self.addon.requests[0])
-        self.assertIn("# --- shared: preset_files.py ---", program)
-        self.assertIn("def preset_name_rejection(", program)
-
-    def test_a_fragment_does_not_reach_the_bridge(self) -> None:
-        self.prefer(backend.BACKEND_BRIDGE)
-
-        backend.send("list_presets.py", params={"refresh": False},
-                     shared=["preset_files.py"])
-
-        self.assertEqual(self.addon.requests, [])
         request = self.bridge.decoded_requests()[-1]
-        self.assertEqual(request["command"], "list_presets")
-        self.assertEqual(request["params"], {"refresh": False})
-        # Not merely absent from `params`: nothing anywhere in the frame.
-        self.assertNotIn("preset_files", json.dumps(request))
-        self.assertNotIn("shared", request)
-
-    def test_a_cached_fragment_goes_through_the_cache_on_the_generated_path(self) -> None:
-        # The seam consults shared_cache rather than a tool importing it, which
-        # is what lets a tool migrate without the tools left behind losing the
-        # cache. The claim here is only that it was consulted: the cache's own
-        # behaviour is tests/test_shared_cache.py's.
-        self.prefer(backend.BACKEND_BLENDER_MCP)
-
-        backend.send("list_targets.py", params={"section": None},
-                     cached_shared=["target_categories.py"])
-
-        program = _program_of(self.addon.requests[0])
-        self.assertIn("# --- shared loader ---", program)
-        self.assertIn("# --- cached shared: target_categories.py@", program)
-
-    def test_a_cached_fragment_does_not_reach_the_bridge(self) -> None:
-        self.prefer(backend.BACKEND_BRIDGE)
-
-        backend.send("list_targets.py", params={"section": None},
-                     cached_shared=["target_categories.py"])
-
-        self.assertEqual(self.addon.requests, [])
-        frame = json.dumps(self.bridge.decoded_requests()[-1])
-        self.assertNotIn("target_categories", frame)
-        self.assertNotIn("cached shared", frame)
-
-    def test_an_unmigrated_tool_keeps_the_cache_in_both_configurations(self) -> None:
-        # The claim: a tool with no bridge command did not lose the session
-        # source cache by the seam taking it over. Its subject is **computed**
-        # for the reason `test_an_unmigrated_tool_stays_on_the_generated_path_in_both`
-        # computes its own - FR 032 is spending them, and the effort ends with
-        # none left.
-        from mpfbmcp import codegen  # pylint: disable=import-outside-toplevel
-
-        unmigrated = sorted(set(codegen.payload_names()) - set(backend.MIGRATED_COMMANDS))
-        if not unmigrated:
-            self.skipTest(
-                "every payload has a bridge command, so there is no tool left that could lose "
-                "the cache - which is also why FR 033 deletes it")
-        payload = unmigrated[0]
-
-        for preference in (backend.BACKEND_BLENDER_MCP, backend.BACKEND_BRIDGE):
-            with self.subTest(backend=preference, payload=payload):
-                self.addon.requests.clear()
-                self.bridge.requests.clear()
-                self.prefer(preference)
-
-                backend.send(payload, params={},
-                             cached_shared=["target_categories.py"])
-
-                self.assertEqual(len(self.addon.requests), 1)
-                self.assertEqual(self.bridge.requests, [])
-                self.assertIn("# --- cached shared: target_categories.py@",
-                              _program_of(self.addon.requests[0]))
-
-    def test_a_tool_passes_the_same_call_whichever_path_it_is_on(self) -> None:
-        # The requirement stated as one assertion: identical arguments, and the
-        # only difference is which server was spoken to.
-        arguments = {"params": {"refresh": True}, "shared": ["preset_files.py"]}
-
-        self.prefer(backend.BACKEND_BLENDER_MCP)
-        backend.send("list_presets.py", **arguments)
-        self.prefer(backend.BACKEND_BRIDGE)
-        backend.send("list_presets.py", **arguments)
-
-        self.assertEqual(len(self.addon.requests), 1)
-        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {"refresh": True})
+        self.assertEqual(set(request), {"command", "params", "protocol_version"})
 
 
-class EnvelopeTests(BothBackendsTestCase):
-    def test_a_generated_error_is_given_the_command_failed_slug(self) -> None:
-        self.prefer(backend.BACKEND_BLENDER_MCP)
-        self.addon.response = {"status": "error", "message": "NameError on line 312"}
+class EnvelopeTests(SeamTestCase):
+    def test_a_success_is_returned_exactly_as_the_bridge_wrote_it(self) -> None:
+        response = backend.send("list_objects", params={"object_type": None})
 
-        response = backend.send("list_objects.py", params={"object_type": None})
+        self.assertEqual(response["status"], "ok")
+        self.assertEqual(response["result"], {"count": 0, "via": "bridge"})
+        self.assertIn("protocol_version", response)
 
-        self.assertEqual(response["status"], "error")
-        self.assertEqual(response["error"], backend.ERROR_COMMAND_FAILED)
-        self.assertEqual(response["message"], "NameError on line 312")
-
-    def test_a_generated_success_is_returned_byte_for_byte(self) -> None:
-        self.prefer(backend.BACKEND_BLENDER_MCP)
-        envelope = {"status": "ok", "result": {"count": 0, "via": "blender_mcp"},
-                    "stdout": "", "stderr": ""}
-        self.addon.response = dict(envelope)
-
-        response = backend.send("list_objects.py", params={"object_type": None})
-
-        self.assertEqual(response, envelope)
-
-    def test_a_bridge_error_keeps_the_slug_the_bridge_chose(self) -> None:
-        self.prefer(backend.BACKEND_BRIDGE)
+    def test_an_error_keeps_the_slug_the_bridge_chose(self) -> None:
+        # Every error envelope is built by one function in the add-on
+        # (command_server._error), which always writes `error`. There is
+        # nothing for the seam to fill in, and this is what would fail if it
+        # started filling something in anyway.
         self.bridge.responder = lambda request: (
             fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
             if request.get("command") == "get_status"
             else fake_bridge.error_envelope("invalid_params", "Parameter 'object_type' ..."))
 
-        response = backend.send("list_objects.py", params={"object_type": 7})
+        response = backend.send("list_objects", params={"object_type": 7})
 
-        self.assertEqual(response["error"], "invalid_params",
-                         "the seam must not overwrite a slug the bridge chose")
-
-    def test_the_two_paths_agree_about_status_result_and_message(self) -> None:
-        # The spellings are what no existing caller or test had to change for,
-        # and they are the only three keys a caller is promised on both.
-        self.prefer(backend.BACKEND_BLENDER_MCP)
-        generated = backend.send("list_objects.py", params={"object_type": None})
-        self.prefer(backend.BACKEND_BRIDGE)
-        bridged = backend.send("list_objects.py", params={"object_type": None})
-
-        self.assertEqual(generated["status"], bridged["status"])
-        self.assertEqual(set(generated["result"]), set(bridged["result"]))
-
-    def test_nothing_is_synthesised_onto_a_generated_answer(self) -> None:
-        # protocol_version is a fact about the bridge's protocol. Inventing one
-        # for a generated answer would make the field a lie on half the calls.
-        self.prefer(backend.BACKEND_BLENDER_MCP)
-
-        response = backend.send("list_objects.py", params={"object_type": None})
-
-        self.assertNotIn("protocol_version", response)
-        self.assertNotIn("command", response)
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "invalid_params")
+        self.assertIn("object_type", response["message"])
 
 
-class EnvelopeMappingUnitTests(unittest.TestCase):
-    """``as_common_envelope`` on its own, including what it must not touch."""
+class RetiredVariableTests(SeamTestCase):
+    """``MPFB_MCP_BACKEND`` is read for exactly one purpose: saying it is not.
 
-    def test_a_non_dict_is_returned_unchanged(self) -> None:
-        self.assertEqual(backend.as_common_envelope("not an envelope"), "not an envelope")
+    A value left behind in somebody's MCP client configuration would otherwise
+    be obeyed by nothing and reported by nothing, which is the same argument
+    that made an *unrecognised* value an error rather than a fallback while
+    there were still two backends to choose between.
+    """
 
-    def test_a_success_is_returned_unchanged(self) -> None:
-        envelope = {"status": "ok", "result": 1}
-        self.assertIs(backend.as_common_envelope(envelope), envelope)
+    def test_an_unset_variable_says_nothing(self) -> None:
+        with self.assertNoLogs("mpfbmcp.backend"):
+            backend.send("list_objects", params={"object_type": None})
 
-    def test_an_existing_slug_is_left_alone(self) -> None:
-        envelope = {"status": "error", "error": "mpfb_unavailable", "message": "no MPFB"}
-        self.assertIs(backend.as_common_envelope(envelope), envelope)
+    def test_a_set_variable_is_reported_on_this_package_s_logger(self) -> None:
+        self.set_env_var(backend.BACKEND_VARIABLE, "blender_mcp")
 
-    def test_the_original_dict_is_not_modified(self) -> None:
-        envelope = {"status": "error", "message": "boom"}
+        with self.assertLogs("mpfbmcp.backend", level="WARNING") as logged:
+            backend.send("list_objects", params={"object_type": None})
 
-        mapped = backend.as_common_envelope(envelope)
+        self.assertIn("blender_mcp", logged.output[0])
+        self.assertIn(backend.BACKEND_VARIABLE, logged.output[0])
 
-        self.assertNotIn("error", envelope)
-        self.assertEqual(mapped["error"], backend.ERROR_COMMAND_FAILED)
+    def test_the_call_is_performed_anyway(self) -> None:
+        # A stale variable is worth a line, never a refusal: there is one
+        # transport, so there is nothing a wrong value could route to.
+        self.set_env_var(backend.BACKEND_VARIABLE, "something else entirely")
 
-    def test_everything_else_in_the_envelope_survives(self) -> None:
-        envelope = {"status": "error", "message": "boom", "stdout": "printed",
-                    "mpfb_mcp_record": {"program": "/tmp/0001-list_objects.py"}}
+        with self.assertLogs("mpfbmcp.backend", level="WARNING"):
+            response = backend.send("list_objects", params={"object_type": None})
 
-        mapped = backend.as_common_envelope(envelope)
+        self.assertEqual(response["status"], "ok")
 
-        self.assertEqual(mapped["stdout"], "printed")
-        self.assertEqual(mapped["mpfb_mcp_record"], {"program": "/tmp/0001-list_objects.py"})
-        self.assertEqual(list(mapped)[:2], ["status", "error"],
-                         "the slug should sit where a reader looks for it")
+    def test_it_is_said_once_rather_than_once_per_call(self) -> None:
+        # A stale variable does not become less stale during a session, and a
+        # line per call would be its own kind of damage.
+        self.set_env_var(backend.BACKEND_VARIABLE, "blender_mcp")
+
+        with self.assertLogs("mpfbmcp.backend", level="WARNING") as logged:
+            backend.send("list_objects", params={"object_type": None})
+            backend.send("list_objects", params={"object_type": None})
+
+        self.assertEqual(len(logged.output), 1)
 
 
-class ConnectionFailureTests(BothBackendsTestCase):
-    def test_a_missing_bridge_raises_the_same_exception_type_as_a_missing_addon(self) -> None:
-        # What stage 4 inherits: mpfb_list_urls catches ConnectionError and
-        # answers anyway, and it must keep working when it crosses the bridge.
-        self.prefer(backend.BACKEND_BRIDGE)
+class ConnectionFailureTests(SeamTestCase):
+    def test_an_unreachable_bridge_raises_rather_than_answering(self) -> None:
+        # mpfb_list_urls catches ConnectionError and answers anyway, which is
+        # the one tool that depends on this being an exception and not an
+        # envelope.
         self.set_env_var(bridge_connection.BRIDGE_PORT_VARIABLE, str(_free_port()))
 
         with self.assertRaises(ConnectionError):
-            backend.send("list_objects.py", params={"object_type": None})
-
-    def test_a_missing_addon_raises_connection_error_on_the_generated_path(self) -> None:
-        self.prefer(backend.BACKEND_BLENDER_MCP)
-        self.set_env_var("BLENDER_MCP_PORT", str(_free_port()))
-
-        with self.assertRaises(ConnectionError):
-            backend.send("list_objects.py", params={"object_type": None})
+            backend.send("list_objects", params={"object_type": None})
 
 
 def _free_port() -> int:

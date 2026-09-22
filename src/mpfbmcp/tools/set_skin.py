@@ -224,13 +224,12 @@ def register(mcp: FastMCP) -> None:
         """
         checked_skin_type = _validated_skin_type(skin_type)
         checked_path, checked_fragment = _validated_source(path, fragment, checked_skin_type)
-        # `result` (built in codegen/payloads/set_skin.py, or by
-        # bridge/mpfb_bridge/commands/set_skin.py) is plain JSON-safe
-        # data, so strict_json=True surfaces a clear error if that ever stops
-        # being true.
+        # `result` (built in bridge/mpfb_bridge/commands/set_skin.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "set_skin.py",
-            bootstrap="raising",
+            "set_skin",
             params={
                 "name": _validated_name(name),
                 "path": checked_path,
@@ -244,6 +243,4 @@ def register(mcp: FastMCP) -> None:
             # maps that type back to the "skins" asset subdir a fragment is
             # resolved against is MPFB's section table, and a second copy of it
             # here would make a just-listed skin look uninstalled.
-            shared=["asset_sections.py", "performed.py"],
-            strict_json=True,
         )

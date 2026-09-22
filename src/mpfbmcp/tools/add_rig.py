@@ -131,13 +131,12 @@ def register(mcp: FastMCP) -> None:
         `rigify_unavailable`, `not_object_mode`, and `already_rigged` - **MPFB
         cannot swap a rig**, so an existing one has to be deleted first.
         """
-        # `result` (built in codegen/payloads/add_rig.py, or by
-        # bridge/mpfb_bridge/commands/add_rig.py) is plain JSON-safe
-        # data - locations are coerced to lists of float there - so
-        # strict_json=True surfaces a clear error if that ever stops being true.
+        # `result` (built in bridge/mpfb_bridge/commands/add_rig.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "add_rig.py",
-            bootstrap="raising",
+            "add_rig",
             params={
                 "name": _validated_name(name),
                 "identifier": _validated_identifier(identifier),
@@ -146,6 +145,4 @@ def register(mcp: FastMCP) -> None:
             # Shared with mpfb_list_rigs' payload, which predicts what this tool
             # then does. One implementation of "which file, whose weights", so
             # the catalogue and the action cannot disagree.
-            shared=["rig_lookup.py", "performed.py"],
-            strict_json=True,
         )

@@ -95,17 +95,15 @@ def register(mcp: FastMCP) -> None:
         which names something addable. A character whose rig is not in this
         list is ordinary, not an error.
         """
-        # `result` (built in codegen/payloads/list_rigs.py) is always plain JSON-
-        # safe data, so strict_json=True to surface a clear error if that ever
-        # stops being true, rather than silently falling back to `repr`.
+        # `result` (built in bridge/mpfb_bridge/commands/list_rigs.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "list_rigs.py",
-            bootstrap="raising",
+            "list_rigs",
             params={"refresh": _validated_refresh(refresh)},
             # Shared with mpfb_add_rig's payload: this tool predicts which rig
             # file would be loaded and whose weights would come with it, and
             # that tool then does it. One implementation, so the prediction and
             # the action cannot drift apart.
-            shared=["rig_lookup.py"],
-            strict_json=True,
         )

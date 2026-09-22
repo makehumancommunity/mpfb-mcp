@@ -140,12 +140,12 @@ def register(mcp: FastMCP) -> None:
         and macro shape keys have drifted apart is reported as it is, not
         repaired.
         """
-        # `result` (built in codegen/payloads/get_target_stack.py) is plain
-        # JSON-safe data - shape key values are coerced to float there - which
-        # is what send() asks for on the way out.
+        # `result` (built in bridge/mpfb_bridge/commands/get_target_stack.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "get_target_stack.py",
-            cached_shared=["target_categories.py", "modifier_reading.py"],
+            "get_target_stack",
             params={
                 "name": _validated_text(
                     name, "name", "omit it to use the active object"),

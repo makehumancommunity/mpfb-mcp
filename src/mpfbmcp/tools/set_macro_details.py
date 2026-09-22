@@ -166,19 +166,16 @@ def register(mcp: FastMCP) -> None:
             if value is not None
         ]
 
-        # `result` (built in codegen/payloads/set_macro_details.py, or by
-        # bridge/mpfb_bridge/commands/set_macro_details.py) is plain JSON-safe
-        # data - property values are coerced to float on both sides - so
-        # strict_json=True surfaces a clear error if that ever stops being true.
+        # `result` (built in bridge/mpfb_bridge/commands/set_macro_details.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "set_macro_details.py",
-            bootstrap="raising",
-            shared=["refit_blocker.py", "performed.py"],
+            "set_macro_details",
             params={
                 "name": _validated_name(name),
                 "changes": changes,
                 "prune": _validated_flag("prune", prune),
                 "refit": _validated_flag("refit", refit),
             },
-            strict_json=True,
         )

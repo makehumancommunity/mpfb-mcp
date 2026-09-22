@@ -137,13 +137,12 @@ def register(mcp: FastMCP) -> None:
         cannot be resolved (`found: false`) and a basemesh in edit mode or
         without shape keys (`ready: false`) are answers, not errors.
         """
-        # `result` (built in codegen/payloads/symmetrize_targets.py) is plain
-        # JSON-safe data - values and paths are coerced there - which is what
-        # send() asks for on the way out.
+        # `result` (built in bridge/mpfb_bridge/commands/symmetrize_targets.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "symmetrize_targets.py",
-            cached_shared=["target_categories.py", "modifier_reading.py",
-                    "refit_blocker.py", "performed.py"],
+            "symmetrize_targets",
             params={
                 "name": _validated_name(name),
                 "direction": _validated_direction(direction),

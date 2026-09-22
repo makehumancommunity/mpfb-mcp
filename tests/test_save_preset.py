@@ -33,26 +33,34 @@ from __future__ import annotations
 
 __all__ = ()
 
-import json
 import os
+import pathlib
 import unittest
 from unittest import mock
 
-from mpfbmcp import backend
+from mpfbmcp import preset_names
 from mpfbmcp.tools import save_preset
 
 from tests import fake_bridge
-from tests.blender_stubs import (
-    PresetTestCase, StubHumanService, StubObject, StubObjectService)
-from tests import generated_path
 
 
-# These tests are about the **generated path**: they mock `backend.send_code`
-# and assert about the program that reached it. FR 032 made the bridge the
-# default, so saying so is now necessary rather than implied.
-# See tests/generated_path.py.
-setUpModule = generated_path.pin
-tearDownModule = generated_path.unpin
+_BRIDGE_SHARED = pathlib.Path(__file__).resolve().parent.parent / "bridge" / "mpfb_bridge" / "shared"
+
+
+def _bridge_shared_namespace(name: str) -> dict:
+    """One of the bridge's shared modules, executed here rather than imported.
+
+    The bridge is a Blender extension and is outside this package's root
+    entirely, so there is nothing to import. Executing the source is enough for
+    the rules that are plain Python over plain data, which is what the check
+    below is about, and it keeps this module free of ``bpy``.
+    """
+    namespace: dict = {}
+    source = (_BRIDGE_SHARED / name).read_text(encoding="utf-8")
+    exec(compile(source, str(_BRIDGE_SHARED / name), "exec"), namespace)  # noqa: S102
+    return namespace
+
+
 
 
 # Names that must be refused, and the reason each one exists in this list. The
@@ -94,14 +102,16 @@ class SavePresetNameValidationTests(unittest.TestCase):
         self.call = self.recorder.function
 
     def _run(self, **arguments):
-        with mock.patch("mpfbmcp.backend.send_code") as send:
+        """The parameters that reached the wire for one accepted call."""
+        with mock.patch("mpfbmcp.bridge_connection.send_command") as send:
             send.return_value = {"status": "ok", "result": {}}
             self.call(**arguments)
             self.assertEqual(send.call_count, 1)
-            return send.call_args[0][0]
+            self.assertEqual(send.call_args[0][0], "save_preset")
+            return send.call_args[0][1]
 
     def _refused(self, **arguments):
-        with mock.patch("mpfbmcp.backend.send_code") as send:
+        with mock.patch("mpfbmcp.bridge_connection.send_command") as send:
             with self.assertRaises(ValueError) as raised:
                 self.call(**arguments)
             # The point of the whole layer: nothing crossed the socket.
@@ -127,7 +137,7 @@ class SavePresetNameValidationTests(unittest.TestCase):
     def test_every_name_a_working_install_actually_holds_is_accepted(self) -> None:
         for name in ACCEPTED_NAMES:
             with self.subTest(name=name):
-                self.assertIn(json.dumps(name), self._run(name=name))
+                self.assertEqual(self._run(name=name)["name"], name)
 
     def test_a_name_is_not_trimmed_before_it_is_used(self) -> None:
         # A trailing space is a different name, MPFB's filename would carry it,
@@ -141,18 +151,13 @@ class SavePresetNameValidationTests(unittest.TestCase):
                 self._refused(name="alice", overwrite=value)
 
     def test_the_default_call_refuses_to_overwrite(self) -> None:
-        self.assertIn('"overwrite": false', self._run(name="alice"))
+        self.assertIs(self._run(name="alice")["overwrite"], False)
 
     def test_the_subject_is_optional_and_shape_checked(self) -> None:
-        self.assertIn('"subject": null', self._run(name="alice"))
-        self.assertIn('"subject": "Human"', self._run(name="alice", subject="Human"))
+        self.assertIsNone(self._run(name="alice")["subject"])
+        self.assertEqual(self._run(name="alice", subject="Human")["subject"], "Human")
         self._refused(name="alice", subject="")
         self._refused(name="alice", subject=3)
-
-    def test_the_program_carries_both_fragments(self) -> None:
-        program = self._run(name="alice")
-        self.assertIn("preset_files.py", program)
-        self.assertIn("performed.py", program)
 
 
 class SavePresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
@@ -174,7 +179,6 @@ class SavePresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
         recorder = Recorder()
         save_preset.register(recorder)
         self.call = recorder.function
-        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
         self.bridge = self.run_answering_bridge({
             "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
             "save_preset": fake_bridge.ok_envelope("save_preset", {"found": True, "saved": True, "performed": True}),
@@ -228,227 +232,87 @@ class SavePresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.assertEqual(response["error"], "mpfb_unavailable")
 
 
-class SavePresetPayloadTests(PresetTestCase):
-    """The assembled program against a real directory and a stub character."""
+class PresetNameRuleDriftTests(unittest.TestCase):
+    """The one rule that lives on both sides of the socket, run as **two**.
 
-    def run_save(self, name="charlie", subject=None, overwrite=False, objects=None,
-                 active=None, context_mode="OBJECT"):
-        scene = self.objects if objects is None else objects
-        return self.run_payload(
-            "save_preset.py",
-            dict(name=name, subject=subject, overwrite=overwrite),
-            scene_objects=scene,
-            active=active if active is not None else (scene[0] if scene else None),
-            shared=["preset_files.py", "performed.py"],
-            context_mode=context_mode)
+    ``mpfbmcp.preset_names`` is the authoritative check - the tool above applies
+    it before anything crosses the socket, because a name that becomes a path is
+    a shape knowable here - and
+    ``bridge/mpfb_bridge/shared/preset_files.py`` carries the same rule as the
+    last statement before ``open()`` on the far side. It is there rather than
+    trusted to the client because a listening socket is reachable by anything on
+    this machine and not only by mpfb-mcp. So both are run over one table of
+    names and held to the same verdicts.
 
-    def test_a_clean_save_writes_the_file_and_names_it(self) -> None:
-        self.build_character()
-        result = self.run_save(active=self.basemesh)
-        self.assertTrue(result["saved"])
-        self.assertTrue(result["performed"])
-        self.assertFalse(result["overwrote"])
-        self.assertIsNone(result["previous_file"])
-        expected = os.path.join(self.config_dir, "human.charlie.json")
-        self.assertEqual(result["path"], expected)
-        self.assertTrue(os.path.isfile(expected))
-        self.assertEqual(result["size_bytes"], os.path.getsize(expected))
-        self.assertEqual(result["basemesh_name"], "Human")
+    It lived in ``tests/test_codegen.py`` and ran as **three** until FR 033
+    deleted the generated path: ``codegen/shared/preset_files.py`` was the third,
+    and ``tests/test_fragment_drift.py`` compared it against the bridge module as
+    *source* where this compares behaviour. Both of those are gone with the
+    fragment. The reason the check exists is unchanged and is nothing to do with
+    how many copies there are: a disagreement between the tool side and the
+    add-on side would let a preset be written under a name that cannot be loaded
+    back - silently, and only for names in the gap between them.
 
-    def test_the_subject_may_be_any_object_in_the_family(self) -> None:
-        # A rig, not the basemesh - and the response names the object actually
-        # serialized rather than echoing the argument.
-        self.build_character(rig=True, dressed=True)
-        result = self.run_save(subject=self.shirt.name)
-        self.assertTrue(result["saved"])
-        self.assertEqual(result["subject_name"], self.shirt.name)
-        self.assertEqual(result["subject_resolved_by"], "name")
-        self.assertEqual(result["basemesh_name"], "Human")
+    It sits in this module because ``mpfb_save_preset`` is where a preset name
+    first becomes a path, and because the ``name`` whitelist above is the same
+    rule asserted from the tool's side.
+    """
 
-    def test_the_active_object_is_the_subject_when_none_is_named(self) -> None:
-        self.build_character(rig=True)
-        result = self.run_save(active=self.rig)
-        self.assertEqual(result["subject_resolved_by"], "active")
-        self.assertEqual(result["basemesh_name"], "Human")
+    # Every name from the three preset tool test modules, plus the boundary
+    # cases that only a character-by-character rule can get wrong.
+    NAMES = (
+        "alice", "bob-2", "klara-v2", "Girl_test_walkCycle", "anna_v2", "v1.2",
+        "a" * 64, "a" * 65, "1", "_", "-", "...",
+        "", "   ", ".", "..", ".hidden", "has space", "trailing ",
+        "a/b", "a\\b", "../escape", "/absolute", "c:nope", "na\u00efve", "sm\u00f6rg\u00e5s",
+        "semi;colon", "quote'd", 'double"d', "star*", "pipe|", "null\x00byte",
+        None, 3, True, 1.5, [], {},
+    )
 
-    def test_a_missing_subject_is_an_answer(self) -> None:
-        self.build_character()
-        result = self.run_save(subject="Nonexistent")
-        self.assertFalse(result["found"])
-        self.assertFalse(result["performed"])
-        self.assertEqual(result["blocked_by"], "subject_not_found")
-        self.assertFalse(os.path.exists(os.path.join(self.config_dir, "human.charlie.json")))
+    def setUp(self) -> None:
+        self.bridge_namespace = _bridge_shared_namespace("preset_files.py")
+        self.bridge_rejection = self.bridge_namespace["preset_name_rejection"]
 
-    def test_an_object_with_no_basemesh_relative_is_an_answer(self) -> None:
-        stray = StubObject("Cube")
-        StubObjectService.register_object(stray)
-        result = self.run_save(objects=[stray], active=stray)
-        self.assertFalse(result["found"])
-        self.assertEqual(result["blocked_by"], "subject_not_found")
+    def _rules(self) -> dict:
+        """The two implementations, by where they run."""
+        return {
+            "mpfbmcp.preset_names": preset_names.preset_name_rejection,
+            "bridge/mpfb_bridge/shared/preset_files.py": self.bridge_rejection,
+        }
 
-    def test_an_existing_preset_is_refused_and_left_byte_identical(self) -> None:
-        self.build_character()
-        path = self.saved_presets["alice"]
-        with open(path, "rb") as handle:
-            before = handle.read()
-        result = self.run_save(name="alice", active=self.basemesh)
-        self.assertFalse(result["saved"])
-        self.assertFalse(result["performed"])
-        self.assertEqual(result["blocked_by"], "preset_exists")
-        with open(path, "rb") as handle:
-            self.assertEqual(handle.read(), before)
-        # The caller cannot see the directory, so the refusal has to carry
-        # enough to decide with.
-        self.assertEqual(result["path"], path)
-        self.assertEqual(result["previous_file"]["size_bytes"], len(before))
-        self.assertIsNotNone(result["previous_file"]["modified"])
-        self.assertEqual(StubHumanService.serialize_calls, [])
+    def test_both_accept_and_refuse_exactly_the_same_names(self) -> None:
+        rules = self._rules()
+        authoritative = rules["mpfbmcp.preset_names"]
+        for name in self.NAMES:
+            for where, rule in rules.items():
+                with self.subTest(name=name, rule=where):
+                    self.assertEqual(authoritative(name) is None, rule(name) is None)
 
-    def test_overwrite_replaces_it_and_reports_what_it_replaced(self) -> None:
-        self.build_character()
-        path = self.saved_presets["alice"]
-        before_size = os.path.getsize(path)
-        result = self.run_save(name="alice", overwrite=True, active=self.basemesh)
-        self.assertTrue(result["saved"])
-        self.assertTrue(result["overwrote"])
-        self.assertEqual(result["previous_file"]["size_bytes"], before_size)
-        self.assertIn("cannot be restored", result["message"])
-        self.assertEqual(self.read_preset("alice")["phenotype"]["gender"], 0.5)
+    def test_both_give_the_same_reason(self) -> None:
+        # Not merely the same verdict: the sentence is what a caller is shown,
+        # and two different explanations for one rule is the drift starting.
+        rules = self._rules()
+        authoritative = rules["mpfbmcp.preset_names"]
+        for name in self.NAMES:
+            for where, rule in rules.items():
+                with self.subTest(name=name, rule=where):
+                    self.assertEqual(authoritative(name), rule(name))
 
-    def test_a_mesh_that_is_not_an_mpfb_character_is_refused(self) -> None:
-        # MPFB's own guard, checked here rather than let raise: an imported mesh
-        # tagged as a basemesh looks exactly like this.
-        imported = StubObject("Imported", object_type="Basemesh", is_human_project=False)
-        StubObjectService.register_object(imported)
-        result = self.run_save(objects=[imported], active=imported)
-        self.assertFalse(result["saved"])
-        self.assertEqual(result["blocked_by"], "not_a_human_project")
-        self.assertFalse(result["is_human_project"])
-        self.assertEqual(StubHumanService.serialize_calls, [])
+    def test_the_bound_and_the_pattern_are_the_same_on_both(self) -> None:
+        self.assertEqual(preset_names.PRESET_NAME_MAX_LENGTH,
+                         self.bridge_namespace["PRESET_NAME_MAX_LENGTH"])
+        self.assertEqual(preset_names.PRESET_NAME_PATTERN,
+                         self.bridge_namespace["PRESET_NAME_PATTERN"])
 
-    def test_an_unidentifiable_rig_is_a_refusal_rather_than_a_valueerror(self) -> None:
-        # MPFB raises ValueError("...Custom rigs cannot be serialized.") here,
-        # which is both a traceback and a wrong explanation.
-        self.build_character(rig=True, rig_type="unknown")
-        result = self.run_save(active=self.basemesh)
-        self.assertFalse(result["saved"])
-        self.assertEqual(result["blocked_by"], "rig_not_identifiable")
-        self.assertEqual(result["rig_name"], "Human.rig")
-        self.assertEqual(result["rig_identified_as"], "unknown")
-        self.assertEqual(StubHumanService.serialize_calls, [])
-
-    def test_mpfbs_other_spelling_of_unknown_is_refused_too(self) -> None:
-        # MPFB checks "unkown" as well as "unknown", which suggests the typo is
-        # load-bearing somewhere.
-        self.build_character(rig=True, rig_type="unkown")
-        self.assertEqual(self.run_save(active=self.basemesh)["blocked_by"],
-                         "rig_not_identifiable")
-
-    def test_save_clothes_true_is_what_is_passed(self) -> None:
-        # Dead in MPFB today - the body never reads it - and passed anyway,
-        # because both of MPFB's operators pass it and the day it starts working
-        # this tool should keep doing what the panel does.
-        self.build_character()
-        self.run_save(active=self.basemesh)
-        self.assertEqual(StubHumanService.serialize_calls[0]["save_clothes"], True)
-
-    def test_garments_are_saved_whatever_save_clothes_says(self) -> None:
-        # The defect itself, asserted rather than described: the stub ignores
-        # the flag because MPFB ignores it.
-        self.build_character(rig=True, dressed=True)
-        result = self.run_save(active=self.basemesh)
-        self.assertEqual(result["contents"]["clothes"], ["fedora/fedora.mhclo"])
-
-    def test_the_contents_report_is_read_back_out_of_the_written_file(self) -> None:
-        self.build_character(rig=True, proxy=True, dressed=True, rig_type="default")
-        result = self.run_save(active=self.basemesh)
-        written = self.read_preset("charlie")
-        self.assertEqual(result["contents"]["rig"], written["rig"])
-        self.assertEqual(result["contents"]["clothes"], written["clothes"])
-        self.assertEqual(result["contents"]["proxy"], written["proxy"])
-        self.assertEqual(result["contents"]["target_count"], len(written["targets"]))
-
-    def test_a_generated_rigify_rig_is_saved_as_its_metarig_and_says_so(self) -> None:
-        # Not the WARNING MPFB's operators emit - the substitution reported as
-        # the fact it is, on the call where it happened.
-        self.build_character(rig=True, rig_type="rigify_generated.human")
-        self.rig.inferred_metarig = "rigify.human"
-        result = self.run_save(active=self.basemesh)
-        self.assertTrue(result["saved"])
-        self.assertEqual(result["rig_identified_as"], "rigify_generated.human")
-        self.assertEqual(result["rig_saved_as"], "rigify.human")
-        self.assertIn("mpfb_generate_rigify_rig", result["message"])
-
-    def test_a_generated_rig_mpfb_cannot_infer_falls_back_to_human_toes(self) -> None:
-        self.build_character(rig=True, rig_type="rigify_generated.something")
-        self.rig.inferred_metarig = None
-        result = self.run_save(active=self.basemesh)
-        self.assertEqual(result["rig_saved_as"], "rigify.human_toes")
-
-    def test_an_ordinary_rig_round_trips_without_a_sentence_about_it(self) -> None:
-        self.build_character(rig=True, rig_type="default")
-        result = self.run_save(active=self.basemesh)
-        self.assertEqual(result["rig_identified_as"], "default")
-        self.assertEqual(result["rig_saved_as"], "default")
-        self.assertNotIn("mpfb_generate_rigify_rig", result["message"])
-
-    def test_a_save_makes_the_preset_visible_to_the_list_without_a_refresh(self) -> None:
-        # serialize_to_json_file() is the one thing that invalidates MPFB's
-        # cached list, which is why a preset written *through this tool* needs
-        # no refresh and one written any other way does.
-        self.build_character()
-        self.run_payload("list_presets.py", dict(refresh=False), shared=["preset_files.py"])
-        self.run_save(active=self.basemesh)
-        listed = self.run_payload(
-            "list_presets.py", dict(refresh=False), shared=["preset_files.py"])
-        self.assertIn("charlie", [entry["name"] for entry in listed["presets"]])
-        self.assertEqual(listed["missing_from_mpfb_list"], [])
-
-    def test_a_missing_config_directory_is_refused_and_not_created(self) -> None:
-        import shutil
-        self.build_character()
-        shutil.rmtree(self.config_dir)
-        result = self.run_save(active=self.basemesh)
-        self.assertEqual(result["blocked_by"], "config_dir_missing")
-        self.assertFalse(os.path.exists(self.config_dir))
-
-    def test_a_name_that_escapes_is_refused_by_the_payload_too(self) -> None:
-        # Unreachable through the tool module, which is the point: this is the
-        # last statement before a path is assembled, and it is checked there as
-        # well as here.
-        self.build_character()
-        result = self.run_save(name="../escaped", active=self.basemesh)
-        self.assertEqual(result["blocked_by"], "invalid_name")
-        self.assertIsNone(result["path"])
-        self.assertFalse(os.path.exists(
-            os.path.join(os.path.dirname(self.config_dir), "human.../escaped.json")))
-
-    def test_a_failure_inside_mpfb_is_reported_rather_than_raised(self) -> None:
-        self.build_character()
-        original = StubHumanService.serialize_to_json_string
-
-        def explode(basemesh, save_clothes=False):
-            raise RuntimeError("something went wrong deep inside")
-
-        StubHumanService.serialize_to_json_string = staticmethod(explode)
-        self.addCleanup(setattr, StubHumanService, "serialize_to_json_string", original)
-        result = self.run_save(active=self.basemesh)
-        self.assertFalse(result["saved"])
-        self.assertFalse(result["performed"])
-        self.assertEqual(result["blocked_by"], "serialize_failed")
-        self.assertIn("something went wrong deep inside", result["message"])
-
-    def test_the_path_is_in_every_answer_refusals_included(self) -> None:
-        # A caller cannot see the directory, so "which file was this about" is
-        # the first thing they need whatever happened.
-        self.build_character()
-        for arguments in (dict(name="alice"), dict(name="charlie"),
-                          dict(name="charlie", subject="Nonexistent")):
-            with self.subTest(**arguments):
-                result = self.run_save(active=self.basemesh, **arguments)
-                self.assertIn("path", result)
-                self.assertIn("config_dir", result)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_no_accepted_name_can_leave_the_config_directory(self) -> None:
+        # The property the rule exists for, asserted rather than inferred from
+        # the pattern: os.path.join of the directory and the assembled filename
+        # stays inside the directory, for every name either side accepts.
+        preset_filename = self.bridge_namespace["preset_filename"]
+        confdir = os.path.abspath(os.path.join("/tmp", "mpfb", "config"))
+        for name in self.NAMES:
+            if self.bridge_rejection(name) is not None:
+                continue
+            with self.subTest(name=name):
+                joined = os.path.abspath(os.path.join(confdir, preset_filename(name)))
+                self.assertEqual(os.path.dirname(joined), confdir)

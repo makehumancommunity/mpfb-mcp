@@ -144,18 +144,15 @@ def register(mcp: FastMCP) -> None:
         its generated rig, so its meta rig is no longer among its relatives),
         `rigify_unavailable` and `not_object_mode`.
         """
-        # `result` (built in codegen/payloads/generate_rigify_rig.py, or by
-        # bridge/mpfb_bridge/commands/generate_rigify_rig.py) is plain
-        # JSON-safe data, so strict_json=True surfaces a clear error if that ever
-        # stops being true.
+        # `result` (built in bridge/mpfb_bridge/commands/generate_rigify_rig.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "generate_rigify_rig.py",
-            bootstrap="raising",
-            shared=["performed.py"],
+            "generate_rigify_rig",
             params={
                 "name": _validated_name(name),
                 "rig_name": _validated_rig_name(rig_name),
                 "meta_rig_action": _validated_meta_rig_action(meta_rig_action),
             },
-            strict_json=True,
         )

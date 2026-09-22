@@ -101,12 +101,11 @@ def register(mcp: FastMCP) -> None:
           - `basemesh_name`, `subject_name` and `subject_resolved_by` ("name"
             or "active").
         """
-        # `result` (built in codegen/payloads/get_macro_details.py) is plain
-        # JSON-safe data - the property values are coerced to float there - so
-        # strict_json=True surfaces a clear error if that ever stops being true.
+        # `result` (built in bridge/mpfb_bridge/commands/get_macro_details.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "get_macro_details.py",
-            bootstrap="raising",
+            "get_macro_details",
             params={"name": _validated_name(name)},
-            strict_json=True,
         )

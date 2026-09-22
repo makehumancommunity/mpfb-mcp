@@ -165,13 +165,12 @@ def register(mcp: FastMCP) -> None:
         rig the preset names and this Blender lacks: MPFB's rig adders raise
         rather than degrade, so retry with `override_rig`.
         """
-        # `result` (built in codegen/payloads/create_human_from_preset.py, or by
-        # bridge/mpfb_bridge/commands/create_human_from_preset.py) is
-        # plain JSON-safe data, so strict_json=True surfaces a clear error if
-        # that ever stops being true.
+        # `result` (built in bridge/mpfb_bridge/commands/create_human_from_preset.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "create_human_from_preset.py",
-            bootstrap="raising",
+            "create_human_from_preset",
             params={
                 # The authoritative check, here rather than in Blender: this
                 # name becomes a path. See mpfbmcp/preset_names.py.
@@ -197,6 +196,4 @@ def register(mcp: FastMCP) -> None:
             # preset_files.py so that this tool, the catalogue and the save tool
             # cannot disagree about which names are legal or where the file is;
             # performed.py for the uniform flag every mutating tool reports.
-            shared=["preset_files.py", "performed.py"],
-            strict_json=True,
         )

@@ -39,39 +39,23 @@ from __future__ import annotations
 __all__ = ()
 
 import inspect
-import sys
-import types
 import unittest
 from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
 
-from mpfbmcp import backend
 from mpfbmcp import bridge_connection
-from mpfbmcp import codegen
 from mpfbmcp.reference import urls
 
 from tests import fake_bridge
 from mpfbmcp.tools import list_urls
-from tests import generated_path
 
 
-# These tests are about the **generated path**: they mock `backend.send_code`
-# and assert about the program that reached it. FR 032 made the bridge the
-# default, so saying so is now necessary rather than implied.
-# See tests/generated_path.py.
-setUpModule = generated_path.pin
-tearDownModule = generated_path.unpin
 
 _STUB_PACKAGE = "bl_ext.test_repo.mpfb"
-# Deliberately not ending in "mpfb", or the bootstrap's candidate scan would
-# pick the weburls module up as an MPFB install of its own.
+# Deliberately not ending in "mpfb", or the add-on's candidate scan would pick
+# the weburls module up as an MPFB install of its own.
 _STUB_WEBURLS = _STUB_PACKAGE + ".ui.weburls"
-
-
-def _list_urls_code() -> str:
-    """The source mpfb_list_urls sends, assembled exactly as the tool does."""
-    return codegen.assemble("list_urls.py", bootstrap="non_raising")
 
 
 def _register_and_get_tool():
@@ -107,7 +91,7 @@ class ListUrlsLiveTests(unittest.TestCase):
         self.mpfb_list_urls = _register_and_get_tool()
 
     def _call(self, payload: dict) -> dict:
-        with mock.patch("mpfbmcp.backend.send_code",
+        with mock.patch("mpfbmcp.bridge_connection.send_command",
                         return_value={"status": "ok", "result": payload}):
             envelope = self.mpfb_list_urls()
         self.assertEqual(envelope["status"], "ok")
@@ -241,7 +225,7 @@ class ListUrlsFallbackTests(unittest.TestCase):
         self.mpfb_list_urls = _register_and_get_tool()
 
     def _call_with_payload(self, payload: dict) -> dict:
-        with mock.patch("mpfbmcp.backend.send_code",
+        with mock.patch("mpfbmcp.bridge_connection.send_command",
                         return_value={"status": "ok", "result": payload}):
             envelope = self.mpfb_list_urls()
         self.assertEqual(envelope["status"], "ok")
@@ -288,7 +272,7 @@ class ListUrlsFallbackTests(unittest.TestCase):
 
     def test_an_unreachable_blender_answers_rather_than_failing(self) -> None:
         failure = ConnectionError("Cannot connect to Blender at localhost:9876.")
-        with mock.patch("mpfbmcp.backend.send_code", side_effect=failure):
+        with mock.patch("mpfbmcp.bridge_connection.send_command", side_effect=failure):
             envelope = self.mpfb_list_urls()
 
         # The whole reason this tool catches the transport failure at all: the
@@ -303,28 +287,30 @@ class ListUrlsFallbackTests(unittest.TestCase):
         self.assertIn("localhost:9876", result["fallback_reason"])
 
     def test_a_payload_error_is_not_swallowed_into_a_fallback(self) -> None:
-        # A payload that raised inside Blender is a defect here. If it came back
+        # A command that failed inside Blender is a defect here. If it came back
         # as a cheerful fallback answer it would never be found. The envelope
-        # reaches the caller with its status and message intact and the seam's
-        # `error` slug added, which is the one thing backend.send() changes.
-        envelope = {"status": "error", "message": "NameError: _mpfb_module"}
-        with mock.patch("mpfbmcp.backend.send_code", return_value=envelope):
+        # reaches the caller exactly as the add-on wrote it, slug and all: the
+        # fallback is for a bridge that cannot be reached, not for one that
+        # answered.
+        envelope = {"status": "error", "error": "mpfb_unavailable",
+                    "message": "NameError: _mpfb_module"}
+        with mock.patch("mpfbmcp.bridge_connection.send_command", return_value=envelope):
             response = self.mpfb_list_urls()
 
         self.assertEqual(response["status"], "error")
         self.assertEqual(response["message"], "NameError: _mpfb_module")
-        self.assertEqual(response["error"], backend.ERROR_COMMAND_FAILED)
+        self.assertEqual(response["error"], "mpfb_unavailable")
         self.assertNotIn("result", response, "a failure must not carry a fallback answer")
 
     def test_a_non_dict_result_is_passed_through_rather_than_reshaped(self) -> None:
         envelope = {"status": "ok", "result": "something unexpected"}
-        with mock.patch("mpfbmcp.backend.send_code", return_value=envelope):
+        with mock.patch("mpfbmcp.bridge_connection.send_command", return_value=envelope):
             self.assertEqual(self.mpfb_list_urls(), envelope)
 
     def test_only_a_connection_error_is_caught(self) -> None:
         # Any other exception out of send_code() is a bug on this side and must
         # propagate; catching broadly here would hide it behind an answer.
-        with mock.patch("mpfbmcp.backend.send_code",
+        with mock.patch("mpfbmcp.bridge_connection.send_command",
                         side_effect=ValueError("a defect in this package")):
             with self.assertRaises(ValueError):
                 self.mpfb_list_urls()
@@ -348,7 +334,6 @@ class ListUrlsOverTheBridgeTests(fake_bridge.BridgeTestCase):
     def setUp(self) -> None:
         super().setUp()
         self.call = _register_and_get_tool()
-        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
 
     def _bridge_answering(self, payload):
         return self.run_answering_bridge({
@@ -420,144 +405,6 @@ class ListUrlsOverTheBridgeTests(fake_bridge.BridgeTestCase):
                          "a version mismatch is a configuration fault, not a circumstance")
         self.assertNotIn("result", response,
                          "and it must not be papered over with vendored URLs")
-
-
-class ListUrlsCodeTests(unittest.TestCase):
-    def test_generated_code_compiles(self) -> None:
-        compile(_list_urls_code(), "<generated>", "exec")
-
-    def test_generated_code_never_imports_the_ui_module(self) -> None:
-        # weburls is read out of sys.modules. An import here would re-execute
-        # MPFB code inside an install that may already be broken.
-        code = _list_urls_code()
-        self.assertNotIn("import_module", code)
-        self.assertNotIn("importlib", code)
-        self.assertIn("sys.modules.get(", code)
-
-    def test_the_program_does_not_carry_the_vendored_table(self) -> None:
-        """The size claim behind assembling the answer on this side of the socket.
-
-        A program costs ~250 ms per 4 KB on the wire whatever it does, so the
-        alternative design - send the vendored URLs in as PARAMS and merge
-        inside Blender - would have put ~3 KB on every call to compute what a
-        local function already computes. What is asserted is therefore that the
-        table is *not* in the program, rather than a byte ceiling: at 6.8 KB
-        assembled this is the third-smallest of the package's twenty-one
-        programs, and like all of them it is mostly its own docstring.
-        """
-        code = _list_urls_code()
-        for url in urls.MPFB_URLS.values():
-            self.assertNotIn(url, code)
-        for url in urls.ECOSYSTEM_URLS.values():
-            self.assertNotIn(url, code)
-
-
-class GeneratedCodeExecutionTests(unittest.TestCase):
-    """Executes the generated source against a stubbed MPFB in sys.modules."""
-
-    def setUp(self) -> None:
-        stray = [name for name in list(sys.modules) if name.endswith("mpfb")]
-        self.assertEqual(stray, [], "a real module ending in 'mpfb' would skew these tests")
-        self._injected: list[str] = []
-
-    def tearDown(self) -> None:
-        for name in self._injected:
-            sys.modules.pop(name, None)
-
-    def _inject(self, name, module) -> None:
-        sys.modules[name] = module
-        self._injected.append(name)
-
-    def _inject_mpfb(self, contextual_information=None):
-        module = types.ModuleType(_STUB_PACKAGE)
-        module.VERSION = (2, 0, 17)
-        module.MPFB_CONTEXTUAL_INFORMATION = (
-            contextual_information if contextual_information is not None
-            else {"SERVICES": dict()})
-        self._inject(_STUB_PACKAGE, module)
-
-    def _inject_weburls(self, values, extras=None):
-        module = types.ModuleType(_STUB_WEBURLS)
-        for key, value in values.items():
-            setattr(module, key, value)
-        for key, value in (extras or dict()).items():
-            setattr(module, key, value)
-        # Module-level names MPFB's own weburls.py also has, none of which start
-        # with URL_ and none of which may end up in the answer.
-        module.__doc__ = "This file contains the web addresses used by the UI."
-        module.SOMETHING_ELSE = "not a url"
-        self._inject(_STUB_WEBURLS, module)
-
-    def _run(self) -> dict:
-        namespace = dict()
-        exec(_list_urls_code(), namespace)  # noqa: S102
-        return namespace["result"]
-
-    def test_reads_every_url_prefixed_constant_and_nothing_else(self) -> None:
-        self._inject_mpfb()
-        self._inject_weburls(urls.MPFB_URLS)
-
-        result = self._run()
-
-        self.assertTrue(result["weburls_read"])
-        self.assertEqual(result["urls"], dict(urls.MPFB_URLS))
-        self.assertEqual(result["skipped_keys"], [])
-        self.assertIsNone(result["reason"])
-        self.assertEqual(result["weburls_module"], _STUB_WEBURLS)
-        self.assertEqual(result["version"], "2.0.17")
-
-    def test_a_constant_mpfb_adds_later_is_picked_up_by_the_prefix_scan(self) -> None:
-        # The claim the enumerate-by-prefix rule exists to make: no change in
-        # this repository is needed for MPFB to publish a new address.
-        self._inject_mpfb()
-        self._inject_weburls(urls.MPFB_URLS, extras={"URL_SOMETHING_NEW": "https://new.invalid/"})
-
-        self.assertEqual(self._run()["urls"]["URL_SOMETHING_NEW"], "https://new.invalid/")
-
-    def test_a_url_constant_that_is_not_a_string_is_skipped_and_named(self) -> None:
-        self._inject_mpfb()
-        self._inject_weburls(urls.MPFB_URLS, extras={"URL_NOT_A_STRING": ["a", "list"]})
-
-        result = self._run()
-
-        self.assertNotIn("URL_NOT_A_STRING", result["urls"])
-        self.assertEqual(result["skipped_keys"], ["URL_NOT_A_STRING"])
-
-    def test_mpfb_absent_reports_the_reason_and_reads_nothing(self) -> None:
-        result = self._run()
-
-        self.assertEqual(result["state"], "absent")
-        self.assertFalse(result["weburls_read"])
-        self.assertIsNone(result["urls"])
-        self.assertIsNone(result["weburls_module"])
-        self.assertIn("not loaded", result["reason"])
-
-    def test_an_initialized_mpfb_without_weburls_reports_that_specifically(self) -> None:
-        self._inject_mpfb()
-
-        result = self._run()
-
-        self.assertEqual(result["state"], "ok")
-        self.assertFalse(result["weburls_read"])
-        self.assertIsNone(result["urls"])
-        # Named in full, since this is an unusual install rather than a normal
-        # absence and the module name is what somebody would go looking for.
-        self.assertEqual(result["weburls_module"], _STUB_WEBURLS)
-        self.assertIn(_STUB_WEBURLS, result["reason"])
-
-    def test_a_half_registered_mpfb_still_reads_weburls_if_it_is_there(self) -> None:
-        # MPFB imports its UI during register(), so a run that died later can
-        # leave the module loaded. Reading one that is already in sys.modules
-        # executes nothing, so there is no reason to refuse.
-        self._inject_mpfb(contextual_information={"__package__": _STUB_PACKAGE})
-        self._inject_weburls(urls.MPFB_URLS)
-
-        result = self._run()
-
-        self.assertEqual(result["state"], "not_initialized")
-        self.assertTrue(result["weburls_read"])
-        self.assertEqual(result["urls"], dict(urls.MPFB_URLS))
-        self.assertIsNone(result["reason"])
 
 
 class VendoredTableTests(unittest.TestCase):

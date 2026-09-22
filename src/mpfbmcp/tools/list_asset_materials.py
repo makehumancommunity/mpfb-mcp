@@ -94,14 +94,13 @@ def register(mcp: FastMCP) -> None:
         An object that is not an asset comes back as `found: false`, or with an
         empty list and an explanation, never as an error.
         """
-        # `result` (built in codegen/payloads/list_asset_materials.py) is plain
-        # JSON-safe data, so strict_json=True surfaces a clear error if that ever
-        # stops being true.
+        # `result` (built in bridge/mpfb_bridge/commands/list_asset_materials.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "list_asset_materials.py",
-            bootstrap="raising",
+            "list_asset_materials",
             params={
                 "name": _validated_name(name),
             },
-            strict_json=True,
         )

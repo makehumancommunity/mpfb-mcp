@@ -207,13 +207,12 @@ def register(mcp: FastMCP) -> None:
         `invalid_material_type`, `no_asset_subdir` and `not_object_mode`.
         """
         checked_path, checked_fragment = _validated_source(path, fragment)
-        # `result` (built in codegen/payloads/add_asset.py, or by
-        # bridge/mpfb_bridge/commands/add_asset.py) is plain JSON-safe
-        # data, so strict_json=True surfaces a clear error if that ever stops
-        # being true.
+        # `result` (built in bridge/mpfb_bridge/commands/add_asset.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "add_asset.py",
-            bootstrap="raising",
+            "add_asset",
             params={
                 "name": _validated_name(name),
                 "path": checked_path,
@@ -234,6 +233,4 @@ def register(mcp: FastMCP) -> None:
             # back to an asset subdir is the only way to resolve the second, and
             # two implementations of that table would make a just-listed asset
             # look uninstalled here.
-            shared=["asset_sections.py", "performed.py"],
-            strict_json=True,
         )

@@ -3,39 +3,36 @@ The record of what crossed the socket, and this package's logger.
 
 A tool's call is a request that crosses a socket and an envelope that comes
 back. Nothing kept the request afterwards and nothing recorded the response, so
-a failure inside Blender arrived as a traceback naming a line number in a
-program that no longer existed on either side of the socket. This module is
-that record. It attaches at the socket boundary and nowhere else, which is what
-keeps it out of the twenty-five tool modules, out of the payloads and out of
-``codegen``.
+a failure inside Blender arrived as a message about something that no longer
+existed on either side of the socket. This module is that record. **It attaches
+at the socket boundary and nowhere else**, which is what keeps it out of the
+twenty-five tool modules and out of the add-on: the diagnostics belong to the
+call, not to what the call causes Blender to do.
 
-**The attachment point does not move; the unit does.** There are two transports
-now, and a request is a *program* on the generated path and a *command and its
-parameters* on the bridge. Both are opened the same way and before the socket
-call, both write one file, and both add one line to the same index in call
-order - so a session that mixes the two reads as one sequence of calls rather
-than as two logs that have to be interleaved by hand. What differs is the
-file's extension and the word the error annotation uses for it, because calling
-a JSON request a "program" would be a small lie told on every failure.
+There was a second transport until FR 033, and the record had two units
+accordingly - a *program* on the generated path, a *command and its parameters*
+on the bridge - written to one directory and one index so that a mixed session
+read as one sequence of calls. The generated path is gone and so is the
+distinction; what is left is what a bridge call always wrote, unchanged down to
+the index columns.
 
 Two environment variables drive it, both off by default:
 
 ``MPFB_MCP_RECORD_DIR``
-    Names a directory to write a per-call record into: the exact request - the
-    program on the generated path, the JSON on the bridge, byte for byte as it
-    went on the wire - the full response envelope, and one line in a
-    tab-separated index. Unset, no directory is created, no file is opened,
-    nothing is formatted, and the bytes on the wire are identical.
+    Names a directory to write a per-call record into: the exact request, byte
+    for byte as it went on the wire, the full response envelope, and one line
+    in a tab-separated index. Unset, no directory is created, no file is
+    opened, nothing is formatted, and the bytes on the wire are identical.
 
 ``MPFB_MCP_LOG_LEVEL``
     Attaches a ``stderr`` handler to this package's logger at that level. At
     ``INFO``, one line per call; at ``DEBUG``, what the tool modules decided
     locally before reaching the socket.
 
-Neither carries the ``BLENDER_MCP_`` prefix, deliberately. Those two are shared
-with blender_mcp because both processes talk to the same add-on and have to
-agree about its address; these are mpfb-mcp's own settings, and blender_mcp
-knows nothing about them.
+Neither carries the ``MPFB_BRIDGE_`` prefix, deliberately. Those two address
+the add-on and are read by the wire client; these say what this process does
+with a call it has already decided to make, and would mean nothing to the
+add-on.
 
 One consequence of the host is worth naming, because it decides two things
 here. ``FastMCP()`` calls ``logging.basicConfig()`` on construction, so in the
@@ -75,12 +72,10 @@ from __future__ import annotations
 __all__ = (
     "LOG_LEVEL_VARIABLE",
     "RECORD_DIRECTORY_VARIABLE",
-    "begin",
     "begin_command",
     "configure_from_environment",
     "get_logger",
     "tool_name_from_command",
-    "tool_name_from_program",
 )
 
 import datetime
@@ -103,30 +98,17 @@ _INDEX_FILE_NAME = "index.tsv"
 _INDEX_HEADER = "# seq\ttimestamp\ttool\tbytes\tms\tstatus\tresponse_bytes\n"
 _INDEX_MISSING = "-"
 
-# codegen.assemble() labels the last seam of every generated program with this
-# marker, so that a line number reported from inside Blender can be traced back
-# to the file it came from. It names the tool too, which is the whole reason
-# send_code() needs no extra argument to say which tool called it. The format
-# is therefore written by one module and parsed by another, and is pinned by
-# tests on both sides rather than left as a comment.
-# Trailing whitespace and a stray carriage return are tolerated: the marker
-# has to be found in whatever was handed to send_code(), not only in what
-# codegen produced.
-_PAYLOAD_MARKER = re.compile(r"^# --- payload: (?P<name>.+?) ---[ \t\r]*$", re.MULTILINE)
-
-# What a program with no marker is recorded as - something assembled by hand,
-# or a future call that is not a payload. Recorded under a neutral name rather
-# than rejected.
+# What a call with no name of its own is recorded as. Nothing in this package
+# produces one; a caller reaching ``begin_command()`` with an empty command
+# would, and it is recorded under a neutral name rather than rejected.
 _UNKNOWN_TOOL_NAME = "unnamed"
 
 _UNSAFE_IN_A_FILENAME = re.compile(r"[^A-Za-z0-9_.-]")
 
-# What each transport's request file is called, and what a failure calls it.
-# The response file is ``.json`` on both paths and keeps that name, so a mixed
-# run's directory listing pairs a request with its answer by sequence number
-# whichever transport carried it.
-_PROGRAM_EXTENSION = ".py"
-_PROGRAM_KEY = "program"
+# What the two files of one call are called. The suffixes differ so that a
+# directory listing pairs a request with its answer by sequence number, and
+# ``_REQUEST_KEY`` is the word an error envelope uses when it names the file
+# the reader should open.
 _REQUEST_EXTENSION = "-request.json"
 _REQUEST_KEY = "request"
 
@@ -155,26 +137,13 @@ def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
 
 
-def tool_name_from_program(code: str) -> str:
-    """Name the tool a generated program belongs to, from its payload seam."""
-    match = _PAYLOAD_MARKER.search(code)
-    if match is None:
-        return _UNKNOWN_TOOL_NAME
-    name = match.group("name").strip()
-    if name.endswith(".py"):
-        name = name[:-len(".py")]
-    return _safe_file_name(name)
-
-
 def tool_name_from_command(command: str) -> str:
-    """Name a bridge call from the command it dispatches.
+    """Name a call's record from the command it dispatches.
 
-    The command names the call directly, so there is nothing to parse: a
-    payload seam marker exists because a program carries no other statement of
-    what it is, and a request that names its command needs no such device.
-    Payload and command share a name by convention - ``list_objects.py`` becomes
-    ``list_objects`` - so a mixed run's index stays sorted by the same word
-    whichever transport a line came from.
+    The command names the call directly, so there is nothing to parse. Tool and
+    command share a name by convention - ``mpfb_list_objects`` sends
+    ``list_objects`` - so the index reads as a list of the tools that were
+    called, which is what somebody opening it is looking for.
     """
     return _safe_file_name(str(command).strip())
 
@@ -182,10 +151,9 @@ def tool_name_from_command(command: str) -> str:
 def _safe_file_name(name: str) -> str:
     """One call's name, reduced to something that cannot escape a directory.
 
-    Nothing in this package produces a name needing this. A hand-assembled
-    program could put anything after the payload marker, and a command name
-    reaches here from a caller's argument; either way the name becomes part of
-    a filename.
+    Nothing in this package produces a name needing this - every command name
+    is a key of the add-on's closed vocabulary. It reaches here from a caller's
+    argument nonetheless, and becomes part of a filename.
     """
     return _UNSAFE_IN_A_FILENAME.sub("_", name) or _UNKNOWN_TOOL_NAME
 
@@ -195,7 +163,8 @@ def configure_from_environment() -> None:
 
     Called once at import. It is a function rather than import-time code alone
     so that a test can set the variables and ask for them to be re-read, the
-    way ``tests/test_connection.py`` already does with the address variables.
+    way ``tests/test_bridge_connection.py`` already does with the address
+    variables.
     """
     global _recorder  # pylint: disable=global-statement
     _recorder = _recorder_from_environment()
@@ -203,41 +172,30 @@ def configure_from_environment() -> None:
     _already_warned.clear()
 
 
-def begin(code: str) -> "_CallRecord | _DisabledRecord":
-    """Open a record for one generated-code call, writing the program first.
+def begin_command(command: str, request: str) -> "_CallRecord | _DisabledRecord":
+    """Open a record for one call, writing the request first.
 
     Writing the request up front is the point rather than an implementation
     detail: a call that hangs, times out or takes Blender down still leaves
     behind what caused it. Writing both files together after the response
     arrives would lose exactly the cases this exists for.
 
+    ``request`` is the serialized JSON, and it is written verbatim - the same
+    string the client is about to put on the wire, so the record cannot drift
+    from the call it describes. That is why it is not re-serialized here for
+    readability: a record that is *nearly* what was sent is a record that has
+    to be argued with.
+
     Returns a shared do-nothing record when neither the record nor an
     INFO-level log is enabled, so that the disabled path - the one every
     existing test exercises - performs no formatting, no ``perf_counter()``
     bracketing that feeds nothing, and no directory probing.
     """
-    return _begin(tool_name_from_program(code), code, _PROGRAM_EXTENSION, _PROGRAM_KEY)
-
-
-def begin_command(command: str, request: str) -> "_CallRecord | _DisabledRecord":
-    """Open a record for one bridge call, writing the request first.
-
-    ``request`` is the serialized JSON, and it is written verbatim - the same
-    string the client is about to put on the wire, so the record cannot drift
-    from the call it describes. That is the same property the generated path's
-    program file has, and it is why the request is not re-serialized here for
-    readability: a record that is *nearly* what was sent is a record that has
-    to be argued with.
-    """
-    return _begin(tool_name_from_command(command), request, _REQUEST_EXTENSION, _REQUEST_KEY)
-
-
-def _begin(tool: str, request: str, extension: str,
-           annotation_key: str) -> "_CallRecord | _DisabledRecord":
     recorder = _recorder
     if recorder is None and not _logging_per_call:
         return _DISABLED_RECORD
-    return _CallRecord(recorder, tool, request, extension, annotation_key)
+    return _CallRecord(recorder, tool_name_from_command(command), request,
+                       _REQUEST_EXTENSION, _REQUEST_KEY)
 
 
 class _DisabledRecord:
@@ -259,11 +217,11 @@ _DISABLED_RECORD = _DisabledRecord()
 class _CallRecord:
     """One call: the request on disk before it is sent, the envelope after.
 
-    The same record serves both transports, which is the point: what differs
-    between a program and a command is the extension of one file and the word
-    an error annotation uses for it, and everything else - the sequence number,
-    the timestamp, the index line, the duration, the log line - is a property of
-    *a call* rather than of how it travelled.
+    The sequence number, the timestamp, the index line, the duration and the
+    log line are all properties of *a call* rather than of what was in it. The
+    extension and the annotation key are still constructor arguments rather
+    than constants inlined below, which is what let one record serve two
+    transports and is now simply where the two spellings live.
 
     Also handles the configuration where ``MPFB_MCP_LOG_LEVEL`` is set but
     ``MPFB_MCP_RECORD_DIR`` is not - there is a duration and a log line, but no
@@ -323,10 +281,6 @@ class _CallRecord:
         to do it at all is that whoever reads the failure is usually an agent
         rather than the person who set the variable, and a failure that does
         not say where its own evidence landed wastes the record.
-
-        The key naming the request file is the transport's word for it -
-        ``program`` for generated code, ``request`` for a bridge command - so
-        that an agent reading a failure is told what it is about to open.
         """
         if self.request_path is None:
             return response
@@ -376,12 +330,9 @@ class _Recorder:
                       extension: str) -> str | None:
         """Write the request byte-for-byte as it was handed to the transport.
 
-        No prettifying, no truncation, no re-wrapping, and that holds for both
-        transports. On the generated path the one job this file has is to be
-        the thing a traceback's line number can be resolved against, and a
-        52 KB file with its middle elided cannot do it; on the bridge the job
-        is to be the request that can be replayed, which an indented copy of it
-        is not.
+        No prettifying, no truncation, no re-wrapping. The job this file has is
+        to be the request that can be replayed, which an indented copy of it is
+        not.
         """
         path = self._path_for(sequence, tool, extension)
         if path is None:

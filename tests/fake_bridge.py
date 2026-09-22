@@ -3,12 +3,16 @@
 """
 The MPFB Bridge add-on, faked well enough to exercise the client.
 
-Holds no tests. It is to ``bridge_connection`` what ``fake_addon.py`` is to
-``connection``: a throwaway local TCP server plus the environment-variable
-bookkeeping every test that points mpfb-mcp at it needs. A sibling rather than
-an extension of that module, for the reason the two clients are siblings - the
-protocols differ, and a fake that served both would have to be told which one
-it was being today.
+Holds no tests. A throwaway local TCP server plus the environment-variable
+bookkeeping every test that points mpfb-mcp at it needs, which is the whole of
+what this suite needs to talk to a bridge that is not there.
+
+It had a sibling, ``fake_addon.py``, doing the same job for blender_mcp's
+protocol - two fakes rather than one because the protocols differed and a fake
+serving both would have had to be told which one it was being. FR 033 deleted
+that protocol and its fake, and ``EnvVarTestCase`` moved here rather than being
+rewritten, since managing an environment variable for the duration of a test is
+about neither protocol.
 
 It can do the three things a canned response cannot, and each is load-bearing
 for at least one test here:
@@ -32,6 +36,7 @@ from __future__ import annotations
 
 __all__ = (
     "BridgeTestCase",
+    "EnvVarTestCase",
     "FakeBridgeServer",
     "error_envelope",
     "ok_envelope",
@@ -39,11 +44,12 @@ __all__ = (
 )
 
 import json
+import os
 import socketserver
 import threading
+import unittest
 
 from mpfbmcp import bridge_connection
-from tests import fake_addon
 
 _RECV_BUFFER_SIZE = 65536
 
@@ -154,7 +160,25 @@ class FakeBridgeServer(socketserver.TCPServer):
         return [str(request.get("command")) for request in self.decoded_requests()]
 
 
-class BridgeTestCase(fake_addon.EnvVarTestCase):
+def _restore_env_var(name: str, previous: str | None) -> None:
+    if previous is None:
+        os.environ.pop(name, None)
+    else:
+        os.environ[name] = previous
+
+
+class EnvVarTestCase(unittest.TestCase):
+    """Sets environment variables for the duration of a test, and restores them."""
+
+    def set_env_var(self, name: str, value: str | None) -> None:
+        self.addCleanup(_restore_env_var, name, os.environ.get(name))
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value
+
+
+class BridgeTestCase(EnvVarTestCase):
     """Points the bridge client at a fake, and forgets the handshake memo.
 
     The memo is process-wide and deliberately so - it is what stops a probe

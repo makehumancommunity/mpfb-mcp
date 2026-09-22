@@ -91,16 +91,13 @@ def register(mcp: FastMCP) -> None:
         outright, because the underlying MPFB function would happily delete
         either.
         """
-        # `result` (built in codegen/payloads/remove_asset.py, or by
-        # bridge/mpfb_bridge/commands/remove_asset.py) is plain JSON-safe
-        # data, so strict_json=True surfaces a clear error if that ever stops
-        # being true.
+        # `result` (built in bridge/mpfb_bridge/commands/remove_asset.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "remove_asset.py",
-            bootstrap="raising",
-            shared=["performed.py"],
+            "remove_asset",
             params={
                 "name": _validated_name(name),
             },
-            strict_json=True,
         )

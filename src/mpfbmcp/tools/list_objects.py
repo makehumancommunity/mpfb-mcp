@@ -86,12 +86,11 @@ def register(mcp: FastMCP) -> None:
         cache: loading another .blend, or the user deleting an object,
         invalidates it entirely.
         """
-        # `result` is always plain JSON-safe data, so strict_json=True to
-        # surface a clear error if that ever stops being true, rather than
-        # silently falling back to `repr`.
+        # `result` (built in bridge/mpfb_bridge/commands/list_objects.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "list_objects.py",
-            bootstrap="raising",
+            "list_objects",
             params={"object_type": _validated_object_type(object_type)},
-            strict_json=True,
         )

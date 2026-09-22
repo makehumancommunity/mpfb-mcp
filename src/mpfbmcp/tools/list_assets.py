@@ -164,13 +164,12 @@ def register(mcp: FastMCP) -> None:
         keyed by a label derived from the filename alone, so two assets whose
         filenames differ only in case or underscores collapse into one entry.
         """
-        # `result` (built in codegen/payloads/list_assets.py) is always plain
-        # JSON-safe data - notably the cached items' `thumb` preview object is
-        # dropped rather than reported - so strict_json=True to surface a clear
-        # error if that ever stops being true.
+        # `result` (built in bridge/mpfb_bridge/commands/list_assets.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "list_assets.py",
-            bootstrap="raising",
+            "list_assets",
             params={
                 "asset_subdir": _validated_text(
                     asset_subdir, "asset_subdir",
@@ -189,6 +188,4 @@ def register(mcp: FastMCP) -> None:
             # an asset subdir to find the file. One implementation of MPFB's
             # section table, so the catalogue and the action cannot disagree
             # about what an entry means.
-            shared=["asset_sections.py"],
-            strict_json=True,
         )

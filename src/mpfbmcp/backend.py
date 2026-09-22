@@ -1,247 +1,107 @@
 """
-The seam: which transport a tool's call travels over, decided below the send.
+The seam: the one function every tool's call to Blender goes through.
 
-**A tool says what it wants done; this module decides how the request
-travels.** That is the whole of the design, and the value of it is entirely in
-what a tool does *not* contain: no branch on a backend, no second parameters
-dict, no import of a transport client. A tool calls ``backend.send()`` with
-exactly what it was already handing to ``codegen.assemble()`` - the payload's
-filename, its parameters, its bootstrap - and this module either assembles that
-program and sends it to blender_mcp, or looks the payload up in
-:data:`MIGRATED_COMMANDS` and sends a named command to the MPFB Bridge instead.
-If supporting the bridge ever requires editing a tool module, the seam is in
-the wrong place; see
-[Supporting a second backend](../../specifications/architecture.md#supporting-a-second-backend).
+**A tool says what it wants done; this module is where the saying becomes a
+socket call.** With one transport left that looks like an indirection with
+nothing to indirect, and it earns its place for a different reason than the one
+it was built for. What a tool module contains is a description, an argument
+contract, local validation and one call; what it must *not* contain is a
+protocol. Twenty-four modules importing ``bridge_connection`` directly would
+put the wire's vocabulary - the command name, the framing, the handshake, the
+address variables - inside every tool, and the next change to any of it would
+be twenty-four edits made twenty-four times. There is one place that knows a
+call leaves this process, and this is it. See
+[Supporting a second backend](../../specifications/architecture.md#supporting-a-second-backend)
+for how the seam was chosen and what happened to the second backend that named
+it.
 
-**The backend is configuration, never a probe.** ``MPFB_MCP_BACKEND`` names it,
-and since FR 032 the default is the **bridge**.
-Both third-party MCP add-ons answer on 9876 and the bridge on 9877, and no
-single probe distinguishes any of them - a NUL-terminated ping leaves the
-community add-on's parser waiting for the rest of a message, while an
-unterminated one leaves blender lab's doing the same. An unrecognised name is
-an **error rather than a fallback**: a typo that quietly leaves every call on
-the old path is indistinguishable from the bridge not working, which is the
-most expensive shape a configuration mistake can take.
+**A command name, and the parameters a tool has already validated.** Both sides
+receive the tool's arguments unreshaped - there is deliberately no escape hatch
+for a tool that would want to send something other than what it was given. If
+one ever does, that is a design problem to surface in that tool's own effort
+rather than a flexibility to carry here unused.
 
-**One table says what has been migrated.** :data:`MIGRATED_COMMANDS` maps a
-payload's filename to the bridge command that replaces it. A payload in it
-travels over whichever transport is configured; a payload not in it travels the
-generated path in *both* configurations, because there is nothing else it could
-do. The table is therefore the migration's progress bar, and the last stage of
-the pivot deletes it by emptying it.
+**The envelope is this package's, and the bridge writes it.** ``status``,
+``result`` and ``message`` keep their spellings and their meanings; a failure
+additionally carries ``error``, the short slug a caller branches on, and
+``protocol_version``. Nothing is synthesised or rewritten on the way through -
+every error envelope is built by one function in the add-on
+([command_server.py](../../bridge/mpfb_bridge/command_server.py)'s ``_error``),
+which is why there is nothing for this module to fill in.
 
-**The envelope is this package's, and both transports produce it.** ``status``,
-``result`` and ``message`` keep their spellings and their meanings, so no
-existing caller changes. What is added is ``error``, the slug a caller branches
-on, which the bridge writes itself and which an error from the generated path
-is given here - ``command_failed``, which is a statement of fact rather than a
-guess, since a blender_mcp error envelope is always a program that raised
-inside Blender. Nothing else is synthesised: ``protocol_version`` is a fact
-about the bridge's protocol and is absent from a generated-code answer rather
-than invented for it.
+**One variable is read here that nothing acts on.** ``MPFB_MCP_BACKEND`` chose
+between two transports until FR 033 deleted the second, and a value left behind
+in somebody's MCP client configuration would otherwise be obeyed by nothing and
+reported by nothing. It gets one line on this package's logger instead, which
+is the whole of its remaining behaviour - and never on stdout, which is the
+JSON-RPC channel.
 """
 
 from __future__ import annotations
 
 __all__ = (
-    "BACKENDS",
-    "BACKEND_BLENDER_MCP",
-    "BACKEND_BRIDGE",
     "BACKEND_VARIABLE",
-    "ERROR_COMMAND_FAILED",
-    "MIGRATED_COMMANDS",
-    "as_common_envelope",
-    "command_for",
-    "preferred_backend",
     "send",
 )
 
 import os
 
-from mpfbmcp import bridge_connection, codegen, shared_cache
-from mpfbmcp.connection import send_code
+from mpfbmcp import bridge_connection, observability
 
+# Read only to say that it is no longer read. Kept as a named constant rather
+# than a string in one function because the test that asserts the warning fires
+# should be naming the same thing the docstring above does.
 BACKEND_VARIABLE = "MPFB_MCP_BACKEND"
 
-BACKEND_BLENDER_MCP = "blender_mcp"
-BACKEND_BRIDGE = "bridge"
+_LOG = observability.get_logger(__name__)
 
-# In preference order for a reader rather than for the code: the first is the
-# default. It became the bridge in FR 032, once every tool that crosses the
-# socket had a command and the two paths had been compared field by field
-# against one Blender.
-BACKENDS = (BACKEND_BRIDGE, BACKEND_BLENDER_MCP)
-
-# What a generated-code failure is called in this package's envelope. The same
-# spelling the bridge uses for the same thing, deliberately: a caller branching
-# on ``error`` must not have to learn which transport answered it.
-ERROR_COMMAND_FAILED = "command_failed"
-
-# Payload filename -> bridge command name. **This is the list of what has been
-# migrated**, and it is meant to be read as one: one line per tool that has
-# moved, in the order they moved. A tool absent from it has no bridge command
-# and takes the generated path whatever is configured.
-MIGRATED_COMMANDS = {
-    "list_objects.py": "list_objects",
-    # FR 031, batch A: the introspection tools, which carry no shared fragment.
-    # ``get_status.py`` is the one entry whose command is **not** its payload's
-    # name, and the exception is deliberate: the bridge already has a
-    # ``get_status`` reporting the *bridge*, and this one reports *MPFB*. Two
-    # commands answering "status" about two different pieces of software is a
-    # collision that is cheap now and permanent later.
-    "get_status.py": "get_mpfb_status",
-    "get_object_info.py": "get_object_info",
-    "get_macro_details.py": "get_macro_details",
-    # Batch B: the first migrated tool carrying a shared fragment, which is
-    # what the `shared` / `cached_shared` arguments above exist for.
-    "list_presets.py": "list_presets",
-    # Batch C: the asset library, and the two fragments whose whole purpose is
-    # that a catalogue and an acting tool agree about what an entry means.
-    "list_rigs.py": "list_rigs",
-    "list_assets.py": "list_assets",
-    "list_asset_materials.py": "list_asset_materials",
-    # Batch D: the two heaviest, and the ones whose migration removes the
-    # session source cache's reason for existing - between them they carried
-    # 26 KB of fragment source on every cold call.
-    "list_targets.py": "list_targets",
-    "get_target_stack.py": "get_target_stack",
-    # FR 032, batch A: the first two commands that **change** a .blend, and with
-    # them the last two shared fragments. `create_human.py` carries
-    # `performed.py` and `refit_human.py` carries `refit_blocker.py`, so after
-    # these two no fragment is without a counterpart under
-    # `bridge/mpfb_bridge/shared/`.
-    "create_human.py": "create_human",
-    "refit_human.py": "refit_human",
-    # Batch B: the modeling tools. The batched one and the destructive one are
-    # here, and between them they are where a mutating command's two hardest
-    # obligations get their second implementation - resolve every entry before
-    # writing any, and a dry run that reports changes it did not make.
-    "set_macro_details.py": "set_macro_details",
-    "set_targets.py": "set_targets",
-    "symmetrize_targets.py": "symmetrize_targets",
-    # Batch C: rigs and assets, and with them the two fragments that stopped
-    # straddling - `rig_lookup.py` now has both its catalogue and its acting
-    # command on the bridge, and so does `asset_sections.py`.
-    "add_rig.py": "add_rig",
-    "generate_rigify_rig.py": "generate_rigify_rig",
-    "add_asset.py": "add_asset",
-    "remove_asset.py": "remove_asset",
-    # Batch D: materials. `set_asset_material` is the one command in the table
-    # with no service function behind it at all - the mechanism exists only in
-    # a UI operator, reimplemented from services with three of its quirks
-    # reproduced rather than tidied up.
-    "set_skin.py": "set_skin",
-    "set_asset_material.py": "set_asset_material",
-    # Batch E: the two that write outside the `.blend`, and the one that
-    # answers *because* Blender is unreachable. With these the table holds
-    # twenty-four entries, which is every tool that crosses the socket -
-    # `mpfb_list_docs` has no payload and never did. That is FR 032's finish
-    # line and FR 033's precondition.
-    "save_preset.py": "save_preset",
-    "create_human_from_preset.py": "create_human_from_preset",
-    "list_urls.py": "list_urls",
-}
+# Whether the warning below has been emitted in this process. A stale variable
+# does not become less stale during a session, and a line per call would be its
+# own kind of damage - the same reasoning observability._warn_once() is built on.
+_warned_about_backend_variable = False
 
 
-def preferred_backend() -> str:
-    """Which backend this process has been configured to use.
+def send(command: str, *, params: dict[str, object] | None = None) -> dict[str, object]:
+    """Perform one tool's call: name a command, hand over its parameters.
 
-    **Defaults to the bridge since FR 032**, and the flip was the last thing
-    that effort did rather than the first. What earned it: every tool that
-    crosses the socket has a command, and the two paths were compared answer by
-    answer *and scene by scene* against one Blender before the default moved.
+    ``command`` is a key of the add-on's closed vocabulary
+    ([commands/table.py](../../bridge/mpfb_bridge/commands/table.py)), which is
+    the one file that says everything this package can ask Blender to do. Tool
+    module, command module and test module share a name - ``mpfb_set_skin`` is
+    ``tools/set_skin.py``, ``commands/set_skin.py`` and ``tests/test_set_skin.py``
+    - with one deliberate exception: ``mpfb_get_status`` sends ``get_mpfb_status``,
+    because the bridge has a ``get_status`` of its own reporting the *add-on*,
+    and two commands answering "status" about two different pieces of software
+    is a collision that is cheap now and permanent later.
 
-    The generated path stays and stays working - ``MPFB_MCP_BACKEND=blender_mcp``
-    is one word - so FR 033 deletes a path that has been unused for a while
-    rather than one that was carrying every call until the commit before. That
-    ordering is the whole reason the flip is a separate step from the
-    migrations.
+    Raises ``ConnectionError`` when the bridge cannot be reached at all, rather
+    than returning an envelope: an unreachable add-on is a different kind of
+    fact from a command that failed, and ``mpfb_list_urls`` is the one tool that
+    catches it and answers anyway.
     """
+    _warn_if_backend_variable_is_set()
+    return bridge_connection.send_command(command, params or {})
+
+
+def _warn_if_backend_variable_is_set() -> None:
+    """Say once that ``MPFB_MCP_BACKEND`` is set and is not read any more.
+
+    The silent alternative is the expensive one. Somebody who pinned the
+    variable to ``blender_mcp`` while the generated path existed would otherwise
+    get a working server that ignores the setting, and would have no way to tell
+    that from a setting that is being honoured - which is the same argument that
+    made an *unrecognised* value an error rather than a fallback while there
+    were still two backends to choose between.
+    """
+    global _warned_about_backend_variable  # pylint: disable=global-statement
+    if _warned_about_backend_variable:
+        return
     configured = os.environ.get(BACKEND_VARIABLE, "").strip()
     if not configured:
-        return BACKEND_BRIDGE
-    if configured not in BACKENDS:
-        raise ValueError(
-            "{:s}={!r} is not a backend this server knows. Set it to one of {:s}, or leave it "
-            "unset for {:s}.".format(
-                BACKEND_VARIABLE, configured, ", ".join(BACKENDS), BACKEND_BRIDGE))
-    return configured
-
-
-def command_for(payload: str) -> str | None:
-    """The bridge command that has replaced one payload, or ``None``."""
-    return MIGRATED_COMMANDS.get(payload)
-
-
-def send(payload: str, *, params: dict[str, object] | None = None,
-         bootstrap: str = "raising", strict_json: bool = True,
-         shared: list[str] | None = None,
-         cached_shared: list[str] | None = None) -> dict[str, object]:
-    """Perform one tool's call over whichever transport is configured.
-
-    ``payload``, ``params`` and ``bootstrap`` are what the tool would have
-    handed to ``codegen.assemble()``, and they are unchanged by a migration:
-    **both sides receive the tool's already-validated arguments and neither
-    reshapes them**. There is deliberately no escape hatch for a tool whose two
-    paths would want different parameters. If one ever does, that is a fact
-    worth surfacing as a design problem in that tool's own effort rather than a
-    flexibility worth carrying here unused.
-
-    ``shared`` and ``cached_shared`` are likewise passed straight through -
-    **on the generated path**, where a fragment is a file concatenated ahead of
-    a payload and ``cached_shared`` additionally means "send its source once per
-    Blender session" (see :mod:`mpfbmcp.shared_cache`). On the bridge path they
-    are **ignored**, because the bridge assembles nothing: what a fragment
-    models has become a module in ``bridge/mpfb_bridge/shared/`` that the
-    command imports. A tool therefore names its fragments the same way whatever
-    transport it is on, which is what keeps the seam below the send for the five
-    migrated tools that carry them.
-
-    ``strict_json`` belongs to the generated path alone - it asks blender_mcp
-    to fail loudly rather than fall back to ``repr`` for a result that is not
-    JSON-safe. The bridge does the equivalent unconditionally, serializing a
-    result before it commits to an answer.
-    """
-    command = command_for(payload)
-    if command is not None and preferred_backend() == BACKEND_BRIDGE:
-        return bridge_connection.send_command(command, params or {})
-
-    if cached_shared:
-        # The session source cache is generated-path machinery and lives below
-        # this seam rather than beside the tools, which is what lets a tool
-        # carrying fragments be migrated without the tools left behind losing
-        # it. It dies with the generated path.
-        return as_common_envelope(shared_cache.send(
-            payload, params or {}, shared=shared, cached_shared=cached_shared,
-            bootstrap=bootstrap, strict_json=strict_json))
-
-    code = codegen.assemble(payload, bootstrap=bootstrap, params=params or {}, shared=shared)
-    return as_common_envelope(send_code(code, strict_json=strict_json))
-
-
-def as_common_envelope(response: object) -> object:
-    """Give a generated-code error the slug this package's envelope carries.
-
-    Narrow on purpose, in both directions. A **success** envelope is returned
-    exactly as it arrived, in every configuration - which is the rule
-    [a success envelope is untouched](../../specifications/observability.md)
-    states for diagnostics and which holds here for the same reason. And an
-    envelope that already carries an ``error`` is left alone, since the only
-    thing that puts one there is the bridge, which knows better than this
-    function what went wrong.
-
-    The mapping happens here rather than in ``connection.py`` because that
-    module's claim to be a faithful duplicate of blender_mcp's protocol is what
-    lets an upstream change be mirrored by hand. The additions stay around the
-    protocol, exactly as the observability additions did.
-    """
-    if not isinstance(response, dict) or response.get("status") != "error":
-        return response
-    if "error" in response:
-        return response
-    # Rebuilt rather than mutated, so that ``error`` sits beside ``status``
-    # where a reader looks for it, and so that a caller still holding the
-    # original dict is not surprised by a key appearing in it.
-    mapped: dict[str, object] = {"status": "error", "error": ERROR_COMMAND_FAILED}
-    mapped.update({key: value for key, value in response.items() if key != "status"})
-    return mapped
+        return
+    _warned_about_backend_variable = True
+    _LOG.warning(
+        "%s=%s is set, and is no longer read: the generated-code path it chose between was "
+        "removed in FR 033 and every tool talks to the MPFB Bridge. Use MPFB_BRIDGE_HOST and "
+        "MPFB_BRIDGE_PORT to address the bridge, and unset this.",
+        BACKEND_VARIABLE, configured)

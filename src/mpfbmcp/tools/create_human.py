@@ -99,17 +99,14 @@ def register(mcp: FastMCP) -> None:
             },
         }
 
-        # `result` (built in codegen/payloads/create_human.py, or by
-        # bridge/mpfb_bridge/commands/create_human.py) is always plain JSON-safe
-        # data, so strict_json=True to surface a clear error if that ever stops
-        # being true, rather than silently falling back to `repr`.
+        # `result` (built in bridge/mpfb_bridge/commands/create_human.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
         return backend.send(
-            "create_human.py",
-            bootstrap="raising",
+            "create_human",
             # The uniform `performed` flag, which every mutating tool reports.
             # A fragment on the generated path; a module the command imports on
             # the bridge, named the same way either way.
-            shared=["performed.py"],
             params={"macro_detail_dict": macro_detail_dict, "scale": scale},
-            strict_json=True,
         )

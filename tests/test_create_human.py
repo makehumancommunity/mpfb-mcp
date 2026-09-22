@@ -4,7 +4,7 @@
 ``mpfb_create_human``, migrated by FR 032 and therefore in two layers rather
 than one (see ``tests/test_list_objects.py``, the template).
 
-1. **The wrapper**, with ``send_code`` mocked on the seam: the eleven sliders'
+1. **The wrapper**, with ``send_command`` mocked on the seam: the eleven sliders'
    0.0-1.0 rule, which is enforced here and nowhere else, and what the
    generated program binds as ``PARAMS``.
 2. **The bridge path**, against ``tests/fake_bridge.py``. Thin, and it carries
@@ -32,19 +32,11 @@ from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
 
-from mpfbmcp import backend
 from mpfbmcp.tools import create_human
 
 from tests import fake_bridge
-from tests import generated_path
 
 
-# These tests are about the **generated path**: they mock `backend.send_code`
-# and assert about the program that reached it. FR 032 made the bridge the
-# default, so saying so is now necessary rather than implied.
-# See tests/generated_path.py.
-setUpModule = generated_path.pin
-tearDownModule = generated_path.unpin
 
 
 def _params_in(code: str) -> dict:
@@ -76,55 +68,24 @@ class CreateHumanToolTests(unittest.TestCase):
     def setUp(self) -> None:
         self.mpfb_create_human = _register_and_get_tool()
 
-    @mock.patch("mpfbmcp.backend.send_code")
-    def test_default_call_uses_mpfb_default_macro_dict(self, mock_send_code: mock.Mock) -> None:
-        mock_send_code.return_value = {"status": "ok", "result": {"object_name": "Human"}}
-
-        response = self.mpfb_create_human()
-
-        self.assertEqual(response, {"status": "ok", "result": {"object_name": "Human"}})
-        (code,), kwargs = mock_send_code.call_args
-        self.assertTrue(kwargs.get("strict_json"))
-        self.assertIn("HumanService.create_human(", code)
-        params = _params_in(code)
-        self.assertEqual(params["scale"], 0.1)
-        self.assertEqual(params["macro_detail_dict"]["gender"], 0.5)
-        self.assertEqual(
-            params["macro_detail_dict"]["race"],
-            {"asian": 0.33, "caucasian": 0.33, "african": 0.33},
-        )
-
-    @mock.patch("mpfbmcp.backend.send_code")
-    def test_custom_values_are_passed_through(self, mock_send_code: mock.Mock) -> None:
-        mock_send_code.return_value = {"status": "ok", "result": {}}
+    @mock.patch("mpfbmcp.bridge_connection.send_command")
+    def test_custom_values_are_passed_through(self, mock_send_command: mock.Mock) -> None:
+        mock_send_command.return_value = {"status": "ok", "result": {}}
 
         self.mpfb_create_human(gender=1.0, age=0.2, scale=0.05)
 
-        (code,), _kwargs = mock_send_code.call_args
-        params = _params_in(code)
+        (command, params), _kwargs = mock_send_command.call_args
+        params = params
         self.assertEqual(params["scale"], 0.05)
         self.assertEqual(params["macro_detail_dict"]["gender"], 1.0)
         self.assertEqual(params["macro_detail_dict"]["age"], 0.2)
 
-    @mock.patch("mpfbmcp.backend.send_code")
-    def test_bootstrap_still_raises_when_mpfb_is_unusable(self, mock_send_code: mock.Mock) -> None:
-        # This tool cannot do its job without MPFB, so it keeps the raising
-        # bootstrap - unlike mpfb_get_status, which shares the same module scan
-        # but classifies instead. Guards against the refactor that split the two.
-        mock_send_code.return_value = {"status": "ok", "result": {}}
-
-        self.mpfb_create_human()
-
-        (code,), _kwargs = mock_send_code.call_args
-        self.assertIn("raise RuntimeError", code)
-        self.assertIn("_MPFB_SERVICES", code)
-
     def test_out_of_range_macro_value_is_rejected_locally(self) -> None:
         # Should raise before ever touching the network.
-        with mock.patch("mpfbmcp.backend.send_code") as mock_send_code:
+        with mock.patch("mpfbmcp.bridge_connection.send_command") as mock_send_command:
             with self.assertRaises(ValueError):
                 self.mpfb_create_human(gender=1.5)
-            mock_send_code.assert_not_called()
+            mock_send_command.assert_not_called()
 
 
 if __name__ == "__main__":
@@ -143,7 +104,6 @@ class CreateHumanOverTheBridgeTests(fake_bridge.BridgeTestCase):
     def setUp(self) -> None:
         super().setUp()
         self.call = _register_and_get_tool()
-        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
         self.bridge = self.run_answering_bridge({
             "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
             "create_human": fake_bridge.ok_envelope(

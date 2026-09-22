@@ -1,15 +1,17 @@
 """
 MCP server for MPFB (MakeHuman Plugin For Blender).
 
-Proof-of-concept: exposes MPFB-specific tools that run inside a running
-Blender instance, by sending generated Python code to the *existing,
-unmodified* blender_mcp add-on over its TCP socket (see connection.py).
+Proof-of-concept: exposes MPFB-specific tools that run inside a running Blender
+instance. A tool names a command from a closed vocabulary and hands over its
+parameters; the MPFB Bridge add-on - this project's own, in ``bridge/`` -
+dispatches it and answers over its TCP socket (see bridge_connection.py).
 
 This requires:
-  - Blender running with MPFB and the blender_mcp add-on installed & enabled.
-  - The blender_mcp add-on's socket server started (from its preferences panel).
-  - This server's client configuring BLENDER_MCP_HOST / BLENDER_MCP_PORT to
-    match, if not using the defaults (localhost:9876).
+  - Blender running with MPFB and the MPFB Bridge add-on installed & enabled.
+  - The bridge's command server started (from the add-on's preferences panel,
+    or ``blender --background --command mpfb_bridge`` for a headless one).
+  - This server's client configuring MPFB_BRIDGE_HOST / MPFB_BRIDGE_PORT to
+    match, if not using the defaults (127.0.0.1:9877).
 """
 
 from __future__ import annotations
@@ -62,8 +64,8 @@ def build_server() -> FastMCP:
         "mpfb-mcp",
         instructions=(
             "Tools for creating MakeHuman characters via the MPFB Blender add-on. "
-            "Requires the blender_mcp add-on's socket server to be running inside "
-            "Blender (see BLENDER_MCP_HOST / BLENDER_MCP_PORT), with the MPFB "
+            "Requires the MPFB Bridge add-on's command server to be running inside "
+            "Blender (see MPFB_BRIDGE_HOST / MPFB_BRIDGE_PORT), with the MPFB "
             "extension installed and enabled in that Blender instance. When an "
             "MPFB tool fails unexpectedly, call mpfb_get_status first: it reports "
             "whether MPFB is present, initialized and correctly configured. To act "
