@@ -1,6 +1,6 @@
 # Retire the generated-code path
 
-**Status:** Accepted
+**Status:** In progress
 
 This is [stage 4 of the pivot](../NEXT_STEPS.md#4-retire-the-generated-code-path), and it is the
 only stage that deletes rather than adds. [FR 028](../done/028-pivot-to-specific-addon/README.md)
