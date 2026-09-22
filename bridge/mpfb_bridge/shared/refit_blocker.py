@@ -1,11 +1,9 @@
 """
 When a refit would silently leave the rig behind.
 
-The bridge's copy of
-[`codegen/shared/refit_blocker.py`](../../../src/mpfbmcp/codegen/shared/refit_blocker.py),
-and character for character the same rule - asserted rather than intended by
-``tests/test_fragment_drift.py``. See [`__init__.py`](__init__.py) for why the
-two exist at once and what the ``services`` argument is doing there.
+**One implementation, imported by every command that needs it.** See
+[`__init__.py`](__init__.py) for why this directory exists beside
+``commands/`` and what the ``services`` argument is doing there.
 
 ``HumanService.refit()`` cannot refit a generated Rigify rig: only the meta rig
 carries the MakeHuman vertex data it would need, so with no meta rig left in the
@@ -34,9 +32,10 @@ sentences that read slightly differently, which a caller notices and no caller
 is misled by.
 """
 
-# The local binding below is spelled with MPFB's own capitalisation so that this
-# body stays identical to the fragment's and the drift check can compare it.
-# That is the whole reason for the disable.
+# The local bindings below are spelled with MPFB's own capitalisation -
+# ``LocationService = services["LocationService"]`` - rather than snake_case,
+# so that a body here reads the way MPFB's own source reads and can be
+# compared with it line for line. That is the whole reason for the disable.
 # pylint: disable=invalid-name
 
 __all__ = (

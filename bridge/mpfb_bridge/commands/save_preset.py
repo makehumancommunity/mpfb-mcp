@@ -50,11 +50,14 @@ is wrong: a custom rig present in user data serializes perfectly well, as
 ``custom.<name>``. So the condition is checked here, before anything is written,
 and refused with the real cause named.
 
-This reproduces ``codegen/payloads/save_preset.py`` rather than tidying it up.
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
 """
 
 # The local binding below is spelled with MPFB's own capitalisation, which is
-# what the payload this reproduces used.
+# what the program this replaced used.
 # pylint: disable=invalid-name
 
 __all__ = (

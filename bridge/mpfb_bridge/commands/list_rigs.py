@@ -15,7 +15,10 @@ drift from the action is worse than no prediction at all. ``add_rig`` is still
 on the generated path and still reads the fragment; ``tests/test_fragment_drift.py``
 is what keeps the two halves in step until it follows.
 
-**This reproduces ``codegen/payloads/list_rigs.py`` rather than tidying it up.**
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
 Four of its decisions look arbitrary and are not:
 
 - **The directory is the authority on which rigs exist, not MPFB's UI enum.**

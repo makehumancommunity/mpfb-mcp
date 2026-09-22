@@ -1,30 +1,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-``mpfb_create_human_from_preset``: the overrides, the settings dict, and a round trip.
+"""``mpfb_create_human_from_preset``: the overrides, and what crosses the socket.
 
-Three layers since FR 032 migrated it: the wrapper with ``send_command`` mocked on
-the seam, the **bridge path** against ``tests/fake_bridge.py``, and the payload
-against the stubs - the last **frozen**, since it is half of what FR 032's live
-comparison compares.
+Two layers (see ``tests/test_list_objects.py``, the template): the wrapper with
+``send_command`` mocked below the seam, and the **bridge path** against
+``tests/fake_bridge.py``. The wrapper carries most of it, because every
+override defaults to ``None`` rather than to MPFB's value - "not mentioned" and
+"set to the default" are different requests - and the preset name is held to
+the same whitelist ``mpfb_save_preset`` applies, so that a name that can be
+written is a name that can be looked up.
 
-The payload test that matters most is
-``test_every_key_mpfb_subscripts_is_in_the_settings_dict``, and what makes it
-mean anything is in the stub rather than here: ``StubHumanService
-.deserialize_from_dict()`` reads its eight settings keys with ``[]`` exactly as
-MPFB does, so a payload that assembled a settings dict from literals and forgot
-one really does raise ``KeyError`` in this suite. A stub that tolerated a partial
-dict would let the suite pass on precisely the bug the payload builds from
-``get_default_deserialization_settings()`` to avoid.
-
-The last class is a **round trip**: save a stub character, load what was
-written, compare. Both ends are stubs and neither is MPFB, so it establishes
-nothing about the character MPFB would build - but it is the only place the two
-payloads' assumptions about the same JSON are checked against each other rather
-than each against a fixture of its own.
-``bridge/test/tests/ppp_mutating/create_human_from_preset_test.py`` now does the
-same round trip against a real MPFB, which is where the claim about the
-*character* lives.
+What MPFB builds from a preset, and the settings dict it is built from - eight
+keys MPFB reads with ``[]``, so a dict missing one raises rather than
+degrading - are checked against a real MPFB in
+``bridge/test/tests/ppp_mutating/create_human_from_preset_test.py``, which does
+the save-and-load round trip there rather than between two stubs.
 
 Run with::
 

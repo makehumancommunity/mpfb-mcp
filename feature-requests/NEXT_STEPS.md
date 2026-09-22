@@ -10,28 +10,22 @@ records what has already landed and why. When an effort below is finished, move 
 
 ## A larger pivot: an MPFB-specific bridge add-on
 
-**[FR 028](done/028-pivot-to-specific-addon/README.md) is done — see
-[HISTORY.md](HISTORY.md#fr-028--the-pivot-to-a-bridge-add-on-decided-and-proved) for what it
-landed. It made the decision and proved the transport, and
-[FR 029](done/029-bridge-transport-and-skeleton/README.md) grew the add-on into something
-twenty-five commands can be added to, and [FR 030](done/030-backend-seam/README.md) built the
-seam on mpfb-mcp's side and migrated the first tool across it. The four efforts below are what
-remains, and they run in order.**
+**Four of the five stages are done, and stage 5 is the only one left.** The fundamental principle
+of the solution changed: instead of assembling Python programs and sending them over a third
+party's MCP add-on socket, MPFB's Blender-side logic moved into a companion add-on of our own — the
+**MPFB Bridge**, in [`bridge/`](../bridge) — with a closed command vocabulary and its own socket,
+and mpfb-mcp became a thin client. See [HISTORY.md](HISTORY.md) for what each stage landed:
+[FR 028](done/028-pivot-to-specific-addon/README.md) made the decision and proved the transport,
+[FR 029](done/029-bridge-transport-and-skeleton/README.md) grew the add-on,
+[FR 030](done/030-backend-seam/README.md) built the seam and migrated the first tool,
+[FR 031](done/031-introspection-and-catalogues-migrated/README.md) the next nine,
+[FR 032](done/032-creation-and-modification-migrated/README.md) the last fourteen, and
+[FR 033](done/033-retire-the-generated-code-path/README.md) deleted what they replaced.
 
-The fundamental principle of the solution changed: instead of assembling Python programs and
-sending them over a third party's MCP add-on socket, MPFB's Blender-side logic moves into a
-companion add-on of our own — the **MPFB Bridge**, in [`bridge/`](../bridge) — with a closed
-command vocabulary and its own socket, and mpfb-mcp becomes a thin client. FR 028 *planned* that
-pivot: it proved the transport, rewrote [vision.md](../specifications/vision.md) and
-[architecture.md](../specifications/architecture.md), and migrated no tool. What runs today is the
-generated-code path for twenty-four tools and for all twenty-five in the default configuration,
-documented as such in
-[The generated-code path](../specifications/architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired).
-
-**Every one of these lands with both paths still working.** That is the property the whole staged
-route is built on: the bridge and the generated-code path are comparable side by side on a real
-Blender at every stage, and the old one is deleted only when nothing uses it. Numbers are
-assigned when a request is started, not here.
+**Every migration landed with both paths still working**, which is the property the whole staged
+route was built on: the two were comparable side by side on a real Blender at every stage, the
+default moved only after they had been compared answer by answer *and scene by scene*, and the old
+one was deleted only once it had been carrying nothing for a while.
 
 <a id="1-bridge-transport-and-skeleton"></a>
 
@@ -70,7 +64,7 @@ been checked. The migration's cost is known: 4,664 bytes of program against 83 b
 461 ms against 58 ms at the add-on's default tick. Where a migrated tool is tested is now a rule
 rather than a judgement — everything the add-on side can check is checked there, against a real
 MPFB, and what stays in `tests/` is a closed list
-([testing.md](../specifications/testing.md#a-migrated-tool-is-tested-where-it-runs)). And the
+([testing.md](../specifications/testing.md#a-tool-is-tested-where-it-runs)). And the
 seam's table is the migration's progress bar: **the stages below add lines to it and the last one
 empties it.**
 
@@ -100,41 +94,27 @@ MPFB's own way out.
 What it hands to stage 4, beyond the obvious: the 60% rate held at **58%** over fourteen more
 modules, with `mpfb_list_urls` (24%) and `mpfb_create_human` (no payload layer at all) as the two
 informative outliers; the seven shared fragments all have counterparts, so
-[tests/test_fragment_drift.py](../tests/test_fragment_drift.py) straddles nothing and is now
+`tests/test_fragment_drift.py` straddles nothing and is now
 guarding two copies until one is deleted; and `mpfb_set_asset_material` kept its reimplementation,
 with the rule against importing MPFB's UI operator module restated in the command's own docstring
 rather than left to the specification — being an add-on made that import possible for the first
 time, which is precisely when a rule has to say why it still holds.
 
-### 4. Retire the generated-code path
+<a id="4-retire-the-generated-code-path"></a>
 
-**Scoped as [FR 033](033-retire-the-generated-code-path/README.md) (Accepted), and stage 3 is
-complete, so it can start.** Its first requirement is the check that says so, and FR 032's own
-live check already asserts it: twenty-four payloads, twenty-four commands, `mpfb_list_docs` the
-one legitimate exception. Four decisions it
-settles that this text left open: the seam survives as a single-transport `send()` rather than
-being deleted, `verification/`'s harness is rewritten on commands that already exist rather than
-the bridge growing instrument-serving ones, the frozen payload test layers are deleted without
-re-examination, and filing the 4 KB chunked read upstream is **not** part of it (see below).
+### ~~4. Retire the generated-code path~~ — done
 
-Delete `codegen/`, the session source cache and the seven shared fragments; empty the seam's
-`MIGRATED_COMMANDS` table and with it the last branch that knows there were two transports; fold
-what they taught into the specifications rather than losing it; drop blender_mcp from the install
-instructions — including the transitional two-add-on prerequisite
-[verification/README.md](../verification/README.md) now carries. Each payload deleted takes its
-frozen stub-executed test layer with it, which stage 2 measured at 27% of one test module for the
-dullest tool in the package, FR 031 measured at roughly 60% across nine more and FR 032 at 58%
-across the remaining fourteen. `tests/generated_path.py` goes with them: it exists only because
-twenty-five modules had to say they were about a path that is no longer the default.
-[tests/test_fragment_drift.py](../tests/test_fragment_drift.py) goes here too, and it goes for a
-good reason rather than a tidy one: it exists because a concept lives in two places at once, and
-after this stage it lives in one.
-This is also when
-[The generated-code path](../specifications/architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired)
-stops being a section of architecture.md and becomes something HISTORY.md remembers.
+**[FR 033](done/033-retire-the-generated-code-path/README.md) landed it** — see
+[HISTORY.md](HISTORY.md#fr-033--the-generated-code-path-retired). `codegen/`, the session source
+cache, the second wire client and the seam's branch are gone; the seam kept its name and its
+callers and takes a command name and a dict. The unit suite went from 1059 tests to 353, and what
+the deleted path cost, taught and measured is in HISTORY rather than in the specifications, which
+describe one machine again.
 
-Worth filing upstream on the way out, for everyone else's benefit rather than ours: see
-[Handle the 4 KB chunked read](#handle-the-4-kb-chunked-read-against-blender_mcp) below.
+Two things it deliberately did **not** do, both recorded here rather than left implied: it did not
+file the 4 KB chunked read upstream, which is [its own item](#file-the-4-kb-chunked-read-against-blender_mcp)
+below; and it did not give the bridge instrument-serving commands to keep `verification/`'s scratch
+scene working, which is [the open question](#should-the-bridge-serve-its-own-test-harness) below.
 
 ### 5. Publish and document
 
@@ -211,13 +191,15 @@ Both types should be supported, probably with different tool calls.
 [FR 024](done/024-documentation-urls/README.md), which landed for exactly this dependency.
 
 What remains is the downloading and installing, and FR 024 changed its shape rather than only
-unblocking it: **mpfb-mcp opens no network connection except the one to the blender_mcp add-on**
-is now a [standing constraint](../specifications/architecture.md#mpfb-mcp-opens-no-network-connection-except-the-one-to-the-add-on).
-So this effort cannot simply fetch a pack. Either the retrieval happens on the *Blender* side, in
-generated code, which is a different thing from mpfb-mcp opening a socket and needs to be argued
-explicitly rather than assumed; or the client is handed the address and the tool installs what the
-user has already downloaded. There is an operator for loading a pack from zip in MPFB which can be
-used as inspiration for the second half either way.
+unblocking it: **mpfb-mcp opens no network connection except the one to the add-on** is now a
+[standing constraint](../specifications/architecture.md#mpfb-mcp-opens-no-network-connection-except-the-one-to-the-add-on).
+So this effort cannot simply fetch a pack. Two options, and the first is a bigger decision than it
+looks: retrieval happens on the *Blender* side, which now means **a bridge command that opens an
+outbound connection** — the add-on currently accepts a loopback connection and originates nothing,
+so this would change what the extension does and what an extension reviewer is being asked to
+approve, and it has to be argued explicitly rather than assumed. Or the client is handed the
+address and the tool installs what the user has already downloaded. There is an operator for
+loading a pack from zip in MPFB which can be used as inspiration for the second half either way.
 
 ## Exporting characters
 
@@ -259,27 +241,28 @@ layout living in two places — the thing `shared/refit_blocker.py` exists to pr
 
 <a id="file-the-4-kb-chunked-read-against-blender_mcp"></a>
 
-## Handle the 4 KB chunked read against blender_mcp
+## File upstream: blender_mcp's 4 KB chunked read
 
-**The largest single cost in this package is one line in an add-on we do not own.**
-blender_mcp's `mcp_to_blender_server._service_clients()` does exactly one `conn.recv(4096)` per
-timer tick and then returns, so a request arrives at one 4 KB chunk per tick — 250 ms each while
-the add-on is busy, and 1 s each once five seconds have passed without a request *finishing*, since
-bytes arriving do not reset its idle countdown. A generated program therefore costs about 250 ms
-per 4 KB, or 1 s per 4 KB against the idle Blender an agent actually meets, **regardless of what
-the program does**: a 50 KB call is 3 s or 12 s of waiting before Blender has read the request.
+**A standalone item, and no longer attached to anything.** It was to be filed "on the way out" in
+the retirement stage; [FR 033](done/033-retire-the-generated-code-path/README.md) declined to carry
+it, on the grounds that it is not an engineering task, gates nothing, and would be the half of a
+deletion effort most likely to be dropped. It is worth doing on its own terms or not at all.
 
-**Since [FR 028](done/028-pivot-to-specific-addon/README.md) this is no longer our problem to solve,
-only ours to report.** The bridge sends parameters rather than programs, so once the migration
-completes there is no generated program whose size this tax is charged against — and the bridge's
-own transport already drains its socket per tick rather than reading one chunk, precisely so it
-does not inherit the defect. What remains worth doing is **filing it upstream**: it is a real
-defect costing every other user of that add-on the same thing it cost this project, the fix is a
-loop, and reporting it is cheap. Do that on the way out, in
-[the retirement stage of the pivot](#4-retire-the-generated-code-path), rather than letting it disappear with
-the code that suffered from it.
+**What to report.** blender_mcp's `mcp_to_blender_server._service_clients()` does exactly one
+`conn.recv(4096)` per timer tick and then returns, so a request arrives at one 4 KB chunk per
+tick — 250 ms each while the add-on is busy, and 1 s each once five seconds have passed without a
+request *finishing*, since bytes arriving do not reset its idle countdown. A request therefore
+costs about 250 ms per 4 KB, or 1 s per 4 KB against the idle Blender an agent actually meets,
+**regardless of what it asks for**: a 50 KB call is 3 s or 12 s of waiting before Blender has
+read it. The fix is a loop.
 
-The related question — whether the community add-on has the same problem — is now moot for this
+**Why file it at all, now that it costs this project nothing.** It was the largest single cost in
+this package for its whole first year — the full measurement and how it was taken are in
+[HISTORY.md](HISTORY.md#fr-033--the-generated-code-path-retired) — and it costs every other user of
+that add-on the same thing. The bridge's own transport drains its socket per tick rather than
+reading one chunk, precisely so as not to inherit the defect, which is also the patch.
+
+The related question — whether the community add-on has the same problem — is moot for this
 project's purposes; see the superseded entry below.
 
 <a id="second-backend-the-community-blender-mcp"></a>
@@ -295,15 +278,41 @@ abstract: once no program crosses the socket, there is no third-party add-on in 
 choose between, and a user running either one is pointed at the bridge instead — one extension
 rather than two, and one that does not execute what it is sent.
 
-**Two findings from that comparison outlive the plan**, and both are load-bearing now. The seam
-it designed — an adapter *below* the send, invisible to tools — is where the bridge is being
-fitted; see
+**Two findings from that comparison outlive the plan**, and both proved their worth. The seam it
+designed — an adapter *below* the send, invisible to tools — is where the bridge was fitted; see
 [Supporting a second backend](../specifications/architecture.md#supporting-a-second-backend),
-which keeps its name for exactly that reason. And its conclusion that **backend selection must be
-explicit configuration, never autodetection** matters more with three candidate ports than it did
-with two. The substantive difference it identified between the two add-ons — the result channel,
-the exec namespace's `result` dict against captured stdout — is now a fact about software this
-project no longer talks to.
+which keeps its name for exactly that reason, and note that the same property made the *removal*
+of a transport cheap as well as its addition. And its conclusion that **backend selection must be
+explicit configuration, never autodetection** is what made a typo an error rather than a silent
+fallback for as long as there was a choice to get wrong. The substantive difference it identified
+between the two add-ons — the result channel, the exec namespace's `result` dict against captured
+stdout — is now a fact about software this project no longer talks to.
 
 See [vision.md](../specifications/vision.md#superseded-which-blender-mcp-neither-in-the-end).
 
+<a id="should-the-bridge-serve-its-own-test-harness"></a>
+
+## Should the bridge serve its own test harness?
+
+**Raised by [FR 033](done/033-retire-the-generated-code-path/README.md), which declined to answer
+it.** The smoke run in [verification/](../verification/) used to make a scratch scene, build in it,
+snapshot twelve `bpy.data` collections plus `is_dirty`, delete everything it had made and compare —
+all by sending Python to an add-on that executed it. The bridge executes nothing, so all of that
+went: the run now builds in whatever scene it finds, **leaves five MakeHuman objects and roughly
+500 Rigify bone widgets behind**, and can compare only what `mpfb_list_objects` sees.
+[verification/README.md](../verification/README.md#what-fr-033-cost-this-instrument) says so where
+somebody reading a passing run will see it.
+
+FR 033 decided that *a verification harness is not a reason to reopen the hole the whole pivot
+exists to close*, and that is still the right default. The open question is whether a small,
+named, non-`exec` vocabulary — "make a scene", "delete these objects", "list these datablock
+collections" — is worth adding anyway. **It is not an obvious no.** Those are ordinary Blender
+operations, they carry no caller-supplied code, and they would restore an assertion the project
+had for twenty efforts. **It is not an obvious yes either**: every command is something an
+extension reviewer has to be shown, `commands/table.py`'s claim is that a reader of one file knows
+everything the add-on can be asked to do, and a delete command is the first entry in that table
+that exists for a test rather than for a user.
+
+Whoever takes this should weigh it as an extension-surface decision rather than a testing one, and
+should cost the alternative first: the run is 1.5 s against a headless Blender started for the
+purpose, and killing that Blender is already a complete cleanup.

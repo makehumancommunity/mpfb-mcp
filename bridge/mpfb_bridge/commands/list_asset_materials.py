@@ -12,8 +12,10 @@ and the search roots that make an empty answer explainable.
 name it and why this command exists at all: the materials beside a hat live in
 the hat's own directory, not in a subdir MPFB catalogues.
 
-**This reproduces ``codegen/payloads/list_asset_materials.py`` rather than
-tidying it up.** Three of MPFB's behaviours shape it and all three look wrong:
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration. Three of MPFB's behaviours shape it and all three look wrong:
 
 - **The answer is stale by design.** That function caches per
   ``(asset_source, asset_subdir)`` in a module-level dict that nothing

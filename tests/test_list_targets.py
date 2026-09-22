@@ -1,33 +1,19 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_list_targets tool: argument validation, and the generated
-code's two-source scan of the bundled index and the user target directories.
+"""Tests for the mpfb_list_targets tool: argument validation, and what crosses the
+socket.
 
-Migrated by FR 031, so three layers rather than two (see
-``tests/test_list_objects.py``, the template). **The payload layer is frozen**,
-and this is the tool whose migration mattered most to measure: it carried 26 KB
-of shared fragment source on a cold call, which is the number
-``src/mpfbmcp/shared_cache.py`` exists because of, and over the bridge it is a
-single JSON request. What it *answers* is now asked of a real MPFB in
-``bridge/test/tests/nnn_list_targets_test.py``.
+Two layers (see ``tests/test_list_objects.py``, the template): the wrapper with
+``send_command`` mocked below the seam, and the bridge path against
+``tests/fake_bridge.py``.
 
-The share of this module that goes with the payload: 420 of its 719 lines, 58%.
-
-Formerly two layers, as in tests/test_get_status.py: the tool wrapper with
-send_command mocked, then the assembled source executed against the stub services in
-tests/blender_stubs.py. As in tests/test_list_rigs.py the tree those run against
-is a real temporary directory, because most of this payload is filesystem logic
-- os.walk(), os.listdir(), an rglob through the stub AssetService - and mocking
-that away would leave nothing under test.
-
-The tree reproduces the awkward parts of a real install, since each is a branch
-the payload exists to get right: a section name present in *both* the bundled
-index and a user directory (MPFB merges those rather than keeping them apart),
-a section with no categories, bundled directories with no section at all, a
-directory holding no targets, a ``.target.gz`` where MPFB's own scan matches
-only ``*.target``, a target reachable through two scans at once, and a name long
-enough that its shape key name is encoded and no longer equals its filename.
+This is the tool whose migration mattered most to measure: it carried 26 KB of
+shared fragment source on a cold call over the retired transport, which is the
+number the session source cache existed because of, and over the bridge it is a
+single JSON request. What it *answers* - the two-source scan that merges the
+bundled index with the user's own target directories, the ``.target.gz`` MPFB's
+own scan misses, the name long enough that its shape key name is encoded - is
+asked of a real MPFB in ``bridge/test/tests/nnn_list_targets_test.py``.
 
 Run with::
 
@@ -215,7 +201,7 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_an_unknown_section_is_not_rejected_locally(self):
         # Half the sections are synthesized from the user's own directories, so
         # a vocabulary kept here could not be right even in principle. The
-        # generated code answers it with section_recognized.
+        # far side answers it with section_recognized.
         with mock.patch.object(bridge_connection, "send_command") as send_command:
             send_command.return_value = {"status": "ok", "result": {}}
             self.tool(section="no-such-section")
@@ -245,19 +231,17 @@ class ListTargetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {
             "section": None, "name_contains": None, "limit": 200, "offset": 0})
 
-    def test_the_cached_fragment_does_not_reach_the_bridge(self):
-        # The one tool the session source cache was built for. On the bridge
-        # there is no source to cache: target_categories.py is a module the
-        # command imports, and the request is exactly the parameters. Nothing
-        # of `shared_cache`'s machinery - the loader, the fingerprint, the
-        # carried/reused marker - appears on this wire.
+    def test_the_request_is_exactly_the_parameters(self):
+        # The tool that used to carry the most source of any in the package.
+        # target_categories.py is a module the command imports, so the request
+        # is the four arguments and the protocol version, and nothing else.
         self.tool(section="arms", name_contains="Nose", limit=5, offset=10)
 
         request = self.bridge.decoded_requests()[-1]
+        self.assertEqual(set(request), {"command", "params", "protocol_version"})
         self.assertEqual(request["params"], {
             "section": "arms", "name_contains": "Nose", "limit": 5, "offset": 10})
         self.assertNotIn("target_categories", str(request))
-        self.assertNotIn("cached shared", str(request))
 
     def test_local_validation_runs_before_a_transport_is_chosen(self):
         for arguments in ({"limit": True}, {"limit": -1}, {"limit": 1001},

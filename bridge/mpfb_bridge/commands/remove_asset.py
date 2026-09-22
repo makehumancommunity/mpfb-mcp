@@ -31,7 +31,10 @@ file is saved and reloaded. Both are harmless, both are invisible, and both are
 reported - the response's job is to distinguish four different fates, not to
 claim one clean outcome.
 
-This reproduces ``codegen/payloads/remove_asset.py`` rather than tidying it up.
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
 """
 
 __all__ = (

@@ -1,32 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_list_assets tool: argument validation, and the generated
-code's filtering, paging and pack attribution over MPFB's asset cache.
+"""Tests for the mpfb_list_assets tool: argument validation, and what crosses the
+socket.
 
-Migrated by FR 031, so three layers rather than two (see
-``tests/test_list_objects.py``, the template): the wrapper with ``send_command``
-mocked on the seam, the bridge path against ``tests/fake_bridge.py``, and the
-payload against the stubs. **The payload layer is frozen.** What keeps the
-bridge half honest is ``tests/test_fragment_drift.py``, which compares
-``asset_sections.py`` against ``bridge/mpfb_bridge/shared/asset_sections.py``
-on every run, and ``bridge/test/tests/lll_list_assets_test.py``, which puts the
-questions below to a real MPFB over an asset library the test builds.
+Two layers (see ``tests/test_list_objects.py``, the template): the wrapper with
+``send_command`` mocked below the seam, and the bridge path against
+``tests/fake_bridge.py``. The wrapper carries the cap-and-page rules, which are
+about the size of an *answer* and are enforced here and nowhere else.
 
-The share of this module that goes with the payload: 325 of its 574 lines, 57%.
-
-Formerly two layers, as in tests/test_get_status.py: the tool wrapper with send_command
-mocked, then the assembled source executed against the stub services in
-tests/blender_stubs.py. Unlike tests/test_list_rigs.py there is no temporary
-directory here, because this payload never touches the filesystem - it asks
-AssetService, and what needs reproducing is that service's behavior rather than
-a directory layout.
-
-The stub library deliberately carries the awkward cases a real install has, each
-of which is a branch the payload exists to get right: an asset claimed by two
-packs, an asset claimed by none, a pack listing an asset that is not installed,
-two assets whose labels collide, and an asset sitting directly in the asset root
-rather than in a directory of its own.
+The awkward cases a real install has - an asset claimed by two packs, an asset
+claimed by none, a pack listing an asset that is not installed, two assets whose
+labels collide, an asset sitting directly in the asset root - are each a branch,
+and each is asked of a real MPFB in ``bridge/test/tests/lll_list_assets_test.py``
+over an asset library that test builds.
 
 Run with::
 

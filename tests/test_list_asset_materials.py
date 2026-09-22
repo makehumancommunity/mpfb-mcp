@@ -1,28 +1,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_list_asset_materials tool: the catalogue that is not a
-section, its cached snapshot, and what makes an empty answer explainable.
+"""Tests for the mpfb_list_asset_materials tool: argument validation, and what
+crosses the socket.
 
-Migrated by FR 031, so three layers rather than two (see
-``tests/test_list_objects.py``, the template). **The payload layer is frozen**,
-and the questions it asks are now put to a real MPFB in
-``bridge/test/tests/mmm_list_asset_materials_test.py`` - including the one this
-tool is most defined by, that MPFB's scan is cached per asset and nothing
-invalidates it.
+Two layers (see ``tests/test_list_objects.py``, the template): the wrapper with
+``send_command`` mocked below the seam, and the bridge path against
+``tests/fake_bridge.py``.
 
-The share of this module that goes with the payload: 213 of its 354 lines, 60%.
-
-Formerly two layers: the tool wrapper with send_command mocked,
-then the assembled source executed against the stub services and a real
-temporary asset library (tests/blender_stubs.py's MeshAssetTestCase). Real,
-because the scan this wraps globs `*.mhmat` off disk and matches on a path
-segment - mocking the filesystem away would leave nothing under test.
-
-What is *not* under test here, and cannot be: that MPFB's own scan finds the
-same files on a real install, or that the cache behaves as documented across a
-Blender session rather than across a stub. Both are live checks (see
-feature-requests/done/011-skin-and-materials).
+The questions this tool is defined by are put to a real MPFB in
+``bridge/test/tests/mmm_list_asset_materials_test.py`` - including the one that
+defines it most, that MPFB's scan is cached per asset and nothing invalidates
+it, so this tool's answer is stale by design and says so.
 
 Run with::
 

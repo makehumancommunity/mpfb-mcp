@@ -50,7 +50,7 @@ code-generation module. Two standing rules were recorded in
 [architecture.md](../specifications/architecture.md#readability-and-developer-experience-are-prioritized):
 readability and developer experience are prioritized non-functional requirements, generated code
 included; and the
-[code-generation layout](../specifications/architecture.md#code-generation-layout) new tools follow.
+`code-generation layout` new tools follow.
 
 A behavior-preserving refactor: no tool signature, docstring or response envelope changed, and a
 characterization diff against the pre-refactor output confirmed the only differences are the
@@ -87,7 +87,7 @@ Three standing conventions were recorded in
 reading module-level names MPFB does not publish — now covering non-`SERVICES` *entities* such as
 `GeneralObjectProperties`, not only constants — via `sys.modules[Service.__module__]`, never a
 fresh import, always with a fallback;
-[how generated code addresses objects](../specifications/tool-interface.md#how-generated-code-addresses-objects),
+[how generated code addresses objects](../specifications/tool-interface.md#how-a-tool-addresses-an-object),
 by Blender object name, listing scoped to the scene while resolution is scoped to the file, with
 "exists elsewhere" a distinct answer; and
 [how tools report the asset behind an object](../specifications/responses.md#how-tools-report-the-asset-behind-an-object),
@@ -110,7 +110,7 @@ every `related_objects` and `other_related_objects` entry carries its own `in_cu
 is the remedy the request had already named for the narrower case.
 
 Adding the two tools touched no shared code-generation module, as
-[the layout](../specifications/architecture.md#code-generation-layout) requires: two tool modules,
+the code-generation layout requires: two tool modules,
 two payload files, and two `register()` calls. The only shared edits were to `tests/test_codegen.py`,
 which hardcodes the payload list twice. Unit tests grew from 32 to 82, over a shared
 `tests/blender_stubs.py` that reimplements the MPFB behaviors above rather than returning
@@ -153,7 +153,7 @@ The convention behind all of that is now standing, as
 — the catalogue counterpart to FR 003's rules for naming an object, which FR 005 and FR 006 inherit.
 
 Three files added and three shared ones touched, as
-[the layout](../specifications/architecture.md#code-generation-layout) requires. Unit tests grew
+the code-generation layout requires. Unit tests grew
 from 89 to 129, over stubs extended to carry MPFB's real weights fallback table and the
 `pathlib.Path`/`str` split in `get_mpfb_root()`.
 
@@ -396,7 +396,7 @@ hundred-line scan of the user's target directories are three chances for two mpf
 disagree about what is installed, which is the very inconsistency the request rejects elsewhere. So
 `assemble()` grew an optional `shared=[...]`, the table lives in
 `codegen/shared/target_categories.py`, and
-[Shared fragments](../specifications/architecture.md#shared-fragments) records when one is
+[Shared modules](../specifications/architecture.md#shared-modules-and-what-warrants-one) records when one is
 warranted. FR 002's objective test still holds and was kept as the test of the design: adding an
 ordinary tool is still a tool module, a payload and a `register()` call, and a tool that wants a
 fragment names it in the `assemble()` call it was already making. `mpfb_list_targets` was
@@ -464,7 +464,7 @@ outcome. A caller who reads the catalogue and acts on it is entitled to get back
 promised, and MPFB resolves weights through a *fallback table* rather than by filename, so two
 implementations disagreeing would make an ordinary rig look broken in one tool and fine in the
 other. The overlap is about ten lines: too small to justify a fragment on size, and not justifiable
-as duplication on consequence. [Shared fragments](../specifications/architecture.md#shared-fragments)
+as duplication on consequence. [Shared modules](../specifications/architecture.md#shared-modules-and-what-warrants-one)
 now records that sharper rule, and one test asserts it directly by running both payloads against the
 same rig tree and comparing their answers.
 
@@ -685,7 +685,7 @@ default" true in letter and false in effect; the per-call line is gated on this 
 variable instead, and propagation is off while its own handler is attached, or each line prints
 twice. mcp's handler turns out to be a `RichHandler` on a `Console(stderr=True)`, so the transport
 was never actually at risk — but the margin was one library default, which is why
-[Stdout belongs to the transport](../specifications/observability.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program)
+[Stdout belongs to the transport](../specifications/observability.md#diagnostics-attach-at-the-socket-boundary-never-inside-blender)
 is now a standing rule rather than a warning in one docstring.
 
 The one caller-visible change is deliberately narrow, and was the request's own open question: an
@@ -827,7 +827,7 @@ key written twelve times is twelve chances to write it wrong in the branches nob
 two universal falsehoods — a refusal and an unresolved subject are never performed — live in the
 fragment, so no call site has to remember them. Eleven `shared=[...]` arguments were added to
 `assemble()` calls the tool modules were already making; no shared code-generation module was
-edited, which is the property [architecture.md](../specifications/architecture.md#shared-fragments)
+edited, which is the property [architecture.md](../specifications/architecture.md#shared-modules-and-what-warrants-one)
 asks a fragment to preserve. It also earns its place there on the same ground `rig_lookup.py` does:
 consequence, not size. Eleven implementations of the flag would be the original problem in a new
 spelling.
@@ -902,7 +902,7 @@ same name without using that fragment. The first pass, before the pairings were 
 five shadowings and every one was a false alarm. What the weaker signal does show is a migration
 candidate: `list_targets.py` defines `files_matching()` and `read_target_json()` that
 `target_categories.py` already has, which is the
-[migration](NEXT_STEPS.md#modeling) FR 017 carries.
+migration FR 017 carries.
 
 The census also shows this effort's own effect: `modifier_value()` is gone from the list, and
 `rig_refit_blocker()` is 4 copies in **2** variants — which is now the deliberate tense split
@@ -1104,7 +1104,7 @@ that exists elsewhere, and the copies had begun to disagree** — five times, ea
 for the same reason:
 
 - **The shared-fragment count.** CLAUDE.md said "There is exactly one so far", then described two.
-  Three exist; [architecture.md](../specifications/architecture.md#shared-fragments) said three and
+  Three exist; [architecture.md](../specifications/architecture.md#shared-modules-and-what-warrants-one) said three and
   carried a bullet on `asset_sections.py` that CLAUDE.md's `shared/` bullet lacked entirely.
 - **A three-way contradiction about local vocabulary validation.** CLAUDE.md called
   `generate_rigify_rig.py` "the only tool here that validates a vocabulary locally" and, eighty
@@ -1283,7 +1283,7 @@ than a habit, since there is no machine-readable contract to read: each item's k
 to the *description an MCP client downloads*, and that check caught two wrong keys on its first
 live run. And FR-7's justification for deleting `census.py` — that the drift question is "asserted
 per fragment" in `tests/test_codegen.py` — turned out to be true of two fragments out of six;
-[architecture.md](../specifications/architecture.md#shared-fragments) now says which two.
+[architecture.md](../specifications/architecture.md#shared-modules-and-what-warrants-one) now says which two.
 
 `verification/` is 1,163 lines rather than the 700 the request estimated — 4,272 lines of Python
 went, close to the 4,600 predicted, but more was left standing than the target allowed for. The
@@ -1739,7 +1739,7 @@ exists to avoid, and being add-on code does not weaken it.
 **The pairing guarantee is now asserted rather than intended.** A fragment exists because two tools
 must agree — `mpfb_list_rigs` predicting which weights `mpfb_add_rig` will load,
 `mpfb_list_assets` reporting the vocabulary `mpfb_add_asset` resolves with — and a migration splits
-exactly those pairs. [tests/test_fragment_drift.py](../tests/test_fragment_drift.py) parses both
+exactly those pairs. `tests/test_fragment_drift.py` parses both
 files with `ast`, strips docstrings, undoes the one declared substitution and compares what is
 left: **44 functions and 12 constants, with nothing declared uncomparable.** It refuses to pass
 vacuously, it fails if a name listed as uncomparable turns out to compare cleanly, and it runs on
@@ -1811,13 +1811,13 @@ costs in that Blender (250 ms for blender_mcp at its 0.25 s default, 50 ms for t
 | `mpfb_get_target_stack` | 39,757 B / 2,688 ms | 17,867 B / 1,262 ms | **161 B / 50 ms** |
 
 The bottom two rows are the ones
-[`shared_cache.py`](../src/mpfbmcp/shared_cache.py) exists for, and they now say three things at
+`shared_cache.py` exists for, and they now say three things at
 once. The cold-to-warm gap **is** the session source cache — 17,980 and 21,890 bytes of fragment
 source, sent once per Blender session — and it is real, saving 825 ms and 1,426 ms on
 `mpfb_list_targets` and `mpfb_get_target_stack`. It is also, against the bridge, beside the point:
 39,757 bytes becomes **161**, a factor of 247, and 2,688 ms becomes 50, a factor of 54. Every
 generated row costs one blender_mcp tick per 4 KB of program, exactly as
-[the cost model](../specifications/architecture.md#what-a-call-costs-is-the-size-of-its-program)
+[the cost model](HISTORY.md#fr-033--the-generated-code-path-retired)
 predicts, and every bridge row costs one tick. **One operational fact worth carrying**: an idle,
 unfocused GUI Blender was observed running its main loop at about 1 Hz however short an interval a
 timer asked for, which made both transports look ten to twenty times slower than they are — which
@@ -1926,3 +1926,166 @@ FR 032's own cleanup rule is about: Rigify's widget collection is linked to **no
 emptying the scratch scene cannot reach it — and left behind, it makes `verification/`'s
 scene-scoped cleanup miss its own widgets too, failing a check for a reason belonging to a script
 that had already exited.
+
+## [FR 033](done/033-retire-the-generated-code-path/README.md) — the generated-code path retired
+
+Deleted the machine [FR 028](done/028-pivot-to-specific-addon/README.md) decided to replace and
+the four efforts after it made unnecessary: `src/mpfbmcp/codegen/` entire — the assembler, the two
+bootstrap strings, the session source loader, twenty-four payloads and seven shared fragments —
+plus `shared_cache.py`, `connection.py`, the `pyproject.toml` package-data that shipped payloads as
+data, and every test that existed to exercise any of it. **The unit suite went from 1,059 tests to
+353** and lost about 23,800 lines. Nothing a tool answers changed, and the tool descriptions an MCP
+client downloads are byte-for-byte what they were: 58,529 B of descriptions and 9,709 B of schemas
+before and after.
+
+**It started with a check that it was allowed to start.** The deletion is irreversible in
+practice — a payload removed while its tool still needs it is not caught by any test that survives
+the same commit, because that test is deleted in it too — so
+[`check_precondition.py`](done/033-retire-the-generated-code-path/check_precondition.py) was
+written and run first: every registered tool either has a bridge command or no payload at all, the
+payload-free set is exactly `{mpfb_list_docs}`, and every table entry names a payload on disk and a
+registered tool. It passed at 25 tools, 24 migrated, one payload-free.
+
+**The seam kept its name and its callers and lost its branch.** `backend.send()` takes a command
+name and a dict; `MIGRATED_COMMANDS`, `command_for()`, `BACKENDS`, `preferred_backend()`,
+`as_common_envelope()` and `ERROR_COMMAND_FAILED` are gone, and so are `shared`, `cached_shared`,
+`strict_json` and `bootstrap` — the last one more than the request named, for the same reason the
+other three went: it selected between two prelude strings that no longer exist. Deleting the
+envelope mapping was checked rather than inferred: `command_server._error()` is the one place the
+add-on builds an error envelope and it always writes `error`. **`MPFB_MCP_BACKEND` is still read**,
+for exactly one purpose — a value left in somebody's client configuration produces one WARNING on
+the `mpfbmcp` logger, once per process, never on stdout. Obeyed by nothing and reported by nothing
+was the expensive option, and it is the same argument that made an unrecognised value an error
+while there was still a choice.
+
+**Keeping the seam rather than deleting it turned out to be the right call for a second reason.**
+It was kept so that twenty-five tool modules would not have to be edited in an effort whose whole
+claim is that it changes no behaviour. What the effort actually demonstrated is that *the property
+which made adding a transport cheap made removing one cheap too* — no tool module ever learned
+which transport it was on, so no tool module had to learn that there was now one.
+
+### What the path cost, measured
+
+**The add-on read one 4 KB chunk of the request per timer tick, and did nothing else with that
+tick.** A generated program therefore cost about **250 ms per 4 KB** against a Blender that had
+been talked to in the last five seconds, and about **1 s per 4 KB** against one that had not,
+because blender_mcp drops to a one-second tick after five seconds without a request *finishing* and
+arriving bytes do not count as work. A 50 KB program cost 3 s or 12 s, and it made no difference at
+all what the program computed. Measured, and predicted to within a few percent, by
+[FR 013](done/013-live-verification/README.md)'s cost measurements.
+
+Three things that number established, and they outlive it:
+
+- **"The round trip is 250 ms" was wrong**, and four decisions in this package were argued against
+  it. It was one *tick*; the empty program that produced the figure was one chunk long. The
+  decisions survived re-derivation on the real numbers, but the number was a measure of something
+  else.
+- **Prose in code sent over a wire is not free**, which is the one place
+  [readability is prioritized](../specifications/architecture.md#readability-and-developer-experience-are-prioritized)
+  was ever a trade rather than a straight win. "This explanation is worth 250 ms on every call that
+  carries it" was a real question to ask of a paragraph. It stopped being one the day the code
+  stopped travelling.
+- **Not sending something beats not doing it.** MPFB's modeling category table is the case that
+  established this, in [FR 017](done/017-category-table-cost/README.md): it was assumed to be the
+  package's largest avoidable cost because three tools rebuilt it on every call, and measured
+  inside Blender the rebuild took **4 ms**, while the 18 KB of generated code describing how to do
+  it took **1.1 s busy, 4.4 s idle** to arrive. The saving was never in the scan. That finding is
+  also why mpfb-mcp adds no cache of MPFB's data to this day: at 4 ms there is nothing to cache,
+  and a cache would cost the property that makes these tools better than MPFB's own panels — a
+  target installed since Blender started is visible here.
+
+The 4 KB chunk was a defect in blender_mcp rather than a law of nature: its `_service_clients()`
+reads once per tick instead of draining the socket, and a loop there would have removed most of the
+cost. It was never fixed here, because blender_mcp was treated as external and unmodified; it
+remains worth filing upstream for everyone else's sake and is
+[its own item](NEXT_STEPS.md#file-the-4-kb-chunked-read-against-blender_mcp) now rather than a
+footnote on this effort.
+
+### What the path taught
+
+- **Cache source, never what a fragment computed.** The session source cache let a shared fragment
+  be sent once per Blender session and named thereafter, keyed by a hash of its own source in a
+  `sys.modules` module of ours. That key is the whole safety argument: **a cache of code keyed by a
+  hash of that code cannot be stale**, where a cache of *answers* about the disk can — and the
+  answer in question was the table deciding which shape key a modifier is written to. The fragment
+  still ran on every call, so `mpfb_list_targets` still saw a target installed since Blender
+  started, which MPFB's own panels cannot, and no tool ever needed a `refresh` argument for a cache
+  with nothing to go stale about. The same rule is why `target_categories.py` is rebuilt per
+  dispatched command today rather than at add-on registration.
+- **A payload was a real file so that it could be read like one.** Syntax highlighting, editor
+  indentation and a linter that mostly applies were the point; a payload written as an escaped
+  string literal would have failed the readability requirement however well it worked, because it
+  is the form the next developer copies. The price was that assembler-bound names — `PARAMS`,
+  `_MPFB_SERVICES`, `sys` — looked undefined to a linter, so each payload's docstring named them,
+  and that `pyproject.toml` had to ship them as package *data* with `namespaces = false` so
+  discovery did not sweep them up as namespace packages. The same instinct is why the bridge is an
+  ordinary add-on rather than a code generator with better ergonomics.
+- **Two servers against one Blender were safe by construction**, because the cache key was
+  `<file>@<hash>`: identical code shared an entry and different code never did, without either side
+  knowing the other existed. The per-call record carries the process id in its directory name for
+  the same reason.
+- **A fragment Blender did not hold was a request, not a failure.** The program reusing a fragment
+  was by definition not the program carrying it, so the loader raised with a marker the tool side
+  matched and the tool re-sent with the source in it — once, never twice, because a second miss
+  meant the cache was not being written at all. Both crossings were recorded, in order, because
+  both happened.
+
+### What the measurements were
+
+The per-tool share of a client test module that went with its payload, which is the only real
+evidence about what the pivot did to 14.2k lines of tests. FR 030 measured the first: 27% for
+`mpfb_list_objects`, whose logic is a filter and a substring test — a floor rather than a rate.
+FR 031 measured nine more at roughly **60%**: `get_status` 50%, `get_object_info` 67%,
+`get_macro_details` 58%, `list_presets` 44%, `list_rigs` 63%, `list_assets` 57%,
+`list_asset_materials` 60%, `list_targets` 58%, `get_target_stack` 63%. FR 032 measured the
+remaining fourteen at **58%**: `refit_human` 57%, `set_macro_details` 58%, `set_targets` 67%,
+`symmetrize_targets` 65%, `add_rig` 65%, `generate_rigify_rig` 58%, `add_asset` 66%,
+`remove_asset` 58%, `set_skin` 67%, `set_asset_material` 60%, `save_preset` 49%,
+`create_human_from_preset` 59%, `list_urls` 24%. Two outliers, both informative: `mpfb_list_urls`
+because most of that module tests the client-side merge that stays, and `mpfb_create_human` with
+no payload layer at all.
+
+The realised figure is larger than three-fifths, because the frozen layers were not the only thing
+that went: `test_codegen.py`, `test_connection.py`, `test_shared_cache.py`,
+`test_fragment_drift.py`, `fake_addon.py`, `blender_stubs.py` and `generated_path.py` went too.
+**A migration makes a suite bigger before it makes it smaller**, and the whole saving arrives in
+one effort at the end — which is the shape worth remembering, rather than the arithmetic.
+
+Two checks moved rather than died. `EnvVarTestCase` went into `tests/fake_bridge.py`, since
+managing an environment variable for the duration of a test is about neither protocol. And the
+preset-name rule, which ran as **three** implementations over one table of names in
+`test_codegen.py`, is a two-way check in `tests/test_save_preset.py` — the fragment is gone and the
+rule now lives in `preset_names.py` and `bridge/mpfb_bridge/shared/preset_files.py`, for the reason
+it always did: a disagreement lets a preset be written under a name that cannot be loaded back.
+
+### What verification lost, and it is not nothing
+
+**This is the one place the effort made the project worse, and it is written down rather than
+absorbed.** `verification/harness.py` had a private channel into Blender — it sent Python of its
+own through the same `send_code()` every tool used — and that is how it made a scratch scene, built
+in it, snapshotted twelve `bpy.data` collections plus `bpy.data.is_dirty`, deleted everything it
+had made and compared. The bridge executes nothing, and **FR 033 decided that a verification
+harness is not a reason to give it an `exec` command**: that would reintroduce precisely the
+property the pivot exists to remove. So the channel has no replacement, and the scratch scene, the
+cleanup, the datablock snapshot and the traceback item all went.
+
+What the run leaves behind now is five MakeHuman objects and roughly **500 Rigify bone-widget
+objects**, and the widgets are the sharper statement of the loss: `mpfb_list_objects` is the only
+window the bridge's vocabulary offers, so the compare cannot see them at all. What it can still
+insist on is worth having — nothing that predates the run disappeared, and the asset the run
+equipped is gone again — and everything added is named in the item's output, so a passing line says
+what was left rather than implying nothing was.
+[verification/README.md](../verification/README.md#what-fr-033-cost-this-instrument) carries all of
+this where somebody reading a passing run will see it, and whether the bridge should grow a small
+non-`exec` vocabulary for an instrument's benefit is
+[an open question](NEXT_STEPS.md#should-the-bridge-serve-its-own-test-harness) rather than a
+settled no.
+
+### Verification
+
+Run against **a headless Blender with MPFB and the MPFB Bridge enabled and blender_mcp disabled in
+that process** — the first time in the project's life that configuration has been exercised, and
+the actual proof that nothing depended on the deleted path. Before the deletion the smoke ran in
+both configurations with the rewritten harness (bridge 4.9 s, generated path 49.2 s, 27 items, 0
+failed), which is the last useful thing the generated path ever did. After it: **27 passed, 0
+failed, 0 skipped in 1.5 s**, every tool answering the same fields as the pre-deletion run.

@@ -9,11 +9,10 @@ document. What may a tool decide for itself before the socket, and what must it 
 side of it? And when a tool hands the caller an identifier, what obligation does that create for
 the tool that consumes it?
 
-"The far side" is generated code on the tools that have not been migrated and a bridge command on
-those that have, and **nothing in this document depends on which**. A tool does not know which
-transport carries its call — that is the whole of
-[Supporting a second backend](architecture.md#supporting-a-second-backend) — so a rule about what a
-tool may decide is a rule about the tool, not about the program it used to assemble.
+"The far side" is a bridge command. A tool does not know what carries its call — that is the whole
+of [Supporting a second backend](architecture.md#supporting-a-second-backend) — so a rule about
+what a tool may decide is a rule about the tool, and it survived the transport underneath it being
+replaced and then deleted without a word of it changing.
 
 The counterpart document is [responses.md](responses.md), which covers what comes back;
 [mutating-tools.md](mutating-tools.md) covers the extra obligations of a tool that changes
@@ -31,7 +30,8 @@ ceiling, so the next drift is a failing test rather than a discovery.
 
 - **The test to apply to a sentence: would a caller with no access to this repository act
   differently for having read it?** If not, it is specification text, and it belongs here or in
-  the module or payload docstring — where the maintainer who needs it is already standing. Why
+  the tool module's or the command's docstring — where the maintainer who needs it is already
+  standing. Why
   MPFB's label collision happens explains; *check `total_count` before concluding an asset is
   absent* instructs.
 - **Surprising facts are instruction, and they stay in full.** That `asset_type` is required
@@ -88,7 +88,7 @@ The same holds for the *shape* of a string argument: reject a non-string, or an 
 whitespace-only one, and never quietly treat an explicitly empty value as an omitted one, since
 the two arise from different mistakes. But validate only the shape, never the **vocabulary**. A
 list of valid MPFB type names, asset names or target names kept on this side of the socket would
-drift silently from MPFB's own. Send the value across instead and let the generated code answer
+drift silently from MPFB's own. Send the value across instead and let the command answer
 authoritatively, reporting alongside the result both whether the value was recognized and what the
 valid values actually are — so a caller can correct itself from the same response rather than
 needing a second tool or a hardcoded list.
@@ -106,7 +106,7 @@ done. There are two current cases:
   to `"hide"` for anything it does not recognize, which would make a typo indistinguishable from a
   choice — on the one argument (`"delete"`) whose wrong value cannot be undone.
 
-In both cases the authoritative check stays in the payload, ahead of anything destructive, and the
+In both cases the authoritative check stays in the command, ahead of anything destructive, and the
 response still reports the valid values; the local check only means a typo never travels. Adding a
 third case needs the same argument: naming the enum is not enough, the damage must precede the
 check.
@@ -120,8 +120,9 @@ exception to it, and it is deliberately stricter than MPFB's own panel (which re
 name and one containing a space). Strictness runs one way only: every name accepted must be one
 MPFB would also accept, so the two never disagree about what exists — and where the reverse fails,
 the catalogue tool flags it (`mpfb_list_presets`' `addressable`) rather than letting a caller meet
-it as a refusal. The rule is also restated in the payload, as the last statement before `open()`,
-and `tests/test_codegen.py` runs the two implementations over one table of names so they cannot
+it as a refusal. The rule is also restated on the add-on side, as the last statement before
+`open()`, because a listening socket is reachable by anything on the machine; the two
+implementations are run over one table of names by `tests/test_save_preset.py` so they cannot
 drift. What that buys is in
 [a tool whose effect is outside the `.blend`](mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more).
 
@@ -155,7 +156,7 @@ two compensations:
 - **Give the response a per-entry error channel**, so the half of the validation that can only
   happen inside Blender comes back the same way: which entry, why, and what the valid values were.
 
-## How generated code addresses objects
+## How a tool addresses an object
 
 Tools name a Blender object by its **Blender object name**. Names are unique across the whole
 `.blend`, which is what makes them a usable address, but that has consequences a tool must not
@@ -171,9 +172,8 @@ paper over:
   `bpy.data.objects`, and several of its Rigify helpers do the same. A relative can sit outside the
   current scene, and filtering it out would silently drop a real relationship.
 - **A subject may also be "whatever is active"**, read as `bpy.context.view_layer.objects.active`
-  rather than `bpy.context.active_object`: generated code runs in the add-on's execution context,
-  not from a viewport operator, and the view-layer form does not depend on which UI area happens to
-  be current. It is `None` whenever nothing is active, which is an ordinary answer rather than a
+  rather than `bpy.context.active_object`: a command runs from a socket rather than from a viewport
+  operator, and the view-layer form does not depend on which UI area happens to be current. It is `None` whenever nothing is active, which is an ordinary answer rather than a
   failure. A response should say which way its subject was resolved, because the two have very
   different lifetimes: a name stays valid until the object is renamed or deleted, while an
   active-object answer is stale the moment the user clicks elsewhere.

@@ -87,11 +87,11 @@ def _warn_if_backend_variable_is_set() -> None:
     """Say once that ``MPFB_MCP_BACKEND`` is set and is not read any more.
 
     The silent alternative is the expensive one. Somebody who pinned the
-    variable to ``blender_mcp`` while the generated path existed would otherwise
-    get a working server that ignores the setting, and would have no way to tell
-    that from a setting that is being honoured - which is the same argument that
-    made an *unrecognised* value an error rather than a fallback while there
-    were still two backends to choose between.
+    variable while a second transport existed would otherwise get a working
+    server that ignores the setting, and would have no way to tell that from a
+    setting that is being honoured - which is the same argument that made an
+    *unrecognised* value an error rather than a fallback while there were still
+    two backends to choose between.
     """
     global _warned_about_backend_variable  # pylint: disable=global-statement
     if _warned_about_backend_variable:

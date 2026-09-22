@@ -1,26 +1,21 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_add_rig tool: argument validation, and the generated code's
-dispatch, pre-checks and reporting.
+"""Tests for the mpfb_add_rig tool: argument validation, and what crosses the
+socket.
 
-Three layers since FR 032 migrated it (see ``tests/test_list_objects.py``, the
-template): the tool wrapper with ``send_command`` mocked on the seam; the **bridge
-path** against ``tests/fake_bridge.py``; and the assembled source executed
-against the stub services and a real temporary rig tree
-(tests/blender_stubs.py's RigTestCase). That third layer is **frozen**: it stays
-while the payload stays, because the payload is half of what FR 032's live
-comparison compares.
+Two layers (see ``tests/test_list_objects.py``, the template): the tool wrapper
+with ``send_command`` mocked below the seam, and the **bridge path** against
+``tests/fake_bridge.py``. The identifier vocabulary is deliberately *not*
+validated here - a rig list kept on this side would drift from the directories -
+so an unknown one has to reach Blender to be refused there with
+``known_identifiers`` beside it.
 
-The rig tree is shared with tests/test_list_rigs.py deliberately - the point of
-the shared rig_lookup rule is that the catalogue's prediction and this tool's
-outcome cannot disagree, and that can only be asserted by running both against
-the same disk. **Both halves of that pair are now on the bridge**, so the same
-agreement is checked there against a real MPFB.
-
-What layer 3 cannot say is that a rig added through this tool is
-indistinguishable from one added through MPFB's own panel. That is now checked
-in ``bridge/test/tests/ppp_mutating/add_rig_test.py``.
+What this cannot say is that a rig added through this tool is indistinguishable
+from one added through MPFB's own panel, or that the catalogue's weights
+prediction equals this tool's outcome. Both are checked against a real MPFB in
+``bridge/test/tests/ppp_mutating/add_rig_test.py`` and
+``bridge/test/tests/kkk_list_rigs_test.py``, which is the only place the pair
+can be run against one disk now that both halves are commands.
 
 Run with::
 

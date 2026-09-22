@@ -1,27 +1,17 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_set_asset_material tool: the reimplemented UI operator, its
-three refusals, and the quirks reproduced rather than tidied up.
+"""Tests for the mpfb_set_asset_material tool: argument validation, and what
+crosses the socket.
 
-Three layers since FR 032 migrated it (see ``tests/test_list_objects.py``, the
-template): the tool wrapper with ``send_command`` mocked on the seam; the **bridge
-path** against ``tests/fake_bridge.py``; and the assembled source executed
-against the stub services and a real temporary asset library
-(tests/blender_stubs.py's MeshAssetTestCase). That third layer is **frozen**: it
-stays while the payload stays, because the payload is half of what FR 032's live
-comparison compares.
+Two layers (see ``tests/test_list_objects.py``, the template): the tool wrapper
+with ``send_command`` mocked below the seam, and the **bridge path** against
+``tests/fake_bridge.py``.
 
-The library is real because this payload reads the asset's MHCLO for its
-material line and resolves a fragment by walking the asset roots. The dressed
-character is built by running mpfb_add_asset's own payload rather than by hand,
-for the same reason test_remove_asset.py does it: the material this tool
-replaces is exactly the one that tool built.
-
-What layer 3 cannot say is that the material this produces is the one MPFB's own
-alternative-material panel produces. That is a node tree, and no stub builds
-one. That is now checked against a real MPFB in
-``bridge/test/tests/ppp_mutating/set_asset_material_test.py``.
+This is the one tool with no service function behind it at all - the mechanism
+exists only in a UI operator, reimplemented from services with three of its
+quirks reproduced rather than tidied up - so what it produces is a node tree,
+and no stub builds one. That, and the three refusals, are checked against a real
+MPFB in ``bridge/test/tests/ppp_mutating/set_asset_material_test.py``.
 
 Run with::
 

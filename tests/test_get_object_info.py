@@ -1,30 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_get_object_info tool, migrated by FR 031 and therefore in
-three layers rather than two (see ``tests/test_list_objects.py``, the template).
+"""Tests for the mpfb_get_object_info tool, in two layers (see
+``tests/test_list_objects.py``, the template).
 
-1. **The wrapper**, with ``send_command`` mocked on the seam: argument validation,
-   and what goes on the wire.
+1. **The wrapper**, with ``send_command`` mocked below the seam: argument
+   validation, and what goes on the wire.
 2. **The bridge path**, against ``tests/fake_bridge.py``. Thin, and deliberately
    so - nothing here asserts what MPFB answers.
-3. **The payload**, ``exec()``-ed against the stubs in
-   ``tests/blender_stubs.py``. **Frozen.** It stays while the payload stays,
-   because the payload is half of what FR 031's live comparison compares, and
-   it is deleted with the payload when the generated path is retired. Nothing
-   is added to it: the stubs reproduce the MPFB behaviours the payload is
-   written around - "" for an untyped object, a non-bool
-   ``object_is_any_makehuman_object()``, a ``find_related_objects()`` that
-   yields the subject itself - but they say nothing about the values real MPFB
-   returns, and those assertions are now made against a real install in
-   ``bridge/test/tests/hhh_get_object_info_test.py``.
 
-The share of this module that goes with the payload: 409 of its 614 lines, 67%
-- the stub scene and the five classes of payload tests - against a 381-line
-payload with three ``asset_info`` shapes and three resolution outcomes each.
-The highest rate of the three introspection tools, and the reason is the
-fixture as much as the assertions: a scene of nine related objects exists only
-to be looked at by a payload.
+The three ``asset_info`` shapes and their three resolution outcomes each, the
+relationship walk, and the MPFB behaviours this tool is written around - ``""``
+for an untyped object, a non-bool ``object_is_any_makehuman_object()``, a
+``find_related_objects()`` that yields the subject itself - are asserted
+against a real install in ``bridge/test/tests/hhh_get_object_info_test.py``.
 
 Run with::
 
@@ -54,14 +42,6 @@ def _register_and_get_tool() -> object:
     # underlying callable is what we actually want to invoke directly.
     tool = mcp._tool_manager._tools["mpfb_get_object_info"]  # noqa: SLF001
     return tool.fn
-
-
-def _params_in(code: str) -> dict:
-    """The PARAMS the generated source will bind, by executing its prelude."""
-    prelude, _sep, _payload = code.partition("# --- payload:")
-    namespace: dict = {}
-    exec(prelude[prelude.index("import json"):], namespace)  # noqa: S102
-    return namespace["PARAMS"]
 
 
 class GetObjectInfoToolTests(unittest.TestCase):

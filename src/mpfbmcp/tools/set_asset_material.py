@@ -13,8 +13,8 @@ module-level helpers - ``_apply_mhmat()`` and ``_find_default_material()`` - and
 importing an MPFB submodule is forbidden
 ([architecture.md](../../../specifications/architecture.md#never-import-mpfb-submodules-directly)),
 with a UI operator module the worst case of it. Both are reimplemented from
-services in the payload, the way FR 006 and FR 008 reimplement the modeling
-panels, and the payload says so.
+services in the command, the way FR 006 and FR 008 reimplement the modeling
+panels, and the command says so.
 
 ``name`` is required and is the **asset's** own object name, not the character's.
 Every other mutating tool here takes its subject from anywhere in the family and

@@ -4,7 +4,7 @@
 The command's whole difficulty is that it answers a different question
 depending on what the object turns out to be, and every one of those answers
 has until now been checked only against ``tests/blender_stubs.py`` - a stub
-scene written from the same reading of MPFB's source as the payload it was
+scene written from the same reading of MPFB's source as the program it was
 checking. What is put to MPFB here:
 
 - that ``ObjectService._SKELETON_TYPES`` and ``_MESH_ASSET_TYPES`` exist and are

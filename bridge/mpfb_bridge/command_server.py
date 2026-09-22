@@ -19,14 +19,13 @@ boundary.** The buffer is a ``bytearray`` and the delimiter search is a byte
 search, so a multi-byte UTF-8 sequence split across two ``recv()`` calls is a
 non-issue rather than a bug waiting for a non-ASCII asset name: NUL cannot occur
 inside a UTF-8 multi-byte sequence, whose continuation bytes are all 0x80-0xBF.
-This is the single most important thing copied from
-``blender_mcp/addon/blender_mcp_addon/mcp_to_blender_server.py``, which is this
-module's model throughout.
+This is the single most important thing copied from blender lab's
+``blender_mcp`` add-on, which was this module's model throughout.
 
 **One thing is deliberately not copied from it.** That server does exactly one
-``recv(4096)`` per timer tick and then returns, which is why a request costs
-roughly 250 ms per 4 KB against a busy Blender and 1 s per 4 KB against an idle
-one - the tax the whole pivot exists to remove. It also never resets its client
+``recv(4096)`` per timer tick and then returns, which is why a request there
+costs roughly 250 ms per 4 KB against a busy Blender and 1 s per 4 KB against an
+idle one - the tax the whole pivot exists to remove. It also never resets its client
 deadline when data arrives, so the two limits together cap a request far below
 the maximum the code advertises. Here the socket is drained until it would block,
 and the deadline is reset whenever a chunk arrives. At parameter sizes neither

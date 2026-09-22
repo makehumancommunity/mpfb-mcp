@@ -1,21 +1,16 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-``mpfb_create_human``, migrated by FR 032 and therefore in two layers rather
-than one (see ``tests/test_list_objects.py``, the template).
+"""``mpfb_create_human``, in two layers (see ``tests/test_list_objects.py``, the
+template).
 
-1. **The wrapper**, with ``send_command`` mocked on the seam: the eleven sliders'
-   0.0-1.0 rule, which is enforced here and nowhere else, and what the
-   generated program binds as ``PARAMS``.
+1. **The wrapper**, with ``send_command`` mocked below the seam: the eleven
+   sliders' 0.0-1.0 rule, which is enforced here and nowhere else, and what
+   goes on the wire as parameters.
 2. **The bridge path**, against ``tests/fake_bridge.py``. Thin, and it carries
-   the claim this tool is the first *mutating* one to make: a tool that changes
-   a .blend sends exactly its already-validated arguments over either
-   transport, and a locally invalid call reaches neither.
+   the claim this tool was the first *mutating* one to make: a tool that
+   changes a .blend sends exactly its already-validated arguments, and a
+   locally invalid call reaches nothing.
 
-There is deliberately **no third layer here**. Unlike the ten tools FR 031
-migrated, this payload is forty lines with no branch in it - it calls
-``create_human()`` and reports four facts about what came back - so it never had
-a payload class of its own; assembly is covered by ``tests/test_codegen.py``.
 What the character MPFB actually builds looks like is checked against a real
 MPFB in ``bridge/test/tests/ppp_mutating/create_human_test.py``, which is where
 it could never be checked from this side.
@@ -37,22 +32,6 @@ from mpfbmcp.tools import create_human
 from tests import fake_bridge
 
 
-
-
-def _params_in(code: str) -> dict:
-    """
-    The PARAMS the generated source will bind, by executing its prelude.
-
-    Parameters are carried into the payload as JSON data rather than
-    interpolated into it, so the values are asserted on after execution rather
-    than as substrings of the source.
-    """
-    prelude, _sep, _payload = code.partition("# --- payload:")
-    # The prelude sits behind the raising bootstrap, which would fail here with
-    # no MPFB loaded, so run only the two lines that bind PARAMS.
-    namespace: dict = {}
-    exec(prelude[prelude.index("import json"):], namespace)  # noqa: S102
-    return namespace["PARAMS"]
 
 
 def _register_and_get_tool() -> object:
@@ -122,7 +101,7 @@ class CreateHumanOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
     def test_the_eleven_sliders_arrive_as_mpfbs_nested_dict(self) -> None:
         # The tool's flat arguments are MPFB's nested ones by the time they
-        # leave, on either transport: the bridge receives what the payload would
+        # leave: the bridge receives exactly what the tool validated, and
         # have bound as PARAMS, unreshaped.
         self.call(gender=1.0, age=0.25, race_african=0.9)
 

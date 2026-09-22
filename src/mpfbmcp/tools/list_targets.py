@@ -10,7 +10,7 @@ Two sources, answered differently. The bundled targets are indexed by a ~140 KB
 ``target.json`` that is far too large to return and exactly the sort of file a
 caller with the same filesystem can read for itself, so its path is reported and
 its sections are browsable one at a time. The user data directories have no index
-and are scanned per call - by ``codegen/shared/target_categories.py``, which is
+and are scanned per call - by ``bridge/mpfb_bridge/shared/target_categories.py``, which is
 also where ``mpfb_set_targets`` and the other two get their vocabulary, so the
 catalogue and the tools that act on it cannot disagree about what is installed.
 

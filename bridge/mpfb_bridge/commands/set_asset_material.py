@@ -7,11 +7,12 @@ none.** Alternative materials exist only in
 module-level helpers, ``_apply_mhmat()`` and ``_find_default_material()``. Both
 are reimplemented below from services - never imported.
 
-**Being an add-on makes importing that module possible for the first time, and
-that is exactly why this paragraph exists.** The rule in
+**Being an add-on makes importing that module possible at all, and that is
+exactly why this paragraph exists.** The rule in
 [architecture.md](../../../specifications/architecture.md#a-ui-module-with-no-service-behind-it)
-was written when generated code *could* not reach it; it is kept now that a
-command *could*, for the same two reasons it was written: importing an MPFB
+predates this add-on, from a time when nothing here *could* reach that module;
+it is kept now that a command *could*, for the same two reasons it was written:
+importing an MPFB
 submodule runs MPFB code (several of them create directories on import), and a
 UI operator module is the worst case of a name MPFB does not publish and is free
 to move. This is the sharpest form of "where MPFB's own code paths disagree,
@@ -54,13 +55,15 @@ header. Note what it yields: ``mhclo.material`` is an **absolute path**, joined
 against the MHCLO's own directory, not a fragment. It can name a file that is
 not there, which is the ``restore_default`` failure branch.
 
-This reproduces ``codegen/payloads/set_asset_material.py`` rather than tidying
-it up.
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
 """
 
 # The local bindings below are spelled with MPFB's own capitalisation, which is
-# what the payload this reproduces used and what makes the two readable side by
-# side during the migration.
+# what the program this replaced used, which is in turn what MPFB's own
+# source uses.
 # pylint: disable=invalid-name
 
 __all__ = (

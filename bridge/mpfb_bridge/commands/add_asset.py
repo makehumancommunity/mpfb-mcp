@@ -53,12 +53,15 @@ rather than derived from the filename.
 on the refusal: ``add_mhclo_asset()`` raises ``IOError`` when the mesh import
 produced nothing, and the import may have left an object behind first.
 
-This reproduces ``codegen/payloads/add_asset.py`` rather than tidying it up.
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
 """
 
 # The local bindings below are spelled with MPFB's own capitalisation, which is
-# what the payload this reproduces used and what makes the two readable side by
-# side during the migration.
+# what the program this replaced used, which is in turn what MPFB's own
+# source uses.
 # pylint: disable=invalid-name
 
 __all__ = (
@@ -672,7 +675,7 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
         record for record in _added_modifiers(basemesh_modifiers_before,
                                               _modifier_records(basemesh))
         if record[1] == "MASK"]
-    # Computed and deliberately unused, exactly as the payload computes it: the
+    # Computed and deliberately unused, exactly as MPFB's own loader does: the
     # delete group is looked for among the *basemesh's* new masks only. Kept
     # rather than deleted because FR 032's rule is reproduction over
     # improvement, and a quirk tidied away during a migration is

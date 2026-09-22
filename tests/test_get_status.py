@@ -54,7 +54,7 @@ class GetStatusToolTests(unittest.TestCase):
     @mock.patch("mpfbmcp.bridge_connection.send_command")
     def test_response_is_passed_through_unchanged(self, mock_send_command: mock.Mock) -> None:
         # The tool must not interpret or reshape the envelope: graceful absence
-        # lives in the generated code, not in Python on this side of the socket.
+        # lives in the add-on, not in Python on this side of the socket.
         envelope = {"status": "ok", "result": {"state": "absent", "candidate_modules": []}}
         mock_send_command.return_value = envelope
 

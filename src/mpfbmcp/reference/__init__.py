@@ -3,8 +3,8 @@ Vendored reference data: addresses this package hands out, and nothing else.
 
 Two ordinary modules, ``urls`` and ``docs``, holding tables that are read *by*
 this package rather than sent to Blender. That is the whole reason they are a
-real sub-package rather than files under ``codegen/payloads/`` or a new data
-directory: a payload is source that crosses the socket and is never imported
+real sub-package rather than a data directory of its own: what crosses the
+socket is a command name and its parameters, and nothing here is ever sent
 here, and these are the exact opposite of that.
 
 **Nothing here fetches anything.** The tables carry addresses, and retrieving

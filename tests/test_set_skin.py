@@ -1,24 +1,19 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_set_skin tool: the two coercions, the two side effects, and
-the vocabulary check that has to happen before anything is destroyed.
+"""Tests for the mpfb_set_skin tool: argument validation, and what crosses the
+socket.
 
-Three layers since FR 032 migrated it (see ``tests/test_list_objects.py``, the
-template): the tool wrapper with ``send_command`` mocked on the seam; the **bridge
-path** against ``tests/fake_bridge.py``; and the assembled source executed
-against the stub services and a real temporary asset library
-(tests/blender_stubs.py's MeshAssetTestCase). That third layer is **frozen**: it
-stays while the payload stays, because the payload is half of what FR 032's live
-comparison compares.
+Two layers (see ``tests/test_list_objects.py``, the template): the tool wrapper
+with ``send_command`` mocked below the seam, and the **bridge path** against
+``tests/fake_bridge.py``. ``skin_type`` is one of the two closed vocabularies
+this package checks locally, and this module is where the defaulting that
+follows MPFB's settings panel rather than the function signature is asserted:
+``MAKESKIN``, with ``material_instances`` coerced off for three of the five
+types, so the default call creates no material instances.
 
-The library is real because this payload resolves a fragment by walking the
-skins roots and because `settings_file_created` claims a file appeared in a
-directory where none was - neither of which a mocked filesystem could settle.
-
-What layer 3 cannot say is that any of the five skin types produces the node
-tree MPFB's own skin library panel produces. A material is a node tree, and no
-stub builds one. That is now checked against a real MPFB in
+What this cannot say is that any of the five types produces the node tree MPFB's
+own panel produces, or that applying a skin really deletes every material
+already on the body and on its proxy. Both are checked against a real MPFB in
 ``bridge/test/tests/ppp_mutating/set_skin_test.py``.
 
 Run with::

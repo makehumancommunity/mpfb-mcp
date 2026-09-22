@@ -13,13 +13,16 @@ anything interesting happens. Three of them, all visible in the last four lines:
 - **The verb argument is written at the call site**, not guessed from the
   answer. Here it is the literal ``True``, and the comment above it says why
   that is safe rather than leaving a reader to work it out.
-- **The before/after report is what the payload's was**: the object's name, its
+- **The before/after report is what the tool has always answered with**: the object's name, its
   vertex count, its location and the macro dict that was applied. Blender
   uniquifies a name that is already taken, so ``object_name`` is read off the
   created object and is the address every later command needs.
 
-**This reproduces ``codegen/payloads/create_human.py`` rather than tidying it
-up**, including its silences. ``create_human()``'s own defaults are used for
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
+, including its silences. ``create_human()``'s own defaults are used for
 ``mask_helpers``, ``detailed_helpers``, ``extra_vertex_groups`` and
 ``feet_on_ground``; none is exposed, here or on the generated path.
 
@@ -29,7 +32,7 @@ socket rather than in :data:`PARAMS` below. The reason is that
 ``macro_detail_dict`` arrives as MPFB's own nested shape - eight numbers and a
 ``race`` sub-object - and a :class:`..validation.Param` constrains one value,
 not the inside of one. Adding a nested check here would be a behaviour this
-command has and the payload it is replacing does not, which is exactly what
+command has and code sent into Blender does not, which is exactly what
 [FR 032](../../../feature-requests/done/032-creation-and-modification-migrated/README.md)
 forbids during a migration: a tidy-up is indistinguishable from a defect in the
 comparison the migration rests on. It is written down here rather than left to

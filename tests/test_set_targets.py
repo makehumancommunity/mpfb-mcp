@@ -1,28 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_set_targets tool: per-entry argument validation, the
-all-or-nothing resolution phase, and the write sequence itself.
+"""Tests for the mpfb_set_targets tool: argument validation, and what crosses the
+socket.
 
-Three layers since FR 032 migrated it (see ``tests/test_list_objects.py``, the
-template): the tool wrapper with ``send_command`` mocked on the seam; the **bridge
-path** against ``tests/fake_bridge.py``; and the assembled source - shared
-fragments included - executed against the stub scene and the real temporary
-target tree in tests/blender_stubs.py. That third layer is **frozen**: it stays
-while the payload stays, because the payload is half of what FR 032's live
-comparison compares, and everything about what this tool *does* to a character
-is now checked against a real MPFB in
+Two layers (see ``tests/test_list_objects.py``, the template): the wrapper with
+``send_command`` mocked below the seam, and the bridge path against
+``tests/fake_bridge.py``. The wrapper carries an unusual amount, because this is
+the **batched** tool: every entry is shape-checked, range-checked against one of
+two different ranges, and rejected for an unknown key before anything is sent,
+since a misspelled ``catagory`` is otherwise silent.
+
+That every entry is resolved before any is written - so a batch with one bad
+entry applies nothing at all - is checked against a real MPFB in
 ``bridge/test/tests/ppp_mutating/set_targets_test.py``.
-
-The tree is real because most of what this payload does is decide *which file*
-a change would have to load, and from where.
-
-The stubs reproduce the three quirks the payload exists to work around, and none
-of them can be observed if the stub is helpful instead: set_target_value() is a
-silent no-op for a name that is not on the mesh, get_target_value() returns 0.0
-for one, and a shape key value is clamped to 0.0-1.0 on assignment. A negative
-modifier value therefore has to be expressed as the opposing target at a
-positive weight, or it fails here rather than in Blender.
 
 Run with::
 
@@ -61,7 +51,7 @@ class ArgumentValidationTests(unittest.TestCase):
 
     def test_entries_are_normalized_before_they_cross_the_socket(self):
         # An omitted side arrives as an explicit null, and an int value as a
-        # float, so the payload never has to guess what a missing key meant.
+        # float, so the command never has to guess what a missing key meant.
         with mock.patch.object(bridge_connection, "send_command") as send_command:
             send_command.return_value = {"status": "ok", "result": {}}
             self.tool(modifiers=[{"section": "nose", "category": "c", "value": 1}],
@@ -217,15 +207,14 @@ class SetTargetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.assertEqual(params["prune"], True)
         self.assertEqual(params["refit"], False)
 
-    def test_the_cached_fragments_leave_nothing_on_the_wire(self) -> None:
-        # This tool carried 26 KB of fragment source on a cold generated call.
-        # On the bridge it sends the entries and nothing else: `cached_shared`
-        # is machinery of the generated path, living below the seam.
+    def test_the_request_is_the_entries_and_nothing_else(self) -> None:
+        # This tool used to carry 26 KB of shared source on a cold call, and
+        # the whole of what it sends now is what the caller passed. What the
+        # shared modules model is imported by the command, on the far side.
         self.call(targets=[{"shapekey_name": "chin-triangle", "value": 0.5}])
 
         request = self.bridge.decoded_requests()[-1]
-        self.assertNotIn("shared", request)
-        self.assertNotIn("cached_shared", request)
+        self.assertEqual(set(request), {"command", "params", "protocol_version"})
         self.assertNotIn("target_categories", str(request))
 
     def test_per_entry_validation_runs_before_a_transport_is_chosen(self) -> None:

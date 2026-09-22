@@ -1,25 +1,17 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_get_macro_details tool, migrated by FR 031 and therefore in
-three layers rather than two (see ``tests/test_list_objects.py``, the template).
+"""Tests for the mpfb_get_macro_details tool, in two layers (see
+``tests/test_list_objects.py``, the template).
 
-1. **The wrapper**, with ``send_command`` mocked on the seam: argument validation,
-   and what goes on the wire.
+1. **The wrapper**, with ``send_command`` mocked below the seam: argument
+   validation, and what goes on the wire.
 2. **The bridge path**, against ``tests/fake_bridge.py``. Thin on purpose.
-3. **The payload**, ``exec()``-ed against the stubs in
-   ``tests/blender_stubs.py``. **Frozen.** It stays while the payload stays,
-   because the payload is half of what FR 031's live comparison compares, and
-   it is deleted with the payload when the generated path is retired.
 
 The cases the tool exists for - resolving the basemesh from *any* member of the
 character's family, reporting the raw race sum rather than a normalized one,
 and reporting the derived target stack beside the shape keys actually on the
-mesh so that a drifted character is visible - are now asserted against a real
-MPFB in ``bridge/test/tests/iii_get_macro_details_test.py``. What is here is
-the same claims against stubs, kept while the payload is kept.
-
-The share of this module that goes with the payload: 222 of its 386 lines, 58%.
+mesh so that a drifted character is visible - are asserted against a real MPFB
+in ``bridge/test/tests/iii_get_macro_details_test.py``.
 
 Run with::
 

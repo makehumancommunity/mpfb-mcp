@@ -20,10 +20,10 @@ folder. That is very nearly the thing a closed vocabulary exists to deny.
 parameter specification live in a module named for the command -
 ``get_status.py``, ``list_commands.py`` - and this file holds the table and
 nothing else. The split mirrors ``src/mpfbmcp/tools/`` on the other side of the
-socket, deliberately and down to the naming, so that during the migration a tool
-and the command it becomes are findable from each other. The difference is that
-a tool module registers itself with the MCP server and a command module
-registers nothing at all, for the reason in the paragraph above.
+socket, deliberately and down to the naming, so that a tool and the command it
+sends are findable from each other. The difference is that a tool module
+registers itself with the MCP server and a command module registers nothing at
+all, for the reason in the paragraph above.
 
 **A second directory has appeared beside this one, and it does not weaken the
 claim above.** ``shared/`` holds the concepts two or more commands model
@@ -120,7 +120,7 @@ COMMANDS = {
         # False, and the first migrated command for which it is. This is the
         # command whose whole value is that MPFB's absence is a successful
         # answer, so it must not be gated on the thing it reports about - and
-        # note the name, which breaks the otherwise exact payload-to-command
+        # note the name, which breaks the otherwise exact tool-to-command
         # correspondence on purpose. ``get_status`` below is about *this
         # add-on*; this one is about *MPFB*, and two commands answering
         # "status" about two different pieces of software would be a collision

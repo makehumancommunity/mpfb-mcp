@@ -3,7 +3,7 @@ The ``mpfb_remove_asset`` tool: take an MHCLO asset off a character properly.
 
 The counterpart to ``mpfb_add_asset``, and it exists for the same reason that
 tool does: an agent that equips the wrong garment has to be able to undo it, and
-deleting the object through generic blender_mcp is *not* undoing it. MPFB masks
+deleting the object in Blender is *not* undoing it. MPFB masks
 the body under the garment with a MASK modifier pointing at a ``Delete.<name>``
 vertex group on the basemesh and, when the character has a body proxy, on that
 too; a garment may also have brought a sub-rig of its own. A plain object delete

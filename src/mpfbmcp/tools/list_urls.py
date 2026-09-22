@@ -14,31 +14,31 @@ links tool that fails when MPFB is missing is useless in the one situation where
 package that catches a connection failure and answers anyway.
 
 **Two things about that catch are load-bearing.** It catches ``ConnectionError``
-only - the transport failure both wire clients raise - and never a payload or
-command that raised *inside* Blender, which is a defect and must still surface
-as an error envelope; swallowing one into a "fallback" answer would hide it
-permanently. And it lives here rather than in ``connection.py``,
-``bridge_connection.py`` or ``shared_cache.py``, because the other twenty-three
-tools depend on a connection failure being an error. This is one tool's
-exception, not a change to the wire layer.
+only - the transport failure the wire client raises - and never a command that
+failed *inside* Blender, which is a defect and must still surface as an error
+envelope; swallowing one into a "fallback" answer would hide it permanently.
+And it lives here rather than in ``bridge_connection.py``, because the other
+twenty-three tools that cross the socket depend on a connection failure being
+an error. This is one tool's exception, not a change to the wire layer.
 
-**On the bridge, one narrow case answers differently, and the difference is
-deliberate.** ``bridge_connection.send_command()`` raises ``ConnectionError``
-when the bridge is unreachable - the same situation, caught by the same
-``except`` - but an **incompatible protocol version** comes back as an *error
-envelope* instead, and so reaches the caller as an error where the generated
-path would have answered with vendored URLs. FR 032 decided it that way on
-purpose: a handshake refusal means mpfb-mcp and the add-on are different
-versions of the same software, which is a configuration fault the operator has
-to fix and which papering over with a fallback answer would hide for as long as
-it lasts. An unreachable Blender is somebody else's circumstance; a version
-mismatch is this install's defect, and the two should not look alike.
+**One narrow case answers differently, and the difference is deliberate.**
+``bridge_connection.send_command()`` raises ``ConnectionError`` when the bridge
+is unreachable - the situation this module's ``except`` is for - but an
+**incompatible protocol version** comes back as an *error envelope* instead,
+and so reaches the caller as an error rather than as vendored URLs. FR 032
+decided it that way on purpose: a handshake refusal means mpfb-mcp and the
+add-on are different versions of the same software, which is a configuration
+fault the operator has to fix and which papering over with a fallback answer
+would hide for as long as it lasts. An unreachable Blender is somebody else's
+circumstance; a version mismatch is this install's defect, and the two should
+not look alike.
 
 **The merge lives on this side of the socket**, in ``mpfbmcp.reference.urls``:
-the payload reports raw key -> URL pairs and the reason for any miss, and the
+the command reports raw key -> URL pairs and the reason for any miss, and the
 answer is assembled here. That is what lets the unreachable-Blender case give
-the same answer shape as the live one from one implementation - see the payload
-docstring for why sending the table into Blender instead would be worse.
+the same answer shape as the live one from one implementation - see the
+command's docstring for why sending the table into Blender instead would be
+worse.
 """
 
 from __future__ import annotations
@@ -53,7 +53,7 @@ from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in
 from mpfbmcp import backend
 from mpfbmcp.reference import urls
 
-# The fourth state, which the payload's three cannot express because the payload
+# The fourth state, which the command's three cannot express because the command
 # never ran. Kept beside them in `mpfb_status.state` rather than in a field of
 # its own, so a caller branches on one value.
 _UNREACHABLE = "unreachable"
@@ -77,17 +77,17 @@ def _answer(*, live_urls, state, package, version, weburls_module, weburls_read,
     return answer
 
 
-def _from_payload(payload: dict[str, object]) -> dict[str, object]:
-    urls_read = payload.get("urls") if payload.get("weburls_read") else None
+def _from_command(answer: dict[str, object]) -> dict[str, object]:
+    urls_read = answer.get("urls") if answer.get("weburls_read") else None
     return _answer(
         live_urls=urls_read,
-        state=payload.get("state"),
-        package=payload.get("package"),
-        version=payload.get("version"),
-        weburls_module=payload.get("weburls_module"),
-        weburls_read=bool(payload.get("weburls_read")),
-        reason=payload.get("reason"),
-        skipped_keys=payload.get("skipped_keys"),
+        state=answer.get("state"),
+        package=answer.get("package"),
+        version=answer.get("version"),
+        weburls_module=answer.get("weburls_module"),
+        weburls_read=bool(answer.get("weburls_read")),
+        reason=answer.get("reason"),
+        skipped_keys=answer.get("skipped_keys"),
         blender_reachable=True,
     )
 
@@ -168,7 +168,7 @@ def register(mcp: FastMCP) -> None:
         except ConnectionError as failure:
             # Only the transport failure, and **both transports raise it in the
             # same situations** - which is what made this tool migratable at
-            # all. A payload or command that raised inside Blender arrives as
+            # all. A command that failed inside Blender arrives as
             # an error *envelope* below and is passed through untouched,
             # because it is a defect here rather than a missing MPFB.
             return {"status": "ok", "result": _from_unreachable_blender(failure)}
@@ -178,4 +178,4 @@ def register(mcp: FastMCP) -> None:
             # where this tool answers differently on the two transports. See
             # this module's docstring for why that is deliberate.
             return envelope
-        return {"status": "ok", "result": _from_payload(envelope["result"])}
+        return {"status": "ok", "result": _from_command(envelope["result"])}

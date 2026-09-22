@@ -47,7 +47,10 @@ armature, with no error anywhere. The mesh assets and sub-rigs are therefore
 enumerated *before* the rig is added, which is what makes the claim precise:
 these are the assets that were attached while there was no rig.
 
-This reproduces ``codegen/payloads/add_rig.py`` rather than tidying it up.
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
 """
 
 __all__ = (
@@ -135,7 +138,7 @@ def _armature_modifier_for(mesh_object, armature_object):
     """Whether an ARMATURE modifier on this mesh points at this armature.
 
     **An observation, not a prediction, and the difference was found here.** The
-    payload this reproduces carries a comment saying that
+    program this replaced carried a comment saying that
     ``RigService.ensure_armature_modifier()`` is called only when
     ``import_weights`` is true. Put to a running MPFB by
     ``bridge/test/tests/ppp_mutating/add_rig_test.py`` it turned out to be

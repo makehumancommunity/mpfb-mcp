@@ -44,7 +44,10 @@ change to this add-on. A name whose value is not a string is reported under
 ``skipped_keys`` rather than silently dropped: an absent entry has to be
 explainable.
 
-This reproduces ``codegen/payloads/list_urls.py`` rather than tidying it up.
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
 """
 
 __all__ = (

@@ -2,8 +2,8 @@
 The ``mpfb_get_status`` tool: reports whether MPFB is present and usable.
 
 Deliberately does no interpretation on this side of the socket. All the
-classification lives in the generated code (see
-``mpfbmcp.codegen.payloads.get_status``), so that
+classification lives in the add-on (see
+``bridge/mpfb_bridge/commands/get_mpfb_status.py``), so that
 "MPFB isn't there" and "MPFB is there but broken" come back as ordinary
 successful answers rather than as an error envelope a caller has to guess at.
 """

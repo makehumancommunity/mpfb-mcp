@@ -1,37 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-``mpfb_list_presets``, migrated by FR 031 and therefore in three layers rather
-than two (see ``tests/test_list_objects.py``, the template).
+"""``mpfb_list_presets``, in two layers (see ``tests/test_list_objects.py``, the
+template).
 
-1. **The wrapper**, with ``send_command`` mocked on the seam: what is validated
-   before a transport is chosen, and what goes on the wire.
-2. **The bridge path**, against ``tests/fake_bridge.py``. Thin, and it carries
-   the claim this tool is the first to make: a tool that names a **shared
-   fragment** sends the same request over the bridge as without one, because a
-   fragment is a property of how a program is assembled and the bridge
-   assembles nothing.
-3. **The payload** over a real ``tempfile`` config directory. **Frozen.** It
-   stays while the payload stays, because the payload is half of what FR 031's
-   live comparison compares, and it is deleted with the payload when the
-   generated path is retired.
+1. **The wrapper**, with ``send_command`` mocked below the seam: what is
+   validated before anything is sent, and what goes on the wire.
+2. **The bridge path**, against ``tests/fake_bridge.py``.
 
-A ``tempfile`` directory rather than a mocked filesystem, in the idiom
-``test_list_rigs.py`` established for a payload whose job is ``os.listdir``: the
-three fields worth having here - ``size_bytes``, ``modified`` and ``exists`` -
-come from ``os.stat`` and from nowhere else, so mocking the filesystem away
-would leave nothing under test. That fixture is **also** what
-``bridge/test/tests/jjj_list_presets_test.py`` builds, against MPFB's own
-``LocationService`` rather than a stub reporting it, which is where the claims
-about what MPFB's list holds are now made.
-
-The share of this module that goes with the payload: 129 of its 294 lines, 44%
-- ``ListPresetsPayloadTests`` alone. The fixture it runs against is **not**
-counted, because ``PresetTestCase`` lives in ``tests/blender_stubs.py`` and is
-shared with the two preset-writing tools that have not migrated; it goes when
-they do. That is the shape to expect wherever a fixture straddles the stage
-boundary, and it means 44% understates what this tool's migration eventually
-removes.
+The three fields worth having here - ``size_bytes``, ``modified`` and
+``exists`` - come from ``os.stat`` and from nowhere else, so what this tool
+answers can only be checked against a real directory.
+``bridge/test/tests/jjj_list_presets_test.py`` builds one and points MPFB's own
+``LocationService`` at it, which is where the claims about what MPFB's list
+holds are made.
 
 Run with::
 

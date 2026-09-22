@@ -39,8 +39,10 @@ to make a character symmetric, so one unreachable target is a fact to report
 about that category rather than a reason to leave the rest of the body
 asymmetric.
 
-This reproduces ``codegen/payloads/symmetrize_targets.py`` rather than tidying
-it up.
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
 """
 
 __all__ = (

@@ -22,7 +22,8 @@ alternative fails *silently*:
   turns ``refresh="false"`` into a disk rescan.
 - A number outside its range is not refused by MPFB. Its macro properties carry
   a default but no ``min``/``max``, and the clamping a user gets from a slider
-  comes from a scene-level proxy property that generated code and add-on code
+  comes from a scene-level proxy property that neither this add-on nor an MCP
+  tool
   alike go nowhere near.
 
 **An unknown key is an error, not something to ignore.** A misspelled

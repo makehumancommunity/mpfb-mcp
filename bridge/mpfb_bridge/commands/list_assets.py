@@ -15,8 +15,11 @@ file, and the only thing mapping ``Clothes`` back to ``clothes`` is that table.
 Two implementations of it could disagree, and an asset this command had just
 listed would come back from the other as though it were not installed.
 
-**This reproduces ``codegen/payloads/list_assets.py`` rather than tidying it
-up.** Its two costs are paid deliberately and documented rather than worked
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
+ Its two costs are paid deliberately and documented rather than worked
 around, and its two filters are quirks in their own right:
 
 - ``AssetService.get_asset_list()`` **populates MPFB's own cache**, which loads

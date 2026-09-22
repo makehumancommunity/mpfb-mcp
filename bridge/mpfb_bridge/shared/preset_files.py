@@ -1,12 +1,9 @@
 """
 Where a preset lives, what it may be called, and what is there.
 
-The bridge's copy of
-[`codegen/shared/preset_files.py`](../../../src/mpfbmcp/codegen/shared/preset_files.py),
-and character for character the same rules - which is asserted rather than
-intended: ``tests/test_fragment_drift.py`` parses both files and compares every
-function in them on every unit run. See [`__init__.py`](__init__.py) for why the
-two exist at once and what the ``services`` argument is doing there.
+**One implementation, imported by every command that needs it.** See
+[`__init__.py`](__init__.py) for why this directory exists beside
+``commands/`` and what the ``services`` argument is doing there.
 
 Three commands have to agree about two things, and the second of them is a
 filesystem.
@@ -33,14 +30,14 @@ accepted here is one MPFB's panel would also accept, so the two never disagree
 about what exists. The space is rejected for exactly that reason rather than
 because a space in a filename is a problem.
 
-**This is the third copy of that rule and that is deliberate.**
+**This is the second copy of that rule and that is deliberate.**
 ``mpfbmcp.preset_names`` carries it on the far side of the socket, where the
-authoritative check runs before any transport is chosen; the codegen fragment
-carries it for the two preset-writing tools that have not migrated yet. This
-copy is **the last statement before ``open()``**, and it is here because a
-listening socket is reachable by anything on this machine, not only by
-mpfb-mcp. Two of the three are checked against one table of names by
-``tests/test_codegen.py``, and all three by ``tests/test_fragment_drift.py``.
+authoritative check runs before anything is sent. This copy is **the last
+statement before ``open()``**, and it is here because a listening socket is
+reachable by anything on this machine, not only by mpfb-mcp. The two are run
+over one table of names by ``tests/test_save_preset.py``, because a
+disagreement between them would let a preset be written under a name that
+cannot be loaded back.
 
 Nothing here writes anything, creates a directory or populates an MPFB cache.
 ``update_list_of_human_presets()`` does a bare ``os.listdir(confdir)``, so a
@@ -53,8 +50,8 @@ broken install is one of the things a command is for reporting.
 
 # The local bindings below are spelled with MPFB's own capitalisation -
 # ``LocationService = services["LocationService"]`` - rather than snake_case,
-# so that the bodies of these functions stay identical to the fragment's and
-# the drift check can compare them. That is the whole reason for the disable.
+# so that a body here reads the way MPFB's own source reads and can be
+# compared with it line for line. That is the whole reason for the disable.
 # pylint: disable=invalid-name
 
 __all__ = (

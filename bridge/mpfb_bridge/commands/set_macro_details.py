@@ -44,13 +44,15 @@ forbids: both sides receive the tool's already-validated arguments. Written down
 here rather than left to be rediscovered; see ``commands/create_human.py`` for
 the same asymmetry in its other shape.
 
-This reproduces ``codegen/payloads/set_macro_details.py`` rather than tidying it
-up.
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
 """
 
 # The local bindings below are spelled with MPFB's own capitalisation, which is
-# what the payload this reproduces used and what makes the two readable side by
-# side during the migration.
+# what the program this replaced used, which is in turn what MPFB's own
+# source uses.
 # pylint: disable=invalid-name
 
 __all__ = (

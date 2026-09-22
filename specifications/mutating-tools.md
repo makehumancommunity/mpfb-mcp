@@ -15,29 +15,28 @@ here. Three further sections cover the cases MPFB makes hard: an ordering constr
 enforces, a batch that must be all-or-nothing, and the one kind of change Blender's undo stack
 does not reach at all.
 
-## Where these rules are enforced, now that there are two implementations of each
+## Where these rules are enforced
 
-[FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md) migrated the
-thirteen mutating tools, so every rule below exists twice: once in
-`src/mpfbmcp/codegen/payloads/`, once in `bridge/mpfb_bridge/commands/`. **No rule changed** — the
-requirement that effort worked under was reproduction over improvement, and it is stricter for a
-mutating tool than anywhere else, because breaking it has side effects on somebody's `.blend`
-rather than a different-looking answer.
+A reader looking for the enforcement should not have to guess, and the answer is not the same for
+all of them. "The far side" is the thirteen mutating commands in `bridge/mpfb_bridge/commands/`;
+"the near side" is the tool module, which runs before anything is sent.
 
-What is worth writing down is **which layer actually enforces each rule**, because the answer is
-not the same for all of them and a reader looking for the enforcement should not have to guess:
+**No rule in this document changed when those commands were written.**
+[FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md) worked under
+reproduction-over-improvement, which is stricter for a mutating tool than anywhere else, because
+breaking it has side effects on somebody's `.blend` rather than a different-looking answer.
 
 | Rule | Enforced by |
 |------|-------------|
 | Any object in the family is a valid subject | The **far side**, in both copies. Resolution needs MPFB's relationship walk |
 | A precondition is an answer, not an exception | The **far side**. Every `blocked_by` branch runs before the mutating call |
-| `performed` means the same thing everywhere | A **shared module**: `codegen/shared/performed.py` and `bridge/mpfb_bridge/shared/performed.py`, kept in step by [test_fragment_drift.py](../tests/test_fragment_drift.py) |
+| `performed` means the same thing everywhere | A **shared module**, [`bridge/mpfb_bridge/shared/performed.py`](../bridge/mpfb_bridge/shared/performed.py), imported by all thirteen |
 | The before/after report | The **far side**, which is the only place that can observe both |
 | The caller's selection is restored | The **far side**, in a `finally`. Twelve of thirteen; `mpfb_generate_rigify_rig` reports `active_object_after` instead |
 | A batch resolves before it writes | The **far side**. It is a property of the *code*, and nothing below the socket would enforce it |
-| A name that becomes a path is a name and never a path | **Both sides, deliberately.** `preset_names.py` before a transport is chosen, `shared/preset_files.py` as the last statement before `open()` |
+| A name that becomes a path is a name and never a path | **Both sides, deliberately.** `preset_names.py` before anything is sent, `shared/preset_files.py` as the last statement before `open()` |
 | `overwrite: False`, and the absolute path in every answer | The **far side** |
-| Argument shape and range | The **near side**, before a transport is chosen — see [Validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket) |
+| Argument shape and range | The **near side**, before anything is sent — see [Validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket) |
 
 **One rule is enforced by neither and is worth naming as such.** Nothing makes a *failure*
 atomic. `mpfb_create_human_from_preset` builds a character in stages and a mid-way failure leaves
@@ -52,7 +51,7 @@ A tool that changes a character accepts **any object in that character's family*
 its rig, a garment fitted to it — and resolves from there to the object it will actually modify,
 through `ObjectService.find_object_of_type_amongst_nearest_relatives()`. That is the same call
 MPFB's own panels make, and the reason for it is
-[how tools name things](tool-interface.md#how-generated-code-addresses-objects):
+[how tools name things](tool-interface.md#how-a-tool-addresses-an-object):
 an agent got the name it is holding out of `mpfb_list_objects`, which does not say which member
 of a family owns a given property.
 Requiring the caller to know that would make every mutating tool need a lookup step first.
@@ -98,7 +97,7 @@ by omission.
 - **Do only what was asked.** A call that names nothing to change must not "helpfully" recalculate:
   it answers immediately, saying that nothing was named. A no-op is a common agent mistake, and a
   full macro rebuild costs seconds.
-- **Restore what was borrowed.** Where the payload has to activate or select an object to do its
+- **Restore what was borrowed.** Where the command has to activate or select an object to do its
   work — MPFB's own slider callback does — put the previous active object and selection back, in a
   `finally`, so a failure part-way through does not leave the user's scene rearranged. Where it
   genuinely *cannot* — `RigService.generate_rigify_rig()`'s own final act is to select and activate
@@ -131,11 +130,12 @@ what says the problem was the *variation* rather than the naming.
   `mpfb_refit_human`'s `refit_performed` is that field, and setting `performed` from it is what
   keeps the two from disagreeing about the one case they could: a generated Rigify rig with no meta
   rig, which refits the mesh assets and leaves the rig.
-- **It is stamped once, at the bottom of the payload, rather than written into each branch.**
+- **It is stamped once, at the bottom of the command, rather than written into each branch.**
   `mpfb_set_asset_material` builds eleven refusals and one success; a key written twelve times is
   twelve chances to write it wrong, and the refusals are the branches nobody re-reads. The two
   universal falsehoods — a refusal and an unresolved subject are never performed — live in
-  `codegen/shared/performed.py` with the stamping, so no call site has to remember them.
+  `bridge/mpfb_bridge/shared/performed.py` with the stamping, so no call site has to remember
+  them.
 - **Nothing was renamed to get it.** A response-shape change across eleven tools at once must not be
   able to break a caller; every existing verb still means what it meant.
 
@@ -143,7 +143,7 @@ what says the problem was the *variation* rather than the naming.
 
 Related to, but distinct from, [FR 001](../feature-requests/done/001-mpfb-get-status/README.md)'s
 "absence is an answer": there the request named something that is not there, while here the request
-is well-formed and the **world** is not ready. Check in the payload and return a sentence naming the
+is well-formed and the **world** is not ready. Check in the command and return a sentence naming the
 problem, rather than letting MPFB's own guard surface as a traceback in an error envelope.
 
 - **OBJECT mode.** `TargetService.create_shape_key()` opens with a bare `assert
@@ -153,7 +153,7 @@ problem, rather than letting MPFB's own guard surface as a traceback in an error
 - **Presence of shape keys.** `reapply_macro_details()` on a mesh with none logs "somewhat
   surprising" and carries on, producing a partial result. It is what an imported mesh tagged as a
   basemesh looks like, and it should be reported as that rather than half-done.
-- **Reachability of what the payload needs**, such as a property set read off a service's module
+- **Reachability of what the command needs**, such as a property set read off a service's module
   (see [Reading module-level names MPFB does not publish](architecture.md#reading-module-level-names-mpfb-does-not-publish)).
 - **A vocabulary MPFB validates *after* it destroys something.** This is the sharpest case, and it
   is the one exception to
@@ -165,7 +165,7 @@ problem, rather than letting MPFB's own guard surface as a traceback in an error
   nothing, and surfaces as a `ValueError` raised from `create_and_assign_material_slots()` about a
   mesh with no materials: a traceback from a function that never saw the bad argument, after damage
   that cannot be undone across the socket. Where a vocabulary is checked late and the check is
-  preceded by destruction, check it in the payload first — and, where the vocabulary is small,
+  preceded by destruction, check it in the command first — and, where the vocabulary is small,
   closed and MPFB's own enum rather than a scan of the user's disk, check it in the tool module too,
   so a typo never crosses the socket at all. Report `known_*` alongside either way: the local check
   is belt and braces, and the authoritative answer still comes from Blender.
@@ -231,8 +231,8 @@ properties follow, and they are the whole of the extra obligation:
   it is not the vocabulary exception: which characters may appear in a filename is knowable here
   and cannot drift from anything on the user's disk. Strictness runs one way — every name accepted
   must be one MPFB's own panel would also accept, so the two never disagree about what exists.
-  Where the rule has to exist on both sides of the socket (the tool module refuses before the
-  program is built; the payload is the last statement before `open()`), a test runs the two
+  Where the rule has to exist on both sides of the socket (the tool module refuses before anything
+  is sent; the command is the last statement before `open()`), a test runs the two
   implementations over one table of names, because two copies that disagree would let an artifact
   be written under a name that cannot be read back.
 - **Refuse to overwrite by default, and always name the absolute artifact.** There is no undo, no
@@ -244,7 +244,7 @@ properties follow, and they are the whole of the extra obligation:
 The general obligation those three serve is that **a refusal must never be a partial write**: every
 precondition is settled before the writing call is made. MPFB's own path happens to be safe here
 (`serialize_to_json_string()` runs to completion before the file is opened), but that is an
-inherited property rather than a guarantee, so the ordering is the payload's own.
+inherited property rather than a guarantee, so the ordering is the command's own.
 
 The counterpart on the reading side is that a tool addressing an artifact by name must be able to
 say **which names exist**: a misspelling is the likeliest way such a tool is called wrongly, so the
@@ -266,12 +266,16 @@ is written, and if any entry fails, none of them are applied.**
 - **Report per entry once application starts**, in request order, including what changed as a
   consequence — one sided change with `symmetry` on touches up to four shape keys, and the response
   has to be able to say so.
-- **Batch because per-call cost dominates, not on principle.** A socket round trip costs about
-  250 ms — measured by [FR 013](../feature-requests/done/013-live-verification/README.md), which
-  also retired the ~1.0 s figure this decision was originally argued against — while setting a
-  modeling target costs milliseconds. Transport alone would make thirty calls 7.5 s of waiting for
-  a fraction of a second of work. The measured gap is far larger: thirty modifier changes cost
-  3.6 s in one call and 98.4 s in thirty, and the 95 s difference is mostly *not* transport but
-  per-call setup the payload redoes each time. Where the work inside the call is itself expensive —
+- **Batch because per-call cost dominates, not on principle**, and the number that argument rests
+  on has moved twice. It was originally made against a ~1.0 s round trip, then against the ~250 ms
+  [FR 013](../feature-requests/done/013-live-verification/README.md) measured; on the bridge the
+  same tool's call is **58 ms** where it was 461 ms
+  ([FR 030](../feature-requests/done/030-backend-seam/README.md)), so transport alone would make
+  thirty calls under two seconds. **The decision survives the number getting an order of magnitude
+  smaller**, because transport was never the larger half: thirty modifier changes were measured at
+  3.6 s in one call and 98.4 s in thirty, and most of that 95 s is per-call setup the far side
+  redoes each time rather than bytes on a wire. Read it as a settled interface decision that no
+  longer needs a number to defend: a whole series of modeling changes is one request, and an entry
+  that fails costs the caller one resend. Where the work inside a call is itself expensive —
   loading an MHCLO asset is seconds of mesh import and vertex fitting — the argument does not carry
   over, and one-per-call is the better shape.

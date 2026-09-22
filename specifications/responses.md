@@ -20,22 +20,20 @@ Tools return `{"status": "ok", "result": ...}` or
 including future mpfb-mcp tools composing on top of others — must check `status` rather than assume
 success.
 
-**The envelope started as blender_mcp's and is now this package's, with the same spellings.**
-`status`, `result` and `message` mean exactly what they meant and are spelled exactly as they were,
-which is why the backend seam could be introduced without a single existing caller or test
-changing. What the bridge added is `error`, and it is now part of the contract on both transports:
+**The envelope was inherited and kept, spellings and all.** `status`, `result` and `message` mean
+exactly what they meant on the transport this package started with, which is why a whole second
+transport could be introduced and then the first one deleted without a single existing caller
+changing. What the bridge added is `error`, and it is part of the contract:
 
 - **A caller branches on `status`, then on `error`, and never on `message`.** The slug is the
   contract; the human sentence beside it may be reworded without notice. The vocabulary is the
   bridge's nine slugs ([the wire](architecture.md#the-wire)), of which two carry most of the meaning
   a caller acts on: `invalid_params` says the request was wrong and names the parameter, and
   `mpfb_unavailable` says the request was fine and the install is not.
-- **A generated-code error is given `error: "command_failed"` by the seam.** That is a statement of
-  fact rather than a guess — a blender_mcp error envelope is always a program that raised inside
-  Blender — and it is what makes "branch on `error`" true for a caller that has no idea which
-  transport answered it. **Uniformity of failure across two protocols is the point**: two
-  transports with two error vocabularies visible to callers would undo the main benefit of having a
-  seam at all.
+- **Every error envelope carries a slug, because one function writes them all.**
+  `command_server._error()` is that function, which is what lets a caller branch on `error` without
+  first establishing that the failure came from somewhere that fills the field in. The seam
+  synthesises nothing: there is nothing left for it to fill in.
 - **Nothing else is synthesised, in either direction.** A success envelope is returned exactly as
   it arrived. `protocol_version` is a fact about the bridge's protocol and is *absent* from a
   generated-code answer rather than invented for it, and the mapping never overwrites a slug the
@@ -190,7 +188,7 @@ self-consistency on one backend before it compares across two.
   [`null` versus `[]` rule](#response-shape) applied to a comparison rather than a container.
 - **Degrading is not failing.** Every state the tool can be in is a successful envelope: this is
   [absence is an answer](#response-shape) extended past MPFB's absence to the transport's. What it
-  must not swallow is a *defect* — a payload that raised inside Blender still surfaces as an error,
+  must not swallow is a *defect* — a command that failed inside Blender still surfaces as an error,
   or the bug is hidden for good.
 
 ## A deliberately partial answer carries the size of the whole

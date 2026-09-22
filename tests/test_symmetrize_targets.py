@@ -1,22 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_symmetrize_targets tool: argument validation, the dry run,
-and the category walk that makes an asymmetric detail stack symmetric.
+"""Tests for the mpfb_symmetrize_targets tool: argument validation, and what
+crosses the socket.
 
-Three layers since FR 032 migrated it (see ``tests/test_list_objects.py``, the
-template): the tool wrapper with ``send_command`` mocked on the seam; the **bridge
-path** against ``tests/fake_bridge.py``; and the assembled source - shared
-fragments included - executed against the stub scene and the real temporary
-target tree in tests/blender_stubs.py. That third layer is **frozen**, and what
-this tool actually does to a character is checked against a real MPFB in
+Two layers (see ``tests/test_list_objects.py``, the template): the wrapper with
+``send_command`` mocked below the seam, and the bridge path against
+``tests/fake_bridge.py``. The wrapper carries the package's **only required
+argument**: which half of a face is the good one is not something a tool can
+guess, and guessing wrong destroys work with no undo across the socket.
+
+The category walk, the dry run agreeing with the real run, and the write order -
+the opposing target is zeroed first, or pruning deletes the wrong half of a
+pair - are checked against a real MPFB in
 ``bridge/test/tests/ppp_mutating/symmetrize_targets_test.py``.
-
-The operation has no MPFB equivalent - MPFB's own ``symmetry`` setting only
-mirrors changes made while it is on - so there is nothing to compare against,
-and what is under test is instead that the *pairing* comes from target.json's
-opposites table rather than from matching ``l-``/``r-`` name prefixes, and that
-a dry run reports exactly what a real run then does.
 
 Run with::
 
@@ -163,12 +159,13 @@ class SymmetrizeTargetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.assertEqual(self.bridge.requests, [],
                          "a locally invalid call must not be sent to any backend")
 
-    def test_no_shared_fragment_reaches_the_bridge(self) -> None:
+    def test_the_request_is_the_arguments_and_nothing_else(self) -> None:
+        # What `modifier_reading` models is imported by the command; nothing
+        # about it is on the wire.
         self.call(direction="left_to_right")
 
         request = self.bridge.decoded_requests()[-1]
-        self.assertNotIn("shared", request)
-        self.assertNotIn("cached_shared", request)
+        self.assertEqual(set(request), {"command", "params", "protocol_version"})
         self.assertNotIn("modifier_reading", str(request))
 
     def test_a_bridge_error_envelope_reaches_the_caller_intact(self) -> None:

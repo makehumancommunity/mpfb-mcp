@@ -13,8 +13,8 @@ The standing bar throughout is the one [FR 007](../feature-requests/done/007-mac
 set: **a character mpfb-mcp produces must be reproducible through MPFB's own UI**, and where it
 cannot be, the tool says which path it took and why.
 
-How generated code *reaches* MPFB at all — the bootstrap, and the rule against importing its
-submodules — is [architecture.md](architecture.md#resolving-mpfb-from-generated-code).
+How a command *reaches* MPFB at all — the `sys.modules` scan, and the rule against importing its
+submodules — is [architecture.md](architecture.md#resolving-mpfb).
 
 ## Where MPFB's UI coerces or re-defaults a service argument, mpfb-mcp does the same and reports both
 
@@ -50,9 +50,9 @@ that the value reads back on MPFB's own slider.
   field the caller named even when it was already so.
 - **The coercion belongs on the far side of the socket, not in the stub.** The test has to be
   testing mpfb-mcp. A stub service that coerced would let the code under test do nothing and still
-  pass. Since [FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md)
-  "the far side" means two implementations — a payload and a command — and each of these rules was
-  checked across that move rather than assumed to survive it. All three held:
+  pass. Each of these rules was checked across the move to the add-on rather than assumed to
+  survive it, by [FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md),
+  which had both implementations running side by side to compare. All three held:
   `mpfb_set_skin`'s three-type coercion, `mpfb_create_human_from_preset`'s panel default of
   `ENHANCED` over the service's `NEVER`, and `mpfb_add_asset`'s per-type material default. The
   check is that effort's own
@@ -153,7 +153,7 @@ versus services" to *any* two MPFB code paths.
   *popped* rather than deleted, so the previous material's node groups survive (unlike the skin
   path, which destroys them); and the viewport colour is keyed on the object's recorded
   `object_type`, so an asset mislabelled at equip time gets the wrong colour here too. Reproduce
-  them, and say in the payload docstring that they are reproductions rather than choices.
+  them, and say in the command's docstring that they are reproductions rather than choices.
 
 ## Reading MPFB's data files directly
 
@@ -203,14 +203,14 @@ What follows for a tool:
   a catalogue call a side effect on the user's UI.
 - **Say in the docstring what the first call costs and what a rescan does**, since neither is
   visible from the response and both are surprising for a tool that changes nothing in the scene.
-- **mpfb-mcp adds no fourth cache of MPFB's data, and that was a decision.** The obvious place for
-  one is the modeling category table three tools rebuild on every call, and
+- **mpfb-mcp adds no cache of MPFB's data, and that was a decision.** The obvious place for one is
+  the modeling category table four commands rebuild on every dispatch, and
   [FR 017](../feature-requests/done/017-category-table-cost/README.md) set out to build it. What it
-  found on measuring was that the rebuild costs 4 ms and the *generated code describing it* costs
-  a second on the wire, so what is kept inside Blender is that code and not its answer (see
-  [Generated code may keep its own source inside Blender](architecture.md#generated-code-may-keep-its-own-source-inside-blender)).
-  Everything above therefore still describes every cache under these tools, all of them MPFB's own:
-  a tool answering from MPFB's data is answering from a scan it just did.
+  found on measuring was that the rebuild costs **4 ms**, which is not worth a cache of any kind —
+  and what a cache would cost is the property that makes these tools better than MPFB's own panels:
+  a target installed since Blender started is visible here and is not there. So every cache under
+  these tools is MPFB's own, and a tool answering from MPFB's data is answering from a scan it just
+  did.
 - **Where the tool can see past the cache cheaply, it does, rather than handing the caller a flag
   instead of an answer.** `refresh` is opt-in for the reason above, but a caller who has to pass it
   in order to find out whether it would change anything has not been told much.
@@ -247,7 +247,7 @@ address individual shape keys but could not express anything MPFB's own sliders 
   disagree about the file extension, one trying `.target.gz` then `.target` and the other only the
   first; and MPFB's category name for a gzipped custom target does not strip `.gz`, so its shape key
   is not called what `mpfb_list_targets` reports. Both are reproduced or repaired deliberately, and
-  said out loud in the payload docstring and in the response, because a caller who meets one will
+  said out loud in the command's docstring and in the response, because a caller who meets one will
   otherwise read it as a bug here.
 - **The goal is that the value reads back on MPFB's own slider.** Where reproducing a quirk and
   tidying it up would give different answers in MPFB's panel, reproduce the quirk.

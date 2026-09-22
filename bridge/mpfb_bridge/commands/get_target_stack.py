@@ -27,8 +27,11 @@ matches what the user sees in the panel. ``symmetrize_targets`` has not
 migrated, so for now that agreement is kept by
 ``tests/test_fragment_drift.py`` rather than by the two sharing a module.
 
-**This reproduces ``codegen/payloads/get_target_stack.py`` rather than tidying
-it up**, including the asymmetry that looks like an oversight: ``targets`` is
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
+, including the asymmetry that looks like an oversight: ``targets`` is
 filtered, paged and capped while ``modifiers`` is none of those. The rollup is
 small by construction - only a category with a non-zero reading appears - and it
 is what a caller writes back, so cutting it would hand back something that is

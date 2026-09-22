@@ -15,7 +15,7 @@ classifiers = [
 ]
 dependencies = [
     # Pinned below 2.0: mcp 2.x renamed FastMCP to MCPServer and changed
-    # other APIs this code (and blender_mcp's) is written against.
+    # other APIs this code is written against.
     "mcp[cli]>=1.2.0,<2",
 ]
 

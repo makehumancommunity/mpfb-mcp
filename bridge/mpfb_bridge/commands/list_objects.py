@@ -8,14 +8,13 @@ the first time.
 
 It was chosen to be migrated first for being dull: one optional string
 parameter, read-only, a result of five keys, and no dependence on anything
-another command will also need. What is interesting about it is therefore not
-the command but the pair - ``src/mpfbmcp/codegen/payloads/list_objects.py``
-answers the same question over the other transport, and the two answers are
-compared field by field against one Blender by FR 030's own live check.
+another command will also need. FR 030's live check compared it field by field
+against the generated program it replaced, over one Blender, before anything
+else moved.
 
-**This reproduces that payload rather than tidying it up.** Four of its
-behaviours are quirks worth naming, because each is a thing a reimplementation
-would "fix" and thereby break the comparison:
+**The behaviours below are MPFB's, reproduced rather than tidied up.** Four of
+them are quirks worth naming, because each is a thing a reimplementation would
+"fix" and thereby change what the tool answers:
 
 - ``_ALL_TYPES`` is read off the service's own module, with a stale local
   vocabulary as the fallback. Reporting last year's type list is a better
@@ -35,9 +34,9 @@ An empty ``object_type`` is not refused here, which looks like a gap and is
 not. The dispatcher's parameter contract is about *shape*, and "not empty" is a
 rule with an MPFB reason behind it - an empty filter substring-matches every
 type rather than none - which mpfb-mcp's own tool applies before anything
-reaches a transport. A hand-written client that sends one gets the payload's
-behaviour: every MakeHuman object, with ``type_recognized`` false beside the
-list saying why the answer is broader than the question.
+reaches a transport. A hand-written client that sends one gets this command's
+behaviour unmediated: every MakeHuman object, with ``type_recognized`` false
+beside the list saying why the answer is broader than the question.
 """
 
 __all__ = (
@@ -77,8 +76,8 @@ def _all_types(object_service):
 
     ``_ALL_TYPES`` is a module-level name in ``objectservice.py``: not a member
     of ``ObjectService``, not in ``SERVICES``, and underscore-private. Being
-    add-on code rather than generated code makes ``from ... import _ALL_TYPES``
-    possible here for the first time, and it stays forbidden -
+    Being add-on code rather than code sent into Blender makes
+    ``from ... import _ALL_TYPES`` possible here, and it stays forbidden -
     [never import MPFB submodules directly](../../../specifications/architecture.md#never-import-mpfb-submodules-directly)
     survives the pivot unchanged. The module is necessarily already imported,
     since ``ObjectService`` resolved out of it, so ``sys.modules`` is both the

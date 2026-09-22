@@ -42,8 +42,10 @@ refits the mesh assets, tries to report the rig failure through an ``operator``
 a command does not have, and returns. ``refit_human`` detects that after the
 fact; this is where it is knowable in advance, as ``refit_will_be_possible``.
 
-This reproduces ``codegen/payloads/generate_rigify_rig.py`` rather than tidying
-it up.
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
 """
 
 __all__ = (

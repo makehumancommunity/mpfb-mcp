@@ -12,7 +12,7 @@ It is not finished. Two commands are implemented - see :mod:`commands.table` -
 and the twenty-odd that a migration adds are still to come. What exists proves
 the transport, the dispatch, the parameter contract and the MPFB resolution; it
 proves nothing about the behaviour of the commands not yet written, nor about
-performance under real payloads.
+performance under real workloads.
 
 The modules, in dependency order:
 

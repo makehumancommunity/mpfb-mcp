@@ -4,12 +4,14 @@
 > necessarily the current implementation; where the code diverges, the intent stated here
 > governs. See [Status of these documents](README.md#status-of-these-documents).
 >
-> **Rewritten by [FR 028](../feature-requests/done/028-pivot-to-specific-addon/README.md).** The
-> machine described first is the **bridge**, which exists today as a proof of concept carrying one
-> command. The machine every tool actually uses is the **generated-code path**, described in full
-> under [The generated-code path](#the-generated-code-path-what-runs-today-and-is-being-retired)
-> and plainly marked there. Both are documented because both are real; one is being retired, and
-> the retirement is staged so that both work until the last tool has moved.
+> **There is one machine, and this document describes it.** It was two:
+> [FR 028](../feature-requests/done/028-pivot-to-specific-addon/README.md) decided that MPFB's
+> Blender-side logic belonged in an add-on of our own rather than in Python assembled here and
+> sent to a third party's add-on to be executed, and
+> [FR 033](../feature-requests/done/033-retire-the-generated-code-path/README.md) deleted the
+> older one. What that path was, what it cost and what it taught is in
+> [HISTORY.md](../feature-requests/HISTORY.md), not here: a standing specification describes what
+> runs.
 
 This document describes **the machine**: where mpfb-mcp's boundaries are, how it reaches MPFB
 without importing it, what crosses the socket, and how the package is laid out. It exists to keep
@@ -36,13 +38,13 @@ For the current, concrete module layout, see [CLAUDE.md](../CLAUDE.md#architectu
 These are first-class, non-functional requirements, not a finishing touch. Where readability and
 brevity or cleverness conflict, readability wins.
 
-**Code that runs inside Blender is code**, wherever it is written. This started as a rule about
-generated Python — that a payload must be editable as ordinary Python, in its own file, with
-syntax highlighting, working editor indentation and a linter that mostly applies, and that a
-payload written as an escaped string literal fails that standard however well it works. The rule
-survives the pivot and gets easier to keep: bridge code *is* ordinary Python in an ordinary
-add-on. What it stops being is a trade against the wire, since prose in an add-on is not sent
-anywhere.
+**Code that runs inside Blender is code**, wherever it is written. The rule began as one about
+Python this package assembled and sent into Blender: it had to be editable as ordinary Python, in
+its own file, with syntax highlighting, working editor indentation and a linter that mostly
+applies, because that is the form the next developer copies. It outlived that machine and is
+easier to keep now that add-on code *is* ordinary Python in an ordinary add-on. What it stopped
+being is a trade against the wire: an explanation used to cost roughly 250 ms per 4 KB on every
+call that carried it, and prose in an add-on is not sent anywhere.
 
 **The bridge is held to a stronger version of this rule**, for two reasons that do not apply to
 the rest of the package. It will be read by reviewers at an extension platform, and by users
@@ -56,10 +58,10 @@ it; the divergences are recorded in
 [FR 028](../feature-requests/done/028-pivot-to-specific-addon/README.md#architecture).
 
 **Adding a tool should mean adding files, not editing shared ones.** A structure where every new
-tool edits a module that all the other tools depend on does not scale past a handful of them; see
-[Code-generation layout](#code-generation-layout) for what this means concretely, and note that
-the bridge inherits the requirement rather than the mechanism — a new command is a function and
-one line in a table.
+tool edits a module that all the other tools depend on does not scale past a handful of them.
+Concretely: a new tool is a module in `tools/`, one `register()` call, a module in
+`bridge/mpfb_bridge/commands/`, and one line in `commands/table.py`. Nothing shared is edited, and
+if a change to shared code is needed to add an ordinary tool, the layout has drifted.
 
 ## The bridge
 
@@ -177,8 +179,8 @@ install to fix.
 - **The socket is drained until it would block**, not read one fixed-size chunk per tick, and a
   client's deadline is reset by every chunk that arrives rather than only by a completed request.
   Both are deliberate departures from the add-on the transport is otherwise modelled on, whose
-  one-chunk-per-tick read is the tax described under
-  [What a call costs is the size of its program](#what-a-call-costs-is-the-size-of-its-program).
+  one-chunk-per-tick read cost this project about 250 ms per 4 KB of request for its whole first
+  year — [what that was and how it was measured](../feature-requests/HISTORY.md#fr-033--the-generated-code-path-retired).
   At parameter sizes neither would matter much, which is exactly why the bridge should not inherit
   a defect it was built to avoid.
 - **A caller branches on `error`, never on `message`.** The slug is the contract and the sentence
@@ -204,8 +206,8 @@ thing that reads `min_supported_protocol_version`, and so the only thing that ca
 *which end to upgrade* rather than merely that two numbers differ; a version this client cannot
 work with then fails every call to that address with one sentence naming both. Two constraints keep
 it honest. **The probe must not become a round trip per call** — it is memoised per `(host, port)`,
-which makes it a claim about what this process learned, exactly as `shared_cache`'s memo is, and
-wrong in the same ordinary way when Blender restarts, so a connection failure drops it. And **the
+which makes it a claim about what *this process* learned rather than about what is running, and
+wrong in the ordinary way when Blender restarts under it, so a connection failure drops it. And **the
 probe is issued through the wire client directly, never through the seam**, or the first call in a
 process would probe in order to probe. A bridge that answers but reports no version is talked to
 anyway: a handshake exists to catch a mismatch, not to invent one.
@@ -217,12 +219,12 @@ is what the handshake probes. `get_mpfb_status` reports *MPFB*, in three tiers i
 roots and configured paths, and is what `mpfb_get_status` became when
 [FR 031](../feature-requests/done/031-introspection-and-catalogues-migrated/README.md) migrated it.
 
-This is the **one** place where a tool's bridge command is not named after its payload, and the
-exception is deliberate: two commands answering "status" about two different things is a collision
-that is cheap to avoid while there is one caller and permanent once there are several. It is
-written into `MIGRATED_COMMANDS`' own comment, into `commands/table.py` beside the entry, and into
-each command's `list_commands` summary, so that a reader meeting either one learns which is which
-without finding this paragraph. Both declare `requires_mpfb=False`, for the same reason: a status
+This is the **one** place where a tool's command is not named after the tool, and the exception is
+deliberate: two commands answering "status" about two different things is a collision that is
+cheap to avoid while there is one caller and permanent once there are several. It is written into
+`backend.send()`'s docstring, into `commands/table.py` beside the entry, and into each command's
+`list_commands` summary, so that a reader meeting either one learns which is which without finding
+this paragraph. Both declare `requires_mpfb=False`, for the same reason: a status
 command gated on the thing it reports about answers only the question nobody needs to ask.
 
 ### Both ends validate, deliberately
@@ -260,35 +262,33 @@ written by hand at a terminal stays possible. MPFB, the bridge and mpfb-mcp are 
 released pieces, and that matrix is a real cost of this packaging choice — the only cheap defence
 is a handshake that exists from the first command.
 
-**Both halves of the handshake now exist**: the bridge's, above, and the client's, in
+**Both halves of the handshake exist**: the bridge's, above, and the client's, in
 [the wire](#the-wire). One number is duplicated across the two — `PROTOCOL_VERSION`, which
-`bridge_connection` declares and the add-on serves — and it is kept in step by hand for the reason
-`connection.py` duplicates blender_mcp's protocol: `bridge/` is a Blender extension that imports
-`bpy`, and making the pip package depend on it would undo
-[no direct dependency](#no-direct-dependency-on-mpfb-or-blender_mcp). A unit test reads the add-on's
+`bridge_connection` declares and the add-on serves — and it is kept in step by hand because
+`bridge/` is a Blender extension that imports `bpy`, so making the pip package depend on it would
+undo [no direct dependency](#no-direct-dependency-on-mpfb-and-none-on-the-add-on-either). A unit test reads the add-on's
 source and asserts the two agree, skipping where that source is not beside the package. The
 bridge's own version is reported too, and must equal the `version` in `blender_manifest.toml` —
 kept in step by hand, since nothing in the extension format publishes one to the other, and
 asserted by a test rather than by a comment.
 
-## No direct dependency on MPFB or blender_mcp
+## No direct dependency on MPFB, and none on the add-on either
 
 mpfb-mcp never imports MPFB Python code directly, and is never run *inside* Blender. Every
 interaction with MPFB crosses two boundaries:
 
-1. mpfb-mcp → the add-on, over a TCP socket. mpfb-mcp maintains its own minimal client for the
-   protocol rather than depending on the add-on's package, so it installs standalone. On the
-   generated-code path that add-on is blender_mcp and the protocol is a deliberate **duplicate**
-   of blender_mcp's, which means a change upstream must be mirrored here by hand; on the bridge
-   it is our own protocol and the duplication problem goes away with it.
-2. The add-on → MPFB, inside the Blender process: by `exec()`-ing generated source on the old
-   path, and by calling ordinary add-on code on the new one.
+1. mpfb-mcp → the bridge add-on, over a TCP socket. **mpfb-mcp does not import the add-on
+   either**, though both live in this repository: `bridge/` is a Blender extension whose modules
+   import `bpy`, so importing one would pull Blender into a process that has none. The wire client
+   is therefore standalone, and the protocol version it declares is a hand-kept duplicate of the
+   add-on's — the one place the two halves have to be changed together, and the one a test reads
+   the add-on's source to check.
+2. The add-on → MPFB, inside the Blender process, by calling ordinary add-on code.
 
 **The consequence that shapes everything else is a testing one.** Because MPFB is reachable only
-from inside Blender, mpfb-mcp's own suite can verify the wire protocol and the generated code and
-nothing beyond it; anything that depends on what MPFB actually does is checked against a running
-Blender. The bridge changes *where* that line falls rather than removing it — bridge code is
-testable against a real MPFB, which is an improvement and a large rewrite at the same time. That
+from inside Blender, mpfb-mcp's own suite can verify the wire protocol, the seam and what a tool
+decides before sending, and nothing beyond it; anything that depends on what MPFB actually does is
+checked against a real MPFB in the bridge's own suite, which runs inside a headless Blender. That
 split, and the discipline it imposes, is [testing.md](testing.md).
 
 ## mpfb-mcp opens no network connection except the one to the add-on
@@ -315,12 +315,11 @@ Three things follow:
   part of the design rather than an error path.
 
 **And a tool need not cross the socket at all.** `mpfb_list_docs` is a local table with a URL rule
-over it: no payload, no generated code, no Blender, no MPFB. That is a legitimate shape for a tool
-here and not a sign that something belongs elsewhere — the test is whether an agent driving MPFB
-needs the answer, not whether the answer comes from Blender. It is the one tool for which the
-`tools/<name>.py` / `payloads/<name>.py` / `tests/test_<name>.py` naming rule does not hold, and
-the omission is stated where the payload list is kept rather than left to be read as a gap. It is
-also the one tool the pivot does not touch, since it has nothing to migrate.
+over it: no command, no Blender, no MPFB. That is a legitimate shape for a tool here and not a sign
+that something belongs elsewhere — the test is whether an agent driving MPFB needs the answer, not
+whether the answer comes from Blender. It is the one tool for which the `tools/<name>.py` /
+`commands/<name>.py` / `tests/test_<name>.py` naming rule does not hold, and the omission is
+stated in [CLAUDE.md](../CLAUDE.md#the-twenty-five-tools) rather than left to be read as a gap.
 
 `mpfb_list_urls` sits between the two: it crosses the socket when it can, and answers from the
 vendored copy when it cannot. It is the only tool that catches `ConnectionError` from the wire —
@@ -328,78 +327,51 @@ see
 [a tool may answer from more than one source](responses.md#a-response-says-which-source-answered-it)
 for what that obliges it to report, and note that the catch belongs in the tool module. Every
 other tool depends on a connection failure being an error envelope, and this is one tool's
-exception rather than a change to the wire layer. It survives the pivot unchanged in substance:
-the download link is the answer precisely when nothing is running, and that is as true of an
-unreachable bridge as of an unreachable blender_mcp.
+exception rather than a change to the wire layer. The reason is unchanged whatever is on the other
+end of the socket: the download link is the answer precisely when nothing is running.
 
 ## Supporting a second backend
 
-**This seam was designed for a different second backend and was spent on the bridge instead.** The
-original plan was an adapter that let mpfb-mcp drive the community
+**This seam was designed for a different second backend, was spent on the bridge, and now has one
+transport under it.** The original plan was an adapter letting mpfb-mcp drive the community
 [blender-mcp](https://github.com/ahujasid/blender-mcp) add-on as well as blender lab's; that goal
 is superseded (see
 [vision.md](vision.md#superseded-which-blender-mcp-neither-in-the-end)), because once no program
-crosses the socket there is no third-party add-on in the path to abstract over. What the analysis
-established about *where the seam goes* carried forward unchanged, and
-[FR 030](../feature-requests/done/030-backend-seam/README.md) built it:
-`src/mpfbmcp/backend.py` is the seam and `src/mpfbmcp/bridge_connection.py` is the bridge's wire
-client.
+crosses the socket there is no third-party add-on in the path to abstract over. The section keeps
+its name because what the analysis established was about *where a seam goes*, and that outlived
+both backends it was argued over.
 
 - **The seam is an adapter *below* the send, not a second connection module each tool picks
-  between.** Backend choice is not visible above the socket boundary: tools stay unchanged, and
-  [Response shape](responses.md#response-shape)'s rule that a tool returns the envelope it was
-  given holds on both. If supporting a backend requires editing a tool, the seam is in the wrong
-  place — the same test
-  [Diagnostics attach at the socket boundary](observability.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program)
-  applies to observability. **The bridge is a backend behind exactly this seam**: a migrated tool
-  sends a command and arguments instead of a program, `codegen/` is bypassed for it, and no tool
-  module learns which transport it is talking to. A tool calls `backend.send()` with what it was
-  already handing to `codegen.assemble()` — the payload's filename, its parameters, its bootstrap —
-  and **the same parameters reach both sides, unreshaped**. There is deliberately no escape hatch
-  for a tool whose two paths would want different ones; if one ever needs that, it is a design
-  problem to surface in that tool's own effort rather than a flexibility to carry unused.
-- **Backend selection is explicit configuration, never autodetection.** `MPFB_MCP_BACKEND` is
-  `bridge` (the default since
-  [FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md)) or
-  `blender_mcp`, and `MPFB_BRIDGE_HOST` / `MPFB_BRIDGE_PORT` give the
-  bridge's address. Both third-party add-ons default to port 9876 and the bridge answers on 9877,
-  so the address distinguishes nothing reliably, and no single probe distinguishes them either — a
-  NUL-terminated ping leaves the community add-on's parser waiting for the rest of a message, while
-  an unterminated one leaves blender lab's doing the same. **An unrecognised backend name is an
-  error, not a silent fallback**: a typo that quietly leaves every call on the old path is
-  indistinguishable from the bridge not working, which is the most expensive shape a configuration
-  mistake can take.
-- **One table is the migration's progress bar.** The seam holds the payload-to-command mapping in
-  one readable file. A tool in it goes over the configured transport; a tool not in it goes over the
-  generated path in *both* configurations, because there is nothing else it could do. **Since
-  FR 032 it holds twenty-four entries, which is every tool that crosses the socket** — the progress
-  bar is full, and the entry FR 033 reads as its precondition is exactly that. The last stage of
-  the pivot deletes the table by emptying it.
-- **The default is whichever system has been shown to work, and it moves once.** Until FR 032 that
-  was blender_mcp, so somebody who upgraded and set no variable could not tell the seam existed.
-  It is the bridge now, and **what earned the flip is stated rather than assumed**: every tool that
-  crosses the socket has a command, and the two paths were compared answer by answer *and scene by
-  scene* against one Blender before the default moved. The flip was the last thing that effort did
-  rather than the first, which is the property FR 033 depends on — it deletes a path that has been
-  unused for a while rather than one that was carrying every call until the commit before.
-- **A shared fragment is a property of the generated path, and the seam knows it.** `backend.send()`
-  takes `shared` and `cached_shared` exactly as `codegen.assemble()` does, and a migrated tool
-  passes them whichever transport it is on — because the alternative is a tool that has to know.
-  On the generated path they are what they have always been; **on the bridge path they are
-  ignored**, since the bridge assembles nothing and what a fragment modelled has become a module
-  its command imports. Twelve of the twenty-four migrated tools carry one, and none of their
-  modules contains a branch on a backend.
-- **The session source cache lives below the seam, not beside the tools.** `shared_cache.send()`
-  was what four tool modules imported; since FR 031 it is what `backend.send()` consults on the
-  generated path, and no tool module imports it. That is what let a fragment-carrying tool migrate
-  **without the tools left behind losing the cache**, which mattered for exactly as long as any
-  were left behind — none are since FR 032. It remains generated-path machinery and it dies with
-  that path: a bridge request carries parameters and nothing else, so there is no source to cache
-  and nothing to port.
-- **Observability keeps its attachment point and changes its unit.** The per-call record hangs off
-  the send and nowhere else, which does not change; what it records stops being a program and
-  becomes a command and its parameters. See
-  [observability.md](observability.md#diagnostics-attach-at-the-socket-boundary-never-to-the-program).
+  between.** That is the decision, and it is why `backend.send()` survived the deletion of the
+  thing it used to choose between: what a tool module contains is a description, an argument
+  contract, local validation and one call, and what it must *not* contain is a protocol.
+  Twenty-four modules importing the wire client directly would put the command name, the framing,
+  the handshake and the address variables inside every tool, and the next change to any of them
+  would be twenty-four edits made twenty-four times. If supporting a transport ever requires
+  editing a tool, the seam is in the wrong place — the same test
+  [Diagnostics attach at the socket boundary](observability.md#diagnostics-attach-at-the-socket-boundary-never-inside-blender)
+  applies to observability.
+- **The same parameters reach both sides, unreshaped.** A tool hands `backend.send()` a command
+  name and the arguments it has already validated, and nothing between there and the wire
+  rewrites them. There is deliberately no escape hatch for a tool that would want to send
+  something other than what it was given; if one ever needs that, it is a design problem to
+  surface in that tool's own effort rather than a flexibility to carry unused.
+- **Backend selection was explicit configuration, never autodetection, and that mattered.**
+  `MPFB_MCP_BACKEND` chose between the bridge and the generated path, an unrecognised value was an
+  **error rather than a silent fallback**, and the default moved to the bridge only once every
+  tool had a command and the two paths had been compared answer by answer *and scene by scene*
+  against one Blender. The variable is read today for one purpose: a value left in somebody's
+  client configuration gets one line on this package's logger saying it is no longer read.
+  Obeyed by nothing and reported by nothing is the expensive option, and it is the same argument
+  that made a typo an error while there were still two backends.
+- **A second transport would be added the same way it was removed.** Nothing about the seam
+  assumes there is one: `send()` is a function with a command name and a dict, and the thing that
+  made two transports cheap was that no tool module ever learned which it was on. What made the
+  *removal* cheap was the same property, which is the strongest thing that can be said for putting
+  a seam where this one is.
+- **Observability keeps its attachment point.** The per-call record hangs off the send and nowhere
+  else. See
+  [observability.md](observability.md#diagnostics-attach-at-the-socket-boundary-never-inside-blender).
 
 <a id="resolving-mpfb-from-generated-code"></a>
 
@@ -413,11 +385,11 @@ suite (`mpfb2/src/mpfb/__init__.py`, `mpfb2/test/tests/__init__.py`): scan `sys.
 module whose name ends in `"mpfb"`, then read the classes it needs off the
 `MPFB_CONTEXTUAL_INFORMATION["SERVICES"]` dict that module publishes.
 
-**This section survives the pivot and matters more, not less.** It was written for generated code
-and applies unchanged to the bridge, which has the same problem from the same position: a
-companion add-on reaching another add-on, with no import path it may assume. Everything below is
-binding on both, and the bridge must not invent a second resolution strategy any more than a
-payload may.
+**This is binding on everything that reaches MPFB**, and the bridge has the problem in its
+sharpest form: a companion add-on reaching another add-on, with no import path it may assume. It
+must not invent a second resolution strategy. The rule was written for a machine that sent Python
+into Blender and survived that machine's deletion unchanged, which is a fair sign it is about MPFB
+rather than about a transport.
 
 One trap belongs to the bridge specifically. The scan matches names ending in `"mpfb"`, and the
 bridge's own package is `mpfb_bridge` — which does **not** match, but is close enough that a
@@ -456,11 +428,14 @@ failure differs:
   `mpfb_get_status`). Classifies the situation instead of failing, so absence and partial
   initialization come back as ordinary successful answers.
 
-On the generated-code path these are two bootstrap fragments prepended to a payload. On the bridge
-they are one resolver returning a state, and the caller decides — but the distinction is the same
-one and for the same reason, and a bridge command whose whole purpose is to report on a broken
-MPFB must not need a working MPFB to say so. That is why the bridge's logger is its own rather
-than MPFB's `LogService`: the idiom is copied, the dependency is not.
+These are one resolver returning a state and a caller that decides, expressed in the command
+table as `requires_mpfb`: a command declaring `True` is refused with `mpfb_unavailable` before its
+handler runs, and one declaring `False` gets to answer. Three commands declare `False`, and each
+is a case of the second kind — `get_status` reports the *add-on*, `list_commands` reports what it
+can be asked to do, and `get_mpfb_status` and `list_urls` are most valuable exactly when MPFB is
+broken. **A command whose whole purpose is to report on a broken MPFB must not need a working MPFB
+to say so.** That is also why the bridge's logger is its own rather than MPFB's `LogService`: the
+idiom is copied, the dependency is not.
 
 ### Never import MPFB submodules directly
 
@@ -474,19 +449,20 @@ exactly the state where MPFB is already broken. When the services are unavailabl
 what is readable off the module object itself (`VERSION`, `BUILD_INFO`, `__name__`) and from
 `bpy`.
 
-**The bridge does not get an exemption from this**, and the temptation there is sharper. Being an
-add-on rather than a generated string, it *could* import an MPFB submodule — including the UI
-operator module that `mpfb_set_asset_material` reimplements from services because importing it is
-forbidden. The reasons not to are unchanged and the worst case is unchanged: a UI operator module
-is the least stable thing in MPFB to depend on, and the import-time side effects are still there.
+**The bridge does not get an exemption from this**, and the temptation there is sharper than it
+was for code that could not import anything at all. Being ordinary add-on code, it *could* import
+an MPFB submodule — including the UI operator module that `mpfb_set_asset_material` reimplements
+from services because importing it is forbidden. The reasons not to are unchanged and the worst
+case is unchanged: a UI operator module is the least stable thing in MPFB to depend on, and the
+import-time side effects are still there.
 
 **FR 032 put that under real pressure for the first time and it held**, in the two places it could
 have given way. `set_asset_material`'s command reimplements `_apply_mhmat()` and
 `_find_default_material()` from services, with the operator module sitting one `import` away; and
 `list_urls`' command reads `<root>.ui.weburls` out of `sys.modules` where an import would be
-shorter. Both now say so in their own docstrings rather than relying on a reader finding this
-page — the rule was written when generated code *could* not reach those modules, and a rule whose
-reason has changed is one that has to restate itself where it is being applied.
+shorter. Both say so in their own docstrings rather than relying on a reader finding this page — the rule
+predates an add-on that *could* reach those modules, and a rule whose circumstances have changed
+is one that has to restate itself where it is being applied.
 
 ### Reading module-level names MPFB does not publish
 
@@ -508,9 +484,12 @@ read. These are reachable, under three rules:
   a stale local copy of the type vocabulary is a better answer than a failed call.
 - **Never as a substitute for a service.** If what is wanted is in `SERVICES`, take it from there.
 
-The bridge may do these reads **once, at the point it resolves MPFB**, rather than on every call —
-which is a genuine simplification the pivot buys, since a payload has no way to remember anything
-between calls. The three rules are unchanged; only their frequency is.
+These reads may be done **once, at the point MPFB is resolved**, rather than on every call — a
+genuine simplification of being an add-on, since code sent into Blender per call had no way to
+remember anything between them. The three rules are unchanged; only their frequency is. What may
+*not* be cached that way is anything derived from the disk: see the per-call category table in
+`bridge/mpfb_bridge/shared/target_categories.py`, whose whole point is that a target installed
+since Blender started is visible.
 
 #### A UI module with no service behind it
 
@@ -539,290 +518,92 @@ installed since. Reading a UI module is not a general licence — it is availabl
 is a constant table, and the fallback the second rule already required is what makes being wrong
 about that survivable.
 
-## The generated-code path: what runs today, and is being retired
+## Shared modules, and what warrants one
 
-**Since FR 032 this part describes a machine that nothing uses by default.** Every one of the
-twenty-four tools that crosses the socket has a bridge command, the default backend is the bridge,
-and the generated path runs only when `MPFB_MCP_BACKEND=blender_mcp` asks for it. It is neither
-historical nor aspirational: it still executes, it is still maintained, and it is still one half of
-the comparison that says the bridge answers the same — which is the whole reason it is kept for one
-more effort rather than deleted along with the last migration. It is also what
-[FR 028](../feature-requests/done/028-pivot-to-specific-addon/README.md) decided to replace, and it will
-be deleted — `codegen/`, the session source cache and the shared fragments together — by the child
-effort that migrates the last tool. Until then it is maintained, and a change to a tool that has
-not moved belongs here.
+`bridge/mpfb_bridge/shared/` holds the concepts two or more commands model identically. **Nothing
+in it is reachable from the wire** — no handler, no `PARAMS`, no entry in `COMMANDS` — which is
+what lets [commands/table.py](../bridge/mpfb_bridge/commands/table.py) go on being the one file a
+sceptic reads to know everything this add-on can be asked to do.
 
-A tool assembles a Python program in a fixed order — bootstrap, parameter prelude, optional shared
-fragments, payload — and sends it to blender lab's `blender_mcp` add-on, which `exec()`s it inside
-Blender and serializes back the `result` dict left in the exec namespace.
+There are seven, and the warrant for each is the same shape: **duplication that must not drift,
+not size.** Three copies of a hundred-line scan of the user's target directories are three chances
+for two commands to disagree about what is installed, and that disagreement is worse than either
+behaviour on its own. Two commands sharing a five-line helper are not a reason to reach for this.
 
-### What a call costs is the size of its program
-
-**The add-on reads one 4 KB chunk of the request per timer tick, and does nothing else with that
-tick.** A generated program therefore costs about **250 ms per 4 KB** against a Blender that has
-been talked to in the last five seconds, and about **1 s per 4 KB** against one that has not —
-because blender_mcp drops to a one-second tick after five seconds without a request *finishing*,
-and bytes arriving do not count as work. A 50 KB program costs 3 s or 12 s, and it makes no
-difference at all what the program computes. Measured, and predicted to within a few percent, by
-[FR 013](../feature-requests/done/013-live-verification/README.md)'s cost measurements, and
-consistent with [FR 023](../feature-requests/done/023-verification-smoke-test/README.md)'s smoke
-run, whose three slowest items are its three largest programs.
-
-Three consequences, and they are not small:
-
-- **"The round trip is 250 ms" is wrong**, and four decisions in this package were argued against
-  it. It is one *tick*. The empty program that produced the figure was one chunk long. The
-  correction does not overturn those decisions —
-  [FR 013](../feature-requests/done/013-live-verification/review.md) re-derived them on the real
-  numbers — but it changes what the number is a measure of.
-- **The prose in generated code is not free.** It is the price of
-  [Readability and developer experience are prioritized](#readability-and-developer-experience-are-prioritized),
-  and that requirement stands: a payload is code the next developer reads, and the diagnostic
-  record [FR 012](../feature-requests/done/012-observability/README.md) keeps is only worth keeping
-  because it is legible. But the price is known rather than assumed, and "this explanation is
-  worth 250 ms on every call that carries it" is the question to ask of a paragraph in a payload.
-- **Not sending something beats not doing it.** MPFB's modeling category table is the case that
-  established this. It was assumed to be the package's largest avoidable cost because three tools
-  rebuild it on every call; measured inside Blender, the rebuild takes **4 ms**, and the 18 KB of
-  generated code that describes how to do it takes **1.1 s busy, 4.4 s idle** to arrive. The saving
-  was never in the scan. See
-  [Generated code may keep its own source inside Blender](#generated-code-may-keep-its-own-source-inside-blender).
-
-**This section is the clearest single argument for the pivot.** The cost is a property of sending
-a program at all, so no amount of trimming payloads removes it — the bridge does, by sending
-parameters. The 4 KB chunk is a defect in blender_mcp rather than a law of nature: its
-`_service_clients()` reads once per tick instead of draining the socket, and a loop there would
-remove most of the cost from every tool in this package. It is not fixed here, because blender_mcp
-is treated as external and unmodified, and once the migration completes it stops being this
-project's problem at all — but it remains worth filing upstream for everyone else, which is the
-entry
-[in NEXT_STEPS.md](../feature-requests/NEXT_STEPS.md#handle-the-4-kb-chunked-read-against-blender_mcp).
-
-### Code-generation layout
-
-This is what "adding a tool means adding files, not editing shared ones" amounts to concretely.
-
-- **One payload per tool, as an ordinary `.py` file.** `codegen/payloads/<tool>.py`, named for its
-  tool module, read as a package resource and never imported here — payloads reference `bpy` and
-  MPFB's services, which do not exist on this side of the socket. Having no `__init__.py` is what
-  keeps them out of package discovery, and `pyproject.toml` therefore has to ship them as package
-  *data* and set `namespaces = false` so discovery does not sweep them up as namespace packages.
-- **A payload is a real file so that it can be read like one.** Syntax highlighting, editor
-  indentation and a linter that mostly applies are the point; a payload written as an escaped
-  string literal would fail
-  [Readability and developer experience are prioritized](#readability-and-developer-experience-are-prioritized)
-  however well it worked, because it is the form the next developer copies. The price is that
-  names bound by the assembler — `PARAMS`, `_MPFB_SERVICES`, `sys` — look undefined to a linter,
-  so **each payload's docstring names them**.
-- **One entry point, and a fixed order.** `codegen.assemble("<tool>.py", bootstrap=..., params=...,
-  shared=[...])` concatenates bootstrap, parameter prelude, fragments, payload. Fragments come
-  after the prelude so a fragment may read `PARAMS`, and before the payload so the payload can call
-  the fragment's functions.
-- **Adding a tool touches exactly three things**: a module in `tools/`, a payload in
-  `codegen/payloads/`, and one `register()` call in `__init__.py`. No shared code-generation module
-  is edited — a tool that wants a fragment names it in the `assemble()` call it was already making.
-  **If a change to shared code is needed to add an ordinary tool, the layout has drifted.**
-- **The bootstrap is the one shared part still written as a string**, because it is what runs
-  before anything else has been arranged.
-
-The bridge keeps the requirement and drops the mechanism: a new command is a handler function and
-one line in the command table, with no assembly step at all.
-
-### Generated code may keep its own source inside Blender
-
-The add-on `exec()`s each request in a **fresh namespace**, so nothing a program binds survives it.
-Generated code may nevertheless create a module of its own in `sys.modules` and keep things there —
-and what it keeps is **the source of shared fragments, never what they computed**.
-
-That distinction is the whole safety argument, and it is what makes the mechanism boring rather
-than delicate:
-
-- **A cache of code keyed by a hash of that code cannot be stale.** A cache of *answers* about the
-  disk can, and the answer in question is the table that decides which shape key a modifier is
-  written to. The fragment still runs on every call, so `mpfb_list_targets` still sees a target
-  installed since Blender started — which MPFB's own panels cannot — and no tool needs a `refresh`
-  argument for a cache that has nothing to go stale about.
-- **It is our module, named as ours.** `mpfb_mcp_session_state`, created by the loader, holding
-  nothing that is not rebuilt by sending a fragment again. Never an attribute grafted onto one of
-  MPFB's modules, which is the read-only arrangement in
-  [Reading module-level names MPFB does not publish](#reading-module-level-names-mpfb-does-not-publish)
-  turned into a write.
-- **Never on a datablock.** A scene or object custom property would reach the user's `.blend`, would
-  set `bpy.data.is_dirty`, and would outlive the Blender session it describes.
-- **Two servers against one Blender are safe by construction.** The key is `<file>@<hash>`, so two
-  copies of a fragment are two entries; identical code shares a cache and different code never
-  does, without either side knowing the other exists.
-- **A fragment Blender does not hold is a request, not a failure.** The program that reuses a
-  fragment is by definition not the program that carries it — carrying it is the cost being
-  avoided — so the loader raises with a marker the tool side matches, and the tool re-sends with the
-  source in it. Once, never twice: a second miss means the cache is not being written at all, and
-  that error is more use to a caller than a loop. The handshake is visible in the record as an
-  error envelope, which is honest — a call really did cross the socket and come back with nothing.
-- **The source is embedded as readable Python, not as data.** A raw triple-quoted literal rather
-  than a JSON string, so the program on disk in
-  [FR 012](../feature-requests/done/012-observability/README.md)'s record is still something a
-  developer can read, and so a traceback from inside a fragment reports that fragment's own name and
-  line rather than an offset into the whole program — which is better than what concatenation gave.
-  It costs two constraints on every fragment, both asserted rather than assumed: no `'''` in the
-  source, and no trailing backslash.
-
-**This mechanism exists only to manage the cost of sending a program**, and it is therefore the
-clearest example of machinery the bridge makes unnecessary. It goes when `codegen/` goes.
-
-### Shared fragments
-
-A **fragment** is a fourth, optional part: an ordinary `.py` file under
-`src/mpfbmcp/codegen/shared/`, named by a tool module in `assemble(..., shared=[...])` and
-concatenated between the prelude and the payload. It exists for a *concept* two or more payloads
-model identically. There are seven: `target_categories.py` rebuilds MPFB's `target.json` category
-table, which `mpfb_list_targets`, `mpfb_get_target_stack`, `mpfb_set_targets` and
-`mpfb_symmetrize_targets` all need in the same shape and none of them can import; `rig_lookup.py` answers "which rig file would MPFB
-load for this identifier, and whose weights would come with it", which `mpfb_list_rigs` and
-`mpfb_add_rig` need to answer *identically*; `asset_sections.py` holds MPFB's
-`ASSET_LIBRARY_SECTIONS` table and what it maps between, which `mpfb_list_assets` reports *from* and
-`mpfb_add_asset` resolves *with*; `performed.py` stamps the uniform
-[`performed` flag](mutating-tools.md#the-flag-a-caller-branches-on-is-called-performed) onto the
-answer of every one of the thirteen mutating payloads; `modifier_reading.py` computes what one
-modeling category's slider reads, which `mpfb_get_target_stack` reports and
-`mpfb_symmetrize_targets` acts on; `refit_blocker.py` answers whether `HumanService.refit()`
-would silently leave the rig behind, which all four refitting payloads have to know; and
-`preset_files.py` holds which characters a preset name may contain and how it becomes
-`<user config>/human.<name>.json`, which `mpfb_list_presets`, `mpfb_save_preset` and
-`mpfb_create_human_from_preset` must agree about exactly — two of them disagreeing would let a
-preset be written under a name that cannot be loaded back.
-
-`preset_files.py` is also the one fragment whose rule exists on **both** sides of the socket, which
-is a shape to notice rather than to copy. The authoritative check is in `src/mpfbmcp/preset_names.py`
-and runs before the program is built, because a name that becomes a path is a shape knowable here
-([validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket)); the
-fragment restates it as the last statement before `open()`. Two copies are warranted only because
-the tool side cannot reach Blender at all and the consequence of a gap between them is silent, so
-`tests/test_codegen.py` runs both over one table of names and compares the *sentences*, not only
-the verdicts. A module of this package rather than a helper duplicated in two tool modules, which
-is what the other small validators are: what separates the two cases is what a disagreement would
-cost. **Note that this shape does not go away with the pivot** — it is the same duplication
-[Both ends validate, deliberately](#both-ends-validate-deliberately) describes, and the bridge
-inherits it for the same reason.
-
-- **A fragment is warranted by duplication that must not drift, not by size.** Three copies of a
-  hundred-line scan of the user's target directories are three chances for two tools to disagree
-  about what is installed, and that disagreement is worse than either behavior on its own. Two
-  payloads sharing a five-line helper are not a reason to reach for this.
-- **Where a catalogue tool predicts what an acting tool will do, the prediction and the action are
-  one implementation.** This is the sharper form of the rule above, and `rig_lookup.py` is the
-  case: `mpfb_list_rigs` reports, per rig, which weights file adding it would load, and
-  `mpfb_add_rig` then reports which one it did load. A caller who reads the catalogue and acts on
-  it is entitled to get back what the catalogue promised. The overlap is about ten lines — small
-  enough that duplication would be defensible on size alone, and not defensible at all on
-  consequence: MPFB resolves weights through a *fallback table*, so `default_no_toes` legitimately
-  loads `default`'s weights, and two implementations that disagree about that would make an
-  ordinary rig look broken in one tool and fine in the other.
+- **Where a catalogue predicts what an acting command will do, the prediction and the action are
+  one implementation.** `rig_lookup.py` is the case: `mpfb_list_rigs` reports, per rig, which
+  weights file adding it would load, and `mpfb_add_rig` then reports which one it did load. A
+  caller who reads the catalogue and acts on it is entitled to get back what the catalogue
+  promised. The overlap is about ten lines — small enough that duplication would be defensible on
+  size alone, and not defensible at all on consequence: MPFB resolves weights through a *fallback
+  table*, so `default_no_toes` legitimately loads `default`'s weights, and two implementations
+  disagreeing about that would make an ordinary rig look broken in one tool and fine in the other.
 - **The same rule covers a catalogue's *vocabulary*, not only its predictions.**
-  `asset_sections.py` is that case, and the consequence is sharper still: `mpfb_list_assets` reports
-  an asset's `object_type` and its portable `fragment`, and `mpfb_add_asset` has to map the first
-  back to an asset subdir before it can resolve the second, because
+  `asset_sections.py` is that case, and the consequence is sharper still: `mpfb_list_assets`
+  reports an asset's `object_type` and its portable `fragment`, and `mpfb_add_asset` has to map the
+  first back to an asset subdir before it can resolve the second, because
   `AssetService.find_asset_absolute_path()` takes a subdir rather than a type. Two copies of that
-  table disagreeing would not produce a wrong answer — it would produce "not installed" for an asset
-  the catalogue had just listed, which is the one failure a caller cannot diagnose.
-- **A convention eleven payloads must agree about is the same case as a table three must.**
-  `performed.py` is the smallest fragment by far — one function, no MPFB, nothing read from the
-  bootstrap — and it clears the bar on consequence rather than size, like `rig_lookup.py`: the whole
-  reason the flag exists is that eleven tools disagreed about what to call it, so eleven
-  implementations of it would be the original problem in a new spelling. It also has no
-  dependencies, which is what lets it be concatenated ahead of any payload without pulling anything
-  in with it.
-- **Where two tools report and act on one number, the number has one implementation.**
-  `modifier_reading.py` is that case. A modeling category's slider value is computed from one or two
-  shape keys, and an opposed category's negative target reads back *negated*; `mpfb_get_target_stack`
-  reports that number and `mpfb_symmetrize_targets` decides what to copy from it. Two
-  implementations disagreeing would not look like a bug in either tool — it would look like a
-  character that is symmetric in one and asymmetric in the other, with nothing in either answer to
-  say which to believe. The reconciliation is worth noting because the two copies differed in
-  *shape* and not merely in text: one answered from a snapshot read once, the other from `key_blocks`
-  on every question, because it writes between readings. What is shared is the rule; the pair of
-  lookups is passed in, and the difference between them is stated where it is decided.
-- **A fragment may share the condition and leave the wording alone.** `refit_blocker.py` is that
-  case: `HumanService.refit()` cannot refit a generated Rigify rig with no meta rig left in the
-  scene, reports it only through an `operator` no MCP tool has one of, and returns having refitted
-  the mesh assets. Four payloads must detect that or claim a refit they did not perform — but
-  `mpfb_refit_human` reports one that has already happened and the other three predict one they are
-  about to attempt, so the sentences differ by tense and both are right for their call site. The
-  fragment therefore exposes a predicate and each payload keeps a `rig_refit_blocker()` of its own
-  that phrases the answer. Four copies of the condition is the `rig_lookup.py` failure exactly; four
-  copies of the message is at worst four sentences that read slightly differently.
-- **Being identical is not by itself a reason to merge.** A census of every function defined at
-  module level in more than one payload — docstrings stripped, normalised through `ast.unparse` —
-  found nineteen such names, of which sixteen were byte-identical and had not drifted at all. Only
-  the two above were made into fragments. `blocked()`'s six variants were left alone deliberately:
-  they are one convention applied six times, differing only in which of that tool's own fields each
-  nulls out, and a mechanism for "this tool's null response" would be larger than the six copies.
-  **"Have these drifted?" is asserted in [tests/test_codegen.py](../tests/test_codegen.py)**, on
-  every unit run and with no Blender — for the two fragments where a second implementation would
-  go wrong quietly rather than loudly: `refit_blocker.py` and `modifier_reading.py` each have a
-  check that no payload using them keeps an implementation of its own. The other four are not
-  covered that way, and a fragment added later should bring such a check with it.
-- **Opting in is the payload's business, not the assembler's.** `assemble()` takes the list — as
-  does `shared_cache.send()`, which is `assemble()` plus the decision about carrying the source —
-  and there is no table anywhere mapping payloads to fragments. So the rule above still holds
-  unchanged: adding an ordinary tool is still a tool module, a payload and a `register()` call, and
-  a tool that wants a fragment names it in the call it was already making.
-- **Fragments come after the prelude**, so a fragment may read `PARAMS`, and before the payload, so
-  the payload can simply call the fragment's functions.
-- **A fragment may be sent once per Blender session rather than once per call**, and which of the
-  two a given call does is the tool's business rather than the fragment's: the file is identical
-  either way, it is executed into the program's own globals either way, and a payload cannot tell
-  the difference. What decides it is a memo of what this process has already sent to this address —
-  see [Generated code may keep its own source inside Blender](#generated-code-may-keep-its-own-source-inside-blender)
-  for why, and for what makes it safe.
-- **Each fragment gets its own labelled seam**, `# --- shared: <name> ---` or
-  `# --- cached shared: <name>@<hash> (carried|reused) ---`, for the same reason the payload does —
-  and the second form additionally says, in the record, which of the two this call paid for.
-- **Packaging has to be told about the directory separately.** A package-data glob does not
-  descend, so `payloads/*.py` ships nothing from a subdirectory of `payloads/` — which is why
-  fragments live in a sibling directory with a glob of their own rather than under `payloads/`.
+  table disagreeing would not produce a wrong answer — it would produce "not installed" for an
+  asset the catalogue had just listed, which is the one failure a caller cannot diagnose.
+- **A convention thirteen commands must agree about is the same case as a table three must.**
+  `performed.py` is the smallest by far — one function, reading nothing out of MPFB — and it
+  clears the bar on consequence rather than size: the whole reason the
+  [`performed` flag](mutating-tools.md#the-flag-a-caller-branches-on-is-called-performed) exists is
+  that thirteen tools disagreed about what to call it, so thirteen implementations of it would be
+  the original problem in a new spelling.
+- **Where two commands report and act on one number, the number has one implementation.**
+  `modifier_reading.py` is that case. A modeling category's slider value is computed from one or
+  two shape keys, and an opposed category's negative target reads back *negated*;
+  `mpfb_get_target_stack` reports that number and `mpfb_symmetrize_targets` decides what to copy
+  from it. Two implementations disagreeing would not look like a bug in either tool — it would look
+  like a character that is symmetric in one and asymmetric in the other, with nothing in either
+  answer to say which to believe. What is shared is the rule; the pair of lookups is passed in,
+  because one command answers from a snapshot read once and the other from `key_blocks` on every
+  question, since it writes between readings.
+- **A shared module may share the condition and leave the wording alone.** `refit_blocker.py` is
+  that case: `HumanService.refit()` cannot refit a generated Rigify rig with no meta rig left in
+  the scene, reports it only through an `operator` no MCP tool has one of, and returns having
+  refitted the mesh assets. Four commands must detect that or claim a refit they did not
+  perform — but `mpfb_refit_human` reports one that has already happened and the other three
+  predict one they are about to attempt, so the sentences differ by tense and both are right for
+  their call site. The module therefore exposes a predicate and each command phrases the answer.
+  Four copies of the condition is the `rig_lookup.py` failure exactly; four copies of the message
+  is at worst four sentences that read slightly differently.
+- **`target_categories.py` is the largest and is rebuilt per call**, which is a rule about
+  *freshness* rather than about sharing: `mpfb_list_targets`, `mpfb_get_target_stack`,
+  `mpfb_set_targets` and `mpfb_symmetrize_targets` all need MPFB's `target.json` category table in
+  the same shape, and a module-level scan would answer every request from a snapshot taken when
+  Blender started — blind to a target installed since, which MPFB's own panels already are.
+- **`preset_files.py` is the one whose rule exists on both sides of the socket**, which is a shape
+  to notice rather than to copy. The authoritative check is in `src/mpfbmcp/preset_names.py` and
+  runs before anything is sent, because a name that becomes a path is a shape knowable there
+  ([validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket));
+  this module restates it as the last statement before `open()`, because a listening socket is
+  reachable by anything on the machine and not only by mpfb-mcp. Two copies are warranted only
+  because the consequence of a gap is silent — a preset written under a name that cannot be loaded
+  back — so `tests/test_save_preset.py` runs both over one table of names and compares the
+  *sentences*, not only the verdicts. It is the same duplication
+  [Both ends validate, deliberately](#both-ends-validate-deliberately) describes, for the same
+  reason.
 
-**What a fragment becomes after the pivot is no longer a prediction.**
-[FR 031](../feature-requests/done/031-introspection-and-catalogues-migrated/README.md) migrated
-five of the seven, and a concept two payloads model identically did become a module two commands
-import. Four things about how are worth keeping, because the two that remain — `performed.py` and
-`refit_blocker.py` — arrive with the mutating tools and should arrive the same way:
+**Being identical is not by itself a reason to merge.** A census of every function defined at
+module level in more than one of the programs these commands replaced — docstrings stripped,
+normalised through `ast.unparse` — found nineteen such names, of which sixteen were byte-identical
+and had not drifted at all. Only the ones above were made shared. `blocked()`'s six variants were
+left alone deliberately: they are one convention applied six times, differing only in which of that
+tool's own fields each nulls out, and a mechanism for "this tool's null response" would be larger
+than the six copies.
 
-- **A bridge shared module lives in `bridge/mpfb_bridge/shared/`, a sibling of `commands/`,
-  mirroring `codegen/shared/` name for name.** The mirror is for the migration: a fragment and the
-  module replacing it have to be findable from each other while both exist. **Nothing in that
-  directory is reachable from the wire** — no handler, no `PARAMS`, no entry in `COMMANDS` — which
-  is the property `commands/table.py` exists to make checkable, and that file says so rather than
-  leaving a reader to notice a second directory has appeared beside it.
-- **What the bootstrap bound above a fragment becomes a parameter.** A fragment reads
-  `_MPFB_SERVICES` from the module scope the assembler built; a bridge module is *handed*
-  `services`, because a module that resolved MPFB at import would hold a services dict across a
-  disable and re-enable — the stale state `mpfb_resolution.resolve()` is called per dispatch to
-  avoid. `target_categories.py` needs the same treatment for a second thing: the fragment builds
-  MPFB's category table at the top of a generated program, which is per call because the program
-  is, and the bridge module builds it per dispatched command into a record passed as `tables`. A
-  module-level scan would answer every request from a snapshot taken when Blender started, which is
-  the precise defect [never import MPFB submodules directly](#never-import-mpfb-submodules-directly)
-  rejects.
-- **The pairing guarantee is asserted across the stage boundary, not intended.** A fragment's whole
-  reason for existing is that two tools must agree — `mpfb_list_rigs` predicting what
-  `mpfb_add_rig` will load, `mpfb_list_assets` reporting the vocabulary `mpfb_add_asset` resolves
-  with — and a migration splits exactly those pairs, with one half a command and the other still a
-  payload. [tests/test_fragment_drift.py](../tests/test_fragment_drift.py) parses both files with
-  `ast`, strips docstrings and compares every function and every module-level constant, on every
-  unit run and with no Blender. The one declared normalisation is the parameter substitution
-  above; anything it cannot cover must be **named** in the test rather than skipped, and a name
-  listed as uncomparable that turns out to compare cleanly fails, so the list cannot rot into a
-  suppression file.
-- **A bridge shared module keeps the fragment's spelling, deliberately.** Its functions bind
-  `LocationService = services["LocationService"]` rather than a snake_case local, and its tables
-  keep their SCREAMING_CASE names, so that the bodies stay character-for-character comparable. That
-  costs one `# pylint: disable=invalid-name` per module and buys a drift check that runs for as
-  long as both halves exist. When the last payload goes, so does the reason, and the modules can be
-  renamed freely.
+**What the bootstrap used to bind above a fragment is a parameter here.** A shared module is
+*handed* `services`, because a module that resolved MPFB at import would hold a services dict
+across a disable and re-enable — the stale state `mpfb_resolution.resolve()` is called per dispatch
+to avoid. `target_categories.py` takes a `tables` record for the freshness reason above.
+`performed.py` takes neither, and is the one module here that reads nothing out of MPFB at all.
 
 ## One module per tool
 
 Each MCP tool lives in its own module exposing a `register(mcp)` function that attaches the
 tool to the passed `FastMCP` instance. This keeps tools independently testable and keeps the
-server's own `main()` a flat list of `register()` calls. It is unaffected by the pivot: what
-changes is what a tool module *does* below its validation, not how it is registered.
+server's own `main()` a flat list of `register()` calls. It was unaffected by the pivot, which is
+itself worth noticing: what changed underneath was everything a tool module does below its
+validation, and not one `register()` call moved.

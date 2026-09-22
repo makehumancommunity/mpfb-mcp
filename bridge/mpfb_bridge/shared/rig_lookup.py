@@ -1,11 +1,9 @@
 """
 Which rig file MPFB would actually load, and which weights come with it.
 
-The bridge's copy of
-[`codegen/shared/rig_lookup.py`](../../../src/mpfbmcp/codegen/shared/rig_lookup.py),
-and character for character the same rules - asserted rather than intended by
-``tests/test_fragment_drift.py``. See [`__init__.py`](__init__.py) for why the
-two exist at once and what the ``services`` argument is doing there.
+**One implementation, imported by every command that needs it.** See
+[`__init__.py`](__init__.py) for why this directory exists beside
+``commands/`` and what the ``services`` argument is doing there.
 
 This exists because two commands have to agree about the same thing.
 ``list_rigs`` *predicts*, per entry, which file an adding function would load
@@ -13,9 +11,8 @@ and where its weights would come from; ``add_rig`` then *does* it and reports
 the outcome. A caller who reads the catalogue and then acts on it is entitled to
 get back what the catalogue promised, and the only way to guarantee that is for
 the prediction and the action to be one implementation rather than two that
-happen to match today. **``add_rig`` has not migrated yet**, which is exactly
-the situation the drift check was written for: one half here, one half still a
-fragment, and the agreement checked on every unit run.
+happen to match today. Both halves are commands, both import this, and
+``bridge/test/`` runs them against one disk.
 
 Everything here is lifted from ``HumanService.add_builtin_rig()`` and
 ``HumanService.add_custom_rig()``, whose rules differ in ways that are easy to
@@ -41,9 +38,10 @@ the ``IOError`` / ``ValueError`` the adding functions raise when they are given
 no operator to report through.
 """
 
-# The local bindings below are spelled with MPFB's own capitalisation so that
-# these bodies stay identical to the fragment's and the drift check can compare
-# them. That is the whole reason for the disable.
+# The local bindings below are spelled with MPFB's own capitalisation -
+# ``LocationService = services["LocationService"]`` - rather than snake_case,
+# so that a body here reads the way MPFB's own source reads and can be
+# compared with it line for line. That is the whole reason for the disable.
 # pylint: disable=invalid-name
 
 __all__ = (

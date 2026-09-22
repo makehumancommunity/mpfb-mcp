@@ -13,8 +13,11 @@ no active object at all - and ``message`` says which, so an agent that guessed
 at a name gets a "no" it can recover from rather than a ``command_failed``
 envelope it cannot.
 
-**This reproduces ``codegen/payloads/get_object_info.py`` rather than tidying
-it up.** Five of its behaviours look like oversights and are decisions; a
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
+ Five of its behaviours look like oversights and are decisions; a
 reimplementation that "fixed" any of them would break the field-by-field
 comparison the migration rests on, and four of the five are load-bearing for
 callers:

@@ -9,15 +9,22 @@
 mpfb-mcp is in an unusual position for a test suite: the thing it exists to drive is reachable
 only from inside a running Blender, and never from a test process. That single fact shapes
 everything below. See
-[No direct dependency on MPFB or blender_mcp](architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp)
+[No direct dependency on MPFB](architecture.md#no-direct-dependency-on-mpfb-and-none-on-the-add-on-either)
 for why the boundary is where it is.
+
+**The harness has no private channel into Blender either**, and that is deliberate rather than an
+oversight: the smoke run in `verification/` used to send Python of its own to make a scratch scene
+and clean up after itself, the bridge executes nothing, and
+[FR 033](../feature-requests/done/033-retire-the-generated-code-path/README.md) chose to narrow the
+instrument rather than give the add-on an `exec` command for a test's benefit. What that cost is
+written down where a passing run is read — see
+[verification/README.md](../verification/README.md#what-fr-033-cost-this-instrument).
 
 There are two kinds of check, and they answer different questions:
 
 - The **unit suite** (`tests/`) answers *"is this the request we meant to send, and does it do
-  the right thing with the answers it gets back?"* — a program on the generated path, a command
-  and its parameters on the bridge. It runs anywhere, in seconds, and it is what a change is
-  expected to keep green.
+  the right thing with the answers it gets back?"* It runs anywhere, in seconds, and it is what a
+  change is expected to keep green.
 - The **live smoke run** ([verification/](../verification/)) answers *"does every tool still
   work at all?"* It needs a running Blender, takes well under a minute, and is described below.
   *"Does MPFB behave as we read it in its source?"* is a different question, answered once, by
@@ -29,11 +36,9 @@ There are two kinds of check, and they answer different questions:
 
 ## The live harness is named and re-runnable, not a session
 
-Exercising a tool against real MPFB requires a running Blender with MPFB and blender_mcp
-installed and enabled — and, while the migration is in progress, the MPFB Bridge as well for a run
-in the bridge configuration, since `verification/harness.py`'s own scene bookkeeping goes over
-`send_code()`. That is a verification step outside the unit suite — but a **named and
-re-runnable** one, not a manual session. It lives in [verification/](../verification/) and is one
+Exercising a tool against real MPFB requires a running Blender with MPFB and the MPFB Bridge
+installed and enabled, and the bridge's command server started. That is a verification step outside
+the unit suite — but a **named and re-runnable** one, not a manual session. It lives in [verification/](../verification/) and is one
 command.
 
 That distinction is not cosmetic. Five consecutive requests reached `Done` without their live
@@ -50,9 +55,9 @@ cannot make, because there the flag and the verb are read out of the same stub r
 nothing about *values*.
 
 Two properties of it are load-bearing rather than incidental. **Checks go through the tool
-callables** of the server `build_server()` builds, not through hand-assembled `send_code()`
-calls, or what is verified is a program no client will ever send — a large part of what is under
-test is the tool module's own validation and defaulting. And **a comparison against "what MPFB's
+callables** of the server `build_server()` builds, not through hand-assembled requests, or what is
+verified is something no client will ever send — a large part of what is under test is the tool
+module's own validation and defaulting. And **a comparison against "what MPFB's
 own panel produces" is a diff, not a screenshot**: MPFB's panels are thin, so driving the scene
 property behind a slider or calling the operator behind a button *is* pressing it, and the two
 results can be compared field by field in one file. The second property now describes what an
@@ -172,191 +177,95 @@ has no coverage. Three properties are worth keeping when it is next touched:
   statement about what a headless suite can reach, and hiding them would make the number
   comforting rather than useful.
 
-## The unit suite is two layers
+## The unit suite is one layer, and the bridge's suite is the other
 
-Stdlib `unittest`, no pytest. An **unmigrated** tool's test module exercises the same tool twice:
+Stdlib `unittest`, no pytest. A tool's test module exercises **the wrapper**: argument validation,
+defaulting and the decision of *what to send*, with `send_command` mocked below the seam, plus a
+thin class checking what actually reaches a fake bridge. The sync callable behind the tool is
+reached via `mcp._tool_manager._tools[...].fn`, since `@mcp.tool` wraps it in a coroutine.
 
-1. **The wrapper**, with `send_code` mocked. This is where argument validation, defaulting and
-   the decision of *what to send* are tested. The sync callable behind the tool is reached via
-   `mcp._tool_manager._tools[...].fn`, since `@mcp.tool` wraps it in a coroutine.
-2. **The generated program**, `exec()`'d against stub Blender and stub MPFB services
-   ([tests/blender_stubs.py](../tests/blender_stubs.py)). This is where the payload's real
-   branching is tested — subject resolution, relationship walks, filtering and paging,
-   precondition handling, write ordering.
+It was two layers until
+[FR 033](../feature-requests/done/033-retire-the-generated-code-path/README.md): the second
+`exec()`'d an assembled Python program against stub Blender and stub MPFB services, because that
+program was where a tool's real branching lived and there was nowhere else to run it. There is
+somewhere else now.
 
-Both layers are needed because the interesting logic is split across them by design (see
-[Validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket)):
-the tool module knows shapes, the payload knows MPFB.
+### A tool is tested where it runs
 
-### A migrated tool is tested where it runs
-
-**After a tool is migrated, everything that can be checked on the add-on side is checked there**,
-in `bridge/test/`, against a real MPFB in a headless Blender. This is the largest thing the pivot
-buys and the least visible, and it is a rule rather than a preference because the alternative
-decays: deciding case by case is how twenty-four migrations end up with twenty-four different
-answers.
-
-**Since [FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md) this
-describes twenty-four tools rather than ten** — every tool that crosses the socket. It is the
-normal case now, not the exception, and `mpfb_list_docs` is outside it only because it reaches no
-Blender at all.
+**Everything that can be checked on the add-on side is checked there**, in `bridge/test/`, against
+a real MPFB in a headless Blender. This is the largest thing the pivot bought and the least
+visible, and it is a rule rather than a preference because the alternative decays: deciding case by
+case is how twenty-four commands end up with twenty-four different answers.
 
 What stays in `tests/` is a **closed list** — what genuinely cannot cross the socket:
 
-- the tool's own local argument validation, which runs before a transport is chosen;
+- the tool's own local argument validation, which runs before anything is sent;
 - what goes on the wire for a given call;
-- the seam's routing, handshake and envelope mapping;
+- the seam, the wire protocol and the handshake;
 - the record;
-- **whether a fragment and the bridge module that replaced it still agree**, which is about two
-  files in this repository and reaches no Blender at all. That is
-  [tests/test_fragment_drift.py](../tests/test_fragment_drift.py), added by FR 031, and it is a
-  genuinely new *kind* of client-side test rather than an instance of the four above. Its original
-  job was keeping a catalogue tool's promise true while the acting tool it promises about had not
-  migrated; **since FR 032 no pair straddles anything**, all seven fragments having a counterpart,
-  and what it guards is narrower and still worth guarding: that the two copies stay in step for the
-  weeks between the last migration and the deletion of the first copy. It goes when the last
-  payload does.
+- the two vendored reference tables, which are never sent anywhere;
+- **the preset-name rule as a two-way check**, because it is the one rule this package keeps on
+  both sides of the socket and a disagreement between the copies would let a preset be written
+  under a name that cannot be loaded back. It is about two files in this repository and reaches no
+  Blender at all.
 
 **A new client-side test asserting something about MPFB's behaviour is a test in the wrong harness,
 however well it passes.** Which type names match, what an empty scene answers, what
-`get_object_type()` returns for an untyped object: all of that belongs to the bridge's suite once
-the command exists, because a check against a real install is better evidence than the same check
-against a stub written by whoever wrote the code under test. Moving a check strengthens it even
-when the assertions are copied across unchanged — and the migration is the only moment at which
-the move is free.
+`get_object_type()` returns for an untyped object: all of that belongs to the bridge's suite,
+because a check against a real install is better evidence than the same check against a stub
+written by whoever wrote the code under test.
 
-**During the transition a migrated tool has a third layer, and it is frozen.** The payload and its
-stub-executed tests stay while the generated path stays, because the payload is half of what the
-migration's own live comparison compares. It is not extended and nothing is added to it; it is
-deleted with the payload when the path is retired. FR 030 measured what that costs and what it
-returns for the first tool: `tests/test_list_objects.py`'s payload layer is 27% of that module, for
-a payload whose whole logic is a filter and a substring test — a floor rather than a rate, since
-the tools with real branching in them are the ones stage 3 had to estimate.
+**What the move cost and what it returned was measured**, tool by tool, and the numbers are in
+[HISTORY.md](../feature-requests/HISTORY.md) rather than here: roughly three-fifths of a client
+test module went with each tool's program, with two informative outliers. What is worth keeping in
+a standing specification is the shape rather than the arithmetic — **a migration makes the suite
+bigger before it makes it smaller**, because the bridge's own modules are added while the client's
+are still needed, and the whole saving arrives in one effort at the end.
 
-**FR 031 learned the rate over nine more, and it is roughly 60%.** Per module, payload layer as a
-share of the whole: `get_status` 50%, `get_object_info` 67%, `get_macro_details` 58%,
-`list_presets` 44%, `list_rigs` 63%, `list_assets` 57%, `list_asset_materials` 60%,
-`list_targets` 58%, `get_target_stack` 63%. Two things about that number are worth carrying into
-the retirement's estimate. It is a **floor**, because a fixture shared with a tool that has not
-migrated is not counted — `list_presets`' 44% is the lowest there for exactly that reason. And the
-effort makes the suite **bigger, not smaller**: nine bridge test modules and a fixtures module were
-added while nothing was deleted, which is what "frozen" costs.
+## A fixture reproduces the install, never a convenient one
 
-**FR 032 measured the remaining fourteen and the rate held: 58%.** `refit_human` 57%,
-`set_macro_details` 58%, `set_targets` 67%, `symmetrize_targets` 65%, `add_rig` 65%,
-`generate_rigify_rig` 58%, `add_asset` 66%, `remove_asset` 58%, `set_skin` 67%,
-`set_asset_material` 60%, `save_preset` 49%, `create_human_from_preset` 59%, `list_urls` 24%.
-Two of the fourteen are outside the band and both are informative rather than anomalous:
-`mpfb_list_urls` is 24% because most of that module tests the **merge**, which is client-side
-by design and stays; and `mpfb_create_human` has **no payload layer at all**, its payload being
-forty lines with no branch in it. So the honest expectation for the retirement is that roughly
-three-fifths of twenty-four client test modules goes, and that the two numbers to watch are the
-tools whose logic genuinely lives on this side.
+This is the central rule of both harnesses, and the one most easily broken by someone trying to
+make a test pass.
 
-## Stubs reproduce MPFB's behaviour, never convenient values
-
-This is the central rule of the suite, and the one most easily broken by someone trying to make
-a test pass.
-
-A stub exists to make a payload's branches reachable. If it returns the value that would be
-*convenient*, the branch the payload wrote to handle MPFB's actual behaviour is never taken, and
-the test passes while asserting nothing. So a stub reproduces the quirk: `get_object_type()`
-answers `""` and never `None`; `object_is_any_makehuman_object()` returns a string rather than a
-bool; `find_related_objects()` yields the object it was asked about; `get_list_of_children()`
-walks the whole file rather than the current scene; `set_target_value()` is a silent no-op for a
-target that is not on the mesh; `has_target()` matches an encoded name the writers do not;
-`TargetService.set_value()` stores **unclamped**, matching a property whose definition carries no
-`min`/`max`; and `StubShapeKey.value` clamps to 0.0-1.0 on assignment, because Blender does.
+A fixture exists to make a branch reachable. If it presents the situation that would be
+*convenient*, the branch the code wrote to handle MPFB's actual behaviour is never taken, and the
+test passes while asserting nothing. So a fixture reproduces the awkward case: a rig tree with a
+rig that has no weights file of its own, a weights file with no rig, and a rig with no entry in the
+UI enum; a target tree with a section present in *both* the bundled index and a user directory, a
+`.target.gz` where MPFB's own scan matches only `*.target`, and a name long enough that its shape
+key name is encoded; an asset library with two roots holding the same `fedora.mhclo`.
 
 **This rule is not a preference. It is the finding of [FR 013](../feature-requests/done/013-live-verification/README.md).**
-The stub basemesh had no modifiers at all, where every basemesh MPFB creates carries a
+The stub basemesh of the day had no modifiers at all, where every basemesh MPFB creates carries a
 `Hide helpers` MASK modifier on the vertex group `body`. That group is *also* the one the
-`Hide base mesh` modifier a body proxy needs uses; the two differ only in
-`invert_vertex_group`. Because the stub had neither, `mpfb_add_asset`'s guard — which could not
-tell them apart — passed the suite through two rounds of review while failing against a real
-Blender. Adding the real modifier to the stub broke three existing tests, two of which turned
-out to be the tests being kind.
+`Hide base mesh` modifier a body proxy needs uses; the two differ only in `invert_vertex_group`.
+Because the fixture had neither, `mpfb_add_asset`'s guard — which could not tell them apart —
+passed the suite through two rounds of review while failing against a real Blender. Adding the real
+modifier broke three existing tests, two of which turned out to be the tests being kind.
 
-Two corollaries:
+**The pivot did not retire that rule; it moved where the rule bites.** A command's test runs
+against a real MPFB, so MPFB's own behaviour is no longer something a fixture can get wrong — but
+what the *install* holds still is. `bridge/test/tests/_fixtures.py` builds real target trees, real
+MHCLO files and a real character and points MPFB's own `LocationService` at them, and every
+asymmetry above is there because leaving it out is how a branch stops being tested.
 
-- **When a live finding can be pushed down into the stubs, it must be.** A defect the live
-  harness found and the suite could have found is a gap in the stubs, and closing it is part of
-  the fix rather than follow-up work.
-- **Where mpfb-mcp compensates for MPFB, the compensation belongs in the payload and its
-  absence in the stub.** `HumanService.set_character_skin()` does not coerce
-  `material_instances`; MPFB's UI does. So the stub does not coerce either, the payload is what
-  performs the coercion, and a test asserts the stub was handed `False` for a call that
-  requested `True`. A coercing stub would let the payload do nothing and still pass.
-
-## Choose a real filesystem when the payload's job is the filesystem
-
-Two shapes of fixture, and the choice is not stylistic:
-
-- **A real `tempfile` tree**, when the payload itself walks the disk. `payloads/list_rigs.py`'s
-  job *is* `os.listdir()` and `os.path.isfile()`; `payloads/list_targets.py`'s is `os.walk()`.
-  Mocking those away would leave nothing under test. The tree must carry the asymmetries a real
-  install has — a rig with no weights file of its own, a weights file with no rig, a section
-  present in both the bundled index and a user directory — because each is a branch.
-- **A reproduced service**, when the payload asks MPFB rather than the disk.
-  `payloads/list_assets.py` calls `AssetService`, so what needs reproducing is that service,
-  quirks first: `get_asset_list()` keys its items by *label*, so two files differing only in
-  case really do collapse into one entry, and each item's `thumb` holds something JSON cannot
-  encode.
-
-Some fixtures need both — the detail-target and mesh-asset cases walk the disk *and* write to a
-stub character — which is what the shared `TestCase` subclasses in `blender_stubs.py` are for.
-A fixture is shared rather than copied when two tools must agree about it: `RigTestCase` exists
-so that one test can run `mpfb_list_rigs` and `mpfb_add_rig` against the same disk and assert
-their weights answers are equal, which means nothing if it is two trees. `DetailTargetTestCase`
-now carries the same shape for [`modifier_reading.py`](architecture.md#shared-fragments): one test
-runs `mpfb_get_target_stack` and `mpfb_symmetrize_targets` over *one* character and asserts every
-category reading matches, and it was checked by making one of the two diverge on purpose and
-watching it fail.
-
-**Every shared fragment owes the suite two things**, since a fragment exists precisely so that two
-payloads cannot disagree:
-
-- The fragment run **directly**, where it can be — `performed.py`, `refit_blocker.py` and
-  `modifier_reading.py` are executed in `tests/test_codegen.py` against a namespace holding the
-  handful of names each binds, rather than reached through a payload inside a stub Blender. A
-  fragment that reads MPFB tables or the disk (`target_categories.py`, `rig_lookup.py`,
-  `asset_sections.py`) is exercised through its payloads instead.
-- Each fragment is also **assembled both ways** — concatenated, and executed out of Blender's
-  session source cache — and asserted to compile in both, because a program that compiles
-  concatenated is not evidence that one compiles with the fragment embedded in a string literal.
-  The two constraints that embedding puts on a fragment (no `'''`, no trailing backslash) are
-  asserted of every fragment rather than of the ones that happen to be cached today.
-- A **drift check** that no payload keeps an implementation of its own — the thing the fragment
-  was created to prevent, asserted against the payload source rather than trusted. Whichever line
-  is the rule's signature move is the one to look for: for `refit_blocker.py` it is that no
-  refitting payload calls `object_is_generated_rigify_rig()` itself, and for
-  `modifier_reading.py` that neither reading payload negates a value.
-
-## Two mechanics every stub-executing module inherits
-
-Both follow from the bootstrap described in
-[Resolving MPFB from generated code](architecture.md#resolving-mpfb-from-generated-code), and
-both are silent when got wrong:
-
-- **A stub service module's name must not end in `"mpfb"`**, or the bootstrap's candidate scan
-  claims it as an MPFB install of its own.
-- **The stub class's `__module__` is reassigned by hand**, because a payload reaching a
-  module-level name MPFB does not publish looks it up via `sys.modules[Service.__module__]`.
+**When a live finding can be pushed down into a fixture, it must be.** A defect found by a run
+against a real Blender that a fixture could have exposed is a gap in the fixture, and closing it is
+part of the fix rather than follow-up work.
 
 ## What the suite can never establish
 
 Stated once here rather than repeated in every module, because the list is a property of the
 architecture and not of any one test.
 
-**It is a list about the *unit suite*, and the pivot has now emptied most of it.** Every item below
-was written when everything Blender-side was out of reach from any harness in this repository. For
-a **migrated** tool that is no longer true: its logic is add-on code, the bridge's suite runs
-against a real MPFB, and the corresponding item stops being a limitation and becomes a test
-somebody has to write.
+**It is a list about the *unit suite*, and the pivot emptied most of it.** Every item below was
+written when everything Blender-side was out of reach from any harness in this repository. That
+stopped being true: a tool's logic is add-on code, the bridge's suite runs against a real MPFB, and
+each item stopped being a limitation and became a test somebody had to write.
 
-**All twenty-four tools that cross the socket have moved**, and the claims they carried were not
-merely re-asserted — **nine of them turned out differently than the stub or the comment said**,
-which is the clearest evidence there is that the move is worth making:
+**All twenty-four tools that cross the socket moved**, and the claims they carried were not merely
+re-asserted — **nine of them turned out differently than a stub or a comment had said**, which is
+the clearest evidence there is that the move was worth making:
 
 - `object_is()` really is a case-insensitive substring test and `get_object_type()` really answers
   `""` for an untyped object (FR 030);
@@ -403,11 +312,11 @@ now answered in `bridge/test/`, and each is named here with where:
   rests on. `ppp_mutating/add_rig_test.py` puts a real relative on a real character and reads the
   enumeration back.
 - **No stub can establish what a real MPFB has loaded.** `mpfb_list_urls` reads
-  `<root>.ui.weburls` out of `sys.modules`, and the payload test executes it against a stub
-  `sys.modules` carrying exactly such a module — which is to say the test is built out of the
-  assumption under test and can only ever confirm it. This is the general shape of the trap: **a
-  stub that reproduces a precondition cannot verify it.** `qqq_list_urls_test.py` asks the module
-  MPFB really loaded.
+  `<root>.ui.weburls` out of `sys.modules`, and the test of the day executed it against a stub
+  `sys.modules` carrying exactly such a module — which is to say the test was built out of the
+  assumption under test and could only ever confirm it. This is the general shape of the trap:
+  **a fixture that reproduces a precondition cannot verify it.** `qqq_list_urls_test.py` asks the
+  module MPFB really loaded.
 
 **What neither harness establishes**, and FR 032's spike named rather than discovered:
 
@@ -419,7 +328,8 @@ now answered in `bridge/test/`, and each is named here with where:
   returns and never what arrives over a socket that a timer drained. That belongs to a feature
   request's own live check, and FR 032's
   [`check_creation_migration.py`](../feature-requests/done/032-creation-and-modification-migrated/check_creation_migration.py)
-  is the one that made it for all twenty-four.
+  is the one that made it for all twenty-four. The smoke run in [verification/](../verification/)
+  makes it again, incidentally and on every run, since it goes over the real socket.
 
 An item needing a live Blender belongs to the feature request that needs it, which must say so in
 its own "Tests" section rather than leave it to be discovered.
@@ -466,12 +376,11 @@ One part of the package is fully testable here, because it never crosses:
 [observability.py](../src/mpfbmcp/observability.py). Its tests are held to a higher bar
 accordingly, and two of them are load-bearing rather than routine:
 
-- The tool name is extracted from a **real `codegen.assemble()` output for every payload**,
-  never from a hand-written marker, because the marker format is a coupling between two modules
-  that otherwise have nothing to do with each other.
-- The **ordering** — the program on disk before the add-on answers — is asserted by having the
-  fake add-on look at the filesystem *while it holds the request*. An implementation that wrote
+- The **ordering** — the request on disk before the add-on answers — is asserted by having the
+  fake bridge look at the filesystem *while it holds the request*. An implementation that wrote
   both files after the response would pass every other test in the module.
+- **Off means unchanged**, asserted by comparing the bytes that reached the fake with the record
+  on and the record off. A diagnostic that alters the call it describes is worse than none.
 
 The same principle applies to any future component that does not cross the socket: if it can be
 tested properly, it must be.

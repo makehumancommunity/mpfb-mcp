@@ -27,8 +27,11 @@ section is labelled as MPFB labels it ("Custom targets") rather than by its
 directory name, and a ``target.json`` category with no ``name`` is dropped
 rather than listed, since it could not be addressed.
 
-**This reproduces ``codegen/payloads/list_targets.py`` rather than tidying it
-up**, including the two things about it that look inconsistent:
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
+, including the two things about it that look inconsistent:
 
 - **Which list is paged depends on what was asked.** A bundled section's
   categories when one was named, the user targets otherwise. The other list is

@@ -1,28 +1,18 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-``mpfb_set_macro_details``, migrated by FR 032 and therefore in three layers
-rather than two (see ``tests/test_list_objects.py``, the template).
+"""``mpfb_set_macro_details``, in two layers (see ``tests/test_list_objects.py``,
+the template).
 
-1. **The wrapper**, with ``send_command`` mocked on the seam: the 0.0-1.0 rule and
-   the flat-argument-to-MPFB-property mapping, both of which live here and
-   nowhere else, and what the generated program binds as ``PARAMS``.
-2. **The bridge path**, against ``tests/fake_bridge.py``. Thin.
-3. **The payload** against the stubs in ``tests/blender_stubs.py``. **Frozen.**
-   It stays while the payload stays, because the payload is half of what
-   FR 032's live comparison compares.
+1. **The wrapper**, with ``send_command`` mocked below the seam: the 0.0-1.0
+   rule, which is enforced here and nowhere else because MPFB's macro
+   properties carry a default but no ``min``/``max``, and the rule that an
+   unnamed slider is left alone rather than set to its default.
+2. **The bridge path**, against ``tests/fake_bridge.py``.
 
-Layer 3 checks the branching and the shape of ``result``; it says nothing about
-whether a character modified through this tool ends up with the same shape keys
-at the same weights as one modified through MPFB's own phenotype sliders, which
-is the point of the tool. That is now checked against a real MPFB in
+That every named property is written before anything is recalculated - once,
+not once per slider - and what MPFB does with an out-of-range value it is handed
+anyway, are checked against a real MPFB in
 ``bridge/test/tests/ppp_mutating/set_macro_details_test.py``.
-
-The distinctions worth testing are the ones a caller would otherwise get wrong:
-an omitted slider is left alone rather than reset to its default; a slider set
-to the value it already had is *reported* rather than silently dropped; a call
-naming nothing recalculates nothing; and a change that leaves the character's
-clothes fitted to the old shape says so.
 
 Run with::
 

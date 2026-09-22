@@ -14,8 +14,11 @@ than having to know which object owns the properties. The answer names the
 object the values were actually read from. Failing to resolve one is a
 successful answer, not an error.
 
-**This reproduces ``codegen/payloads/get_macro_details.py`` rather than tidying
-it up**, and three of its decisions are the ones a reimplementation would undo:
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
+, and three of its decisions are the ones a reimplementation would undo:
 
 - **Nothing is recalculated.** ``reapply_macro_details()`` is deliberately not
   called, so a character whose properties and shape have drifted apart is

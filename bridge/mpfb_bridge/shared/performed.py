@@ -1,19 +1,14 @@
 """
 The uniform "it happened" flag every mutating command reports.
 
-The bridge's copy of
-[`codegen/shared/performed.py`](../../../src/mpfbmcp/codegen/shared/performed.py),
-and character for character the same function - asserted rather than intended
-by ``tests/test_fragment_drift.py``. See [`__init__.py`](__init__.py) for why
-the two exist at once.
+**One implementation, imported by every command that needs it.** See
+[`__init__.py`](__init__.py) for why this directory exists beside ``commands/``
+and what the ``services`` argument is doing there.
 
-**Alone among the seven it needed no ``services`` argument and no
-normalisation at all.** The fragment binds nothing from the bootstrap and reads
-nothing out of MPFB: it is one function over a dict the command has already
-finished building. So the drift check compares it exactly as written, with none
-of the injection machinery the other six need, which makes it the cheapest pair
-in the set to keep honest and the one that would be most obviously wrong if it
-ever drifted.
+**Alone among the seven it takes no ``services`` argument**: it reads nothing
+out of MPFB at all. It is one function over a dict the command has already
+finished building, which is what makes it the simplest thing in this directory
+and the one whose being wrong would be most obvious.
 
 Every mutating command keeps its own verb - ``added``, ``applied``, ``removed``,
 ``generated``, ``changed``, ``recalculated``, ``refit_performed`` - because

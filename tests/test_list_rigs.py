@@ -1,32 +1,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_list_rigs tool: argument validation, and the generated code's
-enumeration of MPFB's rig directories.
+"""Tests for the mpfb_list_rigs tool: argument validation, and what crosses the
+socket.
 
-Migrated by FR 031, so three layers rather than two (see
-``tests/test_list_objects.py``, the template): the wrapper with ``send_command``
-mocked on the seam, the bridge path against ``tests/fake_bridge.py``, and the
-payload executed against the stub services in ``tests/blender_stubs.py``.
+Two layers (see ``tests/test_list_objects.py``, the template): the wrapper with
+``send_command`` mocked below the seam, and the bridge path against
+``tests/fake_bridge.py``.
 
-**The payload layer is frozen**, and it is the one in this suite with the most
-to lose by staying: ``ListRigsGeneratedCodeTests`` is where
-``test_add_rig.py``'s claim that the catalogue's weights prediction equals the
-adder's outcome is anchored, through the ``RigTestCase`` they share. Both halves
-of that pair are still payloads after this effort, so both survive untouched;
-what keeps the *bridge* half honest meanwhile is
-``tests/test_fragment_drift.py``, which compares ``rig_lookup.py`` against
-``bridge/mpfb_bridge/shared/rig_lookup.py`` on every run.
-
-The rig tree these run against is a real temporary directory rather than a
-mocked filesystem, because the payload's whole job is ``os.listdir()`` and
-``os.path.isfile()`` - mocking those away would leave nothing under test. It
-deliberately reproduces the asymmetries a real MPFB install has: a rig with no
-weights file of its own, a weights file with no rig, and a rig with no entry in
-the UI enum. ``bridge/test/tests/kkk_list_rigs_test.py`` builds the same tree
-and points MPFB's own ``LocationService`` at it.
-
-The share of this module that goes with the payload: 300 of its 474 lines, 63%.
+This tool's whole job is ``os.listdir()`` and ``os.path.isfile()`` over MPFB's
+rig directories, so it can only be checked against a real tree.
+``bridge/test/tests/kkk_list_rigs_test.py`` builds one and points MPFB's own
+``LocationService`` at it, reproducing the asymmetries a real install has - a
+rig with no weights file of its own, a weights file with no rig, a rig with no
+entry in the UI enum - and it is also where the claim that this catalogue's
+weights prediction equals ``mpfb_add_rig``'s outcome is anchored, since both
+halves of that pair are now commands running against one disk.
 
 Run with::
 

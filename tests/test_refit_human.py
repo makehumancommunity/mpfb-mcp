@@ -1,31 +1,20 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-``mpfb_refit_human``, migrated by FR 032 and therefore in three layers rather
-than two (see ``tests/test_list_objects.py``, the template).
+"""``mpfb_refit_human``, in two layers (see ``tests/test_list_objects.py``, the
+template).
 
-1. **The wrapper**, with ``send_command`` mocked on the seam: argument validation,
-   and what the generated program binds as ``PARAMS``.
-2. **The bridge path**, against ``tests/fake_bridge.py``. Thin, and it carries
-   the claim this tool is the first to make: a tool naming **two** shared
-   fragments sends the same request over the bridge as one naming none.
-3. **The payload** against the stubs in ``tests/blender_stubs.py``. **Frozen.**
-   It stays while the payload stays, because the payload is half of what
-   FR 032's live comparison compares, and it is deleted with the payload when
-   the generated path is retired.
+1. **The wrapper**, with ``send_command`` mocked below the seam: argument
+   validation, and what goes on the wire.
+2. **The bridge path**, against ``tests/fake_bridge.py``.
 
-What layer 3 checks is the reporting around the call, which is where this tool
-adds anything at all over ``HumanService.refit()``: a missing basemesh comes
-back as an answer rather than the ``ValueError`` refit() raises, and a generated
-Rigify rig with no meta rig is reported rather than passed off as a successful
-refit. Whether a refit visibly puts clothes back on a deformed body is exactly
-what it cannot say - and that is now checked against a real MPFB in
-``bridge/test/tests/ppp_mutating/refit_human_test.py``, which builds a character,
-equips a garment from a redirected data root, deforms the body and refits it.
-
-The share of this module that goes with the payload: 219 of its 372 lines, 59%
-- ``GeneratedRefitHumanTests`` alone, which is within a point of the 60% rate
-FR 031 measured over nine modules.
+What this tool adds over ``HumanService.refit()`` is the reporting around the
+call: a missing basemesh comes back as an answer rather than the ``ValueError``
+refit() raises, and a generated Rigify rig with no meta rig is reported rather
+than passed off as a successful refit. That, and whether a refit visibly puts
+clothes back on a deformed body, are checked against a real MPFB in
+``bridge/test/tests/ppp_mutating/refit_human_test.py``, which builds a
+character, equips a garment from a redirected data root, deforms the body and
+refits it.
 
 Run with::
 

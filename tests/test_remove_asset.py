@@ -1,23 +1,17 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_remove_asset tool: argument validation, and the generated
-code's refusals, its read-before-deleting, and what it reports being left with.
+"""Tests for the mpfb_remove_asset tool: argument validation, and what crosses the
+socket.
 
-Three layers since FR 032 migrated it (see ``tests/test_list_objects.py``, the
-template): the tool wrapper with ``send_command`` mocked on the seam; the **bridge
-path** against ``tests/fake_bridge.py``; and the assembled source executed
-against the stub services and the same temporary asset library
-tests/test_add_asset.py uses. That third layer is **frozen**: it stays while the
-payload stays, because the payload is half of what FR 032's live comparison
-compares.
+Two layers (see ``tests/test_list_objects.py``, the template): the tool wrapper
+with ``send_command`` mocked below the seam, and the **bridge path** against
+``tests/fake_bridge.py``.
 
-Several of layer 3's cases equip an asset with mpfb_add_asset's payload first
-and then remove it, because the interesting claims - which mask modifiers went,
-which vertex groups stayed - are only meaningful about state that MPFB's own
-loading path produced. ``bridge/test/tests/ppp_mutating/remove_asset_test.py``
-does the same thing against a real MPFB, which is where the claim that a
-character comes back to what it was now lives.
+The interesting claims about this tool - which mask modifiers went, which vertex
+groups stayed, whether a character comes back to what it was - are only
+meaningful about state that MPFB's own loading path produced, so they are made
+in ``bridge/test/tests/ppp_mutating/remove_asset_test.py``, which equips an
+asset against a real MPFB and then removes it.
 
 Run with::
 

@@ -228,7 +228,7 @@ def register(mcp: FastMCP) -> None:
                 "import_subrig": _validated_flag("import_subrig", import_subrig),
                 "import_weights": _validated_flag("import_weights", import_weights),
             },
-            # Shared with mpfb_list_assets' payload, which reported the
+            # Shared with mpfb_list_assets' command, which reported the
             # object_type and fragment this call is holding. Mapping the first
             # back to an asset subdir is the only way to resolve the second, and
             # two implementations of that table would make a just-listed asset

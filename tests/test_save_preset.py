@@ -1,25 +1,23 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-``mpfb_save_preset``: the name rule on this side, and the write on the other.
+"""``mpfb_save_preset``: the name rule on this side, and the write on the other.
 
-Three layers since FR 032 migrated it, and the first one carries more weight
-here than in any other tool module. ``name`` is the only argument in this
-package that becomes a **path**, so the whitelist is exercised exhaustively
-*before* a transport is chosen - a name that escapes the config directory must
-never cross the socket at all, and a test that only checked the far side's copy
-would be testing the wrong statement.
+Two layers (see ``tests/test_list_objects.py``, the template), and the first
+carries more weight here than in any other tool module. ``name`` is the only
+argument in this package that becomes a **path**, so the whitelist is exercised
+exhaustively *before* anything is sent - a name that escapes the config
+directory must never cross the socket at all, and a test that only checked the
+far side's copy would be testing the wrong statement. The second is the
+**bridge path** against ``tests/fake_bridge.py``.
 
-The second is the **bridge path** against ``tests/fake_bridge.py``. The third
-runs the assembled program against a real config directory and a stub character
-and is **frozen**: it stays while the payload stays, because the payload is half
-of what FR 032's live comparison compares.
+The last class in this module is the drift check between the two copies of that
+rule, which moved here from ``tests/test_codegen.py`` when FR 033 deleted the
+third.
 
-What layer 3 asserts is the three things a tool that writes a file owes its
-caller: that a refusal leaves the existing file byte-identical, that the
-absolute path is in every answer, and that what is reported as written is read
-back out of the file rather than assembled from the scene. All three are now
-also checked against a real MPFB in
+The three things a tool that writes a file owes its caller - that a refusal
+leaves the existing file byte-identical, that the absolute path is in every
+answer, and that what is reported as written is read back out of the file rather
+than assembled from the scene - are checked against a real MPFB in
 ``bridge/test/tests/ppp_mutating/save_preset_test.py``, which redirects MPFB's
 user config directory so that a failing test cannot leave a preset in the
 developer's own panel.

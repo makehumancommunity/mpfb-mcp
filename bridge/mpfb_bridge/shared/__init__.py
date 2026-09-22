@@ -9,51 +9,44 @@ the wire**. There is no handler, no ``PARAMS``, no entry in ``COMMANDS``, and
 nothing here is dispatched. A command imports one of these the way it imports
 ``os``.
 
-It mirrors [`src/mpfbmcp/codegen/shared/`](../../../src/mpfbmcp/codegen/shared)
-name for name, for the same reason ``commands/`` mirrors ``tools/``: during the
-migration a fragment and the module that replaces it must be findable from each
-other, and after the migration the fragment is deleted and this stays. A
-fragment is standalone source concatenated ahead of a payload, reading
-``_MPFB_SERVICES`` bound by the bootstrap; a module here is imported, and is
-handed MPFB as the ``services`` dict every command handler already receives.
+**Why a directory rather than an import between commands.** Each module here is
+a thing two or more commands have to agree about, where disagreeing is a defect
+a caller cannot see: ``list_rigs`` predicts which file ``add_rig`` will load,
+``list_assets`` reports the vocabulary ``add_asset`` resolves with, all three
+preset commands build ``<user config>/human.<name>.json`` the same way, and all
+four refitting commands decide the same way whether a refit would silently leave
+the rig behind. One implementation is the only way to guarantee agreement;
+``add_rig`` importing ``list_rigs`` would make the catalogue depend on the
+acting command and put a scan behind a handler.
 
 **That is why these functions take a leading ``services`` argument rather than
-binding MPFB at import**, and the shape is worth the mild awkwardness twice
-over. An add-on module that resolved MPFB at import time would hold a services
-dict across a disable and re-enable, which is exactly the stale state nobody
-thinks to suspect - :func:`mpfb_resolution.resolve` is called per dispatch for
-that reason. And keeping the *bodies* character for character identical to the
-fragment's is what lets
-[`tests/test_fragment_drift.py`](../../../tests/test_fragment_drift.py) compare
-the two with ``ast`` on every unit run, with no Blender, for as long as both
-exist. The pairing guarantee those fragments were written for -
-``list_rigs`` predicting what ``add_rig`` will load, ``list_assets`` reporting
-the vocabulary ``add_asset`` resolves with - has to survive a stage boundary
-with one half migrated and the other not, and "these two agree" is worth
-asserting rather than intending.
+binding MPFB at import.** An add-on module that resolved MPFB at import time
+would hold a services dict across a disable and re-enable, which is exactly the
+stale state nobody thinks to suspect - :func:`mpfb_resolution.resolve` is called
+per dispatch for that reason. ``target_categories`` takes a ``tables`` argument
+for the same class of reason at a different timescale: its scan must be per
+call, or a target installed since Blender started would be invisible.
 
-**These modules carry their fragment's lint findings on purpose.** pylint has
-things to say about them - a missing docstring, an ``open()`` with no
-``encoding``, an unused loop variable - and every one of them is inherited
-character for character from the fragment. Fixing it here alone breaks the
-drift check; fixing it in both is a change to a payload's behaviour made during
-a migration, which is exactly what
-[FR 031](../../../feature-requests/done/031-introspection-and-catalogues-migrated/README.md)
-forbids, because a tidy-up is indistinguishable from a defect in the comparison
-the migration rests on. They become ordinary findings, fixable in one place, on
-the day the fragment is deleted.
+**These modules carry lint findings on purpose**, and the reason has changed
+since they were written. pylint has things to say about them - a missing
+docstring, an ``open()`` with no ``encoding``, an unused loop variable - and
+each is inherited character for character from MPFB's own source, which these
+bodies are written to be readable beside. Fixing one silently moves this code
+away from the thing it reproduces. They are ordinary findings now that nothing
+compares these files against a second copy, so fix one *deliberately* and say
+in the commit which MPFB behaviour the new spelling still reproduces.
 
-**Seven modules, which is every fragment there is.** ``preset_files``,
-``rig_lookup``, ``asset_sections``, ``target_categories`` and
-``modifier_reading`` came with FR 031's read-only tools; ``performed`` and
-``refit_blocker`` came with FR 032's mutating ones. So ``codegen/shared/`` no
-longer has a fragment without a counterpart here, and the drift check straddles
-nothing - every pair it was built for has both halves on this side.
+**Seven modules**, and the count is not a coincidence: they are the seven
+concepts more than one command needed. ``preset_files``, ``rig_lookup``,
+``asset_sections``, ``target_categories`` and ``modifier_reading`` arrived with
+FR 031's read-only commands; ``performed`` and ``refit_blocker`` with FR 032's
+mutating ones. Each mirrors a shared fragment from the generated-code path that
+FR 033 deleted, name for name, which is why the names are what they are.
 
 ``performed`` is the plainest of the seven and the one exception to the
-paragraph above: it binds nothing from the bootstrap and reads nothing out of
-MPFB, so it takes no ``services`` argument and the drift check compares it with
-no normalisation at all.
+``services`` rule above: it reads nothing out of MPFB, so it takes no services
+dict - it is one function over a dict the command has already finished
+building.
 """
 
 __all__ = ()

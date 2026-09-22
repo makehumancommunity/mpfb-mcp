@@ -1,17 +1,14 @@
 """
 What one modeling category's slider reads, on this character.
 
-The bridge's copy of
-[`codegen/shared/modifier_reading.py`](../../../src/mpfbmcp/codegen/shared/modifier_reading.py),
-and character for character the same rule - asserted rather than intended by
-``tests/test_fragment_drift.py``. Alone among these five it needed no
-``services`` argument: it reaches MPFB not at all, and takes everything it
-needs from its caller.
+**One implementation, imported by both commands that read a slider.** See
+[`__init__.py`](__init__.py) for why this directory exists beside ``commands/``.
+It takes no ``services`` argument: it reaches MPFB not at all, and takes
+everything it needs from its caller.
 
 The two names it does need come from
 [`target_categories`](target_categories.py) and are imported **by name** rather
-than through the module, so that the calls below read exactly as the fragment's
-do - which is what lets the drift check compare this function at all.
+than through the module.
 
 A category is not a shape key. MPFB's panel shows one slider per category, and
 what that slider reads is computed from one or two shape keys by

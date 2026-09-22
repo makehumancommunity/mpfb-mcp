@@ -3,7 +3,7 @@
 
 **This is the first test module in this repository whose subject is MPFB rather
 than a transport.** Every other check of what a tool answers is an
-``exec()``-ed payload run against a stub ``bpy`` and stub services - a harness
+``exec()``-ed program run against a stub ``bpy`` and stub services - a harness
 that can prove the code does what its author expected and can prove nothing
 whatever about MPFB, because the stub and the code were written by the same
 person from the same reading of MPFB's source. Here the same questions are put

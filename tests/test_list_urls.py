@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Tests for the mpfb_list_urls tool: the four states, and the payload's prefix scan.
+Tests for the mpfb_list_urls tool: the four states, and the merge.
 
 Two layers as usual, but the split between them is unusual and is the thing
-worth checking. The payload only *reads* MPFB's ``ui.weburls`` module; the merge
-against the vendored copy, the descriptions and the staleness report are
+worth checking. The command only *reads* MPFB's ``ui.weburls`` module; the
+merge against the vendored copy, the descriptions and the staleness report are
 assembled on this side of the socket, so the wrapper layer carries most of the
 behaviour here rather than most of the plumbing.
 
@@ -15,18 +15,17 @@ Four states have to come back as successful answers and one must not:
 - MPFB absent, or loaded but with no ``weburls`` in ``sys.modules``;
 - Blender unreachable - a ``ConnectionError`` out of the wire client, which this
   is the only tool in the package to catch;
-- and a payload that **raised inside Blender**, which is a defect and must still
-  surface as an error envelope. Swallowing that into a "fallback" answer would
-  hide it permanently, so it has a test of its own.
+- and a command that **failed inside Blender**, which is a defect and must
+  still surface as an error envelope. Swallowing that into a "fallback" answer
+  would hide it permanently, so it has a test of its own.
 
-The payload is executed against a stub ``sys.modules`` carrying a fake
-``ui.weburls`` - including one with an **extra** ``URL_`` constant and one
+The merge is exercised against hand-built answers of the shape the command
+leaves behind - including one reporting an **extra** ``URL_`` key and one
 **missing** a key mpfb-mcp vendors, since enumerate-by-prefix and the staleness
-report are exactly the two claims a table copied by hand cannot make for itself.
-
-What none of this can establish is that a real, initialized MPFB has
-``<root>.ui.weburls`` in ``sys.modules`` at all: the stub here is built from
-that assumption. That is checked against a running Blender by
+report are exactly the two claims a table copied by hand cannot make for
+itself. What the command reads out of a real, initialized MPFB is asked in
+``bridge/test/tests/qqq_list_urls_test.py``; that ``<root>.ui.weburls`` is in
+``sys.modules`` at all was established against a running Blender by
 ``feature-requests/done/024-documentation-urls/check_weburls.py``.
 
 Run with::
@@ -64,8 +63,8 @@ def _register_and_get_tool():
     return mcp._tool_manager._tools["mpfb_list_urls"].fn  # noqa: SLF001
 
 
-def _payload_result(**overrides) -> dict:
-    """A payload answer of the shape the generated code actually leaves behind."""
+def _command_result(**overrides) -> dict:
+    """An answer of the shape ``list_urls`` actually leaves behind."""
     answer = {
         "state": "ok",
         "package": _STUB_PACKAGE,
@@ -90,9 +89,9 @@ class ListUrlsLiveTests(unittest.TestCase):
     def setUp(self) -> None:
         self.mpfb_list_urls = _register_and_get_tool()
 
-    def _call(self, payload: dict) -> dict:
+    def _call(self, answer: dict) -> dict:
         with mock.patch("mpfbmcp.bridge_connection.send_command",
-                        return_value={"status": "ok", "result": payload}):
+                        return_value={"status": "ok", "result": answer}):
             envelope = self.mpfb_list_urls()
         self.assertEqual(envelope["status"], "ok")
         return envelope["result"]
@@ -101,7 +100,7 @@ class ListUrlsLiveTests(unittest.TestCase):
         self.assertEqual(list(inspect.signature(self.mpfb_list_urls).parameters), [])
 
     def test_an_agreeing_live_read_is_reported_as_live_and_not_stale(self) -> None:
-        result = self._call(_payload_result())
+        result = self._call(_command_result())
 
         self.assertEqual(result["source_of_truth"], "mpfb")
         self.assertIsNone(result["fallback_reason"])
@@ -113,7 +112,7 @@ class ListUrlsLiveTests(unittest.TestCase):
         self.assertTrue(result["mpfb_status"]["weburls_read"])
 
     def test_every_mpfb_key_is_described_and_sourced(self) -> None:
-        entries = _by_key(self._call(_payload_result()))
+        entries = _by_key(self._call(_command_result()))
 
         for key in urls.MPFB_URLS:
             with self.subTest(key=key):
@@ -126,7 +125,7 @@ class ListUrlsLiveTests(unittest.TestCase):
                 self.assertTrue(entries[key]["keywords"])
 
     def test_ecosystem_links_are_carried_and_marked_as_ours(self) -> None:
-        entries = _by_key(self._call(_payload_result()))
+        entries = _by_key(self._call(_command_result()))
 
         for key in urls.ECOSYSTEM_URLS:
             with self.subTest(key=key):
@@ -134,7 +133,7 @@ class ListUrlsLiveTests(unittest.TestCase):
                 self.assertEqual(entries[key]["url"], urls.ECOSYSTEM_URLS[key])
 
     def test_count_matches_the_entries_and_nothing_is_capped(self) -> None:
-        result = self._call(_payload_result())
+        result = self._call(_command_result())
 
         self.assertEqual(result["count"], len(result["urls"]))
         # FR-6: this answer fits, so a caller must not go looking for paging.
@@ -145,7 +144,7 @@ class ListUrlsLiveTests(unittest.TestCase):
         live = dict(urls.MPFB_URLS)
         live["URL_NEWLY_ADDED"] = "https://example.invalid/new"
 
-        result = self._call(_payload_result(urls=live))
+        result = self._call(_command_result(urls=live))
         entries = _by_key(result)
 
         # Enumerated by prefix, so it appears without a change in this package -
@@ -164,7 +163,7 @@ class ListUrlsLiveTests(unittest.TestCase):
         live = dict(urls.MPFB_URLS)
         live["URL_FORUM"] = "https://example.invalid/moved"
 
-        result = self._call(_payload_result(urls=live))
+        result = self._call(_command_result(urls=live))
 
         self.assertEqual(_by_key(result)["URL_FORUM"]["url"], "https://example.invalid/moved")
         self.assertTrue(result["fallback_stale"])
@@ -177,7 +176,7 @@ class ListUrlsLiveTests(unittest.TestCase):
         live = dict(urls.MPFB_URLS)
         del live["URL_FAQ"]
 
-        result = self._call(_payload_result(urls=live))
+        result = self._call(_command_result(urls=live))
 
         # The live read is the source of truth in both directions: a key MPFB no
         # longer has must not be resurrected from the vendored copy.
@@ -192,7 +191,7 @@ class ListUrlsLiveTests(unittest.TestCase):
         live = dict(urls.MPFB_URLS)
         live[collision] = "https://example.invalid/mpfbs-own"
 
-        entries = _by_key(self._call(_payload_result(urls=live)))
+        entries = _by_key(self._call(_command_result(urls=live)))
 
         # Reported once, as MPFB's: the live value wins every disagreement, and
         # an ecosystem key is not an exception to that.
@@ -203,7 +202,7 @@ class ListUrlsLiveTests(unittest.TestCase):
         # The one place an empty dict and None must not be conflated: MPFB was
         # read and publishes nothing is a live answer, not a fallback, and the
         # differences say the vendored copy is the one out of step.
-        result = self._call(_payload_result(urls=dict()))
+        result = self._call(_command_result(urls=dict()))
 
         self.assertEqual(result["source_of_truth"], "mpfb")
         self.assertEqual([entry for entry in result["urls"] if entry["source"] == "mpfb"], [])
@@ -213,7 +212,7 @@ class ListUrlsLiveTests(unittest.TestCase):
             ["missing_from_mpfb"] * len(urls.MPFB_URLS))
 
     def test_a_skipped_non_string_constant_is_reported(self) -> None:
-        result = self._call(_payload_result(skipped_keys=["URL_SOMETHING_ODD"]))
+        result = self._call(_command_result(skipped_keys=["URL_SOMETHING_ODD"]))
 
         self.assertEqual(result["skipped_keys"], ["URL_SOMETHING_ODD"])
 
@@ -224,9 +223,9 @@ class ListUrlsFallbackTests(unittest.TestCase):
     def setUp(self) -> None:
         self.mpfb_list_urls = _register_and_get_tool()
 
-    def _call_with_payload(self, payload: dict) -> dict:
+    def _call_with_answer(self, answer: dict) -> dict:
         with mock.patch("mpfbmcp.bridge_connection.send_command",
-                        return_value={"status": "ok", "result": payload}):
+                        return_value={"status": "ok", "result": answer}):
             envelope = self.mpfb_list_urls()
         self.assertEqual(envelope["status"], "ok")
         return envelope["result"]
@@ -247,7 +246,7 @@ class ListUrlsFallbackTests(unittest.TestCase):
         self.assertIsNone(result["fallback_differences"])
 
     def test_mpfb_absent_still_answers_from_the_vendored_copy(self) -> None:
-        result = self._call_with_payload(_payload_result(
+        result = self._call_with_answer(_command_result(
             state="absent", package=None, version=None, weburls_module=None,
             weburls_read=False, urls=None, skipped_keys=None,
             reason="MPFB is not loaded in this Blender instance ..."))
@@ -258,7 +257,7 @@ class ListUrlsFallbackTests(unittest.TestCase):
         self.assertTrue(result["blender_reachable"])
 
     def test_mpfb_present_without_its_weburls_module_answers_and_says_why(self) -> None:
-        result = self._call_with_payload(_payload_result(
+        result = self._call_with_answer(_command_result(
             weburls_read=False, urls=None, skipped_keys=None,
             reason="MPFB is loaded and initialized, but ... is not in sys.modules ..."))
 
@@ -286,7 +285,7 @@ class ListUrlsFallbackTests(unittest.TestCase):
         # The socket error's own text, which names the host and port.
         self.assertIn("localhost:9876", result["fallback_reason"])
 
-    def test_a_payload_error_is_not_swallowed_into_a_fallback(self) -> None:
+    def test_a_command_failure_is_not_swallowed_into_a_fallback(self) -> None:
         # A command that failed inside Blender is a defect here. If it came back
         # as a cheerful fallback answer it would never be found. The envelope
         # reaches the caller exactly as the add-on wrote it, slug and all: the
@@ -308,7 +307,7 @@ class ListUrlsFallbackTests(unittest.TestCase):
             self.assertEqual(self.mpfb_list_urls(), envelope)
 
     def test_only_a_connection_error_is_caught(self) -> None:
-        # Any other exception out of send_code() is a bug on this side and must
+        # Any other exception out of send_command() is a bug on this side and must
         # propagate; catching broadly here would hide it behind an answer.
         with mock.patch("mpfbmcp.bridge_connection.send_command",
                         side_effect=ValueError("a defect in this package")):
@@ -320,7 +319,7 @@ class ListUrlsOverTheBridgeTests(fake_bridge.BridgeTestCase):
     """The bridge path, and the one case where the two transports differ.
 
     This tool migrated because ``bridge_connection.send_command()`` raises
-    ``ConnectionError`` in exactly the situations ``connection.send_code()``
+    ``ConnectionError`` in exactly the situations ``send_command()``
     does - which is what the fallback answer turns on. What it does **not** do
     is turn a protocol handshake refusal into one, and FR 032 decided
     deliberately that it should not: a version mismatch between mpfb-mcp and
@@ -335,10 +334,10 @@ class ListUrlsOverTheBridgeTests(fake_bridge.BridgeTestCase):
         super().setUp()
         self.call = _register_and_get_tool()
 
-    def _bridge_answering(self, payload):
+    def _bridge_answering(self, answer):
         return self.run_answering_bridge({
             "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
-            "list_urls": fake_bridge.ok_envelope("list_urls", payload),
+            "list_urls": fake_bridge.ok_envelope("list_urls", answer),
         })
 
     def test_the_tool_sends_the_list_urls_command_with_no_parameters(self) -> None:

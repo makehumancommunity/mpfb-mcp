@@ -25,9 +25,9 @@ that reason rather than because a space in a filename is a problem. The reverse
 does not hold, and that is visible rather than hidden: ``mpfb_list_presets``
 flags a preset MPFB holds and this rule refuses as ``addressable: false``.
 
-``codegen/shared/preset_files.py`` carries the same rule for the far side of the
+``bridge/mpfb_bridge/shared/preset_files.py`` carries the same rule for the far side of the
 socket, where it is the last statement before ``open()``.
-``tests/test_codegen.py`` runs the two over one table of names, so they cannot
+``tests/test_save_preset.py`` runs the two over one table of names, so they cannot
 drift apart.
 """
 

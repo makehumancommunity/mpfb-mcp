@@ -1,12 +1,9 @@
 """
 MPFB's modeling **category** table, rebuilt per call rather than at import.
 
-The bridge's copy of
-[`codegen/shared/target_categories.py`](../../../src/mpfbmcp/codegen/shared/target_categories.py),
-and character for character the same rules - asserted rather than intended by
-``tests/test_fragment_drift.py``. See [`__init__.py`](__init__.py) for why the
-two exist at once and what the ``services`` and ``tables`` arguments are doing
-there.
+**One implementation, imported by every command that needs it.** See
+[`__init__.py`](__init__.py) for why this directory exists beside ``commands/``
+and what the ``services`` and ``tables`` arguments are doing there.
 
 A *category* is the thing behind one of MPFB's modeling sliders, and it is not a
 ``TargetService`` concept at all: it lives in ``target.json`` and in
@@ -28,12 +25,11 @@ started, so a target installed since would be invisible to a command that
 imported it and visible to ``list_targets``, which scans per call.
 
 **That is also why the table is a per-call record rather than module state.**
-The fragment builds it once, at the top of a generated program, which is per
-call because the whole program is; a module imported once at add-on registration
-that did the same would answer every request from a scan taken at startup - the
-precise defect the paragraph above rejects. So :func:`build_tables` returns a
-:class:`Tables`, a command builds one per dispatch, and the functions that read
-it take it as their first argument.
+A module imported once at add-on registration that built it at import would
+answer every request from a scan taken at startup - the precise defect the
+paragraph above rejects. So :func:`build_tables` returns a :class:`Tables`, a
+command builds one per dispatch, and the functions that read it take it as
+their first argument.
 
 Two quirks of MPFB's own scan are reproduced deliberately rather than tidied up,
 because the point of this table is that a value set through it reads back
@@ -63,10 +59,10 @@ inherit a latent crash. :func:`resolve_target_path` tries both, for both kinds
 of category.
 """
 
-# The local bindings below are spelled with MPFB's own capitalisation, and the
-# table names in SCREAMING_CASE, so that these bodies stay identical to the
-# fragment's and the drift check can compare them. That is the whole reason for
-# the disable.
+# The local bindings below are spelled with MPFB's own capitalisation -
+# ``LocationService = services["LocationService"]`` - rather than snake_case,
+# so that a body here reads the way MPFB's own source reads and can be
+# compared with it line for line. That is the whole reason for the disable.
 # pylint: disable=invalid-name
 
 __all__ = (
@@ -174,7 +170,7 @@ def synthesized_category(services, full_path, listed_in_mpfb_ui):
         "name": name,
         "targets": [path],
         "full_path": path,
-        # Not MPFB's own keys - added here so a payload can report the two
+        # Not MPFB's own keys - added here so a command can report the two
         # facts a caller cannot otherwise see.
         "shapekey_name": shapekey_name,
         "name_diverges_from_catalogue": shapekey_name is not None and shapekey_name != name,
@@ -487,10 +483,9 @@ def lookup_target(services, tables, target_name):
 class Tables:
     """One scan of this Blender's target directories, built per dispatched command.
 
-    The fields are exactly the module globals the codegen fragment builds at the
-    top of a generated program - ``sections``, ``system_targets_dir``,
-    ``target_json_path``, ``target_json_state``, ``scanned_roots``,
-    ``known_sections`` and ``index``. A command builds one and hands it to every
+    Seven fields - ``sections``, ``system_targets_dir``, ``target_json_path``,
+    ``target_json_state``, ``scanned_roots``, ``known_sections`` and ``index``.
+    A command builds one and hands it to every
     function below that needs it; nothing here is cached between calls, which is
     what keeps a target installed since Blender started visible.
     """

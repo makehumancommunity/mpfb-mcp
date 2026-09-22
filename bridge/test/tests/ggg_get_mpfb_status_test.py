@@ -107,7 +107,7 @@ def test_the_message_is_the_one_sentence_the_resolution_keeps():
     for state in (resolution_module.STATE_ABSENT, resolution_module.STATE_NOT_INITIALIZED):
         with supplied_resolution(state):
             answer = result(COMMAND)
-        # One wording, in one place. The generated payload carries its own copy
+        # One wording, in one place. The generated program used to carry its own copy
         # of these three sentences, so a divergence here is what FR 031's live
         # comparison would report as a field-by-field difference.
         assert answer["message"] == messages[state], \

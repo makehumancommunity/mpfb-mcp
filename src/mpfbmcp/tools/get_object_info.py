@@ -9,8 +9,8 @@ throughout. And it reports what each object was made from, so a caller can ask
 
 Like ``mpfb_get_status``, failing to find a subject is a successful answer here
 rather than an error envelope: an agent guessing at a name needs a "no" it can
-recover from. The classification lives in the generated code (see
-``mpfbmcp.codegen.payloads.get_object_info``); this module only validates.
+recover from. The classification lives in the add-on (see
+``bridge/mpfb_bridge/commands/get_object_info.py``); this module only validates.
 """
 
 from __future__ import annotations

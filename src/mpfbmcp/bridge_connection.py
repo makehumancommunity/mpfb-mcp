@@ -1,22 +1,21 @@
 """
 Socket client for the MPFB Bridge, the companion add-on this project ships.
 
-A sibling of ``connection.py`` rather than a modification of it, and
-deliberately so. That module is a *faithful duplicate* of blender_mcp's
-protocol - a claim its docstring makes and that is load-bearing, since it is
-why a change upstream can be mirrored here by hand - and the two protocols are
-not the same protocol. One sends a program to be ``exec()``-ed and gets
-``{"status", "result", "message"}`` back; this one names a command from a
-closed vocabulary, carries its parameters as data, and gets an answer that also
-carries ``protocol_version``, the command's own name and, on a failure, a slug.
-One module pretending to serve both is how a faithful duplicate stops being
-faithful.
+**The one place in this package that knows what goes on a wire.** A request
+names a command from the add-on's closed vocabulary, carries its parameters as
+data, and gets back an answer carrying ``status``, ``result`` or ``message``,
+``protocol_version``, the command's own name and, on a failure, a slug. The
+framing is JSON terminated by a NUL byte, one request per connection.
 
-What the two do share is the framing - JSON terminated by a NUL byte, one
-request per connection - and the property that the socket is the only boundary
-every call crosses, which is why ``observability`` attaches here as well. The
-record's *unit* differs: a bridge call records the request it sent, byte for
-byte as it went on the wire, where a generated call records its program.
+It had a sibling until FR 033, ``connection.py``, speaking a third party's
+protocol for a transport that sent Python to be ``exec()``-ed. Two modules
+rather than one because a *faithful duplicate* of somebody else's protocol
+stops being faithful the moment it is also serving another; the other protocol
+is gone, and this one is what is left.
+
+The socket is the only boundary every call crosses, which is why
+``observability`` attaches here and nowhere else: a call records the request it
+sent, byte for byte as it went on the wire.
 
 **The handshake lives here, and it is one probe per address per process.** FR
 029 built the bridge's half: every answer carries ``protocol_version``,
@@ -32,10 +31,9 @@ Two traps, both avoided here rather than documented elsewhere. The probe is
 itself a bridge call, so it is issued through this module's own ``_request()``
 and never through ``backend.send()``, or the first call in a process would
 probe in order to probe. And the memo is per ``(host, port)`` and is dropped
-whenever a call to that address fails to connect - exactly as
-``shared_cache._PRIMED`` is a claim about what *this process* learned rather
-than about what Blender is, and wrong in exactly the same ordinary way when
-Blender restarts.
+whenever a call to that address fails to connect, because it is a claim about
+what *this process* learned rather than about what is running - and wrong in the
+ordinary way when Blender restarts under it.
 """
 
 from __future__ import annotations
@@ -61,26 +59,24 @@ BRIDGE_HOST_VARIABLE = "MPFB_BRIDGE_HOST"
 BRIDGE_PORT_VARIABLE = "MPFB_BRIDGE_PORT"
 
 DEFAULT_HOST = "127.0.0.1"
-# Not 9876: both blender lab's add-on and the community "blender-mcp" default
-# to that, and a user may well have one of them running.
+# Not 9876, which is what both projects called "blender mcp" default to. This
+# add-on is neither of them, and a user may well have one of them running.
 DEFAULT_PORT = 9877
 
 # The protocol version this client speaks and declares on every request. A
 # duplicate of the bridge's own ``command_server.PROTOCOL_VERSION``, kept in
-# step by hand for the same reason ``connection.py`` duplicates blender_mcp's
-# protocol: ``bridge/`` is not part of the pip package and must not become an
-# import dependency of it. ``tests/test_bridge_connection.py`` reads the
-# add-on's source and asserts the two agree, skipping where the source is not
-# beside this package.
+# step by hand because ``bridge/`` is a Blender extension, is not part of the
+# pip package, and must not become an import dependency of it - importing it
+# here would pull ``bpy`` into a process that has no Blender.
+# ``tests/test_bridge_connection.py`` reads the add-on's source and asserts the
+# two agree, skipping where the source is not beside this package.
 PROTOCOL_VERSION = 1
 
 # Bounds the whole round trip: how long Blender's main thread may be busy
-# before this client gives up. Arrived at independently of ``connection.py``'s
-# 300 s, which was chosen for a transport that also had to carry a program
-# through a 4 KB-per-tick read, and landing on the same number for a different
-# reason - here the transport contributes nothing measurable, so all of it is
-# headroom for what a command does inside Blender. It is generous on purpose:
-# the failure a short deadline produces is a *mutating* command that ran to
+# before this client gives up. The transport itself contributes nothing
+# measurable - a request is a few hundred bytes of JSON - so effectively all of
+# it is headroom for what a command does inside Blender. It is generous on
+# purpose: the failure a short deadline produces is a *mutating* command that ran to
 # completion being reported to its caller as a connection error, which is the
 # worst answer this system can give. Note that the bridge's own
 # ``_CLIENT_TIMEOUT`` of 10 s is a different quantity - it bounds silence while
@@ -141,10 +137,9 @@ def get_connection_params() -> tuple[str, int]:
     """Read the bridge's host/port from the environment.
 
     ``MPFB_BRIDGE_HOST`` / ``MPFB_BRIDGE_PORT`` rather than anything carrying
-    the ``MPFB_MCP_`` prefix: these name *the add-on being addressed*, which is
-    the same reasoning that names ``BLENDER_MCP_HOST``. Which backend to use is
-    mpfb-mcp's own decision and is spelled ``MPFB_MCP_BACKEND`` accordingly
-    (see ``backend``). The bridge add-on reads its own address from its
+    the ``MPFB_MCP_`` prefix: these name *the add-on being addressed*, where an
+    ``MPFB_MCP_`` variable would say what this process does with a call it has
+    already decided to make. The bridge add-on reads its own address from its
     preferences rather than from the environment; if it ever reads the
     environment, these are the two names it should read.
     """
@@ -161,9 +156,9 @@ def send_command(command: str, params: dict[str, object] | None = None) -> dict[
     successful one.
 
     Raises ``ConnectionError`` when the bridge is unreachable, times out, or
-    answers something that cannot be parsed - the same exception type, for the
-    same situations, that ``connection.send_code()`` raises, so that a caller
-    handling one transport's absence handles the other's unchanged.
+    answers something that cannot be parsed. An unreachable add-on is a
+    different kind of fact from a command that failed, which is what
+    ``mpfb_list_urls`` - the one tool that catches this - depends on.
     """
     host, port = get_connection_params()
 

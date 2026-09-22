@@ -36,7 +36,10 @@ twelve of the thirteen mutating commands do. ``ClothesService`` restores the
 active object itself, but only around its own edit-mode excursion; this covers
 the whole call, and the user is looking at this scene.
 
-This reproduces ``codegen/payloads/refit_human.py`` rather than tidying it up.
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
 """
 
 __all__ = (

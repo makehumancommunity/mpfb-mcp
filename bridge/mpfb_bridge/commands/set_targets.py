@@ -56,12 +56,15 @@ category; *which* range a category takes is only knowable inside Blender, and
 that narrower check is :func:`_resolve_modifier`'s, reported as a resolution
 error rather than raised.
 
-This reproduces ``codegen/payloads/set_targets.py`` rather than tidying it up.
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
 """
 
 # The local bindings below are spelled with MPFB's own capitalisation, which is
-# what the payload this reproduces used and what makes the two readable side by
-# side during the migration.
+# what the program this replaced used, which is in turn what MPFB's own
+# source uses.
 # pylint: disable=invalid-name
 
 __all__ = (

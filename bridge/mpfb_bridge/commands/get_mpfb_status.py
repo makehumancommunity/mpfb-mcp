@@ -7,7 +7,7 @@ looks present - and is the first thing a client asks. This one reports *MPFB*:
 where it is installed, which asset roots it will search, which packs are there,
 whether this Blender is new enough for it, whether Rigify is available. Two
 commands answering "status" about two different pieces of software would be a
-collision that is cheap to avoid now and permanent later, so the payload-to-
+collision that is cheap to avoid now and permanent later, so the tool-to-
 command naming convention is broken here deliberately and the exception is
 written into ``commands/table.py`` beside the entry.
 
@@ -18,8 +18,11 @@ question nobody needs to ask. The dispatcher's ``mpfb_unavailable``
 precondition must therefore never fire for it, which is what lets ``absent``
 and ``not_initialized`` come back as ordinary successful answers.
 
-**This reproduces ``codegen/payloads/get_status.py`` rather than tidying it
-up**, down to which keys exist in which state. Three of those are worth naming,
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
+, down to which keys exist in which state. Three of those are worth naming,
 because each is a thing a reimplementation would "fix":
 
 - **The tiers are shapes, not nulls.** ``version`` and ``build_info`` are

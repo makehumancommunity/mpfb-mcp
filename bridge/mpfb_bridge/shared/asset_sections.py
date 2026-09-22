@@ -1,11 +1,9 @@
 """
 MPFB's asset-library section table, and what it maps between.
 
-The bridge's copy of
-[`codegen/shared/asset_sections.py`](../../../src/mpfbmcp/codegen/shared/asset_sections.py),
-and character for character the same rules - asserted rather than intended by
-``tests/test_fragment_drift.py``. See [`__init__.py`](__init__.py) for why the
-two exist at once and what the ``services`` argument is doing there.
+**One implementation, imported by every command that needs it.** See
+[`__init__.py`](__init__.py) for why this directory exists beside
+``commands/`` and what the ``services`` argument is doing there.
 
 This exists for the same reason ``rig_lookup`` does, and the consequence of
 getting it wrong is sharper. ``list_assets`` reports, per asset, the
@@ -38,9 +36,10 @@ those eight rather than listing them here is what keeps this file from becoming
 a third opinion about what MPFB supports.
 """
 
-# The local bindings below are spelled with MPFB's own capitalisation so that
-# these bodies stay identical to the fragment's and the drift check can compare
-# them. That is the whole reason for the disable.
+# The local bindings below are spelled with MPFB's own capitalisation -
+# ``LocationService = services["LocationService"]`` - rather than snake_case,
+# so that a body here reads the way MPFB's own source reads and can be
+# compared with it line for line. That is the whole reason for the disable.
 # pylint: disable=invalid-name
 
 __all__ = (

@@ -9,73 +9,49 @@ diagnostics exactly one place to attach, and most of what follows is a consequen
 
 The concrete environment variables and what they write are in
 [CLAUDE.md](../CLAUDE.md#commands); the structural reason there is a single attachment point is
-[No direct dependency on MPFB or blender_mcp](architecture.md#no-direct-dependency-on-mpfb-or-blender_mcp).
+[No direct dependency on MPFB](architecture.md#no-direct-dependency-on-mpfb-and-none-on-the-add-on-either).
 
-## Diagnostics attach at the socket boundary, never to the program
+## Diagnostics attach at the socket boundary, never inside Blender
 
 Every tool sends a request across a socket and returns the envelope that comes back. That crossing
 is therefore the only place diagnostics belong, and the rule is worth stating as a constraint
-rather than as a preference: **if observing a call requires editing a tool module, a payload,
-`codegen/` or a bridge command, the design is wrong.** Twenty-five tools crossing two functions —
-`connection.send_code()` and `bridge_connection.send_command()` — is what makes a per-call record a
-change in one module; it is also what stops "which tool called this" needing an extra argument.
+rather than as a preference: **if observing a call requires editing a tool module or a bridge
+command, the design is wrong.** Twenty-four tools crossing one function —
+`bridge_connection.send_command()` — is what makes a per-call record a change in one module; it is
+also what stops "which tool called this" needing an extra argument.
 
-**The attachment point does not move across the pivot; the unit does.** A request is a *program* on
-the generated path and a *command with its parameters* on the bridge, and the record writes
-whichever it was, before the socket call, for the reason it always did: a call that hangs, times
-out or takes Blender down still leaves behind what caused it. Three things follow, and they are the
-whole of what the second transport changes here:
+The title used to say "never to the program", from a time when a request *was* a Python program
+this package assembled. The rule it named is unchanged and is about not instrumenting inside
+Blender: what is recorded is the request and the answer, not anything MPFB did in between.
 
-- **The file is what went on the wire, byte for byte, either way.** A program is written
-  unprettified so a traceback's line number resolves against it; a bridge request is written
-  unindented so it is the request that can be replayed rather than nearly it.
-- **The tool's name comes from the command rather than from a payload seam marker.** A program
-  carries no other statement of what it is, which is why
-  [Code-generation layout](architecture.md#code-generation-layout)'s marker exists; a request that
-  names its command needs no such device. Payload and command share a name by convention, so a
-  mixed run's index stays sorted by the same word whichever transport a line came from.
-- **One index, one directory, in call order.** `index.tsv` keeps its columns and their meanings,
-  with `bytes` counting the request on both paths. A second record format for a second transport
-  would make the transition the thing hardest to observe, at the moment observation is worth most.
-
-Everything below is unchanged by the pivot unless it says otherwise:
-
-- **The generated program is never altered in order to observe it.** A diagnostic setting that
-  changed the source would make "the exact program that ran" conditional on configuration, which is
-  the one property the record exists to provide — a traceback's line number has nothing else to be
-  resolved against. Decomposing a round trip into transport, `exec`/compile and MPFB's own work is
-  therefore *not* done this way; a payload can print its own timings into the envelope's `stdout`
-  during a session that wants them.
-- **A retry leaves two records, and that is the point.** This is a fact about the generated path
-  rather than about the record in general — nothing on the bridge retries, because the session
-  source cache it recovers from is generated-path machinery. A call whose program refers to a shared
-  fragment Blender turns out not to hold comes back as an error envelope and is sent again with the
-  source in it (see
-  [Generated code may keep its own source inside Blender](architecture.md#generated-code-may-keep-its-own-source-inside-blender)).
-  Both crossings are recorded, in order, because both happened — and the first one's message names
-  the fragment, so a record showing that pair is showing a cold Blender rather than a defect.
-  Nothing here special-cases it, which is what keeps the record a record of the socket rather than
-  a narrative about it.
-- **The `# --- cached shared: <name>@<hash> (carried|reused) ---` seam is a generated-path
-  artefact**, and it is shrinking. It appears in a record only because the program it labels
-  exists; a bridge request carries parameters and nothing else, so for a migrated tool that line —
-  and the cold/warm distinction it makes visible — simply stops being in the record at all. Since
-  [FR 031](../feature-requests/done/031-introspection-and-catalogues-migrated/README.md) that is
-  true of `mpfb_list_targets` and `mpfb_get_target_stack` in the bridge configuration, which were
-  between them the largest programs this package ever sent. Reading an old record beside a new one,
-  the absence of that seam is the migration rather than a diagnostic that stopped working.
-- **mpfb-mcp's own settings carry an `MPFB_MCP_` prefix.** `BLENDER_MCP_HOST` / `BLENDER_MCP_PORT`
-  are shared with blender_mcp deliberately, because both processes address the same add-on and have
-  to agree; anything blender_mcp knows nothing about is mpfb-mcp's own and is named accordingly.
-  Keeping the two apart is also what lets `connection.py` go on describing itself as a faithful
-  duplicate of blender_mcp's protocol: the additions are around the protocol, not in it.
-
-  Applying that rule to the two variables the backend seam added: **which backend to use is
-  mpfb-mcp's own decision**, so `MPFB_MCP_BACKEND`; **the bridge's address names the add-on being
-  addressed**, the same logic that names `BLENDER_MCP_HOST`, so `MPFB_BRIDGE_HOST` and
-  `MPFB_BRIDGE_PORT`. That second one is a judgement call rather than a derivation — the bridge
-  reads its address from its preferences and not from the environment today — and if it ever does
-  read the environment, these are the two names it should read.
+- **The request is written before the socket call**, for the reason it always has been: a call that
+  hangs, times out or takes Blender down still leaves behind what caused it. Writing both files
+  after the response arrives would lose exactly the cases the record exists for.
+- **The file is what went on the wire, byte for byte.** Unindented and unprettified, so it is the
+  request that can be replayed rather than nearly it. A record that is *nearly* what was sent is a
+  record that has to be argued with.
+- **The tool's name comes from the command.** A request that names its command needs no device for
+  saying what it is. Tool and command share a name by convention — `mpfb_list_objects` sends
+  `list_objects` — so the index reads as a list of the tools that were called, which is what
+  somebody opening it is looking for.
+- **One index, one directory, in call order.** `index.tsv` columns are `seq`, `timestamp`, `tool`,
+  `bytes`, `ms`, `status` and `response_bytes`, and `bytes` counts the request.
+- **The handshake probe is a call and is recorded as one.** The first request to an address is
+  preceded by a `get_status`, so a tool's own call is usually sequence `0002`. An index that
+  quietly omitted the probe would misreport the order of what happened.
+- **Nothing is instrumented inside Blender in order to observe a call.** Decomposing a round trip
+  into transport, dispatch and MPFB's own work is not done from here; a command can report its own
+  timings in its answer during a session that wants them.
+- **mpfb-mcp's own settings carry an `MPFB_MCP_` prefix, and the add-on's address does not.**
+  `MPFB_BRIDGE_HOST` / `MPFB_BRIDGE_PORT` name *the add-on being addressed*; `MPFB_MCP_RECORD_DIR`
+  and `MPFB_MCP_LOG_LEVEL` say what this process does with a call it has already decided to make,
+  and would mean nothing to the add-on. The bridge reads its address from its preferences rather
+  than from the environment today — and if it ever reads the environment, those are the two names
+  it should read.
+- **A variable that stops being read says so.** `MPFB_MCP_BACKEND` chose between two transports
+  and is now read for one purpose only: to put a line on this package's logger when it is set.
+  Obeyed by nothing and reported by nothing is the expensive option, because a setting that is
+  silently ignored is indistinguishable from one that is being honoured.
 - **Off means unchanged.** A diagnostic that is not enabled creates no directory, opens no file,
   formats nothing and puts the same bytes on the wire. An MCP server writing files nobody asked
   for, into a location nobody chose, is a surprise; and the disabled path is the one the whole test
@@ -103,7 +79,4 @@ Everything below is unchanged by the pivot unless it says otherwise:
   A diagnostic may add to an *error* envelope, and only while the record that produced the
   information is enabled — because whoever reads a failure is usually an
   agent rather than the person who configured the record, and a failure that does not say where its
-  own evidence landed wastes it. A success envelope is untouched in every configuration, on both
-  transports. The key naming the request file is the transport's own word for it — `program` for
-  generated code, `request` for a bridge command — so that an agent reading a failure is told what
-  it is about to open rather than having to infer it from an extension.
+  own evidence landed wastes it. A success envelope is untouched in every configuration.

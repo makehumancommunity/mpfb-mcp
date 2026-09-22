@@ -29,7 +29,7 @@ The interesting decisions - why every settings dict starts from
 ``get_default_deserialization_settings()``, why ``material_instances`` follows
 the panel rather than the service, which of the operator's conveniences were
 dropped and why, and what happens when a preset names an asset or a rig this
-Blender does not have - are in the payload's docstring, where the code that
+Blender does not have - are in the command's docstring, where the code that
 makes them is.
 """
 

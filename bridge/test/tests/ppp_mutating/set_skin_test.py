@@ -162,7 +162,7 @@ def test_a_skin_type_the_contract_accepts_but_mpfb_does_not_is_unreachable():
     """commands.set_skin with a type outside the five
 
     The parameter contract carries the vocabulary, so this is refused before the
-    handler runs - which is stricter than the payload, whose tool-side check is
+    handler runs - which is stricter than the tool, whose own check is
     the same rule in a different place. Either way nothing is destroyed, which
     is the property that matters.
     """

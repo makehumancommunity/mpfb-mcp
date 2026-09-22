@@ -1,30 +1,22 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_get_target_stack tool: argument validation, and the
-generated code's two views of a character's shape keys.
+"""Tests for the mpfb_get_target_stack tool: argument validation, and what crosses
+the socket.
 
-Migrated by FR 031, so three layers rather than two (see
-``tests/test_list_objects.py``, the template). **The payload layer is frozen**,
-and it is where ``test_symmetrize_targets.py``'s claim that every category
-reading agrees is anchored - both halves of that pair are still payloads after
-this effort, so both survive untouched. What keeps the *bridge* half honest
-meanwhile is ``tests/test_fragment_drift.py``, which compares
-``modifier_reading.py`` against its bridge module on every run.
+Two layers (see ``tests/test_list_objects.py``, the template): the wrapper with
+``send_command`` mocked below the seam, and the bridge path against
+``tests/fake_bridge.py``. The wrapper's own share is the paging rule and the
+bool-not-truthy rule, both of which are enforced here and nowhere else.
 
-The share of this module that goes with the payload: 351 of its 553 lines, 63%.
-
-Formerly two layers: the tool wrapper with send_command mocked, then the
-assembled source - shared fragment included, so what runs here is the same
-program the tool sends - executed against the stub scene and the real temporary
-target tree in tests/blender_stubs.py.
-
-What the second layer is really testing is the *reverse* mapping. A shape key
-carries no metadata at all, so placing "r-lowerarm-scale-depth-decr" back into
-its category, side and polarity means rebuilding MPFB's category table and
-looking the name up in it - and rolling the stack up into modifier values means
-reproducing _get_opposed_modifier_value(), including its rule that the positive
-target wins and the negative one is reported negated.
+What is genuinely hard about this tool is the *reverse* mapping, and it is
+asserted where it runs. A shape key carries no metadata at all, so placing
+"r-lowerarm-scale-depth-decr" back into its category, side and polarity means
+rebuilding MPFB's category table and looking the name up in it - and rolling the
+stack up into modifier values means reproducing
+``_get_opposed_modifier_value()``, including its rule that the positive target
+wins and the negative one is reported negated. That, and the agreement between
+this tool's category reading and ``mpfb_symmetrize_targets``', are checked
+against a real MPFB in ``bridge/test/tests/ooo_get_target_stack_test.py``.
 
 Run with::
 

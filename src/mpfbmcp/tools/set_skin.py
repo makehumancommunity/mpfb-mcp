@@ -33,7 +33,7 @@ usual rule. The reason is specific: ``set_character_skin()`` tests its five
 types with five separate ``if`` statements, having already deleted every
 material on the character - so an unrecognised value destroys the skin, builds
 nothing in its place, and then raises from somewhere else entirely. The
-authoritative check still happens in the payload, before the call and before
+authoritative check still happens in the command, before the call and before
 anything is destroyed; the local one only means a typo never travels.
 """
 
@@ -50,7 +50,7 @@ from mpfbmcp import backend
 
 # MPFB's five skin models, from ui/apply_assets/assetlibrary/properties/skin_type.json.
 # Kept here only so that a typo cannot reach a function that deletes materials
-# before it looks at this argument; the payload checks it again and reports
+# before it looks at this argument; the command checks it again and reports
 # known_skin_types, which is the answer a caller should correct itself from.
 SKIN_TYPES = ("MAKESKIN", "GAMEENGINE", "ENHANCED", "ENHANCED_SSS", "LAYERED")
 
@@ -97,7 +97,7 @@ def _validated_skin_type(skin_type: object) -> str:
     unrecognised value therefore destroys the character's materials, creates
     nothing, and surfaces as a ``ValueError`` raised from
     ``create_and_assign_material_slots()`` about a mesh with no materials. The
-    payload checks this again before anything is deleted; this check only keeps
+    command checks this again before anything is deleted; this check only keeps
     a typo from crossing the socket at all.
     """
     if not isinstance(skin_type, str):
@@ -238,7 +238,7 @@ def register(mcp: FastMCP) -> None:
                 "material_instances": _validated_flag(
                     "material_instances", material_instances),
             },
-            # Shared with mpfb_list_assets' payload, which reported this skin's
+            # Shared with mpfb_list_assets' command, which reported this skin's
             # fragment under the object_type "Material". The only thing that
             # maps that type back to the "skins" asset subdir a fragment is
             # resolved against is MPFB's section table, and a second copy of it

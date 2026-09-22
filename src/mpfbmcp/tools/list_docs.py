@@ -8,14 +8,14 @@ answers "how does MPFB do X". It is **not shipped with the extension**:
 running inside Blender can reach it. Hence a table of addresses rather than
 anything read at run time.
 
-**The first tool in this package with no payload.** It never crosses the socket
-and never touches the network: it filters
+**The one tool in this package that reaches no Blender at all.** It never
+crosses the socket and never touches the network: it filters
 ``mpfbmcp.reference.docs``'s table and attaches two URLs per entry. That is a
-real exception to the rule that a tool module, a payload and a test module share
-a name, and it is stated in
+real exception to the rule that a tool module, a bridge command and a test
+module share a name - there is no ``mpfb_list_docs`` command, because there is
+nothing for one to do - and it is stated in
 [CLAUDE.md](../../../CLAUDE.md#the-twenty-five-tools) rather than left to be
-noticed - ``tests/test_codegen.py``'s hand-maintained payload list simply has no
-entry for it. It works with no Blender, no MPFB and no connectivity, which is
+noticed. It works with no Blender, no MPFB and no connectivity, which is
 also why it has no ``mpfb_get_status`` precondition and cannot return an error
 envelope from Blender.
 

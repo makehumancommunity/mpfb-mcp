@@ -4,7 +4,7 @@
 Tests for the mpfb_list_docs tool: URL construction, filtering, and partiality.
 
 Entirely on this side of the socket, and uniquely so - this is the one tool in
-the package with no payload, no generated code and no Blender behind it, so
+the package with no bridge command and no Blender behind it, so
 there is no second layer here and no stub scene. What that leaves worth testing
 is exactly three things:
 

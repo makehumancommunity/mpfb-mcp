@@ -53,12 +53,15 @@ bands fall, since the property's declared default of ``1.0`` is misleading and
 The skins subdir comes from [`shared/asset_sections.py`](../shared/asset_sections.py),
 which is what keeps this command looking where ``list_assets`` reported from.
 
-This reproduces ``codegen/payloads/set_skin.py`` rather than tidying it up.
+The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+arrived here from the generated program this command replaced, where it had
+been established against a real install; a reimplementation that fixed one
+would be changing what the tool answers under cover of a migration.
 """
 
 # The local bindings below are spelled with MPFB's own capitalisation, which is
-# what the payload this reproduces used and what makes the two readable side by
-# side during the migration.
+# what the program this replaced used, which is in turn what MPFB's own
+# source uses.
 # pylint: disable=invalid-name
 
 __all__ = (

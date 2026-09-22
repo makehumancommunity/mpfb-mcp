@@ -68,8 +68,10 @@ Four properties follow, and they are the whole argument for this shape:
   code execution into Blender; that is defensible for a proof of concept and awkward as a
   recommendation to a hobbyist.
 - **The wire carries parameters, not programs**, so what a call costs stops being a function of
-  how much source describes it. The session source cache, the fragment hashing and the
-  re-send-once recovery all exist to manage a tax that this shape does not levy.
+  how much source describes it. A whole mechanism existed to manage that tax — a per-session cache
+  of fragment *source* inside Blender, keyed by a hash of itself, with a re-send-once recovery when
+  Blender turned out not to hold it — and this shape does not levy the tax, so the mechanism went
+  with it.
 - **MPFB is not modified, and does not know the bridge exists.** The bridge reaches it through
   `MPFB_CONTEXTUAL_INFORMATION` and the `sys.modules` scan MPFB documents and uses in its own
   test suite — the supported entry point for exactly this, not a trick. MPFB's manifest, its
@@ -95,33 +97,29 @@ entire reason for starting outside. The three options and the argument between t
 
 ## What runs today
 
-**Everything above describes the machine that runs.** Since
-[FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md) the bridge is
-what an unconfigured install uses, and all twenty-four tools that cross the socket send a command
-name and its parameters rather than a program. The twenty-fifth, `mpfb_list_docs`, answers from a
-local table and reaches no Blender at all.
+**Everything above describes the machine that runs, and it is the only one.** All twenty-four
+tools that cross the socket send a command name and its parameters to the bridge; the
+twenty-fifth, `mpfb_list_docs`, answers from a local table and reaches no Blender at all.
 
-**The generated-code path is still there and still works**, one environment variable away
-(`MPFB_MCP_BACKEND=blender_mcp`). It is described in full, and plainly marked as the one being
-retired, under
-[The generated-code path](architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired).
-Keeping it for one more effort is not sentiment: it is one half of the comparison that says the
-bridge answers the same thing, and deleting it is
-[FR 033](../feature-requests/033-retire-the-generated-code-path/README.md) entire.
+**The machine it replaced is gone.** Until
+[FR 033](../feature-requests/done/033-retire-the-generated-code-path/README.md), a tool assembled a
+Python program and sent it to a third party's add-on, which `exec()`-ed it inside Blender. The
+staging was the point: each child effort of FR 028 landed with **both paths still working**, so
+they could be compared side by side on a real Blender rather than swapped on faith — which is what
+FR 032's check did for all twenty-four, answer by answer and scene by scene, before the default
+moved, and the deletion then removed a path that had been carrying nothing for a while rather than
+everything until the commit before.
 
-The two coexisted on purpose. Each child effort of FR 028 landed with **both paths still
-working**, so they could be compared side by side on a real Blender rather than swapped on faith —
-which is what FR 032's own check did for all twenty-four, answer by answer and scene by scene,
-before the default moved. Until the path is deleted:
+What the change bought, measured on one machine in one session:
 
-| | Bridge | Generated-code path |
+| | Bridge | The path it replaced |
 |---|---|---|
-| Status | the default, twenty-four commands | kept working, one variable away, and being retired |
 | Blender-side add-on | `bridge/mpfb_bridge`, ours | blender lab's `blender_mcp`, unmodified |
 | What crosses the wire | a command name and its parameters | an assembled Python program |
 | Executes caller-supplied code | no | yes, by construction |
 | Port | 9877 | 9876 |
-| The smoke run, one Blender, one session | 3.9 s | 48.5 s |
+| The smoke run, twenty-five tools | **4.9 s** | 48.5 s |
+| Blender-side logic testable against a real MPFB | yes | no |
 
 ## What makes something a tool
 
@@ -214,7 +212,8 @@ request when it is scoped.
 ## Superseded: which "blender mcp"? Neither, in the end
 
 There are two unrelated projects called "blender mcp": blender lab's implementation (at
-`../../blender_mcp`, which the generated-code path uses today) and a separate, more feature-rich
+`../../blender_mcp`, which this project's Blender-side logic used to be executed by) and a
+separate, more feature-rich
 [community implementation](https://github.com/ahujasid/blender-mcp), a local clone of which is
 available at `../../ahujasid-blender-mcp`. Some users have the latter installed instead of the
 former.

@@ -1,28 +1,21 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_generate_rigify_rig tool: argument validation, meta-rig
-resolution, and the reporting of a generation that changed the scene without
-producing a rig.
+"""Tests for the mpfb_generate_rigify_rig tool: argument validation, and what
+crosses the socket.
 
-Three layers since FR 032 migrated it (see ``tests/test_list_objects.py``, the
-template): the tool wrapper with ``send_command`` mocked on the seam; the **bridge
-path** against ``tests/fake_bridge.py``; and the assembled source executed
-against the stub services. That third layer is **frozen**: it stays while the
-payload stays, because the payload is half of what FR 032's live comparison
-compares.
+Two layers (see ``tests/test_list_objects.py``, the template): the tool wrapper
+with ``send_command`` mocked below the seam, and the **bridge path** against
+``tests/fake_bridge.py``. ``meta_rig_action`` is one of the two closed
+vocabularies this package checks locally, and it earns the exception: MPFB warns
+and silently falls back to "hide", on the single argument here whose wrong value
+cannot be undone.
 
-The stub RigService.generate_rigify_rig() is written in MPFB's own order rather
-than a convenient one - the rename, the deselection and the activation all
-happen before the validity gate - because "a failed generation is not a no-op"
-is the claim this tool exists to make, and a stub that checked validity first
-would make it untestable.
-
-What layer 3 cannot say is that the generated rig deforms the character the way
-Rigify's own does, or that meta_rig_action "delete" really leaves
-mpfb_refit_human unable to refit. Both are now checked against a real Rigify in
-``bridge/test/tests/ppp_mutating/generate_rigify_rig_test.py``, which the
-FR 032 spike established can run in a Blender with no window.
+What this cannot say is that the generated rig deforms the character the way
+Rigify's own does, that a failed generation is not a no-op, or that
+``meta_rig_action="delete"`` really leaves ``mpfb_refit_human`` unable to refit.
+All three are checked against a real Rigify in
+``bridge/test/tests/ppp_mutating/generate_rigify_rig_test.py``, which the FR 032
+spike established can run in a Blender with no window.
 
 Run with::
 

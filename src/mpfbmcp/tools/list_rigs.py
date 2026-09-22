@@ -102,7 +102,7 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "list_rigs",
             params={"refresh": _validated_refresh(refresh)},
-            # Shared with mpfb_add_rig's payload: this tool predicts which rig
+            # Shared with mpfb_add_rig's command: this tool predicts which rig
             # file would be loaded and whose weights would come with it, and
             # that tool then does it. One implementation, so the prediction and
             # the action cannot drift apart.

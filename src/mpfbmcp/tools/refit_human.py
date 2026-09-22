@@ -17,10 +17,9 @@ The one failure worth knowing about is invisible from inside MPFB's own API.
 an ``operator`` argument this layer has no operator to pass, and otherwise
 returns having refitted the mesh assets but silently not the rig. The condition
 is therefore detected on the far side of the socket and reported here instead -
-by ``codegen/payloads/refit_human.py`` or by
-``bridge/mpfb_bridge/commands/refit_human.py``, from one shared statement of the
-condition, because **a precondition is an answer rather than an exception** and
-the two transports must not disagree about which.
+by ``bridge/mpfb_bridge/commands/refit_human.py``, which shares one statement of
+the condition with the three other refitting commands, because **a precondition
+is an answer rather than an exception**.
 """
 
 from __future__ import annotations

@@ -36,7 +36,7 @@ __all__ = (
 
 # Copied from mpfb2's src/mpfb/ui/weburls.py. Eleven constants as of MPFB
 # 2.0.17 - the feature request that added this tool said thirteen, which was
-# wrong, and the enumerate-by-prefix rule in the payload is what makes the
+# wrong, and the enumerate-by-prefix rule in the command is what makes the
 # number not matter. Checked against a sibling checkout by
 # tests/test_reference_drift.py.
 MPFB_URLS = {
@@ -194,7 +194,7 @@ def _entry(key: str, url: str, source: str) -> dict[str, object]:
 def merge(live_urls: dict[str, str] | None) -> dict[str, object]:
     """Every link to report, plus what the vendored copy got wrong.
 
-    ``live_urls`` is what the payload read out of MPFB's ``weburls`` module, or
+    ``live_urls`` is what the command read out of MPFB's ``weburls`` module, or
     None when it could not be read at all - MPFB absent, half-registered, or
     Blender unreachable. Returns the ``urls`` list together with the three
     staleness fields, which are ``null`` rather than ``false``/``[]`` when there

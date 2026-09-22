@@ -32,7 +32,7 @@ same warning - and a pair of MCP tools distinguished only by a precondition is
 a pair an agent will pick wrongly. ``overwrite`` is that precondition.
 
 **The generated-Rigify warning those two operators emit is deliberately not
-reproduced.** See the payload's docstring for why it overstates the problem and
+reproduced.** See the command's docstring for why it overstates the problem and
 what is reported instead.
 """
 

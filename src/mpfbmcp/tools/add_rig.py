@@ -142,7 +142,7 @@ def register(mcp: FastMCP) -> None:
                 "identifier": _validated_identifier(identifier),
                 "import_weights": _validated_flag("import_weights", import_weights),
             },
-            # Shared with mpfb_list_rigs' payload, which predicts what this tool
+            # Shared with mpfb_list_rigs' command, which predicts what this tool
             # then does. One implementation of "which file, whose weights", so
             # the catalogue and the action cannot disagree.
         )

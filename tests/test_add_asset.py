@@ -1,25 +1,19 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_add_asset tool: argument validation, and the generated code's
-vocabulary checks, defaulting, observation and reporting.
+"""Tests for the mpfb_add_asset tool: argument validation, and what crosses the
+socket.
 
-Three layers since FR 032 migrated it (see ``tests/test_list_objects.py``, the
-template): the tool wrapper with ``send_command`` mocked on the seam; the **bridge
-path** against ``tests/fake_bridge.py``; and the assembled source executed
-against the stub services and a real temporary asset library
-(tests/blender_stubs.py's MeshAssetTestCase). That third layer is **frozen**: it
-stays while the payload stays, because the payload is half of what FR 032's live
-comparison compares.
+Two layers (see ``tests/test_list_objects.py``, the template): the tool wrapper
+with ``send_command`` mocked below the seam, and the **bridge path** against
+``tests/fake_bridge.py``. The first carries the weight here, because
+``asset_type`` is required and exactly one of ``path``/``fragment`` is allowed,
+and both are refused before anything is sent.
 
-The library is real because these payloads read the MHCLO, list the directory
-beside it and resolve a fragment by walking the asset roots; mocking the
-filesystem away would leave nothing under test.
-
-What layer 3 cannot say is that an asset equipped through this tool is
+What this cannot say is that an asset equipped through this tool is
 indistinguishable from the same asset equipped through MPFB's own asset library
-panel - same fit, same delete group, same material. That is now checked against
-a real MPFB in ``bridge/test/tests/ppp_mutating/add_asset_test.py``.
+panel - same fit, same delete group, same material. That is checked against a
+real MPFB in ``bridge/test/tests/ppp_mutating/add_asset_test.py``, over an
+asset library that test builds.
 
 Run with::
 

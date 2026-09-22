@@ -114,7 +114,7 @@ def test_weights_are_really_loaded_onto_the_mesh():
 def test_import_weights_false_loads_no_weights_and_says_so():
     """commands.add_rig with import_weights off
 
-    **This test corrected a standing claim about MPFB.** The payload's comment
+    **This test corrected a standing claim about MPFB.** The generated program's comment
     said ``ensure_armature_modifier()`` is called only when ``import_weights``
     is true, so ``armature_modifier_added`` would be false here. It is not:
     ``Rig.create_armature_and_fit_to_basemesh()`` adds the modifier itself,

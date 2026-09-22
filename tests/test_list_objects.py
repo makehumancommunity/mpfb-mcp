@@ -1,37 +1,27 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-"""
-Tests for the mpfb_list_objects tool, which is the migrated one.
+"""Tests for the mpfb_list_objects tool, which was the first one migrated.
 
-**This module is what a migrated tool's tests look like during the
-transition**, and it has three layers where every other tool module has two.
-Two of them are permanent and one is not:
+**This module is the template every other tool module follows**, and it has two
+layers:
 
-1. **The wrapper**, with ``send_command`` mocked. Argument validation, defaulting
-   and the decision of what to send. Unchanged by the migration except for
-   where the mock is attached - it patches ``mpfbmcp.backend.send_command`` now,
-   because the seam is what assembles the program.
+1. **The wrapper**, with ``send_command`` mocked below the seam. Argument
+   validation, defaulting and the decision of what to send.
 2. **The bridge path**, against ``tests/fake_bridge.py``. Deliberately thin,
    because it is only what cannot cross the socket: that the right command and
    the same parameters go on the wire, that the tool's own validation runs
-   before a transport is chosen, and that an error envelope reaches the caller
-   intact. **Nothing here asserts what MPFB answers.** Those assertions moved to
+   before anything is sent, and that an error envelope reaches the caller
+   intact. **Nothing here asserts what MPFB answers.** Those assertions live in
    ``bridge/test/tests/fff_list_objects_test.py``, where they are made against
    a real MPFB in a headless Blender instead of against a stub written by
    whoever wrote the code under test.
-3. **The payload**, ``exec()``-ed against the stubs in
-   ``tests/blender_stubs.py``. **Frozen.** It stays while the payload stays,
-   because the payload is half of what FR 030's live comparison compares, and
-   it is deleted with the payload when the generated path is retired. It is not
-   extended and nothing is added to it - a new assertion about MPFB's behaviour
-   belongs in the bridge's suite, however well it would pass here.
 
-The share of this module that goes with the payload is worth knowing, since it
-is the first real evidence about what the pivot does to 14.2k lines of tests:
-``ListObjectsCodeTests`` and the stub scene it needs are 74 of 275 lines, 27%,
-for a payload of 87 lines whose logic is a filter and a substring test. Read it
-as a floor rather than a rate: this is the *dullest* tool in the package, and
-the payloads with real branching in them are the ones stage 3 has to estimate.
+There was a third layer until FR 033: the generated program ``exec()``-ed
+against stub services and a stub scene. It was 27% of this module - the lowest
+rate in the suite, since this tool's logic is a filter and a substring test -
+and across the twenty-four migrated modules the rate averaged near 60%. See
+``feature-requests/HISTORY.md`` for the measurements, which are the evidence
+about what the pivot did to 14.2k lines of tests.
 
 Run with::
 

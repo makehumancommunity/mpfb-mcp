@@ -13,7 +13,7 @@ here:
   names;
 - that ``macrodetail_filename_to_shapekey_name(..., encode_name=True)`` and
   ``get_current_macro_targets(..., decode_names=False)`` speak **one**
-  vocabulary - the encoded one. This is the claim the payload was changed to
+  vocabulary - the encoded one. This is the claim FR 006 changed the tool to
   make true, and the one a caller's drift comparison rests on entirely;
 - that a default ``create_human()`` character is *not* drifted, which is the
   only way to know the comparison is not reporting drift on everything.
@@ -150,11 +150,11 @@ def test_mpfbs_own_default_character_is_not_race_normalized():
     ``0.33``, so the sum is 0.99, the tool's tolerance is 0.001, and **every
     default character trips the "that scales the phenotype" warning**.
 
-    It is recorded here rather than repaired. The payload behaves this way, the
-    command reproduces the payload, and FR 031's comparison is between the two;
-    whether a 0.01 tolerance is the right one is a question about the tool,
-    with a caller-visible message attached, and it belongs to whichever effort
-    decides to answer it rather than to a migration.
+    It is recorded here rather than repaired. This is what the tool has always
+    answered and it is MPFB's own number that makes it so; whether a 0.01
+    tolerance is the right one is a question about the tool, with a
+    caller-visible message attached, and it belongs to whichever effort decides
+    to answer it rather than to the migration that found it.
     """
     with Character() as character:
         answer = result(COMMAND, {"name": character.basemesh.name})
