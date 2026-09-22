@@ -41,7 +41,7 @@ afterwards. There are four, and each is normalised by
 - **``mpfb_list_urls``' handshake case.** A protocol mismatch answers with an
   error envelope on the bridge where the generated path would have answered
   with vendored URLs - which is
-  [a decision, not a defect](../../src/mpfbmcp/tools/list_urls.py). It does not
+  [a decision, not a defect](../../../src/mpfbmcp/tools/list_urls.py). It does not
   arise in an ordinary run, where the two ends agree about the version, and it
   is checked in ``tests/test_list_urls.py`` rather than here.
 - **MPFB's own caches**, as FR 031 found for ``mpfb_list_asset_materials``. The

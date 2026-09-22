@@ -30,7 +30,7 @@ socket rather than in :data:`PARAMS` below. The reason is that
 ``race`` sub-object - and a :class:`..validation.Param` constrains one value,
 not the inside of one. Adding a nested check here would be a behaviour this
 command has and the payload it is replacing does not, which is exactly what
-[FR 032](../../../feature-requests/032-creation-and-modification-migrated/README.md)
+[FR 032](../../../feature-requests/done/032-creation-and-modification-migrated/README.md)
 forbids during a migration: a tidy-up is indistinguishable from a defect in the
 comparison the migration rests on. It is written down here rather than left to
 be rediscovered, and if the nested contract should be declared rather than

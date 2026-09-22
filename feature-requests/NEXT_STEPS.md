@@ -86,56 +86,32 @@ bridge configuration needs *both* add-ons enabled and both servers started in on
 the harness's own scene bookkeeping goes over `send_code()`. It is written down in
 [verification/README.md](../verification/README.md) and it goes away with the generated path.
 
-### 3. Creation and modification migrated
+### ~~3. Creation and modification migrated~~ — done
 
-**Scoped as [FR 032](032-creation-and-modification-migrated/README.md) (Accepted), which is what
-[FR 033](033-retire-the-generated-code-path/README.md) waits for.** Fourteen commands rather than
-fifteen — `mpfb_list_docs` has nothing to migrate — staged in six batches behind a Rigify spike,
-with the two remaining fragments landing in the first. It also settles two things this text left
-open: the default backend flips to the bridge in its last commit, and the bridge suite's
-alphabetical test-module prefixes run out during it.
+**Landed as [FR 032](done/032-creation-and-modification-migrated/README.md); see
+[HISTORY.md](HISTORY.md#fr-032--creation-and-modification-migrated).** The last fourteen tools
+crossed the seam, so `backend.MIGRATED_COMMANDS` holds twenty-four entries — every tool that
+crosses the socket — and **the default backend is the bridge**. The two things this text left open
+were settled: the flip happened in that effort's last commit, after its own live check compared
+all fourteen on both transports against one Blender; and the bridge suite's alphabetical prefixes
+ran out exactly as predicted, answered by prefixing a *directory* (`ppp_mutating/`), which is
+MPFB's own way out.
 
-**Stage 3 (introspection and catalogues) landed as
-[FR 031](done/031-introspection-and-catalogues-migrated/README.md); see
-[HISTORY.md](HISTORY.md).** Ten tools have bridge commands, which is every read-only tool that
-crosses the socket, and the numbering below has closed up behind it.
-
-**Fifteen tools are left**: the thirteen mutating ones plus the two documentation ones.
-`mpfb_list_docs` has nothing to migrate — it never crosses the socket — and `mpfb_list_urls` is the
-awkward one, since it is the only tool that catches a connection failure and answers anyway.
-
-**What FR 031 leaves ready, and what it deliberately did not do.** `backend.send()` now carries
-`shared` and `cached_shared`, and `shared_cache` sits below the seam rather than beside the tools,
-so a fragment-carrying tool can migrate without the tools left behind losing the session source
-cache — `mpfb_set_targets` and `mpfb_symmetrize_targets` are exactly that case and still work
-unchanged. `bridge/mpfb_bridge/shared/` exists and holds five modules; the two fragments left,
-`performed.py` and `refit_blocker.py`, belong to mutating tools and arrive with them.
-[tests/test_fragment_drift.py](../tests/test_fragment_drift.py) is what keeps a migrated
-catalogue's promise true while the tool it promises about has not moved, and the remaining pairs it
-straddles are `list_rigs`/`add_rig`, `list_assets`/`add_asset` and
-`get_target_stack`/`symmetrize_targets`. The sixteen unmigrated tools were **not** moved onto
-`backend.send()` in bulk: this stage has to edit each of those modules anyway, so a bulk move only
-front-loads the same edit while rewriting 134 `send_code` patch targets across the suite.
-
-**What FR 031 establishes nothing about.** Read-only, no mutation, nothing written outside the
-`.blend`, no batched argument. It establishes that catalogues agree across both paths and that
-fragments survive becoming modules; it establishes nothing about a tool that *changes* a
-character, and this stage should be planned as though it had not happened in that respect. What it
-does hand over is a rate: the payload layer is roughly **60%** of a migrated tool's test module
-(see [testing.md](../specifications/testing.md#a-migrated-tool-is-tested-where-it-runs)), and the
-suite gets bigger before it gets smaller.
-
-`mpfb_set_asset_material` is the interesting case and FR 028 already established that it
-survives: four flat scalars and a body of service calls, no open-ended access needed. The
-temptation this effort must resist is the one being an add-on creates —
-[importing MPFB's UI operator module directly](../specifications/architecture.md#never-import-mpfb-submodules-directly)
-rather than keeping the reimplementation. Don't; the reasons are unchanged and a UI operator
-module is the worst case of them.
+What it hands to stage 4, beyond the obvious: the 60% rate held at **58%** over fourteen more
+modules, with `mpfb_list_urls` (24%) and `mpfb_create_human` (no payload layer at all) as the two
+informative outliers; the seven shared fragments all have counterparts, so
+[tests/test_fragment_drift.py](../tests/test_fragment_drift.py) straddles nothing and is now
+guarding two copies until one is deleted; and `mpfb_set_asset_material` kept its reimplementation,
+with the rule against importing MPFB's UI operator module restated in the command's own docstring
+rather than left to the specification — being an add-on made that import possible for the first
+time, which is precisely when a rule has to say why it still holds.
 
 ### 4. Retire the generated-code path
 
-**Scoped as [FR 033](033-retire-the-generated-code-path/README.md) (Accepted), which cannot start
-until stage 3 is complete** — its first requirement is the check that says so. Four decisions it
+**Scoped as [FR 033](033-retire-the-generated-code-path/README.md) (Accepted), and stage 3 is
+complete, so it can start.** Its first requirement is the check that says so, and FR 032's own
+live check already asserts it: twenty-four payloads, twenty-four commands, `mpfb_list_docs` the
+one legitimate exception. Four decisions it
 settles that this text left open: the seam survives as a single-transport `send()` rather than
 being deleted, `verification/`'s harness is rewritten on commands that already exist rather than
 the bridge growing instrument-serving ones, the frozen payload test layers are deleted without
@@ -147,7 +123,9 @@ what they taught into the specifications rather than losing it; drop blender_mcp
 instructions — including the transitional two-add-on prerequisite
 [verification/README.md](../verification/README.md) now carries. Each payload deleted takes its
 frozen stub-executed test layer with it, which stage 2 measured at 27% of one test module for the
-dullest tool in the package and FR 031 measured at roughly 60% across nine more.
+dullest tool in the package, FR 031 measured at roughly 60% across nine more and FR 032 at 58%
+across the remaining fourteen. `tests/generated_path.py` goes with them: it exists only because
+twenty-five modules had to say they were about a path that is no longer the default.
 [tests/test_fragment_drift.py](../tests/test_fragment_drift.py) goes here too, and it goes for a
 good reason rather than a tidy one: it exists because a concept lives in two places at once, and
 after this stage it lives in one.

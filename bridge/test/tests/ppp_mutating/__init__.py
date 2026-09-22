@@ -4,7 +4,7 @@ The thirteen commands that **change** a .blend, against a real MPFB.
 **A directory rather than fourteen more prefixed files, and that is the whole
 reason this package exists.** ``bridge/test/tests/`` forces module order with an
 ``aaa_``…``ooo_`` prefix, MPFB's arrangement; fifteen of those are taken, and
-[FR 032](../../../../feature-requests/032-creation-and-modification-migrated/README.md)
+[FR 032](../../../../feature-requests/done/032-creation-and-modification-migrated/README.md)
 adds fourteen modules against the eleven letters left before ``zzz_``. MPFB
 prefixes *directories* as well as files - ``bbb_services/``, ``ccc_data/``,
 ``ddd_entities/``, ``eee_ui/`` - and that is the way out, taken here once rather
@@ -34,7 +34,7 @@ Two rules follow, and every module here keeps both:
   and the two preset commands are the ones that would.
 
 **And one rule that is not about cleanup**, found by
-[the spike](../../../../feature-requests/032-creation-and-modification-migrated/SPIKE.md)
+[the spike](../../../../feature-requests/done/032-creation-and-modification-migrated/SPIKE.md)
 before any of this was written: a fixture asset tree must be a **redirected data
 root**, not merely a temporary directory with an MHCLO in it.
 ``ClothesService.fit_clothes_to_human()`` re-reads a garment's MHCLO through

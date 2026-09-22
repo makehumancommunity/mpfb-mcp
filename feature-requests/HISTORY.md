@@ -1828,3 +1828,101 @@ is why the table above is calibrated against a measured tick rather than reporte
 **31.7 s against 49.7 s**, which is ten migrated tools out of twenty-five and the harness's own
 scene bookkeeping still on the generated path. The unit suite went from 945 tests to **993** and
 the bridge's from 47 to **150**, with the add-on at 80% coverage.
+
+## [FR 032](done/032-creation-and-modification-migrated/README.md) — creation and modification migrated
+
+**The stage that finished the crossing.** FR 030 migrated one tool and FR 031 the nine other
+read-only ones; this migrated the remaining fourteen — the thirteen that *change* a character plus
+`mpfb_list_urls` — and with them the last two shared fragments. `MIGRATED_COMMANDS` holds
+**twenty-four** lines, which is every tool that crosses the socket, and in its last commit **the
+default backend flipped to the bridge**. `mpfb_list_docs` is the twenty-fifth tool and has no
+payload and no command, because it answers from a local table and reaches no Blender at all.
+
+**The spike went first, and retired the effort's largest risk in an afternoon.** Three of the
+fourteen drive `bpy.ops` somewhere below them, and operators in `blender --background` fail for
+context reasons that have nothing to do with this project's code — so
+[`spike_headless_operators.py`](done/032-creation-and-modification-migrated/spike_headless_operators.py)
+asked before anything was written. **Everything works headless, Rigify included**: a real
+generation produces a real rig and leaves it active, which is exactly the behaviour
+`mpfb_generate_rigify_rig` reports as `active_object_after`. So requirement 6 needed no exception
+and nothing had to be deferred to the live check for want of a window. The spike also found the
+rule that shaped every asset fixture afterwards: `ClothesService.fit_clothes_to_human()` re-reads a
+garment's MHCLO through `AssetService`, so **a fixture asset tree must be a redirected data root**
+rather than a temporary directory — a garment equipped from outside the roots can never be
+refitted. No read-only command re-reads an asset, which is why nothing before this could have
+found it.
+
+**A mutating tool cannot be compared by calling it twice**, and that is the whole shape of
+[`check_creation_migration.py`](done/032-creation-and-modification-migrated/check_creation_migration.py).
+The method is *same starting state, one call each, compare the answer **and** the scene*: empty the
+scratch scene, purge what it orphaned, rebuild a named starting state through the tools, call the
+tool under test on one backend, snapshot, and do it again on the other. **105 passed, 0 failed, 0
+skipped** across fourteen tools and thirty-three cases, with `--self-compare` firing the vacuity
+guard as it should.
+
+Two things had to be part of "the same starting state" and neither was obvious. Blender keeps an
+unused mesh or material datablock until the file is reloaded, so without a purge the second run's
+character is `Human.001` and every comparison fails for a reason belonging to neither transport.
+And **the preset file is starting state too** — which is the finding worth carrying. The
+declared-volatile list began with `previous_file` and `contents` on it, on the reasoning that the
+second run would inevitably see the file the first one wrote; declaring those volatile would have
+normalised away a fault in the harness rather than an expected difference between transports. What
+the two runs actually needed was the same disk. Only the mtime is left, for a reason no arrangement
+can remove.
+
+**Three claims about MPFB turned out differently than the code said**, joining FR 031's six.
+`HumanService.add_builtin_rig()` does **not** decide the armature modifier with `import_weights` —
+`Rig.create_armature_and_fit_to_basemesh()` adds it either way — so a comment claiming otherwise
+described a reading of MPFB's source the running install did not support; the reported field was
+always an observation off the object, so the answer was right and only the reasoning was wrong.
+`ObjectService.find_rigify_metarig_by_rig()` returns `None` for **every** generated Rigify rig on
+current Rigify, because it reads an ID property Rigify now stores as an RNA property — a real MPFB
+defect, [filed rather than fixed](../feature-requests/NEXT_STEPS.md#file-upstream-mpfb-cannot-find-a-rigify-meta-rig-any-more),
+with the bridge test asserting agreement with MPFB's own lookup so that it keeps passing when the
+defect is. And MPFB's active-slot fixup matches a material name *ending in* `body`, which Blender's
+uniquifying defeats for a second character in one session.
+
+**Two rules the effort had to settle once rather than per module.** The bridge suite's alphabetical
+prefixes ran out — fifteen taken, eleven letters left, fourteen modules to add — and the answer is
+MPFB's own: prefix a **directory**. `bridge/test/tests/ppp_mutating/` holds the thirteen mutating
+commands, unprefixed among themselves, and its `__init__.py` carries the obligation they share.
+That obligation is the second rule: **cleanup is the suite's own risk now.** A read-only command
+could not leave anything behind; these add rigs, equip assets, create materials and write preset
+files, and a *failing* test is the one most likely to leave something. What a test made the fixture
+removes however the test ends, and a test that writes outside the `.blend` writes somewhere
+redirected — never into the developer's own MPFB config directory.
+
+**One narrow behavioural difference between the transports was decided rather than discovered.**
+`mpfb_list_urls` answers from a vendored copy when Blender is unreachable, which works on the
+bridge because `bridge_connection.send_command()` raises `ConnectionError` in the same situations
+`connection.send_code()` does. A **protocol handshake refusal** does not: it comes back as an error
+envelope, and so reaches the caller as an error where the generated path would have answered with
+URLs. That is deliberate — a version mismatch between mpfb-mcp and the add-on is a configuration
+fault to fix, not a circumstance to paper over — and it is written into the tool's docstring,
+asserted in `tests/test_list_urls.py`, and declared in the live check's expected differences.
+
+**`mpfb_set_asset_material` kept its reimplementation, and the rule moved to where the pressure
+is.** It has no service function behind it at all; the mechanism exists only in a UI operator, and
+being an add-on made importing that operator possible for the first time. The rule against it was
+written when generated code *could* not reach such a module, so both it and `list_urls`' `sys.modules`
+read now restate the reason in their own docstrings rather than pointing at a specification page.
+
+**One payload quirk was reproduced rather than tidied**, which is the rule this effort worked
+under and the one most tempting to break: `add_asset` computes `proxy_masks_added` and never uses
+it, and the command does too, with a comment saying so. A tidy-up during a migration is
+indistinguishable from a defect in the comparison the migration rests on.
+
+**The numbers.** The unit suite went from 993 tests to **1,059** and the bridge's from 150 to
+**292**. The payload layer held at **58%** of a migrated tool's test module over the fourteen —
+`set_targets` 67%, `set_skin` 67%, `add_asset` 66%, down to `save_preset` 49% — with two
+informative outliers: `mpfb_list_urls` at 24%, because most of that module tests the client-side
+merge that stays, and `mpfb_create_human` with **no payload layer at all**, its payload being forty
+lines with no branch in it. [verification/](../verification/) passes in both configurations, and
+the gap is now the whole package rather than ten tools of it: **3.9 s on the bridge against 48.5 s
+on the generated path**, same twenty-five tools, same Blender, same session.
+
+One leak found and fixed in the live check itself, worth recording because it is the class of thing
+FR 032's own cleanup rule is about: Rigify's widget collection is linked to **no scene**, so
+emptying the scratch scene cannot reach it — and left behind, it makes `verification/`'s
+scene-scoped cleanup miss its own widgets too, failing a check for a reason belonging to a script
+that had already exited.

@@ -31,7 +31,7 @@ mutating command here puts the previous active object and selection back in a
 ``finally``. This one cannot: the operator's own final act is to select and
 activate the rig it generated, so there is no state left to restore to.
 ``active_object_after`` is what the caller gets instead - and
-[the spike](../../../feature-requests/032-creation-and-modification-migrated/SPIKE.md)
+[the spike](../../../feature-requests/done/032-creation-and-modification-migrated/SPIKE.md)
 confirmed that is exactly what happens in a Blender with no window, which is
 where this command's own tests run.
 

@@ -5,7 +5,7 @@
 ``bpy.ops`` throughout - ``select_all``, ``mode_set``, ``rigify_upgrade_face``,
 ``rigify_generate`` - and operators in ``blender --background`` fail for context
 reasons that have nothing to do with this project's code. They do not fail here:
-[the spike](../../../../feature-requests/032-creation-and-modification-migrated/SPIKE.md)
+[the spike](../../../../feature-requests/done/032-creation-and-modification-migrated/SPIKE.md)
 established that before any of this was written, which is why this module tests
 the real thing rather than skipping to a live check.
 

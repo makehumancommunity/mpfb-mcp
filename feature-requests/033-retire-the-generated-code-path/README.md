@@ -8,8 +8,10 @@ decided that MPFB's Blender-side logic belongs in an add-on of our own,
 [FR 029](../done/029-bridge-transport-and-skeleton/README.md) built it,
 [FR 030](../done/030-backend-seam/README.md) built the seam and migrated one tool, and
 [FR 031](../done/031-introspection-and-catalogues-migrated/README.md) migrated nine more, and
-[FR 032](../032-creation-and-modification-migrated/README.md) migrates the remaining fifteen. When
-that lands, every tool that crosses the socket has a bridge command, and a machine nothing uses is still being maintained: 9,416 lines under
+[FR 032](../done/032-creation-and-modification-migrated/README.md) migrated the remaining
+fourteen — fourteen rather than fifteen, because `mpfb_list_docs` never crossed the socket to begin
+with. **That has landed**, so every tool that crosses the socket has a bridge command, the default
+backend is the bridge, and a machine nothing uses is still being maintained: 9,416 lines under
 [codegen/](../../src/mpfbmcp/codegen), a wire client duplicating a third party's protocol, a
 session source cache, and something on the order of 6,000 lines of tests executing payloads
 against stubs — plus a second prerequisite in every install instruction and a second transport in
@@ -23,7 +25,25 @@ been edited to describe a system it predates is worth less than one that has not
 `pyproject.toml` — reads as though there had only ever been one way to reach Blender.
 
 **Nothing here is allowed to change what a tool answers.** This is a deletion, and the property
-that makes it safe is that the thing being deleted is already unused by the time it starts.
+that makes it safe is that the thing being deleted is already unused by the time it starts. FR 032
+arranged that deliberately: it flipped the default in its **last** commit, after comparing both
+paths field by field and scene by scene, so by the time this effort starts the generated path has
+been carrying nothing for a while rather than carrying everything until yesterday.
+
+**Three things FR 032 left that are this effort's to collect**, none of which existed when this
+request was written:
+
+- [tests/generated_path.py](../../tests/generated_path.py) and the twenty-five `setUpModule`
+  lines that use it. It exists only because those modules had to say they were about a path that
+  is no longer the default; with the path gone, so is the reason.
+- The measured share of a test module that goes with its payload, now known across all
+  twenty-four rather than estimated: 27% for the dullest tool, ~60% over FR 031's nine, **58%**
+  over FR 032's fourteen. Two outliers are worth expecting rather than being surprised by —
+  `mpfb_list_urls` at 24%, because most of that module tests the client-side merge that stays, and
+  `mpfb_create_human`, which has no payload layer at all.
+- The transitional two-add-on prerequisite in
+  [verification/README.md](../../verification/README.md), which FR 032 made the *default* one
+  rather than an alternative. Removing it is this effort's, and the README already says so.
 
 ## Goals
 
@@ -53,7 +73,7 @@ file. A finding does not become false because the code it was measured on is gon
 **Secondary. `verification/` runs against one add-on, in one configuration.** The transitional
 two-add-on prerequisite FR 030 created goes away here, which is what it was always going to do.
 
-**Explicitly not goals.** Migrating anything — [FR 032](../032-creation-and-modification-migrated/README.md)
+**Explicitly not goals.** Migrating anything — [FR 032](../done/032-creation-and-modification-migrated/README.md)
 must be complete before this starts (requirement 1). Changing any tool's name, description, arguments or answer. Changing anything in
 `bridge/` beyond what the harness rewrite needs. Touching
 [bridge_connection.py](../../src/mpfbmcp/bridge_connection.py)'s hand-kept `PROTOCOL_VERSION`
@@ -67,7 +87,7 @@ gate anything, and attaching it to a deletion effort is how it ends up half-done
 1. **The effort refuses to start while any tool still has a payload.** The first thing written is
    the check that says so: every tool `build_server()` registers either has an entry in
    `MIGRATED_COMMANDS` or has no payload at all (`mpfb_list_docs`, and nothing else). If that does
-   not hold, [FR 032](../032-creation-and-modification-migrated/README.md) is not finished and
+   not hold, [FR 032](../done/032-creation-and-modification-migrated/README.md) is not finished and
    this request is not startable. This is a requirement
    rather than an assumption because the deletion is irreversible in practice — a payload deleted
    while its tool still needs it is not caught by any test that survives the same commit.
@@ -135,7 +155,7 @@ gate anything, and attaching it to a deletion effort is how it ends up half-done
    [test_fragment_drift.py](../../tests/test_fragment_drift.py),
    [fake_addon.py](../../tests/fake_addon.py) and
    [blender_stubs.py](../../tests/blender_stubs.py). They are not re-examined for content:
-   [FR 032](../032-creation-and-modification-migrated/README.md) is the effort that moves a check
+   [FR 032](../done/032-creation-and-modification-migrated/README.md) is the effort that moves a check
    into `bridge/test/`, and doing it again here would be doing it
    late and twice.
 
@@ -365,7 +385,7 @@ twenty-five items it already has are exactly what it needs.
   request implements.
 - [FR 028](../done/028-pivot-to-specific-addon/README.md) — the decision, and the analysis
   documents beside it.
-- [FR 032](../032-creation-and-modification-migrated/README.md) — the effort that must land
+- [FR 032](../done/032-creation-and-modification-migrated/README.md) — the effort that must land
   first, and which flips the default backend to the bridge so that this one deletes a path nobody
   has been using.
 - [FR 030](../done/030-backend-seam/README.md) — the seam, the first migration, and the

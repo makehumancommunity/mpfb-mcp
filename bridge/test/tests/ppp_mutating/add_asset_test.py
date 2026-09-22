@@ -16,7 +16,7 @@ reading of MPFB's source as the code under test:
   complete silence.
 
 **The asset library is a redirected data root**, not a bare temporary
-directory, which is [the spike's](../../../../feature-requests/032-creation-and-modification-migrated/SPIKE.md)
+directory, which is [the spike's](../../../../feature-requests/done/032-creation-and-modification-migrated/SPIKE.md)
 other finding: ``AssetService`` searches the roots, so an asset outside them can
 be equipped by absolute path and then never re-found. Only ``user_data`` is
 redirected, because equipping reaches MPFB's own bundled ``node_trees`` through

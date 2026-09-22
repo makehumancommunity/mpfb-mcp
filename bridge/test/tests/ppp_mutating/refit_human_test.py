@@ -7,7 +7,7 @@ This module carries the claim that makes ``refit_human`` worth more than a bare
 MPFB says nothing about it, and that this command therefore answers
 ``refit_performed: false`` rather than reporting a refit it never made. Getting
 there needs Rigify, a real generation and a real deletion, all of which
-[the spike](../../../../feature-requests/032-creation-and-modification-migrated/SPIKE.md)
+[the spike](../../../../feature-requests/done/032-creation-and-modification-migrated/SPIKE.md)
 established work in a Blender with no window before any of this was written.
 
 **The garment is equipped from a redirected data root**, not from a bare
@@ -211,7 +211,7 @@ def test_the_answer_agrees_with_mpfbs_own_metarig_lookup():
     the ID-property lookup finds nothing on any armature. The practical effect
     is that MPFB reports *every* generated Rigify rig as unrefittable. That is
     an MPFB defect, found while migrating this command and
-    [left alone](../../../../feature-requests/032-creation-and-modification-migrated/README.md):
+    [left alone](../../../../feature-requests/done/032-creation-and-modification-migrated/README.md):
     reproduction over improvement, and it is recorded in NEXT_STEPS.md instead.
     Both transports read one statement of the condition, so they agree about it
     whether it is right or wrong.

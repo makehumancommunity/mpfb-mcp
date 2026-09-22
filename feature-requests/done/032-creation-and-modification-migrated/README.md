@@ -1,10 +1,10 @@
 # Creation and modification migrated
 
-**Status:** In progress
+**Status:** Done
 
-This is [stage 3 of the pivot](../NEXT_STEPS.md#3-creation-and-modification-migrated), and it is
-the last one that adds. [FR 030](../done/030-backend-seam/README.md) built the seam and migrated
-`mpfb_list_objects`; [FR 031](../done/031-introspection-and-catalogues-migrated/README.md) migrated
+This is [stage 3 of the pivot](../../NEXT_STEPS.md#3-creation-and-modification-migrated), and it is
+the last one that adds. [FR 030](../030-backend-seam/README.md) built the seam and migrated
+`mpfb_list_objects`; [FR 031](../031-introspection-and-catalogues-migrated/README.md) migrated
 nine more and finished the read-only half of the package. **Fifteen tools are left, and they are
 the half that changes things**: thirteen mutating tools, plus `mpfb_list_urls` and
 `mpfb_list_docs`. Fourteen bridge commands are needed — `mpfb_list_docs` answers from a local
@@ -25,7 +25,7 @@ caller had selected, and preconditions that must come back as answers are all ne
 Blender is unreachable, needs in order to migrate at all.
 
 **And what makes it worth doing as one request rather than two is what comes after it.**
-[FR 033](../033-retire-the-generated-code-path/README.md) cannot start until every tool with a
+[FR 033](../../033-retire-the-generated-code-path/README.md) cannot start until every tool with a
 payload has a bridge command; its first requirement is the check that says so. This request exists
 to make that check pass.
 
@@ -39,7 +39,7 @@ to make that check pass.
 tool that crosses the socket.
 
 **Primary. Establish what a *mutating* command owes its caller, once, so that fourteen commands do
-not answer it fourteen ways.** [mutating-tools.md](../../specifications/mutating-tools.md) is
+not answer it fourteen ways.** [mutating-tools.md](../../../specifications/mutating-tools.md) is
 already written and does not change; what is new is where each of its rules is enforced now that
 the far side is ordinary add-on code rather than a program assembled for one call — the `performed`
 flag, the before/after report, restoring the caller's selection, a precondition that is an answer
@@ -48,7 +48,7 @@ rather than a failure, and a batched tool resolving every entry before writing a
 **Primary. Migrate the last two shared fragments.** `performed.py` is named by all thirteen
 mutating tools and `refit_blocker.py` by the four refitting ones. When they land,
 `bridge/mpfb_bridge/shared/` holds seven modules, `codegen/shared/` has no fragment without a
-counterpart, and [tests/test_fragment_drift.py](../../tests/test_fragment_drift.py) straddles
+counterpart, and [tests/test_fragment_drift.py](../../../tests/test_fragment_drift.py) straddles
 nothing — every pair it was built for has both halves migrated.
 
 **Primary. Find out how much of MPFB works in a headless Blender.** FR 029 named this as
@@ -71,7 +71,7 @@ reproduced now have side effects.
 ## Functional requirements
 
 1. **Fourteen commands, one module each, one entry each in
-   [commands/table.py](../../bridge/mpfb_bridge/commands/table.py).** The shape FR 029 settled is
+   [commands/table.py](../../../bridge/mpfb_bridge/commands/table.py).** The shape FR 029 settled is
    unchanged: a handler, a parameter specification, a `requires_mpfb` flag and a summary. A
    migrated tool's own module changes by one call — `codegen.assemble()` plus `send_code()` becomes
    `backend.send()` — and nothing else, which is FR 030's requirement 3 applied twelve more times.
@@ -81,13 +81,13 @@ reproduced now have side effects.
 2. **`performed` and the refit blocker become shared modules, and the two sides are checked against
    each other.** `bridge/mpfb_bridge/shared/performed.py` and `refit_blocker.py`, mirroring
    `codegen/shared/` name for name as the other five do, and added to
-   [test_fragment_drift.py](../../tests/test_fragment_drift.py)'s comparison. `performed.py` is the
+   [test_fragment_drift.py](../../../tests/test_fragment_drift.py)'s comparison. `performed.py` is the
    one fragment that binds nothing from the bootstrap, so it should compare with no normalisation
    at all; anything the check cannot cover is **named in `UNCOMPARABLE`** rather than skipped,
    which is the rule that test already enforces on itself.
 
 3. **A mutating command reports what it changed, in the spelling
-   [mutating-tools.md](../../specifications/mutating-tools.md) already fixes.** Concretely, and
+   [mutating-tools.md](../../../specifications/mutating-tools.md) already fixes.** Concretely, and
    these are the ones a reimplementation loses quietly:
 
    - **`performed` means the same thing on both transports**, for all thirteen — it is the flag a
@@ -130,7 +130,7 @@ reproduced now have side effects.
    - **The command reads `<root>.ui.weburls` out of `sys.modules` and never imports it.** Being an
      add-on makes importing it possible for the first time, which is exactly why this must be
      written down: it would violate
-     [Never import MPFB submodules directly](../../specifications/architecture.md#never-import-mpfb-submodules-directly)
+     [Never import MPFB submodules directly](../../../specifications/architecture.md#never-import-mpfb-submodules-directly)
      and would run MPFB code inside a Blender that is already broken. Enumeration stays by prefix,
      and a non-string value stays reported under `skipped_keys`.
    - **A handshake refusal is not a `ConnectionError`.** `bridge_connection.send_command()` raises
@@ -147,7 +147,7 @@ reproduced now have side effects.
    rather than tidied. FR 028 established that the tool survives the pivot; the temptation being an
    add-on creates is to import the operator module now that it is reachable, and the answer is the
    same rule as requirement 4's second bullet, applied to its worst case. See
-   [A UI module with no service behind it](../../specifications/architecture.md#a-ui-module-with-no-service-behind-it).
+   [A UI module with no service behind it](../../../specifications/architecture.md#a-ui-module-with-no-service-behind-it).
 
 6. **Fourteen bridge test modules, against a real MPFB, following FR 031's conventions** — build
    the character with `HumanService.create_human()`, snapshot and delete on the way out, build the
@@ -168,7 +168,7 @@ reproduced now have side effects.
 7. **Both paths keep working, and the default flips at the end.** Every tool answers on both
    transports for the whole effort; the last commit changes `preferred_backend()`'s default from
    `blender_mcp` to `bridge`, and with it the documented invocations in
-   [CLAUDE.md](../../CLAUDE.md#commands) and [verification/README.md](../../verification/README.md).
+   [CLAUDE.md](../../../CLAUDE.md#commands) and [verification/README.md](../../../verification/README.md).
    The two-add-on prerequisite for a bridge-configuration verification run does **not** go away
    here — the harness's own bookkeeping still uses `send_code()` until FR 033 rewrites it — so
    flipping the default makes that prerequisite the *default* one. Say so in
@@ -179,14 +179,14 @@ reproduced now have side effects.
    FR 030's claim and FR 031's method, applied to tools that change things — which makes it harder
    in one specific way: a mutating tool cannot be run twice against the same state and compared.
    The comparison has to be *same starting state, one call each, compare the answer and the scene*,
-   which the scratch-scene discipline in [verification/](../../verification/) already provides the
+   which the scratch-scene discipline in [verification/](../../../verification/) already provides the
    shape for. Differences that are expected must be declared in advance rather than explained
    afterwards — requirement 4's handshake case is one, and MPFB's own caches are another, as
    FR 031 found for `mpfb_list_asset_materials`.
 
 9. **The specifications are updated for what is true when it lands**, per the
-   [lifecycle](../CLAUDE.md#lifecycle), and one claim in particular is now the *majority* case
-   rather than a special one: [testing.md](../../specifications/testing.md#a-migrated-tool-is-tested-where-it-runs)'s
+   [lifecycle](../../CLAUDE.md#lifecycle), and one claim in particular is now the *majority* case
+   rather than a special one: [testing.md](../../../specifications/testing.md#a-migrated-tool-is-tested-where-it-runs)'s
    "a migrated tool is tested where it runs" stops describing ten tools and starts describing
    twenty-four.
 
@@ -255,24 +255,24 @@ MPFB use operators anywhere.
 
 ## Affected specifications
 
-- **[testing.md](../../specifications/testing.md)** — *A migrated tool is tested where it runs*
+- **[testing.md](../../../specifications/testing.md)** — *A migrated tool is tested where it runs*
   becomes the normal case (requirement 9); the 60% rate is confirmed or corrected over fourteen
   more modules; whatever the Rigify spike finds about a headless Blender belongs in *What the suite
   can never establish*.
-- **[mutating-tools.md](../../specifications/mutating-tools.md)** — no rule changes, but every rule
+- **[mutating-tools.md](../../../specifications/mutating-tools.md)** — no rule changes, but every rule
   in it acquires a second implementation. Where a rule turns out to be enforced by the transport
   rather than by the tool, say which.
-- **[architecture.md](../../specifications/architecture.md)** — *The generated-code path* section's
+- **[architecture.md](../../../specifications/architecture.md)** — *The generated-code path* section's
   count of what has migrated; *Supporting a second backend*'s description of the default;
   *Never import MPFB submodules directly* and *A UI module with no service behind it* gain the two
   cases in requirements 4 and 5, which are the first time the rule has been under real pressure.
-- **[mpfb-integration.md](../../specifications/mpfb-integration.md)** — the coercion and
+- **[mpfb-integration.md](../../../specifications/mpfb-integration.md)** — the coercion and
   pick-one-and-name-it rules are mostly enforced in the tools being migrated; confirm each survives
   the move rather than assuming it.
-- **[vision.md](../../specifications/vision.md)** — *What runs today* is rewritten once at the end.
-- Not affected: [responses.md](../../specifications/responses.md),
-  [tool-interface.md](../../specifications/tool-interface.md),
-  [observability.md](../../specifications/observability.md) — response shape, argument validation
+- **[vision.md](../../../specifications/vision.md)** — *What runs today* is rewritten once at the end.
+- Not affected: [responses.md](../../../specifications/responses.md),
+  [tool-interface.md](../../../specifications/tool-interface.md),
+  [observability.md](../../../specifications/observability.md) — response shape, argument validation
   and the record are all unchanged by which transport carries a mutating call.
 
 ## Tests
@@ -286,28 +286,50 @@ default flip (requirement 7), asserted by which fake server was spoken to.
 everything about what these tools *do* is now checked, against a real MPFB in a headless Blender.
 
 **And a live check of this effort's own**, in this subdir as `check_creation_migration.py`,
-following [FR 031's](../done/031-introspection-and-catalogues-migrated/check_catalogue_migration.py):
+following [FR 031's](../031-introspection-and-catalogues-migrated/check_catalogue_migration.py):
 it needs a Blender with MPFB, blender_mcp and the MPFB Bridge, and it runs each of the fourteen
 tools on both transports from the same starting state, comparing the answer **and** the resulting
 scene (requirement 8). It must declare its expected differences up front. It is run during the
 effort and moves into `done/` with it.
 
-What it adds to [verification/](../../verification/) is **nothing**: no tool is introduced, and the
+What it adds to [verification/](../../../verification/) is **nothing**: no tool is introduced, and the
 twenty-five smoke items already cover these fourteen. What must be true before the effort is
 finished is that the smoke run passes in both configurations — which, after requirement 7, means
 the bridge configuration is the one somebody gets by typing nothing.
 
+## Outcome
+
+**Done, and verified.** All fourteen tools migrated, `MIGRATED_COMMANDS` holds twenty-four
+entries, and the default backend is the bridge. The story is in
+[HISTORY.md](../../HISTORY.md#fr-032--creation-and-modification-migrated); what follows is only what
+a reader of *this* document needs in order to know how its requirements came out.
+
+- **The spike ran first and found no obstacle** — see [SPIKE.md](SPIKE.md). Everything works in a
+  headless Blender, Rigify included, so requirement 6 needed no exception. It also found the rule
+  that a fixture asset tree must be a redirected data root.
+- **Requirement 8's comparison passed**: 105 checks, 0 failures, 0 skips, over fourteen tools and
+  thirty-three cases, with the vacuity guard firing under `--self-compare`. See
+  [check_creation_migration.py](check_creation_migration.py). Its declared-difference list ended up
+  **shorter** than the first draft, because two of the entries turned out to be faults in the
+  harness rather than expected differences between transports.
+- **Requirement 6's prefix problem** was settled by prefixing a directory, `ppp_mutating/`, which
+  is MPFB's own answer.
+- **Three claims about MPFB turned out differently than the code said**, one of them a real MPFB
+  defect now recorded in [NEXT_STEPS.md](../../NEXT_STEPS.md#file-upstream-mpfb-cannot-find-a-rigify-meta-rig-any-more).
+- **Verification passes in both configurations**, 3.9 s on the bridge against 48.5 s on the
+  generated path.
+
 ## References
 
-- [NEXT_STEPS.md, stage 3](../NEXT_STEPS.md#3-creation-and-modification-migrated) — the entry this
+- [NEXT_STEPS.md, stage 3](../../NEXT_STEPS.md#3-creation-and-modification-migrated) — the entry this
   request implements.
-- [FR 033](../033-retire-the-generated-code-path/README.md) — the effort this one unblocks, whose
+- [FR 033](../../033-retire-the-generated-code-path/README.md) — the effort this one unblocks, whose
   first requirement is the check that this one has finished.
-- [FR 030](../done/030-backend-seam/README.md) — the seam, the first migration, and the rule that a
+- [FR 030](../030-backend-seam/README.md) — the seam, the first migration, and the rule that a
   command reproduces its payload.
-- [FR 031](../done/031-introspection-and-catalogues-migrated/README.md) — nine migrations, the
+- [FR 031](../031-introspection-and-catalogues-migrated/README.md) — nine migrations, the
   batching that worked, `bridge/mpfb_bridge/shared/`, the fragment-drift check, and the 60% rate.
-- [FR 029](../done/029-bridge-transport-and-skeleton/README.md) — the command record, the
+- [FR 029](../029-bridge-transport-and-skeleton/README.md) — the command record, the
   `requires_mpfb` precondition, and the headless drive mechanism this effort's tests run on.
-- [FR 025](../done/025-character-presets/README.md) — the settled shape for a tool that writes
+- [FR 025](../025-character-presets/README.md) — the settled shape for a tool that writes
   outside the `.blend`, which requirement 3 asks two commands to preserve.
