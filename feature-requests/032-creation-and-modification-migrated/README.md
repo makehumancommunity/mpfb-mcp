@@ -1,6 +1,6 @@
 # Creation and modification migrated
 
-**Status:** Accepted
+**Status:** In progress
 
 This is [stage 3 of the pivot](../NEXT_STEPS.md#3-creation-and-modification-migrated), and it is
 the last one that adds. [FR 030](../done/030-backend-seam/README.md) built the seam and migrated
