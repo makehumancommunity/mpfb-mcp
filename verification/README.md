@@ -2,12 +2,12 @@
 
 **A smoke test.** One item per tool, called the way an MCP client would call it with default
 arguments, against a real Blender. It answers one question — *does every tool still work at
-all?* — and it answers it in well under a minute, so there is no reason to skip it.
+all?* — and it answers it in a couple of seconds, so there is no reason to skip it.
 
 One item reaches no Blender at all: `mpfb_list_docs` is a local table, so its item establishes only
 that the tool is registered and still answers with the keys its description promises. It is a
 per-tool item anyway, because coverage is derived from the registry and the run-level set is closed
-at three.
+at two.
 
 Not part of the installed package, not discovered by `python3 -m unittest discover -s tests`, and
 not shipped: `pyproject.toml` declares package data by explicit glob under `src/`, so a top-level
@@ -19,34 +19,27 @@ directory outside it cannot be picked up.
 MPFB_MCP_RECORD_DIR=~/mpfb-mcp-records PYTHONPATH=. python3 verification/smoke.py
 ```
 
-That is the whole interface. `MPFB_MCP_RECORD_DIR` is optional: with it, every call leaves the
-exact program, the exact envelope and a duration behind, which is what makes a failure diagnosable
-rather than merely visible — and one run-level item, the traceback check, needs it and skips
-without it. The run also writes its full result — the printed lines are capped, the file is not —
-into `verification/results/`, overridable with `MPFB_MCP_VERIFICATION_RESULTS`.
+That is the whole interface, and since [FR 033](../feature-requests/done/033-retire-the-generated-code-path/README.md)
+there is only one configuration to run it in. `MPFB_MCP_RECORD_DIR` is optional: with it, every
+call leaves the exact request, the exact envelope and a duration behind, which is what makes a
+failure diagnosable rather than merely visible. The run also writes its full result — the printed
+lines are capped, the file is not — into `verification/results/`, overridable with
+`MPFB_MCP_VERIFICATION_RESULTS`.
 
-**Requirements: one Blender with MPFB, blender_mcp *and* the MPFB Bridge enabled, and both socket
-servers started (9876 and 9877) — in the default configuration.** That is new since
-[FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md) flipped the
-default backend to the bridge, and it is worth saying plainly rather than leaving to be met as a
-puzzle.
+**Requirements: one Blender with MPFB and the MPFB Bridge enabled, and the bridge's socket server
+started (9877).** Nothing else. `MPFB_BRIDGE_HOST` / `MPFB_BRIDGE_PORT` point the run at a bridge
+that is not on the default address.
 
-The reason is one-sided. Every one of the twenty-four tools that crosses the socket now has a
-bridge command, so the *tools* need only the bridge — but this harness's own scene bookkeeping (the
-scratch scene, the snapshots, the cleanup) goes through `send_code()` directly, because it is
-instrument rather than tool. So the run needs blender_mcp for its own plumbing whichever backend
-the tools are on.
-
-**This is the last effort in which that is true.** [FR 033](../feature-requests/033-retire-the-generated-code-path/README.md)
-retires the generated path and rewrites this harness's bookkeeping with it, after which a run needs
-the bridge alone.
-
-The two configurations must both pass, and the run is otherwise identical:
+**Point it at a Blender you are willing to throw away.** That is new advice and it is the
+consequence of the paragraph below: the run no longer puts back what it builds. A headless Blender
+started for the purpose is the cheapest way to get one, and it needs no window and no clicking:
 
 ```bash
-PYTHONPATH=. python3 verification/smoke.py
-MPFB_MCP_BACKEND=blender_mcp PYTHONPATH=. python3 verification/smoke.py
+blender --background --command mpfb_bridge --port 9900
 ```
+
+then `MPFB_BRIDGE_PORT=9900 PYTHONPATH=. python3 verification/smoke.py` against it. Kill the
+Blender when the run is done and everything the run made goes with it.
 
 Where the install lacks a prerequisite — no MHCLO assets, no skins, Rigify disabled — the affected tools report
 `skipped` **with the reason**, the run still passes, and the summary names every tool it could not
@@ -75,9 +68,51 @@ those were established once, by the efforts that claimed them ([FR 009](../featu
 [FR 011](../feature-requests/done/011-skin-and-materials/README.md)), and re-proving them on every
 code change is what turned this directory into 5,308 lines and a run of minutes.
 
-**So where does an exhaustive live check go?** Into the feature request that needs it — its own
-subdir, run during that effort, moved into `done/` with it. What an effort adds *here* is at most
-the one smoke item for a tool it introduced. [FR 023](../feature-requests/done/023-verification-smoke-test/README.md)
+### What FR 033 cost this instrument
+
+Read this beside a passing run rather than instead of one. Until FR 033 the harness had a private
+channel into Blender: it sent Python of its own to an add-on that executed it, and that is how it
+made a scratch scene, compared twelve `bpy.data` collections plus `bpy.data.is_dirty` before and
+after, deleted everything it had built and purged the orphans. **The bridge executes nothing**, and
+FR 033 decided that a verification harness is not a reason to give it an `exec` command — that
+would reintroduce precisely the property the pivot exists to remove. So the channel has no
+replacement, and four things went with it:
+
+- **The scratch scene is gone.** The run used to build in a scene of its own, `MPFBMCP_VERIFY`,
+  and now builds in whatever scene the Blender it is pointed at has open.
+- **The cleanup is gone, so the run leaves what it built.** Five *MakeHuman* objects on a full
+  run — a basemesh, its meta rig, the generated Rigify rig, and the second character
+  `mpfb_create_human_from_preset` builds with its rig — plus, and this is the larger number,
+  roughly **500 `WGT-` bone-widget objects** and two `WGTS_` collections that Rigify generation
+  creates. None of the widgets is a MakeHuman object, so the compare below does not see them: what
+  the item names as left behind is the five, and the real figure is two orders of magnitude
+  larger. **The `.blend` is still never saved by anything here**, so closing without saving is a
+  complete undo; running repeatedly against one long-lived Blender is what accumulates.
+- **The datablock snapshot is gone**, and with it `is_dirty`. `mpfb_list_objects` is the only
+  window into the scene the bridge's vocabulary offers, so what the run can see before and after
+  is *the MakeHuman objects in the current scene, by name and type* — not meshes, materials,
+  images, node groups, actions or collections. An orphan image datablock of the kind FR 025's
+  check actually found would not be noticed today.
+- **The traceback item is gone.** It resolved a line number reported from inside Blender against
+  the program the record had written, and there are no programs.
+
+What the compare still asserts, and it is worth having: **nothing that was in the scene before the
+run disappeared** — no tool here is entitled to remove a MakeHuman object it did not create, and a
+run that took one of the user's characters with it is the worst thing this instrument could fail
+to notice — and **the asset the run equipped is gone again**, which is the one thing the run does
+still put back, through `mpfb_remove_asset` rather than through any cleanup of its own. Everything
+the run added is named in the item's output, so a passing line says what was left behind rather
+than implying nothing was.
+
+Restoring more than that means giving the bridge commands that serve an instrument rather than a
+tool. That is a real option and a real cost, and it is
+[in NEXT_STEPS.md](../feature-requests/NEXT_STEPS.md) as its own question rather than settled here.
+
+### Where an exhaustive live check goes
+
+Into the feature request that needs it — its own subdir, run during that effort, moved into
+`done/` with it. What an effort adds *here* is at most the one smoke item for a tool it introduced.
+[FR 023](../feature-requests/done/023-verification-smoke-test/README.md)
 is the request that made this the rule, and its own check,
 [`check_negatives.py`](../feature-requests/done/023-verification-smoke-test/check_negatives.py),
 is the first thing written under it.
@@ -90,30 +125,27 @@ by the checks alone. Wall clock against somebody else's Blender is too noisy and
 install-dependent to gate on, and a check that fails for a reason outside the repository is one
 people learn to ignore.
 
-Last measured at **3.9 s** on the bridge and **48.5 s** on the generated path, 28 items, 0 failed,
-1 skipped — Blender 5.1.0, MPFB 2.0.17 `FROM_SOURCE`, 909 assets across 112 packs, and
-blender_mcp's `timer_interval_active` at its **0.25 s default**. The twelvefold gap between the two
-is the pivot's whole point measured on one machine in one session, and it is the 4 KB chunked read
-rather than anything either add-on computes: the bridge sends parameters where the generated path
-sends programs. Everything below is about the slow path, and stops applying on the day FR 033
-deletes it. That last number matters more than the machine: the add-on reads one 4 KB
-chunk of a request per timer tick, so it is the dominant cost of every call here and 0.05 s makes
-the whole run several times faster (see [CLAUDE.md](../CLAUDE.md#commands) and
-[architecture.md](../specifications/architecture.md#what-a-call-costs-is-the-size-of-its-program)).
-The figure above is therefore the slow configuration, which is the honest one to quote. If a run
-goes over target, that setting is the first thing to check.
+Last measured at **1.5 s**, 27 items, 0 failed, 0 skipped — a headless Blender 5.1.0 started with
+`--command mpfb_bridge`, MPFB 2.0.17 `FROM_SOURCE`, 938 assets across the library, blender_mcp
+disabled in that process. The same run in a windowed Blender on the same machine took 4.9 s. For
+scale: the last measurement of the generated code path this harness used to run on was **48.5 s**
+for the same twenty-five tools, and the twelvefold gap is the pivot's whole point measured in one
+session. It was never about what either add-on computed — the bridge sends parameters where the
+generated path sent programs, and the add-on on the other end read one 4 KB chunk of a request per
+timer tick.
 
-The three slowest items on that run were `mpfb_set_targets` (7.8 s, two extra catalogue calls to
-find a left/right category plus the write), `mpfb_add_asset` (4.5 s) and `mpfb_set_skin` (3.8 s).
-`mpfb_create_human_from_preset` is the fourth at 3.2 s, and it is the one item whose cost is
-irreducible: it builds a whole second character, which is the only honest way to call that tool.
+The three slowest items are now `mpfb_create_human_from_preset` (0.4 s), `mpfb_add_asset` (0.3 s)
+and `mpfb_generate_rigify_rig` (0.3 s). The first is the one item whose cost is irreducible: it
+builds a whole second character, which is the only honest way to call that tool.
 
 ## What it does to the Blender it is pointed at
 
-- Builds in a scene of its own, `MPFBMCP_VERIFY`, created on first use. Nothing outside it is
-  touched, and **the `.blend` is never saved by anything here**.
-- Snapshots twelve datablock collections plus `bpy.data.is_dirty` before the run and compares
-  after cleanup. The compare is itself an item, so a leak is a failure rather than a footnote.
+- Builds in whatever scene that Blender has open, and **leaves what it built there** — see
+  [what FR 033 cost this instrument](#what-fr-033-cost-this-instrument). **The `.blend` is never
+  saved by anything here**, so nothing is permanent unless the user saves it.
+- Compares the MakeHuman objects in the scene before and after: nothing that predates the run may
+  disappear, and the equipped asset must be gone again. The compare is itself an item, so both are
+  failures rather than footnotes.
 - **Exactly one file is written outside the `.blend`**, and it is the same file on every run:
   `human.mpfbmcp_smoke_run.json` in MPFB's user config directory, left there by the
   `mpfb_save_preset` item (FR 025). The name says where it came from and is constant, so repeated
@@ -138,7 +170,7 @@ be argued as its own feature request.
 | File | What it is |
 |------|------------|
 | `smoke.py` | The item table and the run. A new tool adds one entry here and no new file |
-| `harness.py` | The tool callables, the scratch scene, snapshot/compare, the probe channel into Blender, and the report |
+| `harness.py` | The tool callables, the scene compare, and the report |
 | `fixtures.py` | The install gate and the one character the whole run acts on |
 | `README.md` | This |
 
@@ -146,7 +178,7 @@ Two rules bound the growth, and only one is mechanical. **Coverage is derived fr
 the item table is matched against the built server before anything runs, so a registered tool with
 no item — or an item for a tool that is gone — stops the run with exit code 2.
 [tests/test_verification_smoke.py](../tests/test_verification_smoke.py) asserts the same without a
-Blender, so the rule also fires in the nine-second unit run. **The time is bounded by design**
+Blender, so the rule also fires in the unit run. **The time is bounded by design**
 instead — one character, one call per tool, three assertions — and kept honest by being printed on
 every run rather than by a threshold.
 

@@ -1,0 +1,277 @@
+{
+ "name": "mpfb-mcp smoke run - twenty-five tools, default arguments",
+ "counts": {
+  "passed": 27,
+  "failed": 0,
+  "skipped": 1,
+  "seconds": 5.112860224002361,
+  "results": [
+   {
+    "item": "MPFB is loaded and initialized",
+    "outcome": "pass",
+    "observed": "ok",
+    "elapsed": 0.0
+   },
+   {
+    "item": "a traceback line number from a real failure resolves to the recorded program",
+    "outcome": "skip",
+    "observed": "MPFB_MCP_RECORD_DIR is not set, so there is no record to resolve against; the run does not require it",
+    "elapsed": 0.0
+   },
+   {
+    "item": "mpfb_get_status",
+    "outcome": "pass",
+    "observed": {
+     "state": "ok"
+    },
+    "elapsed": 0.03130767000038759
+   },
+   {
+    "item": "mpfb_list_urls",
+    "outcome": "pass",
+    "observed": {
+     "count": 17
+    },
+    "elapsed": 0.04980750599861494
+   },
+   {
+    "item": "mpfb_list_docs",
+    "outcome": "pass",
+    "observed": {
+     "count": 19
+    },
+    "elapsed": 2.770200080703944e-05
+   },
+   {
+    "item": "mpfb_list_presets",
+    "outcome": "pass",
+    "observed": {
+     "count": 49
+    },
+    "elapsed": 0.051022705003560986
+   },
+   {
+    "item": "mpfb_list_targets",
+    "outcome": "pass",
+    "observed": {
+     "count": 200,
+     "total_count": 220
+    },
+    "elapsed": 0.05417333700097515
+   },
+   {
+    "item": "mpfb_list_rigs",
+    "outcome": "pass",
+    "observed": {
+     "count": 13
+    },
+    "elapsed": 0.04835592100062058
+   },
+   {
+    "item": "mpfb_list_assets",
+    "outcome": "pass",
+    "observed": {
+     "count": 200,
+     "total_count": 938
+    },
+    "elapsed": 0.05580330600059824
+   },
+   {
+    "item": "mpfb_create_human",
+    "outcome": "pass",
+    "observed": {
+     "object_name": "Human",
+     "performed": true
+    },
+    "elapsed": 0.21836584899938316
+   },
+   {
+    "item": "mpfb_list_objects",
+    "outcome": "pass",
+    "observed": {
+     "count": 1
+    },
+    "elapsed": 0.021456854999996722
+   },
+   {
+    "item": "mpfb_get_object_info",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "name": "SmokeCharacter"
+    },
+    "elapsed": 0.06651686999975936
+   },
+   {
+    "item": "mpfb_get_macro_details",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "basemesh_name": "SmokeCharacter"
+    },
+    "elapsed": 0.054971765999653144
+   },
+   {
+    "item": "mpfb_set_macro_details",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "basemesh_name": "SmokeCharacter",
+     "performed": true
+    },
+    "elapsed": 0.050951782999618445
+   },
+   {
+    "item": "mpfb_get_target_stack",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "count": 0,
+     "total_count": 0,
+     "basemesh_name": "SmokeCharacter"
+    },
+    "elapsed": 0.06523052699776599
+   },
+   {
+    "item": "mpfb_set_targets",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "basemesh_name": "SmokeCharacter",
+     "performed": true
+    },
+    "elapsed": 0.21978821799712023
+   },
+   {
+    "item": "mpfb_symmetrize_targets",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "basemesh_name": "SmokeCharacter",
+     "performed": true
+    },
+    "elapsed": 0.06618499699834501
+   },
+   {
+    "item": "mpfb_add_rig",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "rig_object_name": "SmokeCharacter.metarig",
+     "basemesh_name": "SmokeCharacter",
+     "performed": true
+    },
+    "elapsed": 0.20800534500085632
+   },
+   {
+    "item": "mpfb_add_asset",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "asset_object_name": "SmokeCharacter.aethelraed_flapper_dress",
+     "basemesh_name": "SmokeCharacter",
+     "performed": true
+    },
+    "elapsed": 0.4315279570000712
+   },
+   {
+    "item": "mpfb_list_asset_materials",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "count": 1,
+     "asset_object_name": "SmokeCharacter.aethelraed_flapper_dress"
+    },
+    "elapsed": 0.04164027899969369
+   },
+   {
+    "item": "mpfb_set_asset_material",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "asset_object_name": "SmokeCharacter.aethelraed_flapper_dress",
+     "performed": true
+    },
+    "elapsed": 0.04546743999890168
+   },
+   {
+    "item": "mpfb_set_skin",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "basemesh_name": "SmokeCharacter",
+     "performed": true
+    },
+    "elapsed": 0.11767853499986813
+   },
+   {
+    "item": "mpfb_refit_human",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "basemesh_name": "SmokeCharacter",
+     "performed": true
+    },
+    "elapsed": 0.15537515100004384
+   },
+   {
+    "item": "mpfb_generate_rigify_rig",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "rig_object_name": "Human.rigify",
+     "basemesh_name": "SmokeCharacter",
+     "performed": true
+    },
+    "elapsed": 0.3688026380004885
+   },
+   {
+    "item": "mpfb_remove_asset",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "asset_object_name": "SmokeCharacter.aethelraed_flapper_dress",
+     "basemesh_name": "SmokeCharacter",
+     "performed": true
+    },
+    "elapsed": 0.020723107001686003
+   },
+   {
+    "item": "mpfb_save_preset",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "name": "mpfbmcp_smoke_run",
+     "basemesh_name": "SmokeCharacter",
+     "performed": true
+    },
+    "elapsed": 0.05917131499882089
+   },
+   {
+    "item": "mpfb_create_human_from_preset",
+    "outcome": "pass",
+    "observed": {
+     "found": true,
+     "name": "mpfbmcp_smoke_run",
+     "rig_object_name": "mpfbmcp_smoke_run",
+     "basemesh_name": "mpfbmcp_smoke_run.body",
+     "performed": true
+    },
+    "elapsed": 0.47530618000018876
+   },
+   {
+    "item": "the run put back everything it made",
+    "outcome": "pass",
+    "observed": {
+     "identical": true,
+     "differences": {},
+     "is_dirty_before": false,
+     "is_dirty_after": false,
+     "active_object_before": null,
+     "active_object_after": null
+    },
+    "elapsed": 0.0
+   }
+  ]
+ }
+}

@@ -37,15 +37,24 @@ exit code 2, so the table can neither fall behind nor keep entries for tools
 that are gone. ``tests/test_verification_smoke.py`` asserts the same without a
 Blender, so the rule also fires early.
 
-**Beside the per-tool items the run performs three run-level items, and the set
-is closed**: the install gate, the leak compare, and the traceback item. A
-fourth is a sign that the exhaustive habit is growing back.
+**Beside the per-tool items the run performs two run-level items, and the set
+is closed**: the install gate, and the compare of what was in the scene before
+against what is in it after. A third is a sign that the exhaustive habit is
+growing back. It was three until FR 033, which retired the transport that let
+the harness send code of its own: the traceback item resolved a line number
+against a recorded *program*, and there are no programs any more.
 
 **One item writes outside the ``.blend``**, which nothing here did before
 FR 025: ``mpfb_save_preset`` leaves ``human.mpfbmcp_smoke_run.json`` in MPFB's
 user config directory, under a name that says where it came from and constant
-across runs so that the pile does not grow. It is the one thing the run does not
-put back, and verification/README.md says so beside the two it cannot.
+across runs so that the pile does not grow.
+
+**And since FR 033 the run leaves what it built inside the ``.blend`` too.**
+Deleting it needed a channel into Blender that the bridge does not offer and
+deliberately will not grow, so the run builds in whatever scene it is pointed at
+and the characters stay. Point it at a Blender you are willing to throw away -
+``blender --background --command mpfb_bridge`` is one - and read
+verification/README.md, which says what that cost.
 
 Run with::
 
@@ -56,13 +65,9 @@ from __future__ import annotations
 
 __all__ = ("ITEMS", "Skipped", "coverage_errors", "run")
 
-import os
 import re
 import sys
 import time
-
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
 
 from verification import fixtures, harness
 from verification.harness import Report
@@ -145,7 +150,7 @@ def _list_docs(run: _Run) -> dict:
     # The only item that reaches no Blender at all: a local table with two URL
     # constants over it. It is a per-tool item rather than a run-level one
     # anyway, because coverage is derived from the registry and the run-level
-    # set is closed at three - not because there is anything live to check.
+    # set is closed at two - not because there is anything live to check.
     return run.tools["mpfb_list_docs"]()
 
 
@@ -479,53 +484,6 @@ def _worth_reporting(result: dict) -> object:
     return {key: result[key] for key in interesting if key in result} or None
 
 
-def _traceback_item(report: Report) -> None:
-    """FR 012's inherited check: does a line number from Blender resolve?
-
-    The only part of the per-call record that a test on this side of the socket
-    cannot make - nothing in ``tests/`` has ever received a line number from a
-    real Blender. The program is built the way ``codegen.assemble()`` builds one,
-    so the number has the same distance to travel as a real tool's would.
-    """
-    item = "a traceback line number from a real failure resolves to the recorded program"
-    if not os.environ.get("MPFB_MCP_RECORD_DIR"):
-        report.skip(item, "MPFB_MCP_RECORD_DIR is not set, so there is no record to resolve "
-                          "against; the run does not require it")
-        return
-
-    started = time.perf_counter()
-    program = codegen.assemble("get_status.py", bootstrap="non_raising", params=dict())
-    if not program.endswith("\n"):
-        program = program + "\n"
-    program = program + 'raise RuntimeError("MPFB_MCP_DELIBERATE_FAILURE")\n'
-    # The raise is the last line; splitting on the trailing newline leaves an
-    # empty final element, so the raise is the one before it.
-    expected_line = len(program.split("\n")) - 1
-
-    response = send_code(program, strict_json=True)
-    elapsed = time.perf_counter() - started
-    record = response.get("mpfb_mcp_record") or dict()
-    matches = re.findall(r'File "<string>", line (\d+)', response.get("message") or "")
-    reported_line = int(matches[-1]) if matches else 0
-
-    dumped = ""
-    if record.get("program") and os.path.isfile(record["program"]):
-        handle = open(record["program"], "r", encoding="utf-8")
-        dumped = handle.read()
-        handle.close()
-    lines = dumped.split("\n")
-    at_reported = lines[reported_line - 1] if 0 < reported_line <= len(lines) else None
-
-    report.check(item,
-                 reported_line == expected_line
-                 and at_reported is not None
-                 and "MPFB_MCP_DELIBERATE_FAILURE" in at_reported,
-                 dict(traceback_line=reported_line, expected_line=expected_line,
-                      line_in_the_recorded_program=at_reported,
-                      program=record.get("program")),
-                 elapsed)
-
-
 def run() -> dict:
     global _DESCRIPTIONS  # pylint: disable=global-statement
     tools = harness.tools()
@@ -533,7 +491,7 @@ def run() -> dict:
 
     errors = coverage_errors(set(tools))
     if errors:
-        # Not a report line: FR-4 closes the set of run-level items at three, and
+        # Not a report line: FR-4 closes the set of run-level items at two, and
         # a table that does not match the registry means the run below would be
         # measuring the wrong thing anyway.
         print("!!! the smoke item table does not match the registered tools:",
@@ -555,25 +513,56 @@ def run() -> dict:
         install["mpfb_version"], install["blender"],
         "available" if install["rigify_available"] else "not enabled"))
 
-    harness.ensure_scratch_scene()
-    harness.cleanup_scratch_scene()
-    before = harness.snapshot()
-
-    _traceback_item(report)
+    before = harness.makehuman_objects(tools)
+    report.note("{} MakeHuman object(s) in this scene before the run; everything the run "
+                "builds is added to them and stays".format(len(before)))
 
     smoke_run = _Run(tools, report)
     for item in ITEMS:
         _run_item(smoke_run, item)
 
-    harness.cleanup_scratch_scene()
-    after = harness.snapshot()
-    difference = harness.diff_snapshots(before, after)
-    report.check("the run put back everything it made",
-                 difference["identical"] and not difference["is_dirty_after"], difference)
+    _scene_item(smoke_run, before)
 
     counts = report.summary(TARGET_SECONDS)
     counts["exit_code"] = 1 if counts["failed"] else 0
     return counts
+
+
+def _scene_item(run: _Run, before: dict) -> None:
+    """The second and last run-level item: what the run did to the scene.
+
+    Two claims, and only the narrower one is an assertion. **Nothing that was
+    there disappeared**: no tool this run calls is entitled to remove a
+    MakeHuman object it did not create, and a run that took one of the user's
+    characters with it is the worst thing this instrument could fail to notice.
+    And **the asset the run equipped is gone again**, which is the one thing the
+    run still puts back - ``mpfb_remove_asset`` removes it properly, and
+    ``mpfb_list_objects`` is exactly the window that can confirm the object is
+    no longer in the scene.
+
+    What the run *added* is reported rather than asserted against zero. Until
+    FR 033 this item was a twelve-collection datablock compare against a scratch
+    scene the harness created and emptied, and "identical" was the claim; the
+    bridge executes no code of the harness's own, so both the scratch scene and
+    the cleanup are gone. Naming what was left behind is what is left, and
+    verification/README.md says so where somebody reading a passing run will see
+    it.
+    """
+    started = time.perf_counter()
+    after = harness.makehuman_objects(run.tools)
+    difference = harness.diff_objects(before, after)
+    problems = []
+    if not difference["nothing_disappeared"]:
+        problems.append("MakeHuman objects that predate the run are gone: {}".format(
+            ", ".join(entry["name"] for entry in difference["removed"])))
+    if run.asset_object is not None and run.asset_object in after:
+        problems.append("{!r} was equipped and removed, and is still in the scene".format(
+            run.asset_object))
+    difference["left_behind"] = [entry["name"] for entry in difference["added"]]
+    run.report.check(
+        "the run removed nothing it did not create, and names what it left behind",
+        not problems, "; ".join(problems) if problems else difference,
+        time.perf_counter() - started)
 
 
 if __name__ == "__main__":

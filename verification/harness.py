@@ -1,26 +1,31 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-The instrument the smoke run stands on: the tools, a scene of its own, and a
+The instrument the smoke run stands on: the tools, what they left behind, and a
 report.
 
 **Checks run through the real tool callables**, taken off the server
-``build_server()`` builds. A check written as a hand-assembled ``send_code()``
-call would verify a program no MCP client will ever send: a tool module's own
-validation, defaulting and coercion is a large part of what is under test here.
+``build_server()`` builds. A check written as a hand-assembled request would
+verify something no MCP client will ever send: a tool module's own validation,
+defaulting and coercion is a large part of what is under test here.
 
-**The scratch scene, not a scratch file.** The run happens in whatever Blender
-the user has prepared, and that Blender holds their work; reloading a home file
-to get a clean baseline would discard it. So the harness makes its own scene,
-builds in that, and deletes what it made. ``snapshot``/``diff_snapshots`` is
-what turns "deleted what it made" from a claim into an assertion, and the
-``.blend`` is never saved by anything here.
+**The harness has no private channel into Blender, and that is the point.** It
+had one: FR 012 through FR 032 it made its own scene, built in it, snapshotted
+twelve ``bpy.data`` collections, deleted what it made and compared - all by
+sending Python to an add-on that would ``exec()`` it. The bridge executes
+nothing, so that channel has no replacement, and FR 033 chose to rewrite this
+instrument on commands that already exist rather than have the bridge grow
+instrument-serving ones. **A verification harness is not a reason to reopen the
+hole the whole pivot exists to close.**
 
-**Probes are sent with a payload marker.** ``probe()`` is the harness's own
-channel into Blender - the snapshot, the scene, the rename - and goes through
-the same ``send_code()`` every tool uses, so FR 012's record covers it too. The
-marker is what keeps those records named rather than all landing under
-``unnamed``.
+What that costs is written down rather than absorbed. The scratch scene, the
+cleanup and the datablock snapshot are gone; ``mpfb_list_objects`` is the only
+window into the scene that remains, so what this module can still see is *the
+MakeHuman objects in the current scene, by name and type*, and what it can still
+assert is correspondingly narrower. ``verification/README.md`` says so in the
+section about what the run deliberately does not check, and says it beside the
+consequence a reader actually cares about: **the run now builds in whatever
+scene it finds and leaves what it built there.**
 
 Nothing here is unit-tested and nothing here may be imported by ``src/``.
 """
@@ -28,20 +33,14 @@ Nothing here is unit-tested and nothing here may be imported by ``src/``.
 from __future__ import annotations
 
 __all__ = (
-    "DATABLOCK_COLLECTIONS",
     "MUTATING_VERBS",
     "Report",
-    "SCRATCH_SCENE",
-    "cleanup_scratch_scene",
     "descriptions",
-    "diff_snapshots",
-    "ensure_scratch_scene",
+    "diff_objects",
     "main_guard",
+    "makehuman_objects",
     "performed_disagreement",
-    "probe",
-    "rename_object",
     "results_directory",
-    "snapshot",
     "tools",
 )
 
@@ -51,37 +50,14 @@ import sys
 import time
 
 from mpfbmcp import build_server
-from mpfbmcp.connection import send_code
-
-# The twelve collections FR 006's run named, plus the dirty flag. Kept as a
-# tuple of (report key, bpy.data attribute) rather than derived from bpy.data,
-# because a collection appearing or disappearing between Blender versions
-# should change this list visibly rather than silently change what "identical"
-# means.
-DATABLOCK_COLLECTIONS = (
-    ("objects", "objects"),
-    ("meshes", "meshes"),
-    ("materials", "materials"),
-    ("images", "images"),
-    ("node_groups", "node_groups"),
-    ("armatures", "armatures"),
-    ("actions", "actions"),
-    ("shape_keys", "shape_keys"),
-    ("collections", "collections"),
-    ("textures", "textures"),
-    ("brushes", "brushes"),
-    ("worlds", "worlds"),
-)
-
-SCRATCH_SCENE = "MPFBMCP_VERIFY"
 
 # The verb each mutating tool reports beside the uniform ``performed`` flag
 # (FR 014). ``None`` is mpfb_create_human, which has no verb of its own: it
 # creates a character or comes back as an error envelope.
 #
-# This is not a second opinion about what "performed" means - the payloads
+# This is not a second opinion about what "performed" means - the commands
 # decide that, on the far side of the socket. It is the audit that would catch
-# a payload stamping the flag from the wrong variable, which is the one mistake
+# a command stamping the flag from the wrong variable, which is the one mistake
 # the unit tests can miss, because there the verb and the flag are read out of
 # the same stub run. Here they are read out of a real Blender.
 MUTATING_VERBS = {
@@ -157,179 +133,46 @@ def descriptions() -> dict:
     return {tool.name: tool.description or "" for tool in _registered()}
 
 
-def probe(label: str, code: str, **params: object) -> dict:
-    """Run harness-owned code inside Blender and return its ``result``.
+def makehuman_objects(tool_callables: dict) -> dict:
+    """The MakeHuman objects in the current scene, by name, with their type.
 
-    The first argument is ``label`` rather than ``name`` so that a probe can take
-    a ``name=`` parameter of its own. ``params`` is bound as ``PARAMS`` from a
-    JSON literal, the way ``codegen``'s prelude binds a payload's, so a probe
-    contains no placeholders and no escaping. Raises on an error envelope: a
-    probe that failed is a broken instrument rather than a failed check, and the
-    two must not be able to look alike in a report.
+    **This is the whole of the harness's view of Blender**, and it is a tool
+    call rather than a probe: ``mpfb_list_objects`` is the only command in the
+    bridge's vocabulary that reports what is in the scene. So what a before/after
+    comparison here can see is MakeHuman objects and nothing else - not meshes,
+    materials, images, node groups, actions or collections, and not
+    ``bpy.data.is_dirty``.
+
+    Raises on an error envelope. A listing that failed is a broken instrument
+    rather than a failed check, and the two must not be able to look alike in a
+    report.
     """
-    program = "".join((
-        "# --- probe: {} ---\n".format(label),
-        "PARAMS = ", json.dumps(params, indent=4), "\n",
-        "# --- payload: probe_{}.py ---\n".format(label),
-        code))
-    response = send_code(program, strict_json=True)
-    if response.get("status") != "ok":
-        raise RuntimeError("probe {} failed: {}".format(label, response.get("message")))
-    return response.get("result")
+    envelope = tool_callables["mpfb_list_objects"]()
+    if envelope.get("status") != "ok":
+        raise RuntimeError("the harness could not list the scene's objects: {}".format(
+            envelope.get("message")))
+    return {entry["name"]: entry.get("object_type")
+            for entry in envelope["result"].get("objects") or []}
 
 
-def snapshot() -> dict:
-    """The twelve collections by name, plus the dirty flag and the context."""
-    return probe("snapshot", _SNAPSHOT_CODE, collections=[c[1] for c in DATABLOCK_COLLECTIONS])
+def diff_objects(before: dict, after: dict) -> dict:
+    """What the run added to the scene and what disappeared from under it.
 
-
-_SNAPSHOT_CODE = '''
-import bpy
-
-names = dict()
-for collection_name in PARAMS["collections"]:
-    collection = getattr(bpy.data, collection_name, None)
-    if collection is None:
-        names[collection_name] = None
-        continue
-    names[collection_name] = sorted([datablock.name for datablock in collection])
-
-result = dict(
-    names=names,
-    is_dirty=bool(bpy.data.is_dirty),
-    active_object=None if bpy.context.active_object is None else bpy.context.active_object.name,
-    mode=str(bpy.context.mode),
-    scene=bpy.context.scene.name,
-)
-'''
-
-
-def diff_snapshots(before: dict, after: dict) -> dict:
-    """What appeared, what disappeared, and whether anything did.
-
-    Reported per collection rather than as one boolean: "identical" is the claim
-    the revert discipline makes, and a report that only says "not identical"
-    leaves the next hour to finding out what leaked.
+    Two questions rather than one, because after FR 033 only the second has an
+    answer the run can insist on. **Nothing may disappear**: every MakeHuman
+    object that was in the scene before the run must still be there, since no
+    tool the run calls is entitled to remove one it did not create. What was
+    *added* is reported rather than asserted against zero - the run no longer
+    cleans up, so a non-empty ``added`` is the expected outcome and naming its
+    contents is the point.
     """
-    differences = dict()
-    for key, _attribute in DATABLOCK_COLLECTIONS:
-        old = set(before["names"].get(key) or [])
-        new = set(after["names"].get(key) or [])
-        added = sorted(new - old)
-        removed = sorted(old - new)
-        if added or removed:
-            differences[key] = dict(added=added, removed=removed)
+    added = sorted(set(after) - set(before))
+    removed = sorted(set(before) - set(after))
     return dict(
-        identical=not differences,
-        differences=differences,
-        is_dirty_before=before["is_dirty"],
-        is_dirty_after=after["is_dirty"],
-        active_object_before=before["active_object"],
-        active_object_after=after["active_object"],
+        added=[dict(name=name, object_type=after[name]) for name in added],
+        removed=[dict(name=name, object_type=before[name]) for name in removed],
+        nothing_disappeared=not removed,
     )
-
-
-def ensure_scratch_scene() -> str:
-    """Make (or re-select) the scratch scene, so nothing is built in the user's."""
-    return probe("scene", _SCENE_CODE, scene=SCRATCH_SCENE)["scene"]
-
-
-_SCENE_CODE = '''
-import bpy
-
-scene = bpy.data.scenes.get(PARAMS["scene"])
-created = False
-if scene is None:
-    scene = bpy.data.scenes.new(PARAMS["scene"])
-    created = True
-for window in bpy.context.window_manager.windows:
-    window.scene = scene
-
-result = dict(scene=scene.name, created=created)
-'''
-
-
-def rename_object(old: str, new: str) -> str:
-    """Give a character a name of its own.
-
-    MPFB names every character ``Human`` and uniquifies the second one, so two
-    of them would be told apart by a suffix that depends on what was already in
-    the file.
-    """
-    return probe("rename", _RENAME_CODE, old=old, new=new)["name"]
-
-
-_RENAME_CODE = '''
-import bpy
-
-obj = bpy.data.objects.get(PARAMS["old"])
-if obj is None:
-    raise RuntimeError("no object named " + PARAMS["old"])
-obj.name = PARAMS["new"]
-result = dict(name=obj.name)
-'''
-
-
-def cleanup_scratch_scene() -> dict:
-    """Delete every object in the scratch scene, and the datablocks they held.
-
-    Orphan meshes, armatures, materials, images and node groups are purged
-    afterwards, because deleting an object leaves all five behind and the
-    snapshot compare would report every one of them.
-    """
-    return probe("cleanup", _CLEANUP_CODE, scene=SCRATCH_SCENE)
-
-
-_CLEANUP_CODE = '''
-import bpy
-
-removed = []
-scene = bpy.data.scenes.get(PARAMS["scene"])
-if scene is not None:
-    for obj in list(scene.collection.all_objects):
-        removed.append(obj.name)
-        bpy.data.objects.remove(obj, do_unlink=True)
-
-# An object removal leaves its data behind. Purge only what nothing uses, and
-# only in these six collections: a zero-user brush or world is Blender's own
-# business and predates this run.
-#
-# The sweep repeats over *all six* until a whole pass removes nothing, rather
-# than draining each collection in turn. Draining in turn is not enough and the
-# order is not fixable by reordering: an ENHANCED skin's texture is held by a
-# node group, which is held by a material, so the image only reaches zero users
-# after both have gone - and "images" is swept before "node_groups". FR 025's
-# live check found this as a single stray image datablock after a run that had
-# cleaned up everything else.
-purged = dict()
-collection_names = ["meshes", "armatures", "materials", "images", "node_groups", "actions"]
-for collection_name in collection_names:
-    purged[collection_name] = []
-while True:
-    removed_this_pass = 0
-    for collection_name in collection_names:
-        collection = getattr(bpy.data, collection_name)
-        for datablock in [entry for entry in collection if entry.users == 0]:
-            purged[collection_name].append(datablock.name)
-            collection.remove(datablock)
-            removed_this_pass += 1
-    if not removed_this_pass:
-        break
-
-# Rigify generation creates a WGTS_<rig> collection for its bone widgets, and
-# deleting the widgets leaves the empty collection behind. An empty collection
-# is a datablock like any other and the revert compare reports it, so anything
-# that is now empty and childless goes too. Non-empty collections - the user's
-# own - are never touched.
-empty_collections = []
-for collection in list(bpy.data.collections):
-    if len(collection.objects) == 0 and len(collection.children) == 0:
-        empty_collections.append(collection.name)
-        bpy.data.collections.remove(collection)
-purged["collections"] = empty_collections
-
-result = dict(removed=removed, purged=purged)
-'''
 
 
 def results_directory() -> str:
@@ -400,12 +243,14 @@ class Report:
             for result in slowest if result["elapsed"])), flush=True)
         if target_seconds is not None and total > target_seconds:
             # Over target is a prompt to look, never a failure: the number being
-            # measured is somebody else's Blender. The likeliest cause by a wide
-            # margin is a configuration mistake rather than a regression.
-            print("    over the {:.0f}s target. Check blender_mcp's "
-                  "timer_interval_active first - 0.25s is its default and 0.05s is the "
-                  "module's; every call here is four to five times slower at the "
-                  "former. This does not fail the run.".format(target_seconds), flush=True)
+            # measured is somebody else's Blender. A run that used to take most
+            # of a minute now takes a few seconds, so going over target is a
+            # much louder signal than it was, and the likeliest cause is the
+            # install rather than this package - a cold asset library, or MPFB
+            # rebuilding a cache the first call touches.
+            print("    over the {:.0f}s target. That is roughly ten times the run's own "
+                  "measured cost, so look at the install - a cold asset scan is the usual "
+                  "answer. This does not fail the run.".format(target_seconds), flush=True)
         self._write(counts)
         return counts
 

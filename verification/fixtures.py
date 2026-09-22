@@ -21,20 +21,21 @@ MPFB documents: create, model, rig, dress, generate, undress. The run's cost is
 dominated by what it builds, and FR 013's directory built fifty characters
 because each of its eight checklists had to be independently runnable. With one
 script there is nothing to be independent of.
+
+**The character keeps the name MPFB gave it.** It used to be renamed to
+something the report could point at, which needed a channel into Blender the
+harness no longer has (FR 033). So every item addresses it by the name
+``mpfb_create_human`` answered with - ``Human``, or ``Human.001`` where the
+scene already held one - which is what a real client would have to do anyway.
 """
 
 from __future__ import annotations
 
 __all__ = (
-    "CHARACTER",
     "check_install",
     "create_character",
     "first_asset",
 )
-
-from verification.harness import rename_object
-
-CHARACTER = "SmokeCharacter"
 
 
 def check_install(tools: dict) -> dict:
@@ -60,16 +61,18 @@ def check_install(tools: dict) -> dict:
 
 
 def create_character(tools: dict) -> tuple:
-    """Build the run's character with the tool's own defaults, and name it.
+    """Build the run's character with the tool's own defaults.
 
     Returns the envelope beside the object's name, because the ``performed``
     audit is made on the envelope and every later item addresses the character
-    by name.
+    by name. The name is MPFB's own - see the module docstring: giving the
+    character a name of the harness's choosing needed a channel into Blender
+    that FR 033 removed, and the tool answers with the name anyway.
     """
     envelope = tools["mpfb_create_human"]()
     if envelope.get("status") != "ok":
         return envelope, None
-    return envelope, rename_object(envelope["result"]["object_name"], CHARACTER)
+    return envelope, envelope["result"]["object_name"]
 
 
 def first_asset(tools: dict, asset_subdir: str) -> dict | None:
