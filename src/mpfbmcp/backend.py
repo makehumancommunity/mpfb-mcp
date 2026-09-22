@@ -129,6 +129,14 @@ MIGRATED_COMMANDS = {
     # reproduced rather than tidied up.
     "set_skin.py": "set_skin",
     "set_asset_material.py": "set_asset_material",
+    # Batch E: the two that write outside the `.blend`, and the one that
+    # answers *because* Blender is unreachable. With these the table holds
+    # twenty-four entries, which is every tool that crosses the socket -
+    # `mpfb_list_docs` has no payload and never did. That is FR 032's finish
+    # line and FR 033's precondition.
+    "save_preset.py": "save_preset",
+    "create_human_from_preset.py": "create_human_from_preset",
+    "list_urls.py": "list_urls",
 }
 
 

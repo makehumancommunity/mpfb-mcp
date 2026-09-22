@@ -13,7 +13,7 @@ Four states have to come back as successful answers and one must not:
 
 - MPFB read live;
 - MPFB absent, or loaded but with no ``weburls`` in ``sys.modules``;
-- Blender unreachable - a ``ConnectionError`` out of ``send_code()``, which this
+- Blender unreachable - a ``ConnectionError`` out of the wire client, which this
   is the only tool in the package to catch;
 - and a payload that **raised inside Blender**, which is a defect and must still
   surface as an error envelope. Swallowing that into a "fallback" answer would
@@ -46,8 +46,12 @@ from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
 
+from mpfbmcp import backend
+from mpfbmcp import bridge_connection
 from mpfbmcp import codegen
 from mpfbmcp.reference import urls
+
+from tests import fake_bridge
 from mpfbmcp.tools import list_urls
 
 _STUB_PACKAGE = "bl_ext.test_repo.mpfb"
@@ -94,7 +98,7 @@ class ListUrlsLiveTests(unittest.TestCase):
         self.mpfb_list_urls = _register_and_get_tool()
 
     def _call(self, payload: dict) -> dict:
-        with mock.patch("mpfbmcp.tools.list_urls.send_code",
+        with mock.patch("mpfbmcp.backend.send_code",
                         return_value={"status": "ok", "result": payload}):
             envelope = self.mpfb_list_urls()
         self.assertEqual(envelope["status"], "ok")
@@ -228,7 +232,7 @@ class ListUrlsFallbackTests(unittest.TestCase):
         self.mpfb_list_urls = _register_and_get_tool()
 
     def _call_with_payload(self, payload: dict) -> dict:
-        with mock.patch("mpfbmcp.tools.list_urls.send_code",
+        with mock.patch("mpfbmcp.backend.send_code",
                         return_value={"status": "ok", "result": payload}):
             envelope = self.mpfb_list_urls()
         self.assertEqual(envelope["status"], "ok")
@@ -275,7 +279,7 @@ class ListUrlsFallbackTests(unittest.TestCase):
 
     def test_an_unreachable_blender_answers_rather_than_failing(self) -> None:
         failure = ConnectionError("Cannot connect to Blender at localhost:9876.")
-        with mock.patch("mpfbmcp.tools.list_urls.send_code", side_effect=failure):
+        with mock.patch("mpfbmcp.backend.send_code", side_effect=failure):
             envelope = self.mpfb_list_urls()
 
         # The whole reason this tool catches the transport failure at all: the
@@ -291,23 +295,122 @@ class ListUrlsFallbackTests(unittest.TestCase):
 
     def test_a_payload_error_is_not_swallowed_into_a_fallback(self) -> None:
         # A payload that raised inside Blender is a defect here. If it came back
-        # as a cheerful fallback answer it would never be found.
+        # as a cheerful fallback answer it would never be found. The envelope
+        # reaches the caller with its status and message intact and the seam's
+        # `error` slug added, which is the one thing backend.send() changes.
         envelope = {"status": "error", "message": "NameError: _mpfb_module"}
-        with mock.patch("mpfbmcp.tools.list_urls.send_code", return_value=envelope):
-            self.assertEqual(self.mpfb_list_urls(), envelope)
+        with mock.patch("mpfbmcp.backend.send_code", return_value=envelope):
+            response = self.mpfb_list_urls()
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["message"], "NameError: _mpfb_module")
+        self.assertEqual(response["error"], backend.ERROR_COMMAND_FAILED)
+        self.assertNotIn("result", response, "a failure must not carry a fallback answer")
 
     def test_a_non_dict_result_is_passed_through_rather_than_reshaped(self) -> None:
         envelope = {"status": "ok", "result": "something unexpected"}
-        with mock.patch("mpfbmcp.tools.list_urls.send_code", return_value=envelope):
+        with mock.patch("mpfbmcp.backend.send_code", return_value=envelope):
             self.assertEqual(self.mpfb_list_urls(), envelope)
 
     def test_only_a_connection_error_is_caught(self) -> None:
         # Any other exception out of send_code() is a bug on this side and must
         # propagate; catching broadly here would hide it behind an answer.
-        with mock.patch("mpfbmcp.tools.list_urls.send_code",
+        with mock.patch("mpfbmcp.backend.send_code",
                         side_effect=ValueError("a defect in this package")):
             with self.assertRaises(ValueError):
                 self.mpfb_list_urls()
+
+
+class ListUrlsOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """The bridge path, and the one case where the two transports differ.
+
+    This tool migrated because ``bridge_connection.send_command()`` raises
+    ``ConnectionError`` in exactly the situations ``connection.send_code()``
+    does - which is what the fallback answer turns on. What it does **not** do
+    is turn a protocol handshake refusal into one, and FR 032 decided
+    deliberately that it should not: a version mismatch between mpfb-mcp and
+    the add-on is a configuration fault the operator has to fix, and an answer
+    full of vendored URLs would hide it for as long as it lasted.
+
+    Both halves of that are asserted below, because a test for only the first
+    would pass if the second were quietly changed.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.call = _register_and_get_tool()
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+
+    def _bridge_answering(self, payload):
+        return self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "list_urls": fake_bridge.ok_envelope("list_urls", payload),
+        })
+
+    def test_the_tool_sends_the_list_urls_command_with_no_parameters(self) -> None:
+        bridge = self._bridge_answering(
+            {"state": "ok", "weburls_read": True, "urls": {}, "skipped_keys": [],
+             "package": "bl_ext.user_default.mpfb", "version": "2.0.0",
+             "weburls_module": "bl_ext.user_default.mpfb.ui.weburls", "reason": None})
+
+        response = self.call()
+
+        self.assertEqual(bridge.commands()[-1], "list_urls")
+        self.assertEqual(bridge.decoded_requests()[-1].get("params", {}), {})
+        self.assertEqual(response["status"], "ok")
+        self.assertEqual(response["result"]["source_of_truth"], "mpfb")
+
+    def test_the_merge_still_happens_on_this_side(self) -> None:
+        # The bridge removes the wire argument for splitting the merge off, and
+        # the real reason survives it: the same merge runs in the state where no
+        # command runs at all. So the command hands back raw pairs and this side
+        # assembles the answer, exactly as on the generated path.
+        self._bridge_answering(
+            {"state": "ok", "weburls_read": True,
+             "urls": {"URL_ASSET_PACKS": "https://example.invalid/packs"},
+             "skipped_keys": [], "package": "mpfb", "version": "2.0.0",
+             "weburls_module": "mpfb.ui.weburls", "reason": None})
+
+        result = self.call()["result"]
+
+        entries = {entry["key"]: entry for entry in result["urls"]}
+        self.assertEqual(entries["URL_ASSET_PACKS"]["url"], "https://example.invalid/packs")
+        self.assertTrue(entries["URL_ASSET_PACKS"]["description"],
+                        "the description is mpfb-mcp's text, added here")
+        self.assertIsNotNone(result["fallback_differences"],
+                             "the staleness report is computed here too")
+
+    def test_an_unreachable_bridge_answers_from_the_vendored_copy(self) -> None:
+        # The claim that made this tool migratable at all, asserted against the
+        # bridge's own client rather than assumed from the other one's.
+        self.set_env_var(bridge_connection.BRIDGE_PORT_VARIABLE, "1")
+
+        response = self.call()
+
+        self.assertEqual(response["status"], "ok")
+        result = response["result"]
+        self.assertEqual(result["source_of_truth"], "builtin_fallback")
+        self.assertIs(result["blender_reachable"], False)
+        self.assertEqual(result["mpfb_status"]["state"], "unreachable")
+        self.assertTrue(result["urls"], "the vendored copy is the answer here")
+
+    def test_a_handshake_refusal_is_an_error_rather_than_a_fallback(self) -> None:
+        # The one narrow case where the two transports answer differently, and
+        # it is a decision rather than an oversight: see this class's docstring.
+        self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope(
+                "get_status",
+                fake_bridge.status_result(
+                    protocol_version=bridge_connection.PROTOCOL_VERSION + 5,
+                    min_supported=bridge_connection.PROTOCOL_VERSION + 5)),
+        })
+
+        response = self.call()
+
+        self.assertEqual(response["status"], "error",
+                         "a version mismatch is a configuration fault, not a circumstance")
+        self.assertNotIn("result", response,
+                         "and it must not be papered over with vendored URLs")
 
 
 class ListUrlsCodeTests(unittest.TestCase):

@@ -43,10 +43,17 @@ forbids, because a tidy-up is indistinguishable from a defect in the comparison
 the migration rests on. They become ordinary findings, fixable in one place, on
 the day the fragment is deleted.
 
-Five modules, one per migrating fragment: ``preset_files``, ``rig_lookup``,
-``asset_sections``, ``target_categories`` and ``modifier_reading``. The two
-fragments that did not migrate - ``performed.py`` and ``refit_blocker.py`` -
-belong to mutating tools and arrive with them.
+**Seven modules, which is every fragment there is.** ``preset_files``,
+``rig_lookup``, ``asset_sections``, ``target_categories`` and
+``modifier_reading`` came with FR 031's read-only tools; ``performed`` and
+``refit_blocker`` came with FR 032's mutating ones. So ``codegen/shared/`` no
+longer has a fragment without a counterpart here, and the drift check straddles
+nothing - every pair it was built for has both halves on this side.
+
+``performed`` is the plainest of the seven and the one exception to the
+paragraph above: it binds nothing from the bootstrap and reads nothing out of
+MPFB, so it takes no ``services`` argument and the drift check compares it with
+no normalisation at all.
 """
 
 __all__ = ()

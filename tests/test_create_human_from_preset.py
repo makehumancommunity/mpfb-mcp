@@ -3,7 +3,12 @@
 """
 ``mpfb_create_human_from_preset``: the overrides, the settings dict, and a round trip.
 
-The test that matters most here is
+Three layers since FR 032 migrated it: the wrapper with ``send_code`` mocked on
+the seam, the **bridge path** against ``tests/fake_bridge.py``, and the payload
+against the stubs - the last **frozen**, since it is half of what FR 032's live
+comparison compares.
+
+The payload test that matters most is
 ``test_every_key_mpfb_subscripts_is_in_the_settings_dict``, and what makes it
 mean anything is in the stub rather than here: ``StubHumanService
 .deserialize_from_dict()`` reads its eight settings keys with ``[]`` exactly as
@@ -17,6 +22,9 @@ written, compare. Both ends are stubs and neither is MPFB, so it establishes
 nothing about the character MPFB would build - but it is the only place the two
 payloads' assumptions about the same JSON are checked against each other rather
 than each against a fixture of its own.
+``bridge/test/tests/ppp_mutating/create_human_from_preset_test.py`` now does the
+same round trip against a real MPFB, which is where the claim about the
+*character* lives.
 
 Run with::
 
@@ -30,8 +38,10 @@ __all__ = ()
 import unittest
 from unittest import mock
 
+from mpfbmcp import backend
 from mpfbmcp.tools import create_human_from_preset
 
+from tests import fake_bridge
 from tests.blender_stubs import PresetTestCase, StubHumanService
 
 
@@ -52,7 +62,7 @@ class CreateHumanFromPresetToolTests(unittest.TestCase):
 
     def _run(self, **arguments):
         arguments.setdefault("name", "alice")
-        with mock.patch.object(create_human_from_preset, "send_code") as send:
+        with mock.patch("mpfbmcp.backend.send_code") as send:
             send.return_value = {"status": "ok", "result": {}}
             self.call(**arguments)
             self.assertEqual(send.call_count, 1)
@@ -60,7 +70,7 @@ class CreateHumanFromPresetToolTests(unittest.TestCase):
 
     def _refused(self, **arguments):
         arguments.setdefault("name", "alice")
-        with mock.patch.object(create_human_from_preset, "send_code") as send:
+        with mock.patch("mpfbmcp.backend.send_code") as send:
             with self.assertRaises(ValueError) as raised:
                 self.call(**arguments)
             self.assertEqual(send.call_count, 0)
@@ -116,6 +126,82 @@ class CreateHumanFromPresetToolTests(unittest.TestCase):
         program = self._run()
         self.assertIn("preset_files.py", program)
         self.assertIn("performed.py", program)
+
+
+class CreateHumanFromPresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """What cannot cross the socket, and nothing else.
+
+    Everything this tool *answers* - the settings dict, the unresolved assets, and what a mid-way failure left behind - is checked against a real MPFB
+    in ``bridge/test/tests/ppp_mutating/create_human_from_preset_test.py``.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        class Recorder:
+            def tool(self, **_kwargs):
+                def decorate(function):
+                    self.function = function
+                    return function
+                return decorate
+
+        recorder = Recorder()
+        create_human_from_preset.register(recorder)
+        self.call = recorder.function
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        self.bridge = self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "create_human_from_preset": fake_bridge.ok_envelope("create_human_from_preset", {"found": True, "created": True, "performed": True}),
+        })
+
+    def test_the_tool_sends_the_create_human_from_preset_command(self) -> None:
+        self.call(name="alice")
+
+        self.assertEqual(self.bridge.commands()[-1], "create_human_from_preset")
+        params = self.bridge.decoded_requests()[-1]["params"]
+        self.assertEqual(params["name"], "alice")
+        # Every override defaults to null, which is "use what the preset says"
+        # rather than a value - and that has to survive the transport.
+        for key in ("override_rig", "override_skin_model", "override_clothes_model",
+                    "override_eyes_model", "load_clothes", "scale", "material_instances"):
+            self.assertIsNone(params[key], "{} should default to null".format(key))
+
+    def test_the_shared_fragment_does_not_reach_the_bridge(self) -> None:
+        self.call(name="alice")
+
+        request = self.bridge.decoded_requests()[-1]
+        self.assertNotIn("shared", request)
+        self.assertNotIn("preset_files", str(request))
+
+    def test_the_name_rule_is_the_same_rule_the_saving_tool_uses(self) -> None:
+        # If these two ever disagreed, a preset could be written under a name
+        # that cannot be loaded back - which is the worst shape this pair could
+        # take, and why the rule lives in one module.
+        for name in ("../escape", "with space", "", "a/b"):
+            with self.subTest(name=name):
+                with self.assertRaises(ValueError):
+                    self.call(name=name)
+
+        self.assertEqual(self.bridge.requests, [])
+
+    def test_local_validation_runs_before_a_transport_is_chosen(self) -> None:
+        with self.assertRaises(ValueError):
+            self.call(name="alice", load_clothes="false")
+
+        self.assertEqual(self.bridge.requests, [],
+                         "a locally invalid call must not be sent to any backend")
+
+    def test_a_bridge_error_envelope_reaches_the_caller_intact(self) -> None:
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope(
+                "mpfb_unavailable", "The command needs MPFB, which is not usable here.",
+                command="create_human_from_preset", state="absent"))
+
+        response = self.call(name="alice")
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "mpfb_unavailable")
 
 
 class CreateHumanFromPresetPayloadTests(PresetTestCase):

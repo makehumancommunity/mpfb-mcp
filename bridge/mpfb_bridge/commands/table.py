@@ -46,6 +46,7 @@ __all__ = (
 from . import add_asset
 from . import add_rig
 from . import create_human
+from . import create_human_from_preset
 from . import generate_rigify_rig
 from . import get_macro_details
 from . import get_mpfb_status
@@ -59,8 +60,10 @@ from . import list_objects
 from . import list_presets
 from . import list_rigs
 from . import list_targets
+from . import list_urls
 from . import refit_human
 from . import remove_asset
+from . import save_preset
 from . import set_asset_material
 from . import set_macro_details
 from . import set_skin
@@ -92,6 +95,12 @@ COMMANDS = {
         # build something.
         requires_mpfb=True,
         summary=create_human.SUMMARY),
+    "create_human_from_preset": Command(
+        name="create_human_from_preset",
+        handler=create_human_from_preset.create_human_from_preset,
+        params=create_human_from_preset.PARAMS,
+        requires_mpfb=True,
+        summary=create_human_from_preset.SUMMARY),
     "generate_rigify_rig": Command(
         name="generate_rigify_rig",
         handler=generate_rigify_rig.generate_rigify_rig,
@@ -188,6 +197,16 @@ COMMANDS = {
         params=list_targets.PARAMS,
         requires_mpfb=True,
         summary=list_targets.SUMMARY),
+    "list_urls": Command(
+        name="list_urls",
+        handler=list_urls.list_urls,
+        params=list_urls.PARAMS,
+        # False, and the third command for which it is. "Where do I download
+        # MPFB" is asked most often by somebody whose MPFB is not working, so a
+        # command gated on MPFB would refuse exactly when its answer is most
+        # valuable.
+        requires_mpfb=False,
+        summary=list_urls.SUMMARY),
     "refit_human": Command(
         name="refit_human",
         handler=refit_human.refit_human,
@@ -200,6 +219,12 @@ COMMANDS = {
         params=remove_asset.PARAMS,
         requires_mpfb=True,
         summary=remove_asset.SUMMARY),
+    "save_preset": Command(
+        name="save_preset",
+        handler=save_preset.save_preset,
+        params=save_preset.PARAMS,
+        requires_mpfb=True,
+        summary=save_preset.SUMMARY),
     "set_asset_material": Command(
         name="set_asset_material",
         handler=set_asset_material.set_asset_material,

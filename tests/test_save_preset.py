@@ -3,17 +3,26 @@
 """
 ``mpfb_save_preset``: the name rule on this side, and the write on the other.
 
-Two layers, and the first one carries more weight here than in any other tool
-module. ``name`` is the only argument in this package that becomes a **path**,
-so the whitelist is exercised exhaustively *before* ``send_code`` - a name that
-escapes the config directory must never cross the socket at all, and a test that
-only checked the payload's copy would be testing the wrong statement.
+Three layers since FR 032 migrated it, and the first one carries more weight
+here than in any other tool module. ``name`` is the only argument in this
+package that becomes a **path**, so the whitelist is exercised exhaustively
+*before* a transport is chosen - a name that escapes the config directory must
+never cross the socket at all, and a test that only checked the far side's copy
+would be testing the wrong statement.
 
-The second layer runs the assembled program against a real config directory and
-a stub character, and asserts the three things a tool that writes a file owes
-its caller: that a refusal leaves the existing file byte-identical, that the
+The second is the **bridge path** against ``tests/fake_bridge.py``. The third
+runs the assembled program against a real config directory and a stub character
+and is **frozen**: it stays while the payload stays, because the payload is half
+of what FR 032's live comparison compares.
+
+What layer 3 asserts is the three things a tool that writes a file owes its
+caller: that a refusal leaves the existing file byte-identical, that the
 absolute path is in every answer, and that what is reported as written is read
-back out of the file rather than assembled from the scene.
+back out of the file rather than assembled from the scene. All three are now
+also checked against a real MPFB in
+``bridge/test/tests/ppp_mutating/save_preset_test.py``, which redirects MPFB's
+user config directory so that a failing test cannot leave a preset in the
+developer's own panel.
 
 Run with::
 
@@ -29,8 +38,10 @@ import os
 import unittest
 from unittest import mock
 
+from mpfbmcp import backend
 from mpfbmcp.tools import save_preset
 
+from tests import fake_bridge
 from tests.blender_stubs import (
     PresetTestCase, StubHumanService, StubObject, StubObjectService)
 
@@ -74,14 +85,14 @@ class SavePresetNameValidationTests(unittest.TestCase):
         self.call = self.recorder.function
 
     def _run(self, **arguments):
-        with mock.patch.object(save_preset, "send_code") as send:
+        with mock.patch("mpfbmcp.backend.send_code") as send:
             send.return_value = {"status": "ok", "result": {}}
             self.call(**arguments)
             self.assertEqual(send.call_count, 1)
             return send.call_args[0][0]
 
     def _refused(self, **arguments):
-        with mock.patch.object(save_preset, "send_code") as send:
+        with mock.patch("mpfbmcp.backend.send_code") as send:
             with self.assertRaises(ValueError) as raised:
                 self.call(**arguments)
             # The point of the whole layer: nothing crossed the socket.
@@ -133,6 +144,79 @@ class SavePresetNameValidationTests(unittest.TestCase):
         program = self._run(name="alice")
         self.assertIn("preset_files.py", program)
         self.assertIn("performed.py", program)
+
+
+class SavePresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """What cannot cross the socket, and nothing else.
+
+    Everything this tool *answers* - what MPFB writes, which characters it refuses to serialize, and the generated-Rigify substitution - is checked against a real MPFB
+    in ``bridge/test/tests/ppp_mutating/save_preset_test.py``.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        class Recorder:
+            def tool(self, **_kwargs):
+                def decorate(function):
+                    self.function = function
+                    return function
+                return decorate
+
+        recorder = Recorder()
+        save_preset.register(recorder)
+        self.call = recorder.function
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        self.bridge = self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "save_preset": fake_bridge.ok_envelope("save_preset", {"found": True, "saved": True, "performed": True}),
+        })
+
+    def test_the_tool_sends_the_save_preset_command(self) -> None:
+        self.call(name="alice")
+
+        self.assertEqual(self.bridge.commands()[-1], "save_preset")
+        self.assertEqual(
+            self.bridge.decoded_requests()[-1]["params"],
+            {"name": "alice", "subject": None, "overwrite": False})
+
+    def test_the_shared_fragment_does_not_reach_the_bridge(self) -> None:
+        self.call(name="alice")
+
+        request = self.bridge.decoded_requests()[-1]
+        self.assertNotIn("shared", request)
+        self.assertNotIn("preset_files", str(request))
+
+    def test_the_name_rule_is_enforced_here_before_a_path_exists(self) -> None:
+        # The one argument in this package that becomes a **path**. It is
+        # checked on this side of the socket because a name that could escape
+        # the config directory is a *shape*, knowable before a request is built.
+        for name in ("../escape", "with space", "", "a/b", ".hidden"):
+            with self.subTest(name=name):
+                with self.assertRaises(ValueError):
+                    self.call(name=name)
+
+        self.assertEqual(self.bridge.requests, [],
+                         "a name that could become a path must not reach any backend")
+
+    def test_local_validation_runs_before_a_transport_is_chosen(self) -> None:
+        with self.assertRaises(ValueError):
+            self.call(name="alice", overwrite="true")
+
+        self.assertEqual(self.bridge.requests, [],
+                         "a locally invalid call must not be sent to any backend")
+
+    def test_a_bridge_error_envelope_reaches_the_caller_intact(self) -> None:
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope(
+                "mpfb_unavailable", "The command needs MPFB, which is not usable here.",
+                command="save_preset", state="absent"))
+
+        response = self.call(name="alice")
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "mpfb_unavailable")
 
 
 class SavePresetPayloadTests(PresetTestCase):

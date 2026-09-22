@@ -42,8 +42,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 from mpfbmcp.preset_names import validated_preset_name
 
 
@@ -166,7 +165,11 @@ def register(mcp: FastMCP) -> None:
         rig the preset names and this Blender lacks: MPFB's rig adders raise
         rather than degrade, so retry with `override_rig`.
         """
-        code = codegen.assemble(
+        # `result` (built in codegen/payloads/create_human_from_preset.py, or by
+        # bridge/mpfb_bridge/commands/create_human_from_preset.py) is
+        # plain JSON-safe data, so strict_json=True surfaces a clear error if
+        # that ever stops being true.
+        return backend.send(
             "create_human_from_preset.py",
             bootstrap="raising",
             params={
@@ -195,8 +198,5 @@ def register(mcp: FastMCP) -> None:
             # cannot disagree about which names are legal or where the file is;
             # performed.py for the uniform flag every mutating tool reports.
             shared=["preset_files.py", "performed.py"],
+            strict_json=True,
         )
-        # `result` (built in codegen/payloads/create_human_from_preset.py) is
-        # plain JSON-safe data, so strict_json=True surfaces a clear error if
-        # that ever stops being true.
-        return send_code(code, strict_json=True)

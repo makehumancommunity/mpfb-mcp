@@ -14,13 +14,25 @@ links tool that fails when MPFB is missing is useless in the one situation where
 package that catches a connection failure and answers anyway.
 
 **Two things about that catch are load-bearing.** It catches ``ConnectionError``
-only - the transport failure ``connection.send_code()`` raises - and never a
-payload that raised *inside* Blender, which is a defect and must still surface
+only - the transport failure both wire clients raise - and never a payload or
+command that raised *inside* Blender, which is a defect and must still surface
 as an error envelope; swallowing one into a "fallback" answer would hide it
-permanently. And it lives here rather than in ``connection.py`` or
-``shared_cache.py``, because the other twenty-one tools depend on a connection
-failure being an error. This is one tool's exception, not a change to the wire
-layer.
+permanently. And it lives here rather than in ``connection.py``,
+``bridge_connection.py`` or ``shared_cache.py``, because the other twenty-three
+tools depend on a connection failure being an error. This is one tool's
+exception, not a change to the wire layer.
+
+**On the bridge, one narrow case answers differently, and the difference is
+deliberate.** ``bridge_connection.send_command()`` raises ``ConnectionError``
+when the bridge is unreachable - the same situation, caught by the same
+``except`` - but an **incompatible protocol version** comes back as an *error
+envelope* instead, and so reaches the caller as an error where the generated
+path would have answered with vendored URLs. FR 032 decided it that way on
+purpose: a handshake refusal means mpfb-mcp and the add-on are different
+versions of the same software, which is a configuration fault the operator has
+to fix and which papering over with a fallback answer would hide for as long as
+it lasts. An unreachable Blender is somebody else's circumstance; a version
+mismatch is this install's defect, and the two should not look alike.
 
 **The merge lives on this side of the socket**, in ``mpfbmcp.reference.urls``:
 the payload reports raw key -> URL pairs and the reason for any miss, and the
@@ -38,8 +50,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 from mpfbmcp.reference import urls
 
 # The fourth state, which the payload's three cannot express because the payload
@@ -152,15 +163,20 @@ def register(mcp: FastMCP) -> None:
         **Not capped and not paged**: around twenty entries, all of them, every
         call. No `truncated` or `total_count` to check.
         """
-        code = codegen.assemble("list_urls.py", bootstrap="non_raising")
         try:
-            envelope = send_code(code, strict_json=True)
+            envelope = backend.send(
+                "list_urls.py", bootstrap="non_raising", strict_json=True)
         except ConnectionError as failure:
-            # Only the transport failure. A payload that raised inside Blender
-            # arrives as an error *envelope* below and is passed through
-            # untouched, because it is a defect here rather than a missing MPFB.
+            # Only the transport failure, and **both transports raise it in the
+            # same situations** - which is what made this tool migratable at
+            # all. A payload or command that raised inside Blender arrives as
+            # an error *envelope* below and is passed through untouched,
+            # because it is a defect here rather than a missing MPFB.
             return {"status": "ok", "result": _from_unreachable_blender(failure)}
 
         if envelope.get("status") != "ok" or not isinstance(envelope.get("result"), dict):
+            # Including a **protocol handshake refusal**, which is the one case
+            # where this tool answers differently on the two transports. See
+            # this module's docstring for why that is deliberate.
             return envelope
         return {"status": "ok", "result": _from_payload(envelope["result"])}
