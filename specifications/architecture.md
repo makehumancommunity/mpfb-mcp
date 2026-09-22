@@ -359,7 +359,9 @@ client.
   for a tool whose two paths would want different ones; if one ever needs that, it is a design
   problem to surface in that tool's own effort rather than a flexibility to carry unused.
 - **Backend selection is explicit configuration, never autodetection.** `MPFB_MCP_BACKEND` is
-  `blender_mcp` (the default) or `bridge`, and `MPFB_BRIDGE_HOST` / `MPFB_BRIDGE_PORT` give the
+  `bridge` (the default since
+  [FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md)) or
+  `blender_mcp`, and `MPFB_BRIDGE_HOST` / `MPFB_BRIDGE_PORT` give the
   bridge's address. Both third-party add-ons default to port 9876 and the bridge answers on 9877,
   so the address distinguishes nothing reliably, and no single probe distinguishes them either — a
   NUL-terminated ping leaves the community add-on's parser waiting for the rest of a message, while
@@ -369,26 +371,31 @@ client.
   mistake can take.
 - **One table is the migration's progress bar.** The seam holds the payload-to-command mapping in
   one readable file. A tool in it goes over the configured transport; a tool not in it goes over the
-  generated path in *both* configurations, because there is nothing else it could do. The last
-  stage of the pivot deletes the table by emptying it.
-- **The default configuration is the working system.** Somebody who upgrades and sets no variable
-  must not be able to tell the seam exists. That is what replaces the reversibility the two
-  preceding efforts could offer and this one could not: FR 030 is the first stage that changed
-  `src/mpfbmcp/`, so `bridge/` is no longer removable without consequence.
+  generated path in *both* configurations, because there is nothing else it could do. **Since
+  FR 032 it holds twenty-four entries, which is every tool that crosses the socket** — the progress
+  bar is full, and the entry FR 033 reads as its precondition is exactly that. The last stage of
+  the pivot deletes the table by emptying it.
+- **The default is whichever system has been shown to work, and it moves once.** Until FR 032 that
+  was blender_mcp, so somebody who upgraded and set no variable could not tell the seam existed.
+  It is the bridge now, and **what earned the flip is stated rather than assumed**: every tool that
+  crosses the socket has a command, and the two paths were compared answer by answer *and scene by
+  scene* against one Blender before the default moved. The flip was the last thing that effort did
+  rather than the first, which is the property FR 033 depends on — it deletes a path that has been
+  unused for a while rather than one that was carrying every call until the commit before.
 - **A shared fragment is a property of the generated path, and the seam knows it.** `backend.send()`
   takes `shared` and `cached_shared` exactly as `codegen.assemble()` does, and a migrated tool
   passes them whichever transport it is on — because the alternative is a tool that has to know.
   On the generated path they are what they have always been; **on the bridge path they are
   ignored**, since the bridge assembles nothing and what a fragment modelled has become a module
-  its command imports. Five of the ten tools migrated so far carry one, and none of their modules
-  contains a branch on a backend.
+  its command imports. Twelve of the twenty-four migrated tools carry one, and none of their
+  modules contains a branch on a backend.
 - **The session source cache lives below the seam, not beside the tools.** `shared_cache.send()`
   was what four tool modules imported; since FR 031 it is what `backend.send()` consults on the
-  generated path, and no tool module imports it. That is what lets a fragment-carrying tool migrate
-  **without the tools left behind losing the cache** — `mpfb_set_targets` and
-  `mpfb_symmetrize_targets` still share `target_categories.py` with two tools that have gone. It
-  remains generated-path machinery and it dies with that path: a bridge request carries parameters
-  and nothing else, so there is no source to cache and nothing to port.
+  generated path, and no tool module imports it. That is what let a fragment-carrying tool migrate
+  **without the tools left behind losing the cache**, which mattered for exactly as long as any
+  were left behind — none are since FR 032. It remains generated-path machinery and it dies with
+  that path: a bridge request carries parameters and nothing else, so there is no source to cache
+  and nothing to port.
 - **Observability keeps its attachment point and changes its unit.** The per-call record hangs off
   the send and nowhere else, which does not change; what it records stops being a program and
   becomes a command and its parameters. See
@@ -473,6 +480,14 @@ operator module that `mpfb_set_asset_material` reimplements from services becaus
 forbidden. The reasons not to are unchanged and the worst case is unchanged: a UI operator module
 is the least stable thing in MPFB to depend on, and the import-time side effects are still there.
 
+**FR 032 put that under real pressure for the first time and it held**, in the two places it could
+have given way. `set_asset_material`'s command reimplements `_apply_mhmat()` and
+`_find_default_material()` from services, with the operator module sitting one `import` away; and
+`list_urls`' command reads `<root>.ui.weburls` out of `sys.modules` where an import would be
+shorter. Both now say so in their own docstrings rather than relying on a reader finding this
+page — the rule was written when generated code *could* not reach those modules, and a rule whose
+reason has changed is one that has to restate itself where it is being applied.
+
 ### Reading module-level names MPFB does not publish
 
 Not everything needed is in the `SERVICES` dict. MPFB keeps some constants and some
@@ -526,13 +541,12 @@ about that survivable.
 
 ## The generated-code path: what runs today, and is being retired
 
-**Everything in this part describes the machine that twenty-four of the twenty-five tools use,
-and that all twenty-five use in the default configuration.** It is not historical and it is not
-aspirational; it is what executes when a tool is called today. The exception is
-`mpfb_list_objects`, which has a bridge command as well and takes it when the bridge is the
-configured backend ([Supporting a second backend](#supporting-a-second-backend)) — its payload and
-that command are maintained side by side until the generated path is retired, because they are the
-two halves of the comparison that says the bridge answers the same. It is also what
+**Since FR 032 this part describes a machine that nothing uses by default.** Every one of the
+twenty-four tools that crosses the socket has a bridge command, the default backend is the bridge,
+and the generated path runs only when `MPFB_MCP_BACKEND=blender_mcp` asks for it. It is neither
+historical nor aspirational: it still executes, it is still maintained, and it is still one half of
+the comparison that says the bridge answers the same — which is the whole reason it is kept for one
+more effort rather than deleted along with the last migration. It is also what
 [FR 028](../feature-requests/done/028-pivot-to-specific-addon/README.md) decided to replace, and it will
 be deleted — `codegen/`, the session source cache and the shared fragments together — by the child
 effort that migrates the last tool. Until then it is maintained, and a change to a tool that has

@@ -15,6 +15,37 @@ here. Three further sections cover the cases MPFB makes hard: an ordering constr
 enforces, a batch that must be all-or-nothing, and the one kind of change Blender's undo stack
 does not reach at all.
 
+## Where these rules are enforced, now that there are two implementations of each
+
+[FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md) migrated the
+thirteen mutating tools, so every rule below exists twice: once in
+`src/mpfbmcp/codegen/payloads/`, once in `bridge/mpfb_bridge/commands/`. **No rule changed** — the
+requirement that effort worked under was reproduction over improvement, and it is stricter for a
+mutating tool than anywhere else, because breaking it has side effects on somebody's `.blend`
+rather than a different-looking answer.
+
+What is worth writing down is **which layer actually enforces each rule**, because the answer is
+not the same for all of them and a reader looking for the enforcement should not have to guess:
+
+| Rule | Enforced by |
+|------|-------------|
+| Any object in the family is a valid subject | The **far side**, in both copies. Resolution needs MPFB's relationship walk |
+| A precondition is an answer, not an exception | The **far side**. Every `blocked_by` branch runs before the mutating call |
+| `performed` means the same thing everywhere | A **shared module**: `codegen/shared/performed.py` and `bridge/mpfb_bridge/shared/performed.py`, kept in step by [test_fragment_drift.py](../tests/test_fragment_drift.py) |
+| The before/after report | The **far side**, which is the only place that can observe both |
+| The caller's selection is restored | The **far side**, in a `finally`. Twelve of thirteen; `mpfb_generate_rigify_rig` reports `active_object_after` instead |
+| A batch resolves before it writes | The **far side**. It is a property of the *code*, and nothing below the socket would enforce it |
+| A name that becomes a path is a name and never a path | **Both sides, deliberately.** `preset_names.py` before a transport is chosen, `shared/preset_files.py` as the last statement before `open()` |
+| `overwrite: False`, and the absolute path in every answer | The **far side** |
+| Argument shape and range | The **near side**, before a transport is chosen — see [Validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket) |
+
+**One rule is enforced by neither and is worth naming as such.** Nothing makes a *failure*
+atomic. `mpfb_create_human_from_preset` builds a character in stages and a mid-way failure leaves
+what it built; `mpfb_add_rig`'s `AssertionError` path leaves a partly built armature;
+`mpfb_add_asset`'s failed import may leave an object. What the rules require in those cases is not
+a rollback — there is none to be had across a socket — but that the answer **names what was left
+behind**, which `objects_created` and `partial_objects_created` do.
+
 ## How a mutating tool takes its subject
 
 A tool that changes a character accepts **any object in that character's family** — the basemesh,

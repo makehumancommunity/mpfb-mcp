@@ -5,9 +5,11 @@
 > governs. See [Status of these documents](README.md#status-of-these-documents).
 >
 > **This document was rewritten by [FR 028](../feature-requests/done/028-pivot-to-specific-addon/README.md)
-> and now describes the bridge.** The machine actually running today is the generated-code path
-> described under [What runs today](#what-runs-today); it works, it is what every tool uses, and
-> it is being retired rather than abandoned.
+> to describe the bridge, and since
+> [FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md) the bridge is
+> what an unconfigured install runs.** The generated-code path is kept working one variable away
+> until [FR 033](../feature-requests/033-retire-the-generated-code-path/README.md) deletes it; see
+> [What runs today](#what-runs-today).
 
 This document says why mpfb-mcp exists, how it gets there, and what decides whether something
 becomes a tool. It deliberately does **not** describe what any tool returns: that lives in the
@@ -93,26 +95,33 @@ entire reason for starting outside. The three options and the argument between t
 
 ## What runs today
 
-**Everything above describes where the system is going. What executes right now is different**,
-and a reader must not be misled about which machine they are standing in front of.
+**Everything above describes the machine that runs.** Since
+[FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md) the bridge is
+what an unconfigured install uses, and all twenty-four tools that cross the socket send a command
+name and its parameters rather than a program. The twenty-fifth, `mpfb_list_docs`, answers from a
+local table and reaches no Blender at all.
 
-Today every tool assembles a Python *program* on the client side and sends it to blender lab's
-[blender_mcp](../../blender_mcp) add-on, which `exec()`s it inside Blender. That machine is
-described in full, and plainly marked as the one being retired, under
+**The generated-code path is still there and still works**, one environment variable away
+(`MPFB_MCP_BACKEND=blender_mcp`). It is described in full, and plainly marked as the one being
+retired, under
 [The generated-code path](architecture.md#the-generated-code-path-what-runs-today-and-is-being-retired).
-It works: twenty-five tools, all of them verified against a real Blender.
+Keeping it for one more effort is not sentiment: it is one half of the comparison that says the
+bridge answers the same thing, and deleting it is
+[FR 033](../feature-requests/033-retire-the-generated-code-path/README.md) entire.
 
-The two coexist on purpose. Each child effort of FR 028 lands with **both paths still working**,
-so they can be compared side by side on a real Blender rather than swapped on faith. The
-generated-code path is deleted only when the last tool has left it. Until then:
+The two coexisted on purpose. Each child effort of FR 028 landed with **both paths still
+working**, so they could be compared side by side on a real Blender rather than swapped on faith —
+which is what FR 032's own check did for all twenty-four, answer by answer and scene by scene,
+before the default moved. Until the path is deleted:
 
-| | Generated-code path | Bridge |
+| | Bridge | Generated-code path |
 |---|---|---|
-| Status | what every tool uses today | a proof of concept, one command |
-| Blender-side add-on | blender lab's `blender_mcp`, unmodified | `bridge/mpfb_bridge`, ours |
-| What crosses the wire | an assembled Python program | a command name and its parameters |
-| Executes caller-supplied code | yes, by construction | no |
-| Port | 9876 | 9877 |
+| Status | the default, twenty-four commands | kept working, one variable away, and being retired |
+| Blender-side add-on | `bridge/mpfb_bridge`, ours | blender lab's `blender_mcp`, unmodified |
+| What crosses the wire | a command name and its parameters | an assembled Python program |
+| Executes caller-supplied code | no | yes, by construction |
+| Port | 9877 | 9876 |
+| The smoke run, one Blender, one session | 3.9 s | 48.5 s |
 
 ## What makes something a tool
 

@@ -22,7 +22,10 @@ Set `TEST_MODULE` to narrow the run to one file.
 ## What is in here
 
 Modules are prefixed alphabetically to force order, as MPFB does it, and each one assumes
-the ones before it work.
+the ones before it work. **Since [FR 032](../../feature-requests/done/032-creation-and-modification-migrated/README.md)
+the prefix also goes on a *directory*** — that effort added fourteen modules against the eleven
+letters left before `zzz_`, and prefixing directories is MPFB's own way out (`bbb_services/`,
+`ccc_data/`). Inside one, modules need no prefix of their own.
 
 | Module | What it covers |
 |--------|----------------|
@@ -32,6 +35,9 @@ the ones before it work.
 | `ddd_roundtrip_test.py` | **A real request over a real socket.** Client on a thread, dispatch on the main one, which is the add-on's production shape. This is what the headless drive mechanism bought: before it, the transport was the one part of the add-on its own tests could not reach |
 | `eee_metadata_test.py` | The two claims kept in step by hand — the reported version against the manifest, and `list_commands` against the table the dispatcher actually uses |
 | `fff_list_objects_test.py` | **The first module here whose subject is MPFB rather than the transport.** `list_objects` against a real install: the substring type match, an unrecognised type, `""` coerced to `null`, the `_ALL_TYPES` fallback, an object outside the current scene, and the `mpfb_unavailable` refusal. It also sets the three conventions the remaining twenty-three commands inherit — build a character with `HumanService.create_human()` and a snapshot-and-delete cleanup, skip with a reason when the install lacks a prerequisite, and supply a broken MPFB rather than waiting for one |
+| `ggg_`…`ooo_` | One module per command FR 031 migrated, each following `fff_`'s conventions |
+| `ppp_mutating/` | **The thirteen commands that change a `.blend`**, one module each, unprefixed among themselves. A directory rather than thirteen more prefixed files, and its [`__init__.py`](tests/ppp_mutating/__init__.py) carries the two rules that go with mutating: what a test made the fixture removes however the test ends, and a test that writes outside the `.blend` writes somewhere redirected |
+| `qqq_list_urls_test.py` | `list_urls` against a real MPFB. A flat sibling rather than one of the thirteen, because it is **read-only** — and the third command declaring `requires_mpfb=False`, since "where do I download MPFB" is asked most often by somebody whose MPFB is not working |
 
 **What this suite cannot establish** is that the *timer-driven* path answers the same as the
 blocking one, because there is no event loop here to drive a timer. That comparison belongs

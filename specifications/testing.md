@@ -102,13 +102,35 @@ the reason is written down next to it.
 `tests/` uses stdlib `unittest`, `tests/test_<name>.py`, `TestCase` classes, and no Blender
 anywhere. `bridge/test/` uses **MPFB's** arrangement: pytest called from inside a headless
 Blender, `<name>_test.py`, plain module functions, bare `assert` with a message, a docstring
-naming what is under test, and alphabetically-prefixed directories to force order.
+naming what is under test, and alphabetical prefixes to force order.
+
+**The prefix goes on a directory once twenty-six letters are not enough**, which is MPFB's own
+answer and the one FR 032 took rather than discovering it at the twelfth module. Flat prefixed
+modules ran from `aaa_` to `qqq_`; the thirteen commands that *change* a `.blend` live in
+`ppp_mutating/`, unprefixed among themselves and ordered as a group by the directory's own prefix.
+A directory earns one when its modules share an obligation rather than merely a number — those
+thirteen share the cleanup rule below.
 
 **The split is not a compromise; each side is right for what it tests.** `tests/` tests a package
 that never imports `bpy`, and its whole value is that it runs anywhere in seconds. `bridge/` is
 `bpy` code, so its tests need a real Blender — which is precisely what MPFB's harness provides
 and what `tests/` structurally cannot. Adopting MPFB's harness for `bridge/` also pays for itself
 twice: it is the arrangement that works, and it is the one an MPFB contributor already knows.
+
+**A bridge test that mutates owes the suite a cleanup, and that is new since FR 032.** A read-only
+command could not leave anything behind. These add rigs, equip assets, create materials and write
+preset files, and a *failing* test is the one most likely to leave something. Two rules follow and
+every module in `ppp_mutating/` keeps both: what a test made, the fixture removes, however the test
+ends — which `Character`'s snapshot-and-delete already does for objects, so a test that adds a rig
+inside that block needs no cleanup code of its own; and a test that writes **outside the `.blend`**
+writes somewhere redirected, never into the developer's own MPFB config directory.
+
+A third rule is not about cleanup and was found by FR 032's spike rather than reasoned out: **a
+fixture asset tree must be a redirected data root**, not merely a temporary directory with an MHCLO
+in it. `ClothesService.fit_clothes_to_human()` re-reads a garment's MHCLO through `AssetService`,
+which searches the roots — so a garment equipped from outside them can be equipped and then never
+refitted. No read-only command re-reads an asset, which is why nothing before FR 032 could have
+found it.
 
 **Since FR 029 the bridge harness can test the bridge's transport, which it could not before.**
 That is the single largest change to what this repository is able to check, and it is worth
@@ -171,8 +193,13 @@ the tool module knows shapes, the payload knows MPFB.
 **After a tool is migrated, everything that can be checked on the add-on side is checked there**,
 in `bridge/test/`, against a real MPFB in a headless Blender. This is the largest thing the pivot
 buys and the least visible, and it is a rule rather than a preference because the alternative
-decays: deciding case by case is how twenty-three migrations end up with twenty-three different
+decays: deciding case by case is how twenty-four migrations end up with twenty-four different
 answers.
+
+**Since [FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md) this
+describes twenty-four tools rather than ten** — every tool that crosses the socket. It is the
+normal case now, not the exception, and `mpfb_list_docs` is outside it only because it reaches no
+Blender at all.
 
 What stays in `tests/` is a **closed list** — what genuinely cannot cross the socket:
 
@@ -183,10 +210,12 @@ What stays in `tests/` is a **closed list** — what genuinely cannot cross the 
 - **whether a fragment and the bridge module that replaced it still agree**, which is about two
   files in this repository and reaches no Blender at all. That is
   [tests/test_fragment_drift.py](../tests/test_fragment_drift.py), added by FR 031, and it is a
-  genuinely new *kind* of client-side test rather than an instance of the four above: it is the
-  only thing keeping a catalogue tool's promise true while the acting tool it promises about has
-  not migrated. It lives here for as long as any pair straddles the stage boundary, and goes when
-  the last payload does.
+  genuinely new *kind* of client-side test rather than an instance of the four above. Its original
+  job was keeping a catalogue tool's promise true while the acting tool it promises about had not
+  migrated; **since FR 032 no pair straddles anything**, all seven fragments having a counterpart,
+  and what it guards is narrower and still worth guarding: that the two copies stay in step for the
+  weeks between the last migration and the deletion of the first copy. It goes when the last
+  payload does.
 
 **A new client-side test asserting something about MPFB's behaviour is a test in the wrong harness,
 however well it passes.** Which type names match, what an empty scene answers, what
@@ -208,11 +237,21 @@ the tools with real branching in them are the ones stage 3 had to estimate.
 share of the whole: `get_status` 50%, `get_object_info` 67%, `get_macro_details` 58%,
 `list_presets` 44%, `list_rigs` 63%, `list_assets` 57%, `list_asset_materials` 60%,
 `list_targets` 58%, `get_target_stack` 63%. Two things about that number are worth carrying into
-stage 5's estimate. It is a **floor**, because a fixture shared with a tool that has not migrated
-is not counted — `list_presets`' 44% is the lowest here for exactly that reason, since
-`PresetTestCase` goes with the two preset writers rather than with this tool. And the effort makes
-the suite **bigger, not smaller**: nine bridge test modules and a fixtures module were added while
-nothing was deleted, which is what "frozen" costs and is cheaper to say now than to explain later.
+the retirement's estimate. It is a **floor**, because a fixture shared with a tool that has not
+migrated is not counted — `list_presets`' 44% is the lowest there for exactly that reason. And the
+effort makes the suite **bigger, not smaller**: nine bridge test modules and a fixtures module were
+added while nothing was deleted, which is what "frozen" costs.
+
+**FR 032 measured the remaining fourteen and the rate held: 58%.** `refit_human` 57%,
+`set_macro_details` 58%, `set_targets` 67%, `symmetrize_targets` 65%, `add_rig` 65%,
+`generate_rigify_rig` 58%, `add_asset` 66%, `remove_asset` 58%, `set_skin` 67%,
+`set_asset_material` 60%, `save_preset` 49%, `create_human_from_preset` 59%, `list_urls` 24%.
+Two of the fourteen are outside the band and both are informative rather than anomalous:
+`mpfb_list_urls` is 24% because most of that module tests the **merge**, which is client-side
+by design and stays; and `mpfb_create_human` has **no payload layer at all**, its payload being
+forty lines with no branch in it. So the honest expectation for the retirement is that roughly
+three-fifths of twenty-four client test modules goes, and that the two numbers to watch are the
+tools whose logic genuinely lives on this side.
 
 ## Stubs reproduce MPFB's behaviour, never convenient values
 
@@ -309,15 +348,15 @@ both are silent when got wrong:
 Stated once here rather than repeated in every module, because the list is a property of the
 architecture and not of any one test.
 
-**It is a list about the *unit suite*, and the pivot has shortened it twice.** Every item below
+**It is a list about the *unit suite*, and the pivot has now emptied most of it.** Every item below
 was written when everything Blender-side was out of reach from any harness in this repository. For
 a **migrated** tool that is no longer true: its logic is add-on code, the bridge's suite runs
 against a real MPFB, and the corresponding item stops being a limitation and becomes a test
 somebody has to write.
 
-Ten tools have moved, and the claims they carried were not merely re-asserted — **six of them
-turned out differently than the stub said**, which is the clearest evidence there is that the move
-is worth making:
+**All twenty-four tools that cross the socket have moved**, and the claims they carried were not
+merely re-asserted — **nine of them turned out differently than the stub or the comment said**,
+which is the clearest evidence there is that the move is worth making:
 
 - `object_is()` really is a case-insensitive substring test and `get_object_type()` really answers
   `""` for an untyped object (FR 030);
@@ -331,30 +370,59 @@ is worth making:
   is non-zero, so a category whose `incr` shape key exists at 0.0 reads 0.0 however far `decr` is
   pushed;
 - `update_list_of_human_presets()` does a bare `os.listdir()` and **raises** on a missing config
-  directory, which is why `mpfb_list_presets` checks the directory before asking MPFB anything.
+  directory, which is why `mpfb_list_presets` checks the directory before asking MPFB anything;
+- (FR 032) `HumanService.add_builtin_rig()` does **not** decide the armature modifier with
+  `import_weights`. `Rig.create_armature_and_fit_to_basemesh()` adds it either way, so the comment
+  claiming otherwise described a reading of MPFB's source the running install did not support. The
+  reported field was always an observation off the object, so the answer was right and only the
+  reasoning was wrong — which is exactly the shape FR 013 warned about and exactly the shape only a
+  real MPFB finds;
+- (FR 032) `ObjectService.find_rigify_metarig_by_rig()` returns `None` for **every** generated
+  Rigify rig on current Rigify, because it reads an ID property that Rigify now stores as an RNA
+  property. That is an MPFB defect, [filed rather than fixed](../feature-requests/NEXT_STEPS.md#file-upstream-mpfb-cannot-find-a-rigify-meta-rig-any-more),
+  and the bridge test asserts agreement with MPFB's own lookup rather than a value so that it keeps
+  passing when the defect is;
+- (FR 032) MPFB's active-slot fixup matches a material name **ending in** `body`, and Blender
+  uniquifies a name already taken — so a second character in one session gets `Human.body.002` and
+  the fixup silently matches nothing.
 
-Read what follows as the list for what has not moved yet:
+Read what follows as the list for the *unit* suite, which is what it has always been. Every item is
+now answered in `bridge/test/`, and each is named here with where:
 
-- **No stub builds a node tree.** Nothing in the suite establishes that any of the five skin
-  types produces the material MPFB's own skin library panel produces.
+- **No stub builds a node tree.** Nothing in the unit suite establishes that any of the five skin
+  types produces the material MPFB's own skin library panel produces —
+  `ppp_mutating/set_skin_test.py` asks MPFB's own `identify_material()` instead.
 - **No stub is MPFB.** Nothing establishes that a character modified through
   `mpfb_set_macro_details` matches one modified on MPFB's phenotype slider, that a garment
   equipped through `mpfb_add_asset` matches one from the asset library panel, or that a rig
-  added through `mpfb_add_rig` matches one from the rig panel.
+  added through `mpfb_add_rig` matches one from the rig panel — the three
+  `ppp_mutating/` modules of those names do the modification for real.
 - **No stub has geometry.** Nothing establishes that rigging after dressing leaves the clothes
   unrigged — the claim
   [A tool reports an ordering constraint it cannot enforce](mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
-  rests on.
+  rests on. `ppp_mutating/add_rig_test.py` puts a real relative on a real character and reads the
+  enumeration back.
 - **No stub can establish what a real MPFB has loaded.** `mpfb_list_urls` reads
   `<root>.ui.weburls` out of `sys.modules`, and the payload test executes it against a stub
   `sys.modules` carrying exactly such a module — which is to say the test is built out of the
-  assumption under test and can only ever confirm it. Whether MPFB really imports its UI on a
-  normal install is a question only a running Blender answers, and FR 024's own check is what
-  asked it. This is the general shape of the trap: **a stub that reproduces a precondition cannot
-  verify it.**
+  assumption under test and can only ever confirm it. This is the general shape of the trap: **a
+  stub that reproduces a precondition cannot verify it.** `qqq_list_urls_test.py` asks the module
+  MPFB really loaded.
 
-Every item on that list needs a live Blender, and a feature request whose primary goal lands in
-one must say so in its own "Tests" section rather than leave it to be discovered.
+**What neither harness establishes**, and FR 032's spike named rather than discovered:
+
+- **A Blender with Rigify disabled.** `mpfb_generate_rigify_rig`'s `rigify_unavailable` refusal
+  and `mpfb_add_rig`'s are skips-with-a-reason wherever Rigify is on, which it is on a developer's
+  machine. Only an install without it answers the question.
+- **That the *timer-driven* server answers the same as the blocking dispatch.** There is no event
+  loop in a headless Blender to drive a timer, so `bridge/test/` compares what `dispatch()`
+  returns and never what arrives over a socket that a timer drained. That belongs to a feature
+  request's own live check, and FR 032's
+  [`check_creation_migration.py`](../feature-requests/done/032-creation-and-modification-migrated/check_creation_migration.py)
+  is the one that made it for all twenty-four.
+
+An item needing a live Blender belongs to the feature request that needs it, which must say so in
+its own "Tests" section rather than leave it to be discovered.
 
 **None of them is a standing check, and the spec should not imply one.** The smoke run in
 `verification/` establishes that each tool runs and reports having done what it says; it does not

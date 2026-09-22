@@ -48,8 +48,17 @@ that the value reads back on MPFB's own slider.
   disagree — for the same reason
   [A mutating tool reports before and after](mutating-tools.md#a-mutating-tool-reports-before-and-after) reports a
   field the caller named even when it was already so.
-- **The coercion belongs in the payload, not in the stub.** The test has to be testing mpfb-mcp. A
-  stub service that coerced would let the payload do nothing and still pass.
+- **The coercion belongs on the far side of the socket, not in the stub.** The test has to be
+  testing mpfb-mcp. A stub service that coerced would let the code under test do nothing and still
+  pass. Since [FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md)
+  "the far side" means two implementations — a payload and a command — and each of these rules was
+  checked across that move rather than assumed to survive it. All three held:
+  `mpfb_set_skin`'s three-type coercion, `mpfb_create_human_from_preset`'s panel default of
+  `ENHANCED` over the service's `NEVER`, and `mpfb_add_asset`'s per-type material default. The
+  check is that effort's own
+  [live comparison](../feature-requests/done/032-creation-and-modification-migrated/check_creation_migration.py),
+  which compares the two answers field by field — so `material_instances_used` disagreeing between
+  the transports would have been a failure rather than something to notice later.
 - **This is not the same as picking between code paths.**
   [Where MPFB's own code paths disagree](#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
   is about two implementations of an operation; this is about one implementation whose *arguments*
