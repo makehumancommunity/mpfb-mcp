@@ -73,15 +73,22 @@ _BRIDGE_SHARED = _REPOSITORY_ROOT / "bridge" / "mpfb_bridge" / "shared"
 
 # Fragment filename -> bridge module filename. They are the same name on
 # purpose: a fragment and the module replacing it have to be findable from each
-# other during the migration. The table exists so that this test knows which
-# fragments have migrated at all - the two that have not, `performed.py` and
-# `refit_blocker.py`, belong to mutating tools and arrive in stage 4.
+# other during the migration. Since FR 032 the table names **every** fragment
+# there is, so this check no longer straddles anything: each pair it was built
+# for has both halves migrated, and what it guards from here until FR 033
+# deletes the left-hand side is that they stay in step.
 MIGRATED_FRAGMENTS = {
     "preset_files.py": "preset_files.py",
     "rig_lookup.py": "rig_lookup.py",
     "asset_sections.py": "asset_sections.py",
     "target_categories.py": "target_categories.py",
     "modifier_reading.py": "modifier_reading.py",
+    # FR 032, the mutating half. `performed.py` is the one fragment that binds
+    # nothing from the bootstrap, so it compares with **no normalisation at
+    # all** - the plainest pair in the set, and the one whose drift would be
+    # least excusable.
+    "performed.py": "performed.py",
+    "refit_blocker.py": "refit_blocker.py",
 }
 
 # The parameter names a bridge function is handed its context through. Two, and

@@ -1,20 +1,31 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Tests for the mpfb_refit_human tool: argument validation, and the generated
-code's subject resolution, enumeration and the one failure MPFB reports only
-through an operator.
+``mpfb_refit_human``, migrated by FR 032 and therefore in three layers rather
+than two (see ``tests/test_list_objects.py``, the template).
 
-The generated code cannot be run against real MPFB from here (see
-specifications/architecture.md), so it is executed against the stubs in
-tests/blender_stubs.py. Whether a refit visibly puts clothes back on a deformed
-body is exactly what these tests cannot say; that remains a manual check against
-a running Blender.
+1. **The wrapper**, with ``send_code`` mocked on the seam: argument validation,
+   and what the generated program binds as ``PARAMS``.
+2. **The bridge path**, against ``tests/fake_bridge.py``. Thin, and it carries
+   the claim this tool is the first to make: a tool naming **two** shared
+   fragments sends the same request over the bridge as one naming none.
+3. **The payload** against the stubs in ``tests/blender_stubs.py``. **Frozen.**
+   It stays while the payload stays, because the payload is half of what
+   FR 032's live comparison compares, and it is deleted with the payload when
+   the generated path is retired.
 
-What they do check is the reporting around the call, which is where this tool
-adds anything at all over ``HumanService.refit()``: a missing basemesh comes back
-as an answer rather than the ValueError refit() raises, and a generated Rigify
-rig with no meta rig is reported rather than passed off as a successful refit.
+What layer 3 checks is the reporting around the call, which is where this tool
+adds anything at all over ``HumanService.refit()``: a missing basemesh comes
+back as an answer rather than the ``ValueError`` refit() raises, and a generated
+Rigify rig with no meta rig is reported rather than passed off as a successful
+refit. Whether a refit visibly puts clothes back on a deformed body is exactly
+what it cannot say - and that is now checked against a real MPFB in
+``bridge/test/tests/ppp_mutating/refit_human_test.py``, which builds a character,
+equips a garment from a redirected data root, deforms the body and refits it.
+
+The share of this module that goes with the payload: 219 of its 372 lines, 59%
+- ``GeneratedRefitHumanTests`` alone, which is within a point of the 60% rate
+FR 031 measured over nine modules.
 
 Run with::
 
@@ -28,7 +39,10 @@ from unittest import mock
 
 from mcp.server.fastmcp import FastMCP
 
+from mpfbmcp import backend
 from mpfbmcp.tools import refit_human
+
+from tests import fake_bridge
 from tests.blender_stubs import GeneratedCodeTestCase, StubHumanService, StubObject
 
 
@@ -45,7 +59,7 @@ class RefitHumanToolTests(unittest.TestCase):
     def setUp(self) -> None:
         self.mpfb_refit_human = _register_and_get_tool()
 
-    @mock.patch("mpfbmcp.tools.refit_human.send_code")
+    @mock.patch("mpfbmcp.backend.send_code")
     def test_omitted_name_is_sent_as_null(self, mock_send_code: mock.Mock) -> None:
         mock_send_code.return_value = {"status": "ok", "result": {"found": False}}
 
@@ -55,7 +69,7 @@ class RefitHumanToolTests(unittest.TestCase):
         self.assertTrue(kwargs.get("strict_json"))
         self.assertEqual(_params_in(code), {"name": None})
 
-    @mock.patch("mpfbmcp.tools.refit_human.send_code")
+    @mock.patch("mpfbmcp.backend.send_code")
     def test_name_is_passed_through_verbatim(self, mock_send_code: mock.Mock) -> None:
         mock_send_code.return_value = {"status": "ok", "result": {"found": True}}
 
@@ -65,12 +79,76 @@ class RefitHumanToolTests(unittest.TestCase):
         self.assertEqual(_params_in(code), {"name": "Human.rig"})
 
     def test_blank_and_non_string_names_are_rejected_locally(self) -> None:
-        with mock.patch("mpfbmcp.tools.refit_human.send_code") as mock_send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as mock_send_code:
             for bad in ("", "   ", "\t", 1, True, ["Human"]):
                 with self.subTest(name=bad):
                     with self.assertRaises(ValueError):
                         self.mpfb_refit_human(bad)
             mock_send_code.assert_not_called()
+
+
+class RefitHumanOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """What cannot cross the socket, and nothing else.
+
+    Everything this tool *answers* - what was refitted, what a generated Rigify
+    rig with no meta rig does to ``refit_performed``, that the caller's
+    selection comes back - is checked against a real MPFB in
+    ``bridge/test/tests/ppp_mutating/refit_human_test.py``.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.call = _register_and_get_tool()
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        self.bridge = self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "refit_human": fake_bridge.ok_envelope(
+                "refit_human", {"found": True, "refit_performed": True, "performed": True}),
+        })
+
+    def test_the_tool_sends_the_refit_human_command(self) -> None:
+        self.call()
+
+        self.assertEqual(self.bridge.commands()[-1], "refit_human")
+        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {"name": None})
+
+    def test_a_named_subject_is_passed_through_verbatim(self) -> None:
+        self.call(name="Human.rigify")
+
+        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {"name": "Human.rigify"})
+
+    def test_neither_shared_fragment_reaches_the_bridge(self) -> None:
+        # Two fragments rather than one, which is what makes this worth
+        # asserting separately from `list_presets`: `shared` is a property of
+        # how a program is assembled, and the bridge assembles nothing.
+        self.call()
+
+        request = self.bridge.decoded_requests()[-1]
+        self.assertNotIn("shared", request)
+        self.assertNotIn("refit_blocker", str(request))
+        self.assertNotIn("performed", str(request["params"]))
+
+    def test_local_validation_runs_before_a_transport_is_chosen(self) -> None:
+        for value in ("", "   ", 17):
+            with self.subTest(name=value):
+                with self.assertRaises(ValueError):
+                    self.call(name=value)
+
+        self.assertEqual(self.bridge.requests, [],
+                         "a locally invalid call must not be sent to any backend")
+
+    def test_a_bridge_error_envelope_reaches_the_caller_intact(self) -> None:
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope(
+                "command_failed", "HumanService.refit() raised.",
+                command="refit_human"))
+
+        response = self.call()
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "command_failed")
 
 
 class GeneratedRefitHumanTests(GeneratedCodeTestCase):

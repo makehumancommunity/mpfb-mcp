@@ -43,6 +43,7 @@ __all__ = (
     "COMMANDS",
 )
 
+from . import create_human
 from . import get_macro_details
 from . import get_mpfb_status
 from . import get_object_info
@@ -55,9 +56,21 @@ from . import list_objects
 from . import list_presets
 from . import list_rigs
 from . import list_targets
+from . import refit_human
 from .command import Command
 
 COMMANDS = {
+    "create_human": Command(
+        name="create_human",
+        handler=create_human.create_human,
+        params=create_human.PARAMS,
+        # True, and the first **mutating** command in this table. Everything
+        # below this line in the file is read-only; everything FR 032 adds
+        # changes a .blend, which is why `requires_mpfb` matters more here than
+        # it did: a command that cannot reach MPFB must refuse rather than half
+        # build something.
+        requires_mpfb=True,
+        summary=create_human.SUMMARY),
     "get_macro_details": Command(
         name="get_macro_details",
         handler=get_macro_details.get_macro_details,
@@ -148,4 +161,10 @@ COMMANDS = {
         params=list_targets.PARAMS,
         requires_mpfb=True,
         summary=list_targets.SUMMARY),
+    "refit_human": Command(
+        name="refit_human",
+        handler=refit_human.refit_human,
+        params=refit_human.PARAMS,
+        requires_mpfb=True,
+        summary=refit_human.SUMMARY),
 }

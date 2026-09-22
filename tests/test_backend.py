@@ -133,16 +133,27 @@ class RoutingTests(BothBackendsTestCase):
         self.assertEqual(self.bridge.decoded_requests()[-1]["params"], params)
 
     def test_an_unmigrated_tool_stays_on_the_generated_path_in_both(self) -> None:
-        # `create_human.py` is a mutating tool, so it stays unmigrated until
-        # stage 4 and this test keeps a subject for as long as the table has
-        # anything left in it to be the point of.
+        # The subject is **computed**, not named, because FR 032 is spending
+        # them: every payload it migrates is one fewer tool this test could be
+        # about, and the effort ends with none left. A hardcoded name would
+        # have to be edited once per batch and would stop meaning anything at
+        # the last one, silently.
+        from mpfbmcp import codegen  # pylint: disable=import-outside-toplevel
+
+        unmigrated = sorted(set(codegen.payload_names()) - set(backend.MIGRATED_COMMANDS))
+        if not unmigrated:
+            self.skipTest(
+                "every payload has a bridge command, which is FR 032's finish line and FR 033's "
+                "precondition - there is no unmigrated tool left to be the subject of this test")
+
+        payload = unmigrated[0]
         for preference in (None, backend.BACKEND_BRIDGE):
-            with self.subTest(backend=preference):
+            with self.subTest(backend=preference, payload=payload):
                 self.addon.requests.clear()
                 self.bridge.requests.clear()
                 self.prefer(preference)
 
-                backend.send("create_human.py", params={})
+                backend.send(payload, params={})
 
                 self.assertEqual(len(self.addon.requests), 1)
                 self.assertEqual(self.bridge.requests, [],

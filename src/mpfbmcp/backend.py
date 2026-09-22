@@ -102,6 +102,13 @@ MIGRATED_COMMANDS = {
     # 26 KB of fragment source on every cold call.
     "list_targets.py": "list_targets",
     "get_target_stack.py": "get_target_stack",
+    # FR 032, batch A: the first two commands that **change** a .blend, and with
+    # them the last two shared fragments. `create_human.py` carries
+    # `performed.py` and `refit_human.py` carries `refit_blocker.py`, so after
+    # these two no fragment is without a counterpart under
+    # `bridge/mpfb_bridge/shared/`.
+    "create_human.py": "create_human",
+    "refit_human.py": "refit_human",
 }
 
 

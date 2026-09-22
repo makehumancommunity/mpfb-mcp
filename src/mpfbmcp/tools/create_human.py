@@ -9,8 +9,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 # create_human()'s own default scale (0.1 = decimeters). Kept here rather than
 # guessed so the tool's default matches MPFB's regardless of MPFB version.
@@ -100,13 +99,17 @@ def register(mcp: FastMCP) -> None:
             },
         }
 
-        code = codegen.assemble(
+        # `result` (built in codegen/payloads/create_human.py, or by
+        # bridge/mpfb_bridge/commands/create_human.py) is always plain JSON-safe
+        # data, so strict_json=True to surface a clear error if that ever stops
+        # being true, rather than silently falling back to `repr`.
+        return backend.send(
             "create_human.py",
             bootstrap="raising",
+            # The uniform `performed` flag, which every mutating tool reports.
+            # A fragment on the generated path; a module the command imports on
+            # the bridge, named the same way either way.
             shared=["performed.py"],
             params={"macro_detail_dict": macro_detail_dict, "scale": scale},
+            strict_json=True,
         )
-        # `result` (built in codegen/payloads/create_human.py) is always plain
-        # JSON-safe data, so strict_json=True to surface a clear error if that
-        # ever stops being true, rather than silently falling back to `repr`.
-        return send_code(code, strict_json=True)

@@ -246,6 +246,39 @@ used as inspiration for the second half either way.
 Need to have a tool for exporting a character to, for example, fbx. This should involve 
 similar procedures as is used in `src/mpfb/ui/operations/exportops` in MPFB.
 
+<a id="mpfb-cannot-find-a-rigify-meta-rig-any-more"></a>
+
+## File upstream: MPFB cannot find a Rigify meta rig any more
+
+**`ObjectService.find_rigify_metarig_by_rig()` returns `None` for every generated Rigify rig on
+current Rigify**, so MPFB believes no generated rig can be refitted — including one whose meta rig
+is sitting in the scene, hidden, exactly as MPFB's own panel recommends.
+
+The cause is one method call. MPFB scans for an armature whose
+`data.get("rigify_target_rig")` is the generated rig, which is an **ID-property** lookup; Rigify
+now stores `rigify_target_rig` as an **RNA property** on the armature data, so `data.keys()` is
+empty and the scan matches nothing. `getattr(armature.data, "rigify_target_rig", None)` finds it.
+Observed on Blender 5.1 with MPFB 2.x, generating through
+`RigService.generate_rigify_rig(meta, meta_rig_action="hide")`.
+
+The visible effect is that `mpfb_refit_human` answers `refit_performed: false` with
+`refit_incomplete_reason` naming a missing meta rig, for a character that has one — and the three
+modeling tools predict the same blocker when they refit. The answer is *conservative* rather than
+wrong in the dangerous direction: it under-claims a refit rather than claiming one that did not
+happen, which is the way round this package would choose if it had to choose.
+
+**Found while migrating `refit_human` in
+[FR 032](done/032-creation-and-modification-migrated/README.md), and deliberately not fixed
+there**: that effort's rule is reproduction over improvement, because a tidy-up made during a
+migration is indistinguishable from a defect in the comparison the migration rests on.
+`bridge/test/tests/ppp_mutating/refit_human_test.py` asserts that the command **agrees with MPFB's
+own lookup** rather than asserting a value, so it keeps passing when this is fixed and keeps
+saying what it found in the meantime.
+
+What to do: file it against mpfb2, and decide separately whether this package should route around
+it. Routing around means reading the RNA property here, which is a rule about Rigify's data
+layout living in two places — the thing `shared/refit_blocker.py` exists to prevent.
+
 <a id="file-the-4-kb-chunked-read-against-blender_mcp"></a>
 
 ## Handle the 4 KB chunked read against blender_mcp

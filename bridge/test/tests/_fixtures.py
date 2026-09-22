@@ -210,6 +210,56 @@ def write_mhclo(path, material=True, uuid=None):
     return write(path, "\n".join(lines) + "\n")
 
 
+# The three lines MPFB's Mhclo parser needs before it will believe the vertex
+# block, and the values a real garment carries for a basemesh at MPFB's own
+# scale. Spelled out once rather than in each module that equips something.
+_MHCLO_SCALE_LINES = (
+    "x_scale 5399 11998 1.0000",
+    "y_scale 5399 11998 1.0000",
+    "z_scale 5399 11998 1.0000",
+)
+
+
+def write_loadable_mhclo(path, material=True):
+    """An MHCLO a mutating command can actually **equip**, and its OBJ beside it.
+
+    Different from :func:`write_mhclo` in the one way that matters here, and the
+    two exist side by side rather than one replacing the other:
+    :func:`write_mhclo` is metadata for a *catalogue* to read, with ``verts 0``
+    and no mesh at all, and it is all a read-only command ever sees. A command
+    that equips a garment imports the OBJ and fits it vertex by vertex, so it
+    needs a real one.
+
+    Three vertices and one face, which is the smallest mesh MPFB's importer and
+    ``ClothesService`` will both accept. It is not pretending to be a garment;
+    what it is for is being equipped, refitted and removed.
+
+    **Write it under a directory that will be a redirected data root.** A
+    garment equipped from outside every data root can never be refitted:
+    ``ClothesService.fit_clothes_to_human()`` re-reads the MHCLO through
+    ``AssetService``, which searches the roots rather than remembering where the
+    file came from. See this package's ``ppp_mutating/__init__.py``.
+    """
+    base = os.path.splitext(path)[0]
+    name = os.path.basename(base)
+    lines = ["# MakeHuman clothes file", "name " + name, "obj_file " + name + ".obj"]
+    if material:
+        lines.append("material " + name + ".mhmat")
+        write_mhmat(os.path.join(os.path.dirname(path), name + ".mhmat"))
+    lines.extend(_MHCLO_SCALE_LINES)
+    lines.append("verts 0")
+    # Each line matches one asset vertex to three basemesh vertices with
+    # weights. The indices are low ones every hm08 basemesh has.
+    lines.extend([
+        "0 1 2 0.3 0.3 0.4 0 0 0",
+        "3 4 5 0.3 0.3 0.4 0 0 0",
+        "6 7 8 0.3 0.3 0.4 0 0 0",
+    ])
+    write(os.path.join(os.path.dirname(path), name + ".obj"),
+          "v 0.0 0.0 0.0\nv 1.0 0.0 0.0\nv 0.0 1.0 0.0\nf 1 2 3\n")
+    return write(path, "\n".join(lines) + "\n")
+
+
 def build_asset_library(root):
     """An asset library with the shapes a real one has, under one directory.
 

@@ -16,7 +16,11 @@ The one failure worth knowing about is invisible from inside MPFB's own API.
 ``HumanService.refit()`` reports "generated Rigify rig with no meta rig" through
 an ``operator`` argument this layer has no operator to pass, and otherwise
 returns having refitted the mesh assets but silently not the rig. The condition
-is therefore detected in the payload and reported here instead.
+is therefore detected on the far side of the socket and reported here instead -
+by ``codegen/payloads/refit_human.py`` or by
+``bridge/mpfb_bridge/commands/refit_human.py``, from one shared statement of the
+condition, because **a precondition is an answer rather than an exception** and
+the two transports must not disagree about which.
 """
 
 from __future__ import annotations
@@ -28,8 +32,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 
 def _validated_name(name: object) -> str | None:
@@ -82,13 +85,14 @@ def register(mcp: FastMCP) -> None:
         in edit mode answers with `ready: false`, and an unresolvable subject
         with `found: false`.
         """
-        code = codegen.assemble(
+        # `result` (built in codegen/payloads/refit_human.py, or by
+        # bridge/mpfb_bridge/commands/refit_human.py) is plain JSON-safe data,
+        # so strict_json=True surfaces a clear error if that ever stops being
+        # true, rather than silently falling back to `repr`.
+        return backend.send(
             "refit_human.py",
             bootstrap="raising",
             shared=["refit_blocker.py", "performed.py"],
             params={"name": _validated_name(name)},
+            strict_json=True,
         )
-        # `result` (built in codegen/payloads/refit_human.py) is plain JSON-safe
-        # data, so strict_json=True surfaces a clear error if that ever stops
-        # being true, rather than silently falling back to `repr`.
-        return send_code(code, strict_json=True)
