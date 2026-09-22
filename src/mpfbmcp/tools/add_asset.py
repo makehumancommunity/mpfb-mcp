@@ -42,8 +42,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 
 def _validated_name(name: object) -> str | None:
@@ -208,7 +207,11 @@ def register(mcp: FastMCP) -> None:
         `invalid_material_type`, `no_asset_subdir` and `not_object_mode`.
         """
         checked_path, checked_fragment = _validated_source(path, fragment)
-        code = codegen.assemble(
+        # `result` (built in codegen/payloads/add_asset.py, or by
+        # bridge/mpfb_bridge/commands/add_asset.py) is plain JSON-safe
+        # data, so strict_json=True surfaces a clear error if that ever stops
+        # being true.
+        return backend.send(
             "add_asset.py",
             bootstrap="raising",
             params={
@@ -232,8 +235,5 @@ def register(mcp: FastMCP) -> None:
             # two implementations of that table would make a just-listed asset
             # look uninstalled here.
             shared=["asset_sections.py", "performed.py"],
+            strict_json=True,
         )
-        # `result` (built in codegen/payloads/add_asset.py) is plain JSON-safe
-        # data, so strict_json=True surfaces a clear error if that ever stops
-        # being true.
-        return send_code(code, strict_json=True)

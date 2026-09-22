@@ -4,18 +4,22 @@
 Tests for the mpfb_add_asset tool: argument validation, and the generated code's
 vocabulary checks, defaulting, observation and reporting.
 
-Two layers, as everywhere in this suite: the tool wrapper with send_code mocked,
-then the assembled source executed against the stub services and a real
-temporary asset library (tests/blender_stubs.py's MeshAssetTestCase). The
-library is real because these payloads read the MHCLO, list the directory beside
-it and resolve a fragment by walking the asset roots; mocking the filesystem
-away would leave nothing under test.
+Three layers since FR 032 migrated it (see ``tests/test_list_objects.py``, the
+template): the tool wrapper with ``send_code`` mocked on the seam; the **bridge
+path** against ``tests/fake_bridge.py``; and the assembled source executed
+against the stub services and a real temporary asset library
+(tests/blender_stubs.py's MeshAssetTestCase). That third layer is **frozen**: it
+stays while the payload stays, because the payload is half of what FR 032's live
+comparison compares.
 
-What is *not* under test here, and cannot be: that an asset equipped through
-this tool is indistinguishable from the same asset equipped through MPFB's own
-asset library panel - same fit, same delete group, same material. Nor that the
-proxy path this tool follows really does match a .mhm load. Both are live checks
-against a running Blender (see feature-requests/done/010-mesh-assets).
+The library is real because these payloads read the MHCLO, list the directory
+beside it and resolve a fragment by walking the asset roots; mocking the
+filesystem away would leave nothing under test.
+
+What layer 3 cannot say is that an asset equipped through this tool is
+indistinguishable from the same asset equipped through MPFB's own asset library
+panel - same fit, same delete group, same material. That is now checked against
+a real MPFB in ``bridge/test/tests/ppp_mutating/add_asset_test.py``.
 
 Run with::
 
@@ -31,8 +35,10 @@ from unittest import mock
 from mcp.server.fastmcp import FastMCP
 
 from mpfbmcp import codegen
+from mpfbmcp import backend
 from mpfbmcp.tools import add_asset
 
+from tests import fake_bridge
 from tests.blender_stubs import (
     MeshAssetTestCase, StubAssetService, StubHumanService, StubObject,
     StubObjectService, write_mhclo)
@@ -52,7 +58,7 @@ class ArgumentValidationTests(unittest.TestCase):
         self.tool = _tool_callable()
 
     def _sent_source(self, **kwargs):
-        with mock.patch.object(add_asset, "send_code") as send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(**kwargs)
         return send_code.call_args[0][0]
@@ -87,7 +93,7 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_asset_type_is_required_and_is_rejected_before_any_code_is_generated(self):
         # The whole reason it is required: MPFB's own default of "Clothes" is
         # wrong for six of the eight types and wrong in a way nothing reports.
-        with mock.patch.object(add_asset, "send_code") as send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
             with self.assertRaises(TypeError):
                 self.tool(path="/assets/fedora/fedora.mhclo")
             with self.assertRaises(ValueError):
@@ -136,11 +142,83 @@ class ArgumentValidationTests(unittest.TestCase):
             asset_type="Clothes", path="/a.mhclo", material_type="NOT_A_MATERIAL")
         self.assertEqual(params["material_type"], "NOT_A_MATERIAL")
 
-    def test_response_envelope_is_returned_unchanged(self):
-        envelope = {"status": "error", "message": "no MPFB"}
-        with mock.patch.object(add_asset, "send_code") as send_code:
-            send_code.return_value = envelope
-            self.assertIs(self.tool(asset_type="Clothes", path="/a.mhclo"), envelope)
+    def test_a_failure_reaches_the_caller_with_a_slug_to_branch_on(self):
+        # The envelope is carried through with its status and message intact and
+        # an `error` slug added, which is the seam's one mapping: a caller
+        # branches on `error` without having to learn which transport answered.
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
+            send_code.return_value = {"status": "error", "message": "no MPFB"}
+            response = self.tool(asset_type="Clothes", path="/a.mhclo")
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["message"], "no MPFB")
+        self.assertEqual(response["error"], backend.ERROR_COMMAND_FAILED)
+
+
+class AddAssetOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """What cannot cross the socket, and nothing else.
+
+    Everything this tool *answers* - the type vocabulary, the delete group, the proxy extras and every warning - is checked against a real MPFB
+    in ``bridge/test/tests/ppp_mutating/add_asset_test.py``.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.call = _tool_callable()
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        self.bridge = self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "add_asset": fake_bridge.ok_envelope("add_asset", {"found": True, "added": True, "performed": True}),
+        })
+
+    def test_the_tool_sends_the_add_asset_command(self) -> None:
+        self.call(asset_type="Clothes", path="/a.mhclo")
+
+        self.assertEqual(self.bridge.commands()[-1], "add_asset")
+        params = self.bridge.decoded_requests()[-1]["params"]
+        self.assertEqual(params["asset_type"], "Clothes")
+        self.assertEqual(params["path"], "/a.mhclo")
+        self.assertIsNone(params["fragment"])
+        self.assertEqual(params["subdiv_levels"], 1)
+
+    def test_no_shared_fragment_reaches_the_bridge(self) -> None:
+        self.call(asset_type="Clothes", path="/a.mhclo")
+
+        request = self.bridge.decoded_requests()[-1]
+        self.assertNotIn("shared", request)
+        self.assertNotIn("asset_sections", str(request))
+
+    def test_exactly_one_of_path_and_fragment_is_enforced_here(self) -> None:
+        # Both or neither is a mistake the caller can fix without looking at the
+        # scene, and it is the same refusal on either transport.
+        with self.assertRaises(ValueError):
+            self.call(asset_type="Clothes")
+        with self.assertRaises(ValueError):
+            self.call(asset_type="Clothes", path="/a.mhclo", fragment="pack/a.mhclo")
+
+        self.assertEqual(self.bridge.requests, [])
+
+    def test_local_validation_runs_before_a_transport_is_chosen(self) -> None:
+        with self.assertRaises(ValueError):
+            self.call(asset_type="", path="/a.mhclo")
+        with self.assertRaises(ValueError):
+            self.call(asset_type="Clothes", path="/a.mhclo", subdiv_levels=True)
+
+        self.assertEqual(self.bridge.requests, [],
+                         "a locally invalid call must not be sent to any backend")
+
+    def test_a_bridge_error_envelope_reaches_the_caller_intact(self) -> None:
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope(
+                "mpfb_unavailable", "The command needs MPFB, which is not usable here.",
+                command="add_asset", state="absent"))
+
+        response = self.call(asset_type="Clothes", path="/a.mhclo")
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "mpfb_unavailable")
 
 
 class GeneratedCodeTests(MeshAssetTestCase):

@@ -39,8 +39,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 # MPFB's own enum, in MPFB's own order. Kept here rather than resolved in
 # Blender because it is a fixed vocabulary in MPFB's source, not a scan of
@@ -145,7 +144,11 @@ def register(mcp: FastMCP) -> None:
         its generated rig, so its meta rig is no longer among its relatives),
         `rigify_unavailable` and `not_object_mode`.
         """
-        code = codegen.assemble(
+        # `result` (built in codegen/payloads/generate_rigify_rig.py, or by
+        # bridge/mpfb_bridge/commands/generate_rigify_rig.py) is plain
+        # JSON-safe data, so strict_json=True surfaces a clear error if that ever
+        # stops being true.
+        return backend.send(
             "generate_rigify_rig.py",
             bootstrap="raising",
             shared=["performed.py"],
@@ -154,8 +157,5 @@ def register(mcp: FastMCP) -> None:
                 "rig_name": _validated_rig_name(rig_name),
                 "meta_rig_action": _validated_meta_rig_action(meta_rig_action),
             },
+            strict_json=True,
         )
-        # `result` (built in codegen/payloads/generate_rigify_rig.py) is plain
-        # JSON-safe data, so strict_json=True surfaces a clear error if that ever
-        # stops being true.
-        return send_code(code, strict_json=True)

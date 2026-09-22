@@ -5,18 +5,24 @@ Tests for the mpfb_generate_rigify_rig tool: argument validation, meta-rig
 resolution, and the reporting of a generation that changed the scene without
 producing a rig.
 
-Two layers, as everywhere in this suite: the tool wrapper with send_code mocked,
-then the assembled source executed against the stub services. The stub
-RigService.generate_rigify_rig() is written in MPFB's own order rather than a
-convenient one - the rename, the deselection and the activation all happen
-before the validity gate - because "a failed generation is not a no-op" is the
-claim this tool exists to make, and a stub that checked validity first would
-make it untestable.
+Three layers since FR 032 migrated it (see ``tests/test_list_objects.py``, the
+template): the tool wrapper with ``send_code`` mocked on the seam; the **bridge
+path** against ``tests/fake_bridge.py``; and the assembled source executed
+against the stub services. That third layer is **frozen**: it stays while the
+payload stays, because the payload is half of what FR 032's live comparison
+compares.
 
-What is *not* under test here, and cannot be: that the generated rig deforms the
-character the way Rigify's own does, or that meta_rig_action "delete" really
-leaves mpfb_refit_human unable to refit. Both are live checks against a running
-Blender (see feature-requests/done/009-add-rig).
+The stub RigService.generate_rigify_rig() is written in MPFB's own order rather
+than a convenient one - the rename, the deselection and the activation all
+happen before the validity gate - because "a failed generation is not a no-op"
+is the claim this tool exists to make, and a stub that checked validity first
+would make it untestable.
+
+What layer 3 cannot say is that the generated rig deforms the character the way
+Rigify's own does, or that meta_rig_action "delete" really leaves
+mpfb_refit_human unable to refit. Both are now checked against a real Rigify in
+``bridge/test/tests/ppp_mutating/generate_rigify_rig_test.py``, which the
+FR 032 spike established can run in a Blender with no window.
 
 Run with::
 
@@ -32,8 +38,10 @@ from unittest import mock
 from mcp.server.fastmcp import FastMCP
 
 from mpfbmcp import codegen
+from mpfbmcp import backend
 from mpfbmcp.tools import generate_rigify_rig
 
+from tests import fake_bridge
 from tests.blender_stubs import (
     RigTestCase, StubObject, StubObjectService, StubRigService, StubSystemService)
 
@@ -54,7 +62,7 @@ class ArgumentValidationTests(unittest.TestCase):
         self.tool = _tool_callable()
 
     def _sent_source(self, **kwargs):
-        with mock.patch.object(generate_rigify_rig, "send_code") as send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(**kwargs)
         return send_code.call_args[0][0]
@@ -74,14 +82,20 @@ class ArgumentValidationTests(unittest.TestCase):
         self.assertIn("# --- shared: performed.py ---", source)
         self.assertEqual(source.count("# --- shared:"), 1)
 
-    def test_response_envelope_is_returned_unchanged(self):
-        envelope = {"status": "error", "message": "no MPFB"}
-        with mock.patch.object(generate_rigify_rig, "send_code") as send_code:
-            send_code.return_value = envelope
-            self.assertIs(self.tool(), envelope)
+    def test_a_failure_reaches_the_caller_with_a_slug_to_branch_on(self):
+        # The envelope is carried through with its status and message intact and
+        # an `error` slug added, which is the seam's one mapping: a caller
+        # branches on `error` without having to learn which transport answered.
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
+            send_code.return_value = {"status": "error", "message": "no MPFB"}
+            response = self.tool()
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["message"], "no MPFB")
+        self.assertEqual(response["error"], backend.ERROR_COMMAND_FAILED)
 
     def test_strict_json_is_requested(self):
-        with mock.patch.object(generate_rigify_rig, "send_code") as send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool()
         self.assertIs(send_code.call_args[1]["strict_json"], True)
@@ -100,7 +114,7 @@ class ArgumentValidationTests(unittest.TestCase):
         # wrong value cannot be undone.
         for bad in ("Hide", "remove", "", None, True, ["hide"]):
             with self.subTest(meta_rig_action=bad):
-                with mock.patch.object(generate_rigify_rig, "send_code") as send_code:
+                with mock.patch("mpfbmcp.backend.send_code") as send_code:
                     with self.assertRaises(ValueError):
                         self.tool(meta_rig_action=bad)
                 send_code.assert_not_called()
@@ -109,10 +123,64 @@ class ArgumentValidationTests(unittest.TestCase):
         for kwargs in ({"name": ""}, {"name": "  "}, {"rig_name": ""}, {"rig_name": "  "},
                        {"name": 3}, {"rig_name": 3}):
             with self.subTest(**kwargs):
-                with mock.patch.object(generate_rigify_rig, "send_code") as send_code:
+                with mock.patch("mpfbmcp.backend.send_code") as send_code:
                     with self.assertRaises(ValueError):
                         self.tool(**kwargs)
                 send_code.assert_not_called()
+
+
+class GenerateRigifyRigOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """What cannot cross the socket, and nothing else.
+
+    Everything this tool *answers* - the four refusals, what a rejected meta rig leaves behind, and ``active_object_after`` - is checked against a real MPFB
+    in ``bridge/test/tests/ppp_mutating/generate_rigify_rig_test.py``.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.call = _tool_callable()
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        self.bridge = self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "generate_rigify_rig": fake_bridge.ok_envelope("generate_rigify_rig", {"found": True, "generated": True, "performed": True}),
+        })
+
+    def test_the_tool_sends_the_generate_rigify_rig_command(self) -> None:
+        self.call()
+
+        self.assertEqual(self.bridge.commands()[-1], "generate_rigify_rig")
+        params = self.bridge.decoded_requests()[-1]["params"]
+        self.assertEqual(
+            params, {"name": None, "rig_name": None, "meta_rig_action": "hide"})
+
+    def test_no_shared_fragment_reaches_the_bridge(self) -> None:
+        self.call()
+
+        request = self.bridge.decoded_requests()[-1]
+        self.assertNotIn("shared", request)
+        self.assertNotIn("performed", str(request))
+
+    def test_local_validation_runs_before_a_transport_is_chosen(self) -> None:
+        for value in ("Hide", "remove", "", None):
+            with self.subTest(meta_rig_action=value):
+                with self.assertRaises(ValueError):
+                    self.call(meta_rig_action=value)
+
+        self.assertEqual(self.bridge.requests, [],
+                         "a locally invalid call must not be sent to any backend")
+
+    def test_a_bridge_error_envelope_reaches_the_caller_intact(self) -> None:
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope(
+                "mpfb_unavailable", "The command needs MPFB, which is not usable here.",
+                command="generate_rigify_rig", state="absent"))
+
+        response = self.call()
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "mpfb_unavailable")
 
 
 class GenerateGeneratedCodeTests(RigTestCase):

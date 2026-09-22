@@ -43,7 +43,10 @@ __all__ = (
     "COMMANDS",
 )
 
+from . import add_asset
+from . import add_rig
 from . import create_human
+from . import generate_rigify_rig
 from . import get_macro_details
 from . import get_mpfb_status
 from . import get_object_info
@@ -57,12 +60,25 @@ from . import list_presets
 from . import list_rigs
 from . import list_targets
 from . import refit_human
+from . import remove_asset
 from . import set_macro_details
 from . import set_targets
 from . import symmetrize_targets
 from .command import Command
 
 COMMANDS = {
+    "add_asset": Command(
+        name="add_asset",
+        handler=add_asset.add_asset,
+        params=add_asset.PARAMS,
+        requires_mpfb=True,
+        summary=add_asset.SUMMARY),
+    "add_rig": Command(
+        name="add_rig",
+        handler=add_rig.add_rig,
+        params=add_rig.PARAMS,
+        requires_mpfb=True,
+        summary=add_rig.SUMMARY),
     "create_human": Command(
         name="create_human",
         handler=create_human.create_human,
@@ -74,6 +90,12 @@ COMMANDS = {
         # build something.
         requires_mpfb=True,
         summary=create_human.SUMMARY),
+    "generate_rigify_rig": Command(
+        name="generate_rigify_rig",
+        handler=generate_rigify_rig.generate_rigify_rig,
+        params=generate_rigify_rig.PARAMS,
+        requires_mpfb=True,
+        summary=generate_rigify_rig.SUMMARY),
     "get_macro_details": Command(
         name="get_macro_details",
         handler=get_macro_details.get_macro_details,
@@ -170,6 +192,12 @@ COMMANDS = {
         params=refit_human.PARAMS,
         requires_mpfb=True,
         summary=refit_human.SUMMARY),
+    "remove_asset": Command(
+        name="remove_asset",
+        handler=remove_asset.remove_asset,
+        params=remove_asset.PARAMS,
+        requires_mpfb=True,
+        summary=remove_asset.SUMMARY),
     "set_macro_details": Command(
         name="set_macro_details",
         handler=set_macro_details.set_macro_details,

@@ -36,8 +36,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
-from mpfbmcp import codegen
-from mpfbmcp.connection import send_code
+from mpfbmcp import backend
 
 
 def _validated_name(name: object) -> str | None:
@@ -132,7 +131,11 @@ def register(mcp: FastMCP) -> None:
         `rigify_unavailable`, `not_object_mode`, and `already_rigged` - **MPFB
         cannot swap a rig**, so an existing one has to be deleted first.
         """
-        code = codegen.assemble(
+        # `result` (built in codegen/payloads/add_rig.py, or by
+        # bridge/mpfb_bridge/commands/add_rig.py) is plain JSON-safe
+        # data - locations are coerced to lists of float there - so
+        # strict_json=True surfaces a clear error if that ever stops being true.
+        return backend.send(
             "add_rig.py",
             bootstrap="raising",
             params={
@@ -144,8 +147,5 @@ def register(mcp: FastMCP) -> None:
             # then does. One implementation of "which file, whose weights", so
             # the catalogue and the action cannot disagree.
             shared=["rig_lookup.py", "performed.py"],
+            strict_json=True,
         )
-        # `result` (built in codegen/payloads/add_rig.py) is plain JSON-safe
-        # data - locations are coerced to lists of float there - so
-        # strict_json=True surfaces a clear error if that ever stops being true.
-        return send_code(code, strict_json=True)

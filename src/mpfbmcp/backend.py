@@ -116,6 +116,13 @@ MIGRATED_COMMANDS = {
     "set_macro_details.py": "set_macro_details",
     "set_targets.py": "set_targets",
     "symmetrize_targets.py": "symmetrize_targets",
+    # Batch C: rigs and assets, and with them the two fragments that stopped
+    # straddling - `rig_lookup.py` now has both its catalogue and its acting
+    # command on the bridge, and so does `asset_sections.py`.
+    "add_rig.py": "add_rig",
+    "generate_rigify_rig.py": "generate_rigify_rig",
+    "add_asset.py": "add_asset",
+    "remove_asset.py": "remove_asset",
 }
 
 

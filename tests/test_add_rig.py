@@ -4,17 +4,23 @@
 Tests for the mpfb_add_rig tool: argument validation, and the generated code's
 dispatch, pre-checks and reporting.
 
-Two layers, as everywhere in this suite: the tool wrapper with send_code mocked,
-then the assembled source executed against the stub services and a real
-temporary rig tree (tests/blender_stubs.py's RigTestCase). The tree is shared
-with tests/test_list_rigs.py deliberately - the point of the shared
-codegen/shared/rig_lookup.py fragment is that the catalogue's prediction and
-this tool's outcome cannot disagree, and that can only be asserted by running
-both against the same disk.
+Three layers since FR 032 migrated it (see ``tests/test_list_objects.py``, the
+template): the tool wrapper with ``send_code`` mocked on the seam; the **bridge
+path** against ``tests/fake_bridge.py``; and the assembled source executed
+against the stub services and a real temporary rig tree
+(tests/blender_stubs.py's RigTestCase). That third layer is **frozen**: it stays
+while the payload stays, because the payload is half of what FR 032's live
+comparison compares.
 
-What is *not* under test here, and cannot be: that a rig added through this tool
-is indistinguishable from one added through MPFB's own panel. That is a live
-check against a running Blender (see feature-requests/done/009-add-rig).
+The rig tree is shared with tests/test_list_rigs.py deliberately - the point of
+the shared rig_lookup rule is that the catalogue's prediction and this tool's
+outcome cannot disagree, and that can only be asserted by running both against
+the same disk. **Both halves of that pair are now on the bridge**, so the same
+agreement is checked there against a real MPFB.
+
+What layer 3 cannot say is that a rig added through this tool is
+indistinguishable from one added through MPFB's own panel. That is now checked
+in ``bridge/test/tests/ppp_mutating/add_rig_test.py``.
 
 Run with::
 
@@ -30,8 +36,10 @@ from unittest import mock
 from mcp.server.fastmcp import FastMCP
 
 from mpfbmcp import codegen
+from mpfbmcp import backend
 from mpfbmcp.tools import add_rig
 
+from tests import fake_bridge
 from tests.blender_stubs import (
     RigTestCase, StubHumanService, StubObject, StubObjectService, StubRigService,
     StubSystemService)
@@ -55,7 +63,7 @@ class ArgumentValidationTests(unittest.TestCase):
         self.tool = _tool_callable()
 
     def _sent_source(self, **kwargs):
-        with mock.patch.object(add_rig, "send_code") as send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(**kwargs)
         return send_code.call_args[0][0]
@@ -70,19 +78,25 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_the_shared_fragment_is_the_one_list_rigs_uses(self):
         # Not decoration: if these two ever name different fragments, the
         # catalogue and the adder can predict different weights for one rig.
-        with mock.patch.object(add_rig, "send_code") as send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(identifier="default")
         self.assertIn(codegen.read_shared("rig_lookup.py"), send_code.call_args[0][0])
 
-    def test_response_envelope_is_returned_unchanged(self):
-        envelope = {"status": "error", "message": "no MPFB"}
-        with mock.patch.object(add_rig, "send_code") as send_code:
-            send_code.return_value = envelope
-            self.assertIs(self.tool(identifier="default"), envelope)
+    def test_a_failure_reaches_the_caller_with_a_slug_to_branch_on(self):
+        # The envelope is carried through with its status and message intact and
+        # an `error` slug added, which is the seam's one mapping: a caller
+        # branches on `error` without having to learn which transport answered.
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
+            send_code.return_value = {"status": "error", "message": "no MPFB"}
+            response = self.tool(identifier="default")
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["message"], "no MPFB")
+        self.assertEqual(response["error"], backend.ERROR_COMMAND_FAILED)
 
     def test_strict_json_is_requested(self):
-        with mock.patch.object(add_rig, "send_code") as send_code:
+        with mock.patch("mpfbmcp.backend.send_code") as send_code:
             send_code.return_value = {"status": "ok", "result": {}}
             self.tool(identifier="default")
         self.assertIs(send_code.call_args[1]["strict_json"], True)
@@ -90,7 +104,7 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_a_missing_or_empty_identifier_is_rejected_locally(self):
         for bad in ("", "   ", None, 3, ["default"]):
             with self.subTest(identifier=bad):
-                with mock.patch.object(add_rig, "send_code") as send_code:
+                with mock.patch("mpfbmcp.backend.send_code") as send_code:
                     with self.assertRaises(ValueError):
                         self.tool(identifier=bad)
                 send_code.assert_not_called()
@@ -98,7 +112,7 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_an_explicitly_empty_name_is_never_read_as_an_omitted_one(self):
         for bad in ("", "   ", 7, []):
             with self.subTest(name=bad):
-                with mock.patch.object(add_rig, "send_code") as send_code:
+                with mock.patch("mpfbmcp.backend.send_code") as send_code:
                     with self.assertRaises(ValueError):
                         self.tool(name=bad, identifier="default")
                 send_code.assert_not_called()
@@ -108,7 +122,7 @@ class ArgumentValidationTests(unittest.TestCase):
         # parented to but not deformed by, which is invisible until it is posed.
         for bad in (1, 0, "true", "false", None, []):
             with self.subTest(import_weights=bad):
-                with mock.patch.object(add_rig, "send_code") as send_code:
+                with mock.patch("mpfbmcp.backend.send_code") as send_code:
                     with self.assertRaises(ValueError):
                         self.tool(identifier="default", import_weights=bad)
                 send_code.assert_not_called()
@@ -118,6 +132,68 @@ class ArgumentValidationTests(unittest.TestCase):
         # directories, so an unknown identifier has to reach Blender to be
         # refused there, with known_identifiers beside it.
         self.assertIn("no-such-rig", self._sent_source(identifier="no-such-rig"))
+
+
+class AddRigOverTheBridgeTests(fake_bridge.BridgeTestCase):
+    """What cannot cross the socket, and nothing else.
+
+    Everything this tool *answers* - which file loads, whose weights come with it, the ordering warning, the AssertionError path - is checked against a real MPFB
+    in ``bridge/test/tests/ppp_mutating/add_rig_test.py``.
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.call = _tool_callable()
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
+        self.bridge = self.run_answering_bridge({
+            "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
+            "add_rig": fake_bridge.ok_envelope("add_rig", {"found": True, "added": True, "performed": True}),
+        })
+
+    def test_the_tool_sends_the_add_rig_command(self) -> None:
+        self.call(identifier="default")
+
+        self.assertEqual(self.bridge.commands()[-1], "add_rig")
+        params = self.bridge.decoded_requests()[-1]["params"]
+        self.assertEqual(params, {"name": None, "identifier": "default", "import_weights": True})
+
+    def test_no_shared_fragment_reaches_the_bridge(self) -> None:
+        self.call(identifier="default")
+
+        request = self.bridge.decoded_requests()[-1]
+        self.assertNotIn("shared", request)
+        self.assertNotIn("rig_lookup", str(request))
+
+    def test_the_identifier_is_not_validated_against_a_vocabulary_here(self) -> None:
+        # A rig list kept on this side of the socket would drift from the
+        # directories, so an unknown identifier reaches the bridge to be refused
+        # there, with known_identifiers beside it.
+        self.call(identifier="no-such-rig")
+
+        self.assertEqual(
+            self.bridge.decoded_requests()[-1]["params"]["identifier"], "no-such-rig")
+
+    def test_local_validation_runs_before_a_transport_is_chosen(self) -> None:
+        for value in ("", "   ", None, 3):
+            with self.subTest(identifier=value):
+                with self.assertRaises(ValueError):
+                    self.call(identifier=value)
+
+        self.assertEqual(self.bridge.requests, [],
+                         "a locally invalid call must not be sent to any backend")
+
+    def test_a_bridge_error_envelope_reaches_the_caller_intact(self) -> None:
+        self.bridge.responder = lambda request: (
+            fake_bridge.ok_envelope("get_status", fake_bridge.status_result())
+            if request.get("command") == "get_status"
+            else fake_bridge.error_envelope(
+                "mpfb_unavailable", "The command needs MPFB, which is not usable here.",
+                command="add_rig", state="absent"))
+
+        response = self.call(identifier="default")
+
+        self.assertEqual(response["status"], "error")
+        self.assertEqual(response["error"], "mpfb_unavailable")
 
 
 class AddRigGeneratedCodeTests(RigTestCase):
