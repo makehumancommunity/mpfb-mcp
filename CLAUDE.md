@@ -40,18 +40,23 @@ lifecycle that on completion folds durable decisions into `specifications/`, mov
 
 ## Project status
 
-Proof of concept, and **mid-pivot**: the Blender-side logic is moving out of generated Python
-and into a companion add-on of our own, the MPFB Bridge in [bridge/](bridge). That is
-[FR 028](feature-requests/done/028-pivot-to-specific-addon/README.md), which landed the decision and
-a working transport and migrated no tool. Since
-[FR 030](feature-requests/done/030-backend-seam/README.md) there is a **seam** below the send
-([backend.py](src/mpfbmcp/backend.py)), and since
-[FR 031](feature-requests/done/031-introspection-and-catalogues-migrated/README.md) **ten tools
-have migrated across it** — every read-only tool that crosses the socket — which is where the
-two-backend arrangement under Commands comes from. The remaining efforts are in
-[NEXT_STEPS.md](feature-requests/NEXT_STEPS.md#a-larger-pivot-an-mpfb-specific-bridge-add-on).
-**Everything below describes what runs today**: the generated-code path for fifteen tools,
-and for all twenty-five in the default configuration, until the last tool has moved.
+Proof of concept, and **past the pivot's turning point**: the Blender-side logic has moved out of
+generated Python and into a companion add-on of our own, the MPFB Bridge in [bridge/](bridge).
+That is [FR 028](feature-requests/done/028-pivot-to-specific-addon/README.md), which landed the
+decision and a working transport; [FR 030](feature-requests/done/030-backend-seam/README.md) built
+the **seam** below the send ([backend.py](src/mpfbmcp/backend.py)) and migrated one tool;
+[FR 031](feature-requests/done/031-introspection-and-catalogues-migrated/README.md) migrated the
+nine other read-only ones; and
+[FR 032](feature-requests/done/032-creation-and-modification-migrated/README.md) migrated the
+**last fourteen and flipped the default to the bridge**. `backend.MIGRATED_COMMANDS` now holds
+twenty-four entries, which is every tool that crosses the socket.
+
+**So an unconfigured install runs the bridge**, and the generated path is kept working one
+variable away until
+[FR 033](feature-requests/033-retire-the-generated-code-path/README.md) deletes it — which is the
+one remaining effort in
+[NEXT_STEPS.md](feature-requests/NEXT_STEPS.md#a-larger-pivot-an-mpfb-specific-bridge-add-on)
+before publishing. Everything below describes both, because both still run.
 
 **Twenty-five tools are implemented, and all twenty-five have been run against a
 real Blender.** [README.md](README.md) lists them by purpose;
@@ -60,7 +65,7 @@ run found; [vision.md](specifications/vision.md#target-tool-catalog) says what i
 them; [NEXT_STEPS.md](feature-requests/NEXT_STEPS.md) is the active queue.
 
 The live verification is a **smoke run**: one call per tool with default arguments, one command,
-50.2 s for all twenty-five. It lives in [verification/](verification/) — see
+3.9 s for all twenty-five on the bridge and 48.5 s on the generated path. It lives in [verification/](verification/) — see
 [verification/README.md](verification/README.md). It writes **one** file outside the `.blend`,
 always the same one; that README names it. An *exhaustive* live check belongs to the
 feature request that needs it, in that request's own subdir, and moves to `done/` with it.
@@ -215,8 +220,8 @@ mpfb-mcp tool  →  {"command": ..., "params": {...}}  →  TCP 127.0.0.1:9877
 | Path | What it is |
 |------|------------|
 | [bridge/mpfb_bridge/](bridge/mpfb_bridge) | The add-on. `command_server.py` is the socket, the framing and the dispatch, and imports no `bpy`; `commands/table.py` is the closed vocabulary and is the one file to read to know everything the add-on can be asked to do, with one module per command beside it; `validation.py` is what a command declares it takes; `mpfb_resolution.py` is the `sys.modules` scan; `stats.py` is what the panel paints; `ui.py`, `timer.py` and `cli.py` are the Blender-facing halves — `timer.py` drives the server in a windowed Blender and `cli.py` in a headless one. Operator ids are prefixed `mpfb_bridge.`, **never** `mpfb.` |
-| [bridge/mpfb_bridge/shared/](bridge/mpfb_bridge/shared) | **Five modules, and none of them is a command.** A concept two or more commands model identically — the preset name rule, MPFB's asset section table, the modeling category scan — mirroring `src/mpfbmcp/codegen/shared/` name for name so that a fragment and its replacement are findable from each other during the migration. Nothing here is reachable from the wire, which is why `commands/table.py`'s claim survives a second directory beside it. MPFB and any per-call table arrive as leading `services` / `tables` parameters, which is what [tests/test_fragment_drift.py](tests/test_fragment_drift.py) normalises away in order to compare the two halves |
-| [bridge/test/](bridge/test) | Its harness: pytest in a headless Blender, MPFB's arrangement. Not discovered by `unittest discover -s tests`, and must never be. Since FR 030 it also produces a coverage report, through a `.coveragerc` here and an `a1_coverage.pth` that `run_to_install_pytest.py` writes into Blender's own site-packages. `tests/_fixtures.py` is what its command modules share: dispatch, the MPFB skip, a character, and the trees moved out of `tests/blender_stubs.py` |
+| [bridge/mpfb_bridge/shared/](bridge/mpfb_bridge/shared) | **Seven modules, which is every fragment there is, and none of them is a command.** A concept two or more commands model identically — the preset name rule, MPFB's asset section table, the modeling category scan — mirroring `src/mpfbmcp/codegen/shared/` name for name so that a fragment and its replacement are findable from each other. Nothing here is reachable from the wire, which is why `commands/table.py`'s claim survives a second directory beside it. MPFB and any per-call table arrive as leading `services` / `tables` parameters, which is what [tests/test_fragment_drift.py](tests/test_fragment_drift.py) normalises away in order to compare the two halves — except `performed.py`, which binds nothing from the bootstrap and therefore compares with no normalisation at all |
+| [bridge/test/](bridge/test) | Its harness: pytest in a headless Blender, MPFB's arrangement. Not discovered by `unittest discover -s tests`, and must never be. Since FR 030 it also produces a coverage report, through a `.coveragerc` here and an `a1_coverage.pth` that `run_to_install_pytest.py` writes into Blender's own site-packages. `tests/_fixtures.py` is what its command modules share: dispatch, the MPFB skip, a character, the trees moved out of `tests/blender_stubs.py`, and — since FR 032 — target files that are real MPFB target data and an MHCLO a command can actually equip. `tests/ppp_mutating/` is a **prefixed directory** holding the thirteen commands that change a `.blend`, which is MPFB's way out of running short of letters |
 | `bridge/.pylintrc`, `bridge/pyrightconfig.json`, `bridge/requirements-dev.txt` | MPFB's, copied and retargeted. Where this repository's conventions and MPFB's disagree about add-on code, MPFB's win |
 
 The principles behind this layout are in
@@ -248,28 +253,35 @@ answers without Blender at all touches two of the three: `mpfb_list_docs` has no
 
 ### The twenty-five tools
 
-Tool module, payload and test module all share a name: `mpfb_set_skin` is
-`tools/set_skin.py`, `codegen/payloads/set_skin.py` and `tests/test_set_skin.py`. **One
-exception**: `mpfb_list_docs` has no payload, because it never generates code and never crosses
-the socket — so there are twenty-four payloads for twenty-five tools, and `tests/test_codegen.py`'s
-hand-maintained payload list says so where the gap would otherwise read as an oversight. **The
-module docstring is where the reasoning lives**; the line below is only enough to find the right
-one.
+Tool module, payload, **bridge command** and test module all share a name: `mpfb_set_skin` is
+`tools/set_skin.py`, `codegen/payloads/set_skin.py`, `bridge/mpfb_bridge/commands/set_skin.py` and
+`tests/test_set_skin.py`. **Two exceptions**, both deliberate: `mpfb_list_docs` has no payload and
+no command, because it never generates code and never crosses the socket — so there are
+twenty-four of each for twenty-five tools, and `tests/test_codegen.py`'s hand-maintained payload
+list says so where the gap would otherwise read as an oversight; and `mpfb_get_status`'s command is
+`get_mpfb_status`, because `get_status` is the bridge's own state and two commands answering
+"status" about two different pieces of software is a collision that is cheap now and permanent
+later.
+
+**Every tool in the table has a bridge command and takes it by default.** The per-tool "migrated"
+notes this table carried while that was news are gone; what is left is what distinguishes one tool
+from another. **The module docstring is where the reasoning lives**; the line below is only enough
+to find the right one.
 
 | Tool | The distinctive thing about it |
 |------|-------------------------------|
-| `mpfb_get_status` | Absence is an answer: classifies the install `absent`/`not_initialized`/`ok` rather than failing. The only user of `MPFB_STATUS_BOOTSTRAP`. **Migrated** (FR 031), and the one whose command is **not** named after its payload: `get_mpfb_status`, because `get_status` is the bridge's own state. Its command is the first migrated one declaring `requires_mpfb=False`. |
+| `mpfb_get_status` | Absence is an answer: classifies the install `absent`/`not_initialized`/`ok` rather than failing. The only user of `MPFB_STATUS_BOOTSTRAP`. |
 | `mpfb_create_human` | Wraps `HumanService.create_human()`. Eleven flat macro sliders rather than a nested dict. |
-| `mpfb_list_objects` | Which MakeHuman objects are in the scene. Validates argument *shape*, never the type vocabulary — the far side answers that with `type_recognized`/`known_types`. **The first migrated tool** (FR 030), and the template the other nine followed: a bridge command beside the payload, and the two compared field by field against one Blender. |
-| `mpfb_get_object_info` | What an object is, what it was made from, what belongs with it. Three `asset_info` shapes, three resolution outcomes each. **Migrated** (FR 031): it has a bridge command as well as a payload, and takes the bridge when `MPFB_MCP_BACKEND=bridge`. |
-| `mpfb_list_rigs` | Catalogue. Predicts, per rig, which file would load and whose weights come with it — via `rig_lookup.py`, so `mpfb_add_rig` cannot disagree. **Migrated** (FR 031): it has a bridge command as well as a payload, and takes the bridge when `MPFB_MCP_BACKEND=bridge`. `mpfb_add_rig` has not, so the pair is kept in step by [test_fragment_drift.py](tests/test_fragment_drift.py). |
-| `mpfb_list_assets` | Catalogue, and the first answer that does not fit: filtered, capped and paged. Reports `pack` (from a directory convention) and both the passable `path` and the portable `fragment`. **Migrated** (FR 031): it has a bridge command as well as a payload, and takes the bridge when `MPFB_MCP_BACKEND=bridge`. `mpfb_add_asset` has not, so `asset_sections.py` is drift-checked against its bridge module. |
-| `mpfb_list_targets` | Catalogue. The one tool that is genuinely side-effect-free — no MPFB cache populated, no preview loaded, hence no `refresh`. Reports `shapekey_name` from MPFB, since a name over 60 characters is encoded. **Migrated** (FR 031): it has a bridge command as well as a payload, and takes the bridge when `MPFB_MCP_BACKEND=bridge`. The tool the session source cache was built for: it carried 26 KB of fragment source on a cold generated call, and sends one small JSON request on the bridge. |
-| `mpfb_list_asset_materials` | Catalogue for something that is **not** an asset library section, so `mpfb_list_assets` cannot name it. Its answer is stale by design: MPFB caches that scan and nothing invalidates it. **Migrated** (FR 031): it has a bridge command as well as a payload, and takes the bridge when `MPFB_MCP_BACKEND=bridge`. The staleness is MPFB's, so it survives the change of transport — which FR 031's live check has to allow for before it can compare the two paths. |
-| `mpfb_get_macro_details` | Reads a character's phenotype. Subject resolved from any object in the character's family. **Migrated** (FR 031): it has a bridge command as well as a payload, and takes the bridge when `MPFB_MCP_BACKEND=bridge`. |
+| `mpfb_list_objects` | Which MakeHuman objects are in the scene. Validates argument *shape*, never the type vocabulary — the far side answers that with `type_recognized`/`known_types`. **The first migrated tool** (FR 030), and the template the other twenty-three followed: a bridge command beside the payload, and the two compared field by field against one Blender. |
+| `mpfb_get_object_info` | What an object is, what it was made from, what belongs with it. Three `asset_info` shapes, three resolution outcomes each. |
+| `mpfb_list_rigs` | Catalogue. Predicts, per rig, which file would load and whose weights come with it — via `rig_lookup.py`, so `mpfb_add_rig` cannot disagree. |
+| `mpfb_list_assets` | Catalogue, and the first answer that does not fit: filtered, capped and paged. Reports `pack` (from a directory convention) and both the passable `path` and the portable `fragment`. |
+| `mpfb_list_targets` | Catalogue. The one tool that is genuinely side-effect-free — no MPFB cache populated, no preview loaded, hence no `refresh`. Reports `shapekey_name` from MPFB, since a name over 60 characters is encoded. The tool the session source cache was built for: it carried 26 KB of fragment source on a cold generated call, and sends one small JSON request on the bridge. |
+| `mpfb_list_asset_materials` | Catalogue for something that is **not** an asset library section, so `mpfb_list_assets` cannot name it. Its answer is stale by design: MPFB caches that scan and nothing invalidates it. The staleness is MPFB's, so it survives the change of transport — which FR 031's live check has to allow for before it can compare the two paths. |
+| `mpfb_get_macro_details` | Reads a character's phenotype. Subject resolved from any object in the character's family. |
 | `mpfb_set_macro_details` | Writes it. Sliders default to `None`, not `0.5` — "not mentioned" and "set to the default" are different requests. Writes every property, then recalculates **once**. |
 | `mpfb_refit_human` | Refits everything to a changed body. Detects the generated-Rigify-rig-with-no-meta-rig case, which `HumanService.refit()` reports only through an `operator` an MCP tool has none of. |
-| `mpfb_get_target_stack` | Reads detail morphs. Reads `key_blocks` directly, since `TargetService` cannot see a shape key whose name contains "basis" — confirmed against a real MPFB by its bridge tests. **Migrated** (FR 031): it has a bridge command as well as a payload, and takes the bridge when `MPFB_MCP_BACKEND=bridge`. |
+| `mpfb_get_target_stack` | Reads detail morphs. Reads `key_blocks` directly, since `TargetService` cannot see a shape key whose name contains "basis" — confirmed against a real MPFB by its bridge tests. |
 | `mpfb_set_targets` | The one **batched** tool: lists of dicts, because a round trip costs ~250 ms and a target costs milliseconds. Resolves every entry before writing any. |
 | `mpfb_symmetrize_targets` | Copies one side onto the other. Zeroes the opposing target first, or pruning deletes the wrong half of a pair. |
 | `mpfb_add_rig` | First consumer of a catalogue's identifiers. **Dispatches on the `custom.` prefix itself**, because MPFB's two adding functions are not interchangeable and neither miss reads as a mistake. Names every asset it just failed to rig. |
@@ -277,12 +289,12 @@ one.
 | `mpfb_add_asset` | Equips an MHCLO asset. Takes the catalogue's `path` *or* its `fragment`, exactly one, and always reports which file it landed on. `asset_type` is **required**: MPFB's `"Clothes"` default is wrong for six of the eight types and mislabels a body part silently. |
 | `mpfb_remove_asset` | Takes it off properly — deleting the object would leave the body's mask modifier and the garment's sub-rig behind. |
 | `mpfb_set_skin` | Five material models. Follows **MPFB's settings panel rather than the function signature**: `skin_type` defaults to `MAKESKIN`, and `material_instances` is coerced off for three types — so the *default call creates no material instances*. Reports requested beside used. |
-| `mpfb_list_urls` | The community addresses, read out of MPFB's `ui/weburls.py` by prefix. The only tool that **catches a connection failure and answers anyway** — from a vendored copy, saying so — because the download link is the answer precisely when nothing is running. |
+| `mpfb_list_urls` | The community addresses, read out of MPFB's `ui/weburls.py` by prefix. The only tool that **catches a connection failure and answers anyway** — from a vendored copy, saying so — because the download link is the answer precisely when nothing is running. Its command is the third declaring `requires_mpfb=False`. One narrow case differs between the transports on purpose: a protocol handshake refusal is an error rather than a fallback, because a version mismatch is a fault to fix rather than a circumstance to paper over. |
 | `mpfb_list_docs` | Addresses for mpfb2's `docs/` tree, which the extension does not ship. The only tool with **no payload**: a local table and a URL rule, no socket, no Blender, no MPFB. |
-| `mpfb_list_presets` | Catalogue of **files**, not of anything MPFB computes: size and age come from `os.stat` and exist nowhere else. Uncapped, and reports what MPFB's cached list would gain from a rescan without being asked to rescan. **Migrated** (FR 031): it has a bridge command as well as a payload, and takes the bridge when `MPFB_MCP_BACKEND=bridge`. Its `preset_files.py` rule now exists **three** times — tool side, fragment, bridge module — and `test_codegen.py` runs all three over one table of names. |
+| `mpfb_list_presets` | Catalogue of **files**, not of anything MPFB computes: size and age come from `os.stat` and exist nowhere else. Uncapped, and reports what MPFB's cached list would gain from a rescan without being asked to rescan. Its `preset_files.py` rule exists **three** times — tool side, fragment, bridge module — and `test_codegen.py` runs all three over one table of names. |
 | `mpfb_save_preset` | The first tool to write **outside the `.blend`**, which is where `overwrite: False`, the name-not-a-path rule and the absolute path in every answer come from. Collapses MPFB's two operators into one, and deliberately does not emit their generated-Rigify warning. |
 | `mpfb_create_human_from_preset` | Named for the hazard: it **creates** a character rather than loading into one. Builds every settings dict from `get_default_deserialization_settings()`, since MPFB reads eight of its keys with `[]`. The one tool whose failure is not a no-op — a character is built in stages, so `objects_created` names what a mid-way failure left behind. |
-| `mpfb_set_asset_material` | Has **no service function to wrap at all**; the mechanism exists only in a UI operator, reimplemented from services with three of its quirks reproduced rather than tidied up. |
+| `mpfb_set_asset_material` | Has **no service function to wrap at all**; the mechanism exists only in a UI operator, reimplemented from services with three of its quirks reproduced rather than tidied up. Being an add-on made importing that operator possible for the first time, which is why its command's docstring restates the rule against it rather than pointing at the specification. |
 
 ### What is validated on this side of the socket
 
@@ -312,11 +324,16 @@ These are the specific local checks, and each exists because the alternative fai
 
 ## Tests
 
-Stdlib `unittest`, no pytest, 993 tests. Two layers per tool: the wrapper with `send_code`
-mocked, then the assembled source `exec()`'d against stub Blender and stub MPFB services. **The
-ten migrated tools have three** — wrapper, bridge path, payload — and the payload layer is
-[frozen](specifications/testing.md#a-migrated-tool-is-tested-where-it-runs), because everything
-about what that tool *answers* is now checked against a real MPFB in `bridge/test/`.
+Stdlib `unittest`, no pytest, 1059 tests. **Three layers per tool that crosses the socket** —
+the wrapper with `send_code` mocked, the bridge path against `fake_bridge`, and the assembled
+source `exec()`'d against stub Blender and stub MPFB services. The third is
+[frozen](specifications/testing.md#a-migrated-tool-is-tested-where-it-runs) for all twenty-four,
+because everything about what a tool *answers* is now checked against a real MPFB in
+`bridge/test/`; it goes with the payload when FR 033 deletes both.
+**A test module about the generated path says so**, through
+[tests/generated_path.py](tests/generated_path.py): those tests mock `backend.send_code` and
+assert about the program that reached it, which was implied while blender_mcp was the default and
+became necessary the moment it was not.
 **`bridge/` has a second harness of its own** — pytest inside a headless Blender, MPFB's
 arrangement rather than this one — and the split is at the directory boundary: a bridge test
 imports `bpy` and would fail at import, so `unittest discover -s tests` must never find one. See
@@ -333,15 +350,16 @@ convenient values, and the list of what the suite can never establish.
 | [blender_stubs.py](tests/blender_stubs.py) | No tests. The stub scene and stub services every payload below is executed against, plus the shared `GeneratedCodeTestCase`, `DetailTargetTestCase`, `RigTestCase` and `MeshAssetTestCase`. Its docstring enumerates every MPFB quirk it reproduces and why. |
 | [test_connection.py](tests/test_connection.py) | The wire protocol: framing, error envelopes, host/port env vars. |
 | [test_bridge_connection.py](tests/test_bridge_connection.py) | The bridge's wire protocol and the handshake: framing across a split `recv()`, a refused connection naming the preferences panel, one probe per address rather than one per call, a mismatch in both directions naming which end to upgrade, and the hand-kept `PROTOCOL_VERSION` read out of the add-on's source (skipped where that source is absent). |
-| [test_backend.py](tests/test_backend.py) | The seam: the default, an unrecognised value failing rather than falling back, a migrated tool following the preference and an unmigrated one unable to leave the generated path, the envelope mapping, and — since FR 031 — that a tool's `shared` / `cached_shared` are concatenated on one path and absent from the wire on the other. Routing is asserted by *which fake server was spoken to*, not by which mock was called. |
-| [test_fragment_drift.py](tests/test_fragment_drift.py) | Each migrated `codegen/shared/` fragment against the `bridge/mpfb_bridge/shared/` module that replaced it, parsed with `ast` and compared function by function and constant by constant. **One declared normalisation** — a bridge function is handed what a fragment found bound above it — and anything it cannot cover is named in `UNCOMPARABLE` rather than skipped, with a test asserting that a name listed there really is uncomparable. Client-side, no Blender: it is about two files in this repository. |
+| [test_backend.py](tests/test_backend.py) | The seam: the default (**the bridge** since FR 032), an unrecognised value failing rather than falling back, a migrated tool following the preference, the envelope mapping, and that a tool's `shared` / `cached_shared` are concatenated on one path and absent from the wire on the other. Routing is asserted by *which fake server was spoken to*, not by which mock was called. Its two "an unmigrated tool" tests now **compute their subject and skip** — there is none left, which is the finish line stated as a test rather than a claim. |
+| [test_fragment_drift.py](tests/test_fragment_drift.py) | **All seven** `codegen/shared/` fragments against the `bridge/mpfb_bridge/shared/` modules that replaced them, parsed with `ast` and compared function by function and constant by constant. **One declared normalisation** — a bridge function is handed what a fragment found bound above it — and anything it cannot cover is named in `UNCOMPARABLE` rather than skipped, with a test asserting that a name listed there really is uncomparable. Client-side, no Blender: it is about two files in this repository. |
+| [generated_path.py](tests/generated_path.py) | No tests. Two lines a module uses as `setUpModule`/`tearDownModule` to pin itself to the generated path, which twenty-five of them need now that the bridge is the default: they mock `backend.send_code` and assert about the program that reached it. |
 | [test_observability.py](tests/test_observability.py) | The one component fully testable on this side of the socket, and held to a higher bar accordingly. |
 | [test_description_budget.py](tests/test_description_budget.py) | What an MCP client downloads before any work happens, measured against a ceiling. Run as a script it prints the per-tool table instead. |
 | [test_shared_cache.py](tests/test_shared_cache.py) | The session source cache, both ends: what a program does with a fragment Blender does not hold, and what `shared_cache.send()` does about it. Its one behavioural claim is that a target installed between two calls is still seen — which caching *source* keeps for free and caching *answers* would not have. |
 | [test_codegen.py](tests/test_codegen.py) | Assembly: every payload compiles standalone and both ways through the source cache, the right bootstrap is selected, `PARAMS` round-trips. Also the three fragments that can be run directly — `performed.py`, `refit_blocker.py`, `modifier_reading.py` — and, for each, the drift check that no payload keeps an implementation of its own. |
 | [test_create_human.py](tests/test_create_human.py) | Parameter validation and generated source, `send_code` mocked. |
 | [test_get_status.py](tests/test_get_status.py) | The three-state branching, `exec()`'d against stubbed `bpy` and `sys.modules` entries. |
-| [test_list_objects.py](tests/test_list_objects.py), [test_get_object_info.py](tests/test_get_object_info.py) | Subject resolution by name and by active object, the relationship walk, three `asset_info` shapes. `test_list_objects` was the first migrated one and reads as the template the other nine followed: a thin bridge-path class, and a payload class marked frozen. Its own docstring carries the per-module share of what goes with the payload, as all nine now do. |
+| [test_list_objects.py](tests/test_list_objects.py), [test_get_object_info.py](tests/test_get_object_info.py) | Subject resolution by name and by active object, the relationship walk, three `asset_info` shapes. `test_list_objects` was the first migrated one and reads as the template the other twenty-three followed: a thin bridge-path class, and a payload class marked frozen. |
 | [test_list_rigs.py](tests/test_list_rigs.py) | Over a real `tempfile` rig tree — the payload's job *is* `os.listdir()`. Carries a rig with no weights of its own, a weights file with no rig, a rig absent from the UI enum. |
 | [test_list_targets.py](tests/test_list_targets.py) | Over a real `tempfile` target tree, carrying the two-source merge, the `.target.gz` MPFB's own scan misses, and a name long enough to be encoded. Since FR 017 the tree is scanned by `target_categories.py`, so the catalogue and the tools acting on it read one implementation. |
 | [test_list_assets.py](tests/test_list_assets.py) | The opposite choice: this payload asks `AssetService`, so the *service* is what the stub reproduces, quirks first. |
@@ -389,9 +407,10 @@ MPFB-extension bootstrap, the deliberate protocol duplication) rather than resta
 
 ## Backends
 
-**Today every tool talks to blender lab's `blender_mcp` add-on**, which is the only backend that
-exists in code. There are two unrelated projects called "blender mcp", and supporting both used
-to be a goal; it is not any more.
+**Every tool talks to our own MPFB Bridge by default**, and to blender lab's `blender_mcp` add-on
+when asked. Those are the two backends that exist in code, and one of them is on its way out.
+There are two unrelated projects called "blender mcp", and supporting both used to be a goal; it
+is not any more.
 [FR 028](feature-requests/done/028-pivot-to-specific-addon/README.md) replaced that plan with a
 companion add-on of our own — see [bridge/](#the-bridge) below — which removes the third-party
 add-on from the path rather than abstracting over which one it is. See

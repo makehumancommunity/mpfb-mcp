@@ -1,20 +1,24 @@
 # MPFB MCP
 
-An MCP server with MPFB tools, which piggy-backs on the [existing blender
-mcp](../blender_mcp) implementation, using its TCP connection to execute
-MPFB-related code.
+An MCP server with MPFB tools. Its Blender-side half is a companion add-on of our own, the
+**MPFB Bridge** in [bridge/](bridge), which dispatches a closed vocabulary of named commands
+rather than executing code.
 
 ## Status
 
-Proof of concept, and mid-pivot. Twenty-five tools are implemented.
+Proof of concept. Twenty-five tools are implemented.
 
-The Blender-side logic is moving out of generated Python and into a companion add-on of our own,
-the **MPFB Bridge** in [bridge/](bridge), which dispatches named commands instead of executing
-programs. Ten tools have made the crossing — every read-only one that crosses the socket, listed
-under Introspection and Catalogues below; the other fifteen still send programs to blender_mcp, and
-so do those ten unless `MPFB_MCP_BACKEND=bridge` says otherwise. The default is the system that
-already worked, so an upgrade changes nothing until it is configured to.
-See [CLAUDE.md](CLAUDE.md#commands) for the two environment variables and
+**All twenty-four tools that cross the socket speak to the bridge**, and that is what an
+unconfigured install uses. The twenty-fifth, `mpfb_list_docs`, answers from a local table and
+reaches no Blender at all.
+
+The older arrangement — assembling a Python program per call and sending it to blender lab's
+[blender_mcp](../blender_mcp) add-on to `exec()` — still works and is one variable away
+(`MPFB_MCP_BACKEND=blender_mcp`). It is kept for one more effort because it is the other half of
+the comparison that says the bridge answers the same thing; retiring it is
+[FR 033](feature-requests/033-retire-the-generated-code-path/README.md). On one Blender in one
+session the same smoke run takes **3.9 s on the bridge and 48.5 s on the generated path**.
+See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
 [NEXT_STEPS.md](feature-requests/NEXT_STEPS.md) for what remains.
 
 **Introspection** — read-only, and each of them always answers rather than failing:
