@@ -50,6 +50,15 @@ from mpfbmcp import backend
 from mpfbmcp.tools import list_objects
 from tests import fake_bridge
 from tests.blender_stubs import GeneratedCodeTestCase, StubObject
+from tests import generated_path
+
+
+# These tests are about the **generated path**: they mock `backend.send_code`
+# and assert about the program that reached it. FR 032 made the bridge the
+# default, so saying so is now necessary rather than implied.
+# See tests/generated_path.py.
+setUpModule = generated_path.pin
+tearDownModule = generated_path.unpin
 
 
 def _register_and_get_tool() -> object:

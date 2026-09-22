@@ -51,6 +51,15 @@ from mpfbmcp.tools import list_targets
 
 from tests.blender_stubs import (
     GeneratedCodeTestCase, StubAssetService, StubLocationService, StubTargetService)
+from tests import generated_path
+
+
+# These tests are about the **generated path**: they mock `backend.send_code`
+# and assert about the program that reached it. FR 032 made the bridge the
+# default, so saying so is now necessary rather than implied.
+# See tests/generated_path.py.
+setUpModule = generated_path.pin
+tearDownModule = generated_path.unpin
 
 # A trimmed target.json with the shape MPFB's really has. "arms" is the section
 # whose name a user directory also uses, "measure" is the real index's empty

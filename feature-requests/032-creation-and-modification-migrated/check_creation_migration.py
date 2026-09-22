@@ -169,6 +169,22 @@ if scene is not None:
         bpy.data.objects.remove(blender_object, do_unlink=True)
 
 purged = 0
+
+# Rigify's widget objects are held by a ``WGTS_<rig name>`` collection that is
+# linked to **no scene**, so emptying the scratch scene cannot reach them and
+# they never fall to zero users. Left behind they are not merely untidy: the
+# next generation *appends* into the existing collection rather than making a
+# new one, so `verification/`'s own cleanup - which is scene-scoped - then
+# misses its widgets too and its "the run put back everything it made" check
+# fails for a reason that belongs to this script. Found exactly that way.
+for collection in list(bpy.data.collections):
+    if collection.name.startswith("WGTS_"):
+        for widget in list(collection.objects):
+            bpy.data.objects.remove(widget, do_unlink=True)
+            purged += 1
+        bpy.data.collections.remove(collection)
+        purged += 1
+
 # Repeated, because removing a mesh can orphan the material it referenced.
 for _pass in range(4):
     for collection in (bpy.data.objects, bpy.data.meshes, bpy.data.armatures,
@@ -191,6 +207,15 @@ if scene is not None:
     for blender_object in list(scene.objects):
         removed_objects.append(blender_object.name)
         bpy.data.objects.remove(blender_object, do_unlink=True)
+
+# The widget collections too, for the reason _RESET_CODE gives: they are linked
+# to no scene, so nothing else here would reach them.
+for collection in list(bpy.data.collections):
+    if collection.name.startswith("WGTS_"):
+        for widget in list(collection.objects):
+            removed_objects.append(widget.name)
+            bpy.data.objects.remove(widget, do_unlink=True)
+        bpy.data.collections.remove(collection)
 
 previous = bpy.data.scenes.get(PARAMS["previous"])
 if previous is not None:

@@ -13,7 +13,8 @@ If supporting the bridge ever requires editing a tool module, the seam is in
 the wrong place; see
 [Supporting a second backend](../../specifications/architecture.md#supporting-a-second-backend).
 
-**The backend is configuration, never a probe.** ``MPFB_MCP_BACKEND`` names it.
+**The backend is configuration, never a probe.** ``MPFB_MCP_BACKEND`` names it,
+and since FR 032 the default is the **bridge**.
 Both third-party MCP add-ons answer on 9876 and the bridge on 9877, and no
 single probe distinguishes any of them - a NUL-terminated ping leaves the
 community add-on's parser waiting for the rest of a message, while an
@@ -66,8 +67,10 @@ BACKEND_BLENDER_MCP = "blender_mcp"
 BACKEND_BRIDGE = "bridge"
 
 # In preference order for a reader rather than for the code: the first is the
-# default, and stays the default until the last tool has been migrated.
-BACKENDS = (BACKEND_BLENDER_MCP, BACKEND_BRIDGE)
+# default. It became the bridge in FR 032, once every tool that crosses the
+# socket had a command and the two paths had been compared field by field
+# against one Blender.
+BACKENDS = (BACKEND_BRIDGE, BACKEND_BLENDER_MCP)
 
 # What a generated-code failure is called in this package's envelope. The same
 # spelling the bridge uses for the same thing, deliberately: a caller branching
@@ -143,18 +146,25 @@ MIGRATED_COMMANDS = {
 def preferred_backend() -> str:
     """Which backend this process has been configured to use.
 
-    Defaults to blender_mcp, which is what makes an upgrade invisible to
-    somebody who configures nothing: twenty-four tools have no other path
-    anyway, and the twenty-fifth behaves exactly as it did.
+    **Defaults to the bridge since FR 032**, and the flip was the last thing
+    that effort did rather than the first. What earned it: every tool that
+    crosses the socket has a command, and the two paths were compared answer by
+    answer *and scene by scene* against one Blender before the default moved.
+
+    The generated path stays and stays working - ``MPFB_MCP_BACKEND=blender_mcp``
+    is one word - so FR 033 deletes a path that has been unused for a while
+    rather than one that was carrying every call until the commit before. That
+    ordering is the whole reason the flip is a separate step from the
+    migrations.
     """
     configured = os.environ.get(BACKEND_VARIABLE, "").strip()
     if not configured:
-        return BACKEND_BLENDER_MCP
+        return BACKEND_BRIDGE
     if configured not in BACKENDS:
         raise ValueError(
             "{:s}={!r} is not a backend this server knows. Set it to one of {:s}, or leave it "
             "unset for {:s}.".format(
-                BACKEND_VARIABLE, configured, ", ".join(BACKENDS), BACKEND_BLENDER_MCP))
+                BACKEND_VARIABLE, configured, ", ".join(BACKENDS), BACKEND_BRIDGE))
     return configured
 
 

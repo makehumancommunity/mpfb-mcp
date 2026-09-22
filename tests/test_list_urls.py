@@ -53,6 +53,15 @@ from mpfbmcp.reference import urls
 
 from tests import fake_bridge
 from mpfbmcp.tools import list_urls
+from tests import generated_path
+
+
+# These tests are about the **generated path**: they mock `backend.send_code`
+# and assert about the program that reached it. FR 032 made the bridge the
+# default, so saying so is now necessary rather than implied.
+# See tests/generated_path.py.
+setUpModule = generated_path.pin
+tearDownModule = generated_path.unpin
 
 _STUB_PACKAGE = "bl_ext.test_repo.mpfb"
 # Deliberately not ending in "mpfb", or the bootstrap's candidate scan would

@@ -44,6 +44,15 @@ from mpfbmcp.tools import save_preset
 from tests import fake_bridge
 from tests.blender_stubs import (
     PresetTestCase, StubHumanService, StubObject, StubObjectService)
+from tests import generated_path
+
+
+# These tests are about the **generated path**: they mock `backend.send_code`
+# and assert about the program that reached it. FR 032 made the bridge the
+# default, so saying so is now necessary rather than implied.
+# See tests/generated_path.py.
+setUpModule = generated_path.pin
+tearDownModule = generated_path.unpin
 
 
 # Names that must be refused, and the reason each one exists in this list. The

@@ -25,24 +25,27 @@ rather than merely visible — and one run-level item, the traceback check, need
 without it. The run also writes its full result — the printed lines are capped, the file is not —
 into `verification/results/`, overridable with `MPFB_MCP_VERIFICATION_RESULTS`.
 
-Requirements: a running Blender with MPFB and the blender_mcp add-on enabled and its socket server
-started (see [CLAUDE.md](../CLAUDE.md#commands)). Nothing else is required in the default
-configuration.
+**Requirements: one Blender with MPFB, blender_mcp *and* the MPFB Bridge enabled, and both socket
+servers started (9876 and 9877) — in the default configuration.** That is new since
+[FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md) flipped the
+default backend to the bridge, and it is worth saying plainly rather than leaving to be met as a
+puzzle.
 
-**A run with `MPFB_MCP_BACKEND=bridge` needs both add-ons, and that is transitional.** Ten tools
-have a bridge command — one since
-[FR 030](../feature-requests/done/030-backend-seam/README.md) and nine more since
-[FR 031](../feature-requests/done/031-introspection-and-catalogues-migrated/README.md) — while this
-harness's own scene bookkeeping (the scratch scene, the snapshots, the cleanup) goes through
-`send_code()` directly, because it is instrument rather than tool and it goes away with the
-generated path. So a bridge-configuration run needs MPFB, blender_mcp **and** the MPFB Bridge
-enabled in one Blender, with both socket servers started (9876 and 9877). That is fine and
-temporary; stating it is cheaper than meeting it as a puzzle. The run is otherwise identical, and
-the two configurations must both pass:
+The reason is one-sided. Every one of the twenty-four tools that crosses the socket now has a
+bridge command, so the *tools* need only the bridge — but this harness's own scene bookkeeping (the
+scratch scene, the snapshots, the cleanup) goes through `send_code()` directly, because it is
+instrument rather than tool. So the run needs blender_mcp for its own plumbing whichever backend
+the tools are on.
+
+**This is the last effort in which that is true.** [FR 033](../feature-requests/033-retire-the-generated-code-path/README.md)
+retires the generated path and rewrites this harness's bookkeeping with it, after which a run needs
+the bridge alone.
+
+The two configurations must both pass, and the run is otherwise identical:
 
 ```bash
 PYTHONPATH=. python3 verification/smoke.py
-MPFB_MCP_BACKEND=bridge PYTHONPATH=. python3 verification/smoke.py
+MPFB_MCP_BACKEND=blender_mcp PYTHONPATH=. python3 verification/smoke.py
 ```
 
 Where the install lacks a prerequisite — no MHCLO assets, no skins, Rigify disabled — the affected tools report
@@ -87,9 +90,13 @@ by the checks alone. Wall clock against somebody else's Blender is too noisy and
 install-dependent to gate on, and a check that fails for a reason outside the repository is one
 people learn to ignore.
 
-Last measured at **50.2 s**, 28 items, 0 failed, 0 skipped — Blender 5.1.0, MPFB 2.0.17
-`FROM_SOURCE`, 909 assets across 112 packs, and blender_mcp's `timer_interval_active` at its
-**0.25 s default**. That last number matters more than the machine: the add-on reads one 4 KB
+Last measured at **3.9 s** on the bridge and **48.5 s** on the generated path, 28 items, 0 failed,
+1 skipped — Blender 5.1.0, MPFB 2.0.17 `FROM_SOURCE`, 909 assets across 112 packs, and
+blender_mcp's `timer_interval_active` at its **0.25 s default**. The twelvefold gap between the two
+is the pivot's whole point measured on one machine in one session, and it is the 4 KB chunked read
+rather than anything either add-on computes: the bridge sends parameters where the generated path
+sends programs. Everything below is about the slow path, and stops applying on the day FR 033
+deletes it. That last number matters more than the machine: the add-on reads one 4 KB
 chunk of a request per timer tick, so it is the dominant cost of every call here and 0.05 s makes
 the whole run several times faster (see [CLAUDE.md](../CLAUDE.md#commands) and
 [architecture.md](../specifications/architecture.md#what-a-call-costs-is-the-size-of-its-program)).

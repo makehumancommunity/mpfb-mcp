@@ -47,6 +47,15 @@ from mpfbmcp import backend
 from mpfbmcp.tools import get_object_info
 from tests import blender_stubs, fake_bridge
 from tests.blender_stubs import GeneratedCodeTestCase, StubMaterial, StubObject
+from tests import generated_path
+
+
+# These tests are about the **generated path**: they mock `backend.send_code`
+# and assert about the program that reached it. FR 032 made the bridge the
+# default, so saying so is now necessary rather than implied.
+# See tests/generated_path.py.
+setUpModule = generated_path.pin
+tearDownModule = generated_path.unpin
 
 _SKIN_FRAGMENT = "young_caucasian_female/young_caucasian_female.mhmat"
 _FEDORA_FRAGMENT = "fedora/fedora.mhclo"

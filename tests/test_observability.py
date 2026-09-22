@@ -44,6 +44,15 @@ import unittest
 
 from mpfbmcp import backend, bridge_connection, codegen, connection, observability
 from tests import fake_addon, fake_bridge
+from tests import generated_path
+
+
+# These tests are about the **generated path**: they mock `backend.send_code`
+# and assert about the program that reached it. FR 032 made the bridge the
+# default, so saying so is now necessary rather than implied.
+# See tests/generated_path.py.
+setUpModule = generated_path.pin
+tearDownModule = generated_path.unpin
 
 
 class ObservabilityTestCase(fake_addon.EnvVarTestCase):
@@ -406,7 +415,10 @@ class BridgeRecordTests(ObservabilityTestCase, fake_bridge.BridgeTestCase):
         self.run_fake_server({"status": "ok", "result": {"count": 0}})
         self._bridge()
 
-        self.set_env_var(backend.BACKEND_VARIABLE, None)
+        # Named rather than unset. Since FR 032 an unset variable means the
+        # *bridge*, so "clear it and you get generated code" stopped being true
+        # and this test would otherwise be two bridge calls in a row.
+        self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BLENDER_MCP)
         backend.send("list_objects.py", params={"object_type": None})
         self.set_env_var(backend.BACKEND_VARIABLE, backend.BACKEND_BRIDGE)
         backend.send("list_objects.py", params={"object_type": None})

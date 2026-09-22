@@ -113,25 +113,26 @@ blender --background --command mpfb_bridge
 `MCPServer` and changed other APIs this code (and the currently-on-disk blender_mcp) is written
 against. Check whether blender_mcp has migrated before bumping this.
 
-**Which backend a tool talks to is configuration, and the default is the system that already
-worked.** `MPFB_MCP_BACKEND` is `blender_mcp` (the default) or `bridge`; an unrecognised name is an
-error rather than a silent fallback. `MPFB_BRIDGE_HOST` / `MPFB_BRIDGE_PORT` address the bridge,
-defaulting to `127.0.0.1` and `9877`. Only tools named in `backend.MIGRATED_COMMANDS` have a bridge
-command at all — ten, the read-only half of the package — and the rest take the generated path
-whatever is set:
+**Which backend a tool talks to is configuration, and since FR 032 the default is the bridge.**
+`MPFB_MCP_BACKEND` is `bridge` (the default) or `blender_mcp`; an unrecognised name is an error
+rather than a silent fallback. `MPFB_BRIDGE_HOST` / `MPFB_BRIDGE_PORT` address the bridge,
+defaulting to `127.0.0.1` and `9877`. `backend.MIGRATED_COMMANDS` now holds **twenty-four**
+entries, which is every tool that crosses the socket — `mpfb_list_docs` answers from a local table
+and has no payload at all — so both configurations run the whole package:
 
 ```bash
-# Every tool exactly as before. Fifteen have no other path.
+# Twenty-four tools over the bridge, which is what an unconfigured install gets.
 mpfb-mcp
 
-# Ten tools over the bridge; the other fifteen unchanged.
-MPFB_MCP_BACKEND=bridge mpfb-mcp
+# The generated path, which stays and stays working until FR 033 deletes it.
+MPFB_MCP_BACKEND=blender_mcp mpfb-mcp
 ```
 
 **Transitional, and it goes away with the generated path**: a Blender that serves both backends
 needs *both* add-ons enabled and *both* socket servers started — blender_mcp on 9876 and the MPFB
-Bridge on 9877. That is what [verification/](verification/README.md) needs for a run in the bridge
-configuration, since its scene bookkeeping goes over `send_code()`, and what
+Bridge on 9877. Since the default flipped, that is the arrangement
+[verification/](verification/README.md) needs for a **default** run, since its scene bookkeeping
+goes over `send_code()` — FR 033 is the effort that removes the requirement. It is also what
 [FR 030's](feature-requests/done/030-backend-seam/check_backend_seam.py) and
 [FR 031's](feature-requests/done/031-introspection-and-catalogues-migrated/check_catalogue_migration.py)
 own checks need in order to compare the two paths at all. One configuration mistake is worth knowing about and is not

@@ -47,6 +47,15 @@ from mcp.server.fastmcp import FastMCP
 from mpfbmcp import backend, codegen
 from mpfbmcp.tools import get_status
 from tests import fake_bridge
+from tests import generated_path
+
+
+# These tests are about the **generated path**: they mock `backend.send_code`
+# and assert about the program that reached it. FR 032 made the bridge the
+# default, so saying so is now necessary rather than implied.
+# See tests/generated_path.py.
+setUpModule = generated_path.pin
+tearDownModule = generated_path.unpin
 
 # SystemService's module, which is where MPFB keeps LOWEST_FUNCTIONAL_BLENDER_VERSION
 # (a module-level constant, not a class member). Must not itself end in "mpfb", or

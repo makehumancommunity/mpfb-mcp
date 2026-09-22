@@ -64,22 +64,27 @@ class BothBackendsTestCase(fake_bridge.BridgeTestCase):
 
 
 class PreferenceTests(BothBackendsTestCase):
-    def test_the_default_is_blender_mcp(self) -> None:
+    def test_the_default_is_the_bridge(self) -> None:
+        # Flipped by FR 032, and the last thing that effort did. What earned it
+        # is in `backend.preferred_backend()`'s own docstring.
         self.prefer(None)
 
-        self.assertEqual(backend.preferred_backend(), backend.BACKEND_BLENDER_MCP)
+        self.assertEqual(backend.preferred_backend(), backend.BACKEND_BRIDGE)
 
     def test_an_empty_value_is_treated_as_unset(self) -> None:
         # A shell exporting an empty variable is the ordinary way one ends up
         # set to nothing, and that is not a configuration mistake.
         self.prefer("   ")
 
-        self.assertEqual(backend.preferred_backend(), backend.BACKEND_BLENDER_MCP)
-
-    def test_the_bridge_can_be_asked_for_by_name(self) -> None:
-        self.prefer(backend.BACKEND_BRIDGE)
-
         self.assertEqual(backend.preferred_backend(), backend.BACKEND_BRIDGE)
+
+    def test_the_generated_path_is_still_one_word_away(self) -> None:
+        # The other half of the flip, and the half FR 033 depends on: the
+        # generated path stays and stays working, so the effort that deletes it
+        # deletes something that has been unused for a while.
+        self.prefer(backend.BACKEND_BLENDER_MCP)
+
+        self.assertEqual(backend.preferred_backend(), backend.BACKEND_BLENDER_MCP)
 
     def test_an_unrecognised_backend_fails_rather_than_falling_back(self) -> None:
         # A typo that quietly leaves every call on the old path is
@@ -98,7 +103,7 @@ class PreferenceTests(BothBackendsTestCase):
 
 class RoutingTests(BothBackendsTestCase):
     def test_a_migrated_tool_takes_the_generated_path_by_default(self) -> None:
-        self.prefer(None)
+        self.prefer(backend.BACKEND_BLENDER_MCP)
 
         response = backend.send("list_objects.py", params={"object_type": None})
 
@@ -122,7 +127,7 @@ class RoutingTests(BothBackendsTestCase):
         # and this is what would fail if one were added.
         params = {"object_type": "Basemesh"}
 
-        self.prefer(None)
+        self.prefer(backend.BACKEND_BLENDER_MCP)
         backend.send("list_objects.py", params=params)
         self.prefer(backend.BACKEND_BRIDGE)
         backend.send("list_objects.py", params=params)
@@ -147,7 +152,7 @@ class RoutingTests(BothBackendsTestCase):
                 "precondition - there is no unmigrated tool left to be the subject of this test")
 
         payload = unmigrated[0]
-        for preference in (None, backend.BACKEND_BRIDGE):
+        for preference in (backend.BACKEND_BLENDER_MCP, backend.BACKEND_BRIDGE):
             with self.subTest(backend=preference, payload=payload):
                 self.addon.requests.clear()
                 self.bridge.requests.clear()
@@ -204,7 +209,7 @@ class FragmentTests(BothBackendsTestCase):
             else {"count": 0, "via": "bridge"})
 
     def test_a_fragment_is_concatenated_on_the_generated_path(self) -> None:
-        self.prefer(None)
+        self.prefer(backend.BACKEND_BLENDER_MCP)
 
         backend.send("list_presets.py", params={"refresh": False},
                      shared=["preset_files.py"])
@@ -232,7 +237,7 @@ class FragmentTests(BothBackendsTestCase):
         # is what lets a tool migrate without the tools left behind losing the
         # cache. The claim here is only that it was consulted: the cache's own
         # behaviour is tests/test_shared_cache.py's.
-        self.prefer(None)
+        self.prefer(backend.BACKEND_BLENDER_MCP)
 
         backend.send("list_targets.py", params={"section": None},
                      cached_shared=["target_categories.py"])
@@ -267,7 +272,7 @@ class FragmentTests(BothBackendsTestCase):
                 "the cache - which is also why FR 033 deletes it")
         payload = unmigrated[0]
 
-        for preference in (None, backend.BACKEND_BRIDGE):
+        for preference in (backend.BACKEND_BLENDER_MCP, backend.BACKEND_BRIDGE):
             with self.subTest(backend=preference, payload=payload):
                 self.addon.requests.clear()
                 self.bridge.requests.clear()
@@ -286,7 +291,7 @@ class FragmentTests(BothBackendsTestCase):
         # only difference is which server was spoken to.
         arguments = {"params": {"refresh": True}, "shared": ["preset_files.py"]}
 
-        self.prefer(None)
+        self.prefer(backend.BACKEND_BLENDER_MCP)
         backend.send("list_presets.py", **arguments)
         self.prefer(backend.BACKEND_BRIDGE)
         backend.send("list_presets.py", **arguments)
@@ -297,7 +302,7 @@ class FragmentTests(BothBackendsTestCase):
 
 class EnvelopeTests(BothBackendsTestCase):
     def test_a_generated_error_is_given_the_command_failed_slug(self) -> None:
-        self.prefer(None)
+        self.prefer(backend.BACKEND_BLENDER_MCP)
         self.addon.response = {"status": "error", "message": "NameError on line 312"}
 
         response = backend.send("list_objects.py", params={"object_type": None})
@@ -307,7 +312,7 @@ class EnvelopeTests(BothBackendsTestCase):
         self.assertEqual(response["message"], "NameError on line 312")
 
     def test_a_generated_success_is_returned_byte_for_byte(self) -> None:
-        self.prefer(None)
+        self.prefer(backend.BACKEND_BLENDER_MCP)
         envelope = {"status": "ok", "result": {"count": 0, "via": "blender_mcp"},
                     "stdout": "", "stderr": ""}
         self.addon.response = dict(envelope)
@@ -331,7 +336,7 @@ class EnvelopeTests(BothBackendsTestCase):
     def test_the_two_paths_agree_about_status_result_and_message(self) -> None:
         # The spellings are what no existing caller or test had to change for,
         # and they are the only three keys a caller is promised on both.
-        self.prefer(None)
+        self.prefer(backend.BACKEND_BLENDER_MCP)
         generated = backend.send("list_objects.py", params={"object_type": None})
         self.prefer(backend.BACKEND_BRIDGE)
         bridged = backend.send("list_objects.py", params={"object_type": None})
@@ -342,7 +347,7 @@ class EnvelopeTests(BothBackendsTestCase):
     def test_nothing_is_synthesised_onto_a_generated_answer(self) -> None:
         # protocol_version is a fact about the bridge's protocol. Inventing one
         # for a generated answer would make the field a lie on half the calls.
-        self.prefer(None)
+        self.prefer(backend.BACKEND_BLENDER_MCP)
 
         response = backend.send("list_objects.py", params={"object_type": None})
 
@@ -395,7 +400,7 @@ class ConnectionFailureTests(BothBackendsTestCase):
             backend.send("list_objects.py", params={"object_type": None})
 
     def test_a_missing_addon_raises_connection_error_on_the_generated_path(self) -> None:
-        self.prefer(None)
+        self.prefer(backend.BACKEND_BLENDER_MCP)
         self.set_env_var("BLENDER_MCP_PORT", str(_free_port()))
 
         with self.assertRaises(ConnectionError):
