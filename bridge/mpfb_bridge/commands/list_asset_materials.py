@@ -17,17 +17,17 @@ arrived here from the generated program this command replaced, where it had
 been established against a real install; a reimplementation that fixed one
 would be changing what the tool answers under cover of a migration. Three of MPFB's behaviours shape it and all three look wrong:
 
-- **The answer is stale by design.** That function caches per
-  ``(asset_source, asset_subdir)`` in a module-level dict that nothing
-  invalidates automatically, so this reports a snapshot from the first time
-  anything in this Blender session asked about this asset. A material dropped
-  into the directory afterwards is applicable and invisible. Said out loud in
-  the answer's own ``message``, since a caller who met it would otherwise read
-  it as a bug here.
-  ``AssetService.invalidate_alternative_materials_cache()`` does exist and does
-  clear both dicts - nothing calls it - so this is the kind of staleness a
-  ``refresh`` argument could lift. That is FR 018's, not this command's, and
-  until it lands the answer is a snapshot.
+- **The answer is stale by design, and FR 018 is what lifts it.** That
+  function caches per ``(asset_source, asset_subdir)`` in a module-level dict
+  that nothing invalidates automatically, so a plain call reports a snapshot
+  from the first time anything in this Blender session asked about this
+  asset. ``refresh=True`` calls
+  ``AssetService.invalidate_alternative_materials_cache()`` before scanning,
+  which clears **both** caching dicts - and every other asset's cached
+  entry along with this one's, since the invalidator takes no arguments and
+  there is no per-asset variant. ``cache_invalidated`` says whether this call
+  did that, and the message says so too when it did not, since a caller who
+  met the staleness would otherwise read it as a bug here.
 - **``exclude_default`` is accepted by MPFB and never used.** The asset's own
   material is not filtered out, so it normally appears in the list. It is
   flagged with ``is_default`` rather than removed, because removing it would be
@@ -63,6 +63,7 @@ import bpy
 
 from ..log import get_logger
 from ..validation import Param
+from ..validation import TYPE_BOOLEAN
 from ..validation import TYPE_STRING
 
 _LOG = get_logger("commands.listassetmaterials")
@@ -70,6 +71,10 @@ _LOG = get_logger("commands.listassetmaterials")
 PARAMS = (
     Param("name", TYPE_STRING, required=True,
           description="The name of the equipped asset object - the hat, not the character."),
+    Param("refresh", TYPE_BOOLEAN, default=False,
+          description="Clear AssetService's alternative-materials cache before scanning. MPFB "
+                      "caches that scan and nothing invalidates it automatically; the clear is "
+                      "global, affecting every asset, not only this one."),
 )
 
 SUMMARY = "List the alternative materials that ship beside one equipped asset."
@@ -164,7 +169,7 @@ def _search_roots_for(services, asset_subdir):
     return [_as_path(root) for root in (roots or []) if _as_path(root) is not None]
 
 
-def _not_found(requested_name):
+def _not_found(requested_name, cache_invalidated):
     return dict(
         found=False,
         asset_object_name=None,
@@ -177,12 +182,13 @@ def _not_found(requested_name):
         materials=[],
         count=0,
         search_roots=[],
+        cache_invalidated=cache_invalidated,
         message="No object named '{:s}' exists in this .blend file. Call mpfb_list_objects to "
                 "see what the current scene holds; this tool wants the asset's own name, not "
                 "the character's.".format(str(requested_name)))
 
 
-def _not_an_asset(asset):
+def _not_an_asset(asset, cache_invalidated):
     return dict(
         found=True,
         asset_object_name=asset.name,
@@ -195,13 +201,14 @@ def _not_an_asset(asset):
         materials=[],
         count=0,
         search_roots=[],
+        cache_invalidated=cache_invalidated,
         message="'{:s}' carries no MPFB object_type, so it was not equipped by MPFB and has no "
                 "asset directory to look in. Call mpfb_get_object_info to see what this object "
                 "is.".format(asset.name))
 
 
 def _message(asset, asset_source, scan_failed, materials, search_roots,
-             default_material, default_material_reason):
+             default_material, default_material_reason, cache_invalidated):
     parts = []
     if not asset_source:
         parts.append(
@@ -219,11 +226,16 @@ def _message(asset, asset_source, scan_failed, materials, search_roots,
     else:
         parts.append("{:d} material(s) ship beside '{:s}'.".format(
             len(materials), str(asset_source)))
-    if materials:
+    if cache_invalidated:
+        parts.append(
+            " The alternative-materials cache was cleared before this scan (refresh=True), so "
+            "this list reflects the current directory contents. That clear is global - it also "
+            "affects the next call for every other asset, not only this one.")
+    elif materials:
         parts.append(
             " This list is a cached snapshot: MPFB caches it per asset and nothing invalidates "
             "that cache, so a material installed after the first call for this asset in this "
-            "Blender session will not appear.")
+            "Blender session will not appear. Pass refresh=True to clear the cache first.")
     if default_material is None and asset_source:
         parts.append(
             " The asset's own default material is not known ({:s}), so no entry is flagged as "
@@ -237,14 +249,20 @@ def list_asset_materials(params, resolution):
     services = resolution.services
     general_properties, mhclo_entity = _mpfb_entities(services)
     requested_name = params["name"]
+    cache_invalidated = bool(params["refresh"])
+
+    if cache_invalidated:
+        # Global: this clears every asset's cached scan, not only the one
+        # named here. There is no per-asset invalidator to reach for instead.
+        services["AssetService"].invalidate_alternative_materials_cache()
 
     asset = bpy.data.objects.get(requested_name)
     if asset is None:
-        return _not_found(requested_name)
+        return _not_found(requested_name, cache_invalidated)
 
     object_type = services["ObjectService"].get_object_type(asset) or None
     if object_type is None:
-        return _not_an_asset(asset)
+        return _not_an_asset(asset, cache_invalidated)
 
     # MPFB's own derivation - see this module's docstring for why it is this and
     # not the shared section table.
@@ -307,6 +325,7 @@ def list_asset_materials(params, resolution):
         materials=materials,
         count=len(materials),
         search_roots=search_roots,
+        cache_invalidated=cache_invalidated,
         message=_message(asset, asset_source, scan_failed, materials, search_roots,
-                         default_material, default_material_reason),
+                         default_material, default_material_reason, cache_invalidated),
     )

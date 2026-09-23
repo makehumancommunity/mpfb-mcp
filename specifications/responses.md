@@ -234,19 +234,24 @@ A third turns up in `mpfb_get_target_stack`, and it is the sharpest of them:
 
 And the same convention has a fourth form, seen from the other side:
 
-- **The tool can be the stale one, and must say so.**
+- **The tool can be the stale one, and must say so - and where it can be lifted, offer that too.**
   `AssetService.alternative_materials_for_asset()` caches its scan per `(asset_source,
-  asset_subdir)` in a module-level dict that nothing invalidates automatically, so
+  asset_subdir)` in a module-level dict that nothing invalidates automatically, so a plain call to
   `mpfb_list_asset_materials` reports a snapshot taken the first time anything in that Blender
   session asked about the asset. A material installed afterwards is on disk, is applicable, and
-  will not appear. Where the staleness is *ours* rather than MPFB's, the obligation is the same:
-  name it in the docstring and in the response, so a caller who meets it does not read it as a bug.
+  will not appear by default. Where the staleness is *ours* rather than MPFB's, the obligation is
+  the same: name it in the docstring and in the response, so a caller who meets it does not read it
+  as a bug.
 
   **Say only what was checked.** This entry used to end "and no `refresh` argument could change
   that, because there is nothing to call", which was false —
   `AssetService.invalidate_alternative_materials_cache()` exists, and the live run found it. A
   limitation attributed to MPFB is a claim about MPFB, and carries the same burden of evidence as
-  a defect report does.
+  a defect report does. [FR 018](../feature-requests/done/018-alternative-material-refresh/README.md)
+  wired that invalidator up as `refresh`, so the tool now offers a way past its own staleness -
+  and because the invalidator takes no arguments and clears every asset's cached scan at once, the
+  response says so explicitly through `cache_invalidated` rather than leaving a global side effect
+  implicit in a per-asset call.
 
 Prefer describing what is actually on disk, and label the part MPFB will not show — rather than
 either papering over the difference or quietly inheriting the limitation. Where the difference is

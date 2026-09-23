@@ -22,6 +22,13 @@ about this asset in this Blender session. A material dropped into the asset's di
 on disk and applicable and will not appear here. That is the mirror image of
 ``mpfb_list_targets``' staleness note: there MPFB's own panels are stale and this
 package is current, and here it is this package that is stale.
+
+``refresh`` lifts that, matching ``mpfb_list_rigs`` and ``mpfb_list_assets``.
+``AssetService.invalidate_alternative_materials_cache()`` exists and clears the
+cache **for every asset**, not only the one being listed - there is no
+per-asset invalidator - so a refreshed call is a side effect on what any other
+tool asking about a *different* asset will see next. The response says so
+through ``cache_invalidated`` rather than leaving it implicit.
 """
 
 from __future__ import annotations
@@ -48,6 +55,17 @@ def _validated_name(name: object) -> str:
     return name
 
 
+def _validated_refresh(refresh: object) -> bool:
+    """Reject locally what would otherwise round-trip to Blender to fail there."""
+    if not isinstance(refresh, bool):
+        # Deliberately not truthiness: 0/1 and "false" are how a caller signals
+        # a bool it did not manage to build, and quietly accepting them would
+        # make `refresh="false"` clear a cache every other asset relies on.
+        raise ValueError(
+            "refresh must be a bool, got {!r}".format(refresh))
+    return refresh
+
+
 def register(mcp: FastMCP) -> None:
     @mcp.tool(
         annotations=ToolAnnotations(
@@ -58,11 +76,11 @@ def register(mcp: FastMCP) -> None:
             openWorldHint=False,
         )
     )
-    def mpfb_list_asset_materials(name: str) -> dict[str, object]:
+    def mpfb_list_asset_materials(name: str, refresh: bool = False) -> dict[str, object]:
         """
         List the alternative materials that ship beside one equipped MHCLO
         asset - the other colours of a hat - and name the one it is wearing
-        now. Changes nothing.
+        now. Changes nothing about the character.
 
         **These are not in `mpfb_list_assets`' answer.** That tool lists MPFB's
         asset library sections; alternative materials live in the asset's own
@@ -74,10 +92,12 @@ def register(mcp: FastMCP) -> None:
         `asset_object_name`.
 
         **The answer is a snapshot.** MPFB caches this scan per asset and
-        nothing invalidates that cache, so a material added to the asset's
-        directory after the first call for that asset - in this Blender
-        session - will not appear. Restart Blender if a newly installed
-        material is missing.
+        nothing invalidates that cache on its own, so a material added to the
+        asset's directory after the first call for that asset - in this
+        Blender session - will not appear. `refresh=true` clears the cache
+        first; `cache_invalidated` says whether it did. That clear is global -
+        every asset's cached list is dropped, not only this one's - which is
+        why the default stays `false`.
 
         `result` carries `asset_object_name`, `object_type`, `asset_source` and
         the `asset_subdir` searched; `default_material`, the absolute path the
@@ -87,9 +107,10 @@ def register(mcp: FastMCP) -> None:
         now; `materials`, one entry per alternative with `path`, `fragment`,
         `name` and `is_default` - MPFB does **not** filter the asset's own
         material out of this scan, so the default usually appears and is
-        flagged rather than removed; `count`; and `search_roots`, the
-        directories actually scanned, so "this hat has no other colours" is
-        distinguishable from "the hat's asset source no longer resolves".
+        flagged rather than removed; `count`; `search_roots`, the directories
+        actually scanned, so "this hat has no other colours" is distinguishable
+        from "the hat's asset source no longer resolves"; and
+        `cache_invalidated`.
 
         An object that is not an asset comes back as `found: false`, or with an
         empty list and an explanation, never as an error.
@@ -102,5 +123,6 @@ def register(mcp: FastMCP) -> None:
             "list_asset_materials",
             params={
                 "name": _validated_name(name),
+                "refresh": _validated_refresh(refresh),
             },
         )

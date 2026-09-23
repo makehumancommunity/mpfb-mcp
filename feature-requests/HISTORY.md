@@ -163,6 +163,19 @@ caching was the code, not the answer: a shared fragment's source was kept inside
 hash of itself, cutting the three heaviest tools by 1.5-1.8 s per call. A cache of the *table*, with
 a directory-mtime signature, was built first and thrown away when it was measured.
 
+## [FR 018](done/018-alternative-material-refresh/README.md) — `mpfb_list_asset_materials` gains `refresh`
+
+FR 011 documented the alternative-material listing as unfixably stale; FR 013 found that half false
+- `AssetService.invalidate_alternative_materials_cache()` exists, nothing called it. This effort
+wired it up as `refresh` (default `false`, rejected locally unless a real `bool`), reported back
+through a new `cache_invalidated` field because the invalidator is global - it clears every asset's
+cached scan, not only the one named in the call - and a tool whose `refresh` quietly resets state
+other tools depend on has to say so. The docstring dropped its "restart Blender" remedy. Live
+verification ([`check_fr018.py`](done/018-alternative-material-refresh/check_fr018.py)) equipped an
+MHCLO asset, wrote a probe `.mhmat` beside it on disk, and confirmed a plain call still misses it
+while `refresh=true` clears the cache and sees it - twice, once against a cache a prior run had
+already warmed, which the global clear reached anyway.
+
 ## [FR 019](done/019-file-mpfb-defects/README.md) — the confirmed MPFB defects, written up where MPFB's own effort will read them
 
 The first effort whose deliverable is in another repository and the first that changes no behaviour:

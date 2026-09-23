@@ -41,7 +41,7 @@ def _tool_callable():
 
 
 class ArgumentValidationTests(unittest.TestCase):
-    """Shape only, and there is only one argument to have a shape."""
+    """Shape only: the name, and now refresh alongside it."""
 
     def setUp(self):
         self.tool = _tool_callable()
@@ -56,7 +56,12 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_the_name_crosses_the_socket(self):
         command, params = self._sent(name="Human.fedora")
         self.assertEqual(command, "list_asset_materials")
-        self.assertEqual(params, {"name": "Human.fedora"})
+        self.assertEqual(params, {"name": "Human.fedora", "refresh": False})
+
+    def test_refresh_true_is_carried_across(self):
+        command, params = self._sent(name="Human.fedora", refresh=True)
+        self.assertEqual(command, "list_asset_materials")
+        self.assertEqual(params, {"name": "Human.fedora", "refresh": True})
 
     def test_name_is_required(self):
         with mock.patch("mpfbmcp.bridge_connection.send_command") as send_command:
@@ -67,6 +72,17 @@ class ArgumentValidationTests(unittest.TestCase):
                     with self.assertRaises((ValueError, TypeError)):
                         self.tool(name=bad)
             send_command.assert_not_called()
+
+    def test_non_bool_refresh_is_rejected_locally(self):
+        # A truthy int or the string "false" is how a caller signals a bool it
+        # failed to build; accepting either would silently clear a cache every
+        # other asset relies on.
+        for bad in (1, 0, "true", "false", None, [], object()):
+            with self.subTest(refresh=bad):
+                with mock.patch("mpfbmcp.bridge_connection.send_command") as send_command:
+                    with self.assertRaises(ValueError):
+                        self.tool(name="Human.fedora", refresh=bad)
+                send_command.assert_not_called()
 
 
 class ListAssetMaterialsOverTheBridgeTests(fake_bridge.BridgeTestCase):
@@ -90,7 +106,13 @@ class ListAssetMaterialsOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
         self.assertEqual(self.bridge.commands()[-1], "list_asset_materials")
         self.assertEqual(self.bridge.decoded_requests()[-1]["params"],
-                         {"name": "Human.fedora"})
+                         {"name": "Human.fedora", "refresh": False})
+
+    def test_refresh_reaches_the_bridge(self):
+        self.tool(name="Human.fedora", refresh=True)
+
+        self.assertEqual(self.bridge.decoded_requests()[-1]["params"],
+                         {"name": "Human.fedora", "refresh": True})
 
     def test_local_validation_runs_before_a_transport_is_chosen(self):
         with self.assertRaises(TypeError):
@@ -99,6 +121,10 @@ class ListAssetMaterialsOverTheBridgeTests(fake_bridge.BridgeTestCase):
             with self.subTest(name=bad):
                 with self.assertRaises((ValueError, TypeError)):
                     self.tool(name=bad)
+        for bad in (1, 0, "true", "false", None, [], object()):
+            with self.subTest(refresh=bad):
+                with self.assertRaises(ValueError):
+                    self.tool(name="Human.fedora", refresh=bad)
 
         self.assertEqual(self.bridge.requests, [],
                          "a locally invalid call must not be sent to any backend")

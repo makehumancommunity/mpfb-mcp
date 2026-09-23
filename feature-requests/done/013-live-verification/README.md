@@ -489,7 +489,7 @@ observation is recorded in
 
 As named up front, and nothing beyond it. MPFB's asset-list cache and its loaded previews; the
 alternative-material cache, which this session filled with its own scans — and which, it turns out,
-*can* be invalidated ([FR 018](../../018-alternative-material-refresh/README.md)). Everything else was
+*can* be invalidated ([FR 018](../018-alternative-material-refresh/README.md)). Everything else was
 put back: all twelve datablock collections compare identical after every checklist,
 `enhanced_settings.default.json` was moved aside to observe its creation and restored, the probe
 `.mhmat` written beside an asset was deleted, and the three probe targets were removed. The

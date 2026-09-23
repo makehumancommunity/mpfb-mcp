@@ -191,6 +191,10 @@ answer means rather than merely how fast it arrives.
   Blender started does not appear until something rescans.
 - **The alternative materials of one asset**, cached per `(asset_source, asset_subdir)` — the case
   where [the tool is the stale one](responses.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show).
+  `mpfb_list_asset_materials`' `refresh` clears it via
+  `AssetService.invalidate_alternative_materials_cache()`, which is global — it drops every asset's
+  cached scan, not only the one named in the call — reported through `cache_invalidated` rather
+  than left implicit ([FR 018](../feature-requests/done/018-alternative-material-refresh/README.md)).
 - **The list of saved character presets**, in the module global `_EXISTING_PRESETS`, which exactly
   one thing invalidates: a save through `serialize_to_json_file()`. A preset written by MPFB's panel
   in another Blender, by hand, or by an earlier session is invisible until something rescans.
@@ -222,9 +226,9 @@ What follows for a tool:
 - **Where a cache cannot be refreshed at all, say that too.** A caller who cannot tell staleness
   from absence will read a missing asset as a missing file. FR 013 found that
   `AssetService.invalidate_alternative_materials_cache()` *does* exist and clears both dicts —
-  nothing calls it — which is what makes
-  [FR 018](../feature-requests/018-alternative-material-refresh/README.md) possible; until it
-  lands, the tool says so.
+  nothing called it until
+  [FR 018](../feature-requests/done/018-alternative-material-refresh/README.md) wired it up as
+  `mpfb_list_asset_materials`' `refresh`, which is why that tool no longer says so.
 
 ## When mpfb-mcp models a concept MPFB's UI has but its services do not
 

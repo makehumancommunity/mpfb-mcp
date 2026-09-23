@@ -216,7 +216,7 @@ correctness gain:
 - **`enhanced_settings.default.json` moved aside and restored** — FR 011's specific question about
   creation, asked and answered.
 - **the `.mhmat` written beside an asset** — the cache-staleness observation, which is
-  [FR 018](../../018-alternative-material-refresh/README.md)'s subject and should move there if that
+  [FR 018](../018-alternative-material-refresh/README.md)'s subject and should move there if that
   effort still wants it.
 
 After this, `verification/` changes nothing outside the `.blend` at all, which is a materially
@@ -319,7 +319,7 @@ live check in FR-1 is sufficient and this is a convenience.
   [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md),
   cites `verification/check_mpfb_issues.py` and `verification/check_fr010.py` by path from another
   repository; FR-8 says what this request owes them.
-- [FR 018](../../018-alternative-material-refresh/README.md) — Proposed; the cache-staleness fixture
+- [FR 018](../018-alternative-material-refresh/README.md) — Proposed; the cache-staleness fixture
   this request removes is its subject, and it should take the fixture if it wants it.
 - [FR 020](../020-trim-claude-md/README.md) — the same disease in the documentation: growth by
   accumulation until copies drift. Worth reading before writing the replacement README, since the

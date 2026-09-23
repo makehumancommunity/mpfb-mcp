@@ -131,12 +131,13 @@ def test_the_answer_is_a_cached_snapshot(equipped):
     MPFB caches the scan per (asset_source, asset_subdir) and nothing
     invalidates it automatically, so a material installed after the first call
     in this Blender session is applicable and invisible. This command says so in
-    its own message rather than rescanning, because rescanning would be this
-    command inventing a behaviour MPFB does not have.
+    its own message rather than rescanning by default, because rescanning would
+    be this command inventing a behaviour MPFB does not have on its own -
+    unless asked to, which is what FR 018's `refresh` argument is for.
     """
-    services = services_or_skip()
     before = result(COMMAND, {"name": equipped["garment"].name})
     assert before["count"] >= 2, "the fixture ships materials to cache"
+    assert before["cache_invalidated"] is False
 
     write_mhmat(os.path.join(equipped["system"], "clothes", "fedora", "fedora_green.mhmat"))
     after = result(COMMAND, {"name": equipped["garment"].name})
@@ -146,13 +147,16 @@ def test_the_answer_is_a_cached_snapshot(equipped):
         "the scan is cached, so a new material should be invisible"
     assert "cached snapshot" in after["message"], \
         "the staleness has to be in the answer, or a caller reads it as a bug here"
+    assert after["cache_invalidated"] is False
 
-    # And the invalidator exists, which is what makes the staleness a choice
-    # rather than a limitation - FR 018's `refresh` is where it would be used.
-    services["AssetService"].invalidate_alternative_materials_cache()
-    rescanned = result(COMMAND, {"name": equipped["garment"].name})
+    # refresh=True is the invalidator FR 018 wires up - AssetService's own
+    # invalidate_alternative_materials_cache() exists and this is the only
+    # caller of it, since it clears every asset's cache and not only this one.
+    rescanned = result(COMMAND, {"name": equipped["garment"].name, "refresh": True})
+    assert rescanned["cache_invalidated"] is True
     assert "fedora_green" in [entry["name"] for entry in rescanned["materials"]], \
-        "invalidate_alternative_materials_cache() should make the new material appear"
+        "refresh=True should make the new material appear"
+    assert "cached snapshot" not in rescanned["message"]
 
 
 def test_an_asset_whose_mhclo_names_no_material_says_which_branch_it_took(equipped):

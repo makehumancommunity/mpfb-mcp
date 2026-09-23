@@ -250,7 +250,7 @@ rather than by breaking an add-on.
 `"unknown"` while `MPFB_OT_GenerateRigifyRigOperator.poll()` returned `False` rather than raising.
 And `AssetService.invalidate_alternative_materials_cache()` **exists** and clears both cache dicts —
 the staleness is real because nothing calls it, not because it cannot be cleared, which is what
-makes [FR 018](../../018-alternative-material-refresh/README.md) possible at all.
+makes [FR 018](../018-alternative-material-refresh/README.md) possible at all.
 
 A third defect was found while provoking the first of those, and is worth filing on its own:
 `ObjectService.object_is_rigify_metarig()` reads `blender_object.pose.bones` without checking, and
@@ -452,7 +452,7 @@ finding ambiguous about which change caused it.
 | 13 | A fourth shared fragment, and the drift census | **[FR 015](../015-fourth-shared-fragment/README.md)** |
 | 14 | Trim the tool descriptions from 66.7 KB toward ~45 KB | **[FR 016](../016-trim-tool-descriptions/README.md)** |
 | 15 | The category-table rebuild costs ~2 s per call | **[FR 017](../017-category-table-cost/README.md)** |
-| 16 | `mpfb_list_asset_materials` should be able to rescan | **[FR 018](../../018-alternative-material-refresh/README.md)** |
+| 16 | `mpfb_list_asset_materials` should be able to rescan | **[FR 018](../018-alternative-material-refresh/README.md)** |
 | 17 | File the five confirmed MPFB defects, including the one that stops MPFB loading | **[FR 019](../019-file-mpfb-defects/README.md)** |
 | 18 | Merge `blocked()`'s six variants | **Rejected** — one convention applied six times, not one concept duplicated |
 | 19 | A composite `add_rig` + `generate_rigify_rig` | **Rejected** — the clothes go between them, which the run confirmed matters |
