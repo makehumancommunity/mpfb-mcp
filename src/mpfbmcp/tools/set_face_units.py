@@ -1,0 +1,177 @@
+"""
+The ``mpfb_set_face_units`` tool: compose a character's face directly.
+
+The write half of the face-unit pair started by ``mpfb_get_face_units``. It
+wraps ``FaceService.set_expression()`` - MPFB's composer, not its expression
+*library* - to set the 52 ARKit ``!ex-`` shape keys directly, in one batched
+call, the ``mpfb_set_targets`` idiom: a round trip costs about as much as
+applying fifty units, so send a whole face as one call.
+
+**Validated here is shape only.** Each entry is a dict with exactly
+`face_unit` (a non-empty string) and `weight` (0.0-1.0, the range Blender
+clamps a shape key to). Whether `face_unit` names a real ARKit unit is checked
+in the payload against MPFB's own `ARKIT_FACEUNITS`, per
+[validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket) -
+a copy kept here could drift, and the payload's refusal comes back naming the
+closest legal spellings.
+
+**A composed face is transient.** It is not saved by `mpfb_save_preset` and is
+destroyed by anything that rebuilds MPFB's expression-library stack (loading
+another preset, applying a saved expression once that tool exists). It lives
+in the `.blend` and nowhere else - this tool does not author expression files.
+"""
+
+from __future__ import annotations
+
+__all__ = (
+    "register",
+)
+
+from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
+from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
+
+from mpfbmcp import backend
+
+_ENTRY_KEYS = ("face_unit", "weight")
+
+# Generous, but not unbounded: MPFB only has 52 face units, so a caller sending
+# more than this made a mistake worth catching locally.
+MAX_ENTRIES = 200
+
+
+def _validated_name(name: object) -> str | None:
+    """Reject locally what would otherwise round-trip to Blender to fail there."""
+    if name is None:
+        return None
+    if not isinstance(name, str):
+        raise ValueError("name must be a string or omitted, got {!r}".format(name))
+    if not name.strip():
+        raise ValueError(
+            "name must not be empty or whitespace; omit it to use the active object")
+    return name
+
+
+def _validated_flag(argument: str, value: object) -> bool:
+    if not isinstance(value, bool):
+        # Deliberately not truthiness: "false" and 0 are how a caller signals a
+        # bool it did not manage to build, and accepting them quietly would make
+        # `clear_first="false"` zero the whole face.
+        raise ValueError("{} must be a bool, got {!r}".format(argument, value))
+    return value
+
+
+def _validated_face_units(value: object) -> list[dict]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise ValueError("face_units must be a list of objects or omitted, got {!r}".format(
+            value))
+    if len(value) > MAX_ENTRIES:
+        raise ValueError(
+            "face_units must hold at most {} entries, got {}".format(MAX_ENTRIES, len(value)))
+
+    checked = []
+    for position, entry in enumerate(value):
+        where = "face_units[{}]".format(position)
+        if not isinstance(entry, dict):
+            raise ValueError("{} must be an object, got {!r}".format(where, entry))
+        unknown = sorted(key for key in entry if key not in _ENTRY_KEYS)
+        if unknown:
+            raise ValueError(
+                "{} has unknown key(s) {}; known keys are {}".format(
+                    where, ", ".join(unknown), ", ".join(_ENTRY_KEYS)))
+
+        face_unit = entry.get("face_unit")
+        if not isinstance(face_unit, str):
+            raise ValueError("{} face_unit must be a string, got {!r}".format(where, face_unit))
+        if not face_unit.strip():
+            raise ValueError("{} face_unit must not be empty or whitespace".format(where))
+
+        weight = entry.get("weight")
+        if isinstance(weight, bool) or not isinstance(weight, (int, float)):
+            # A bool is an int in Python, so True would otherwise be stored as
+            # 1.0 under the guise of a number the caller never wrote.
+            raise ValueError(
+                "{} weight must be a number between 0.0 and 1.0, got {!r}".format(where, weight))
+        # 0.0..1.0 and not wider: a raw shape key value, which Blender clamps
+        # to that range. A negative here would silently store 0.0.
+        if not 0.0 <= float(weight) <= 1.0:
+            raise ValueError(
+                "{} weight must be between 0.0 and 1.0, got {!r}".format(where, weight))
+
+        checked.append({"face_unit": face_unit, "weight": float(weight)})
+    return checked
+
+
+def register(mcp: FastMCP) -> None:
+    @mcp.tool(
+        annotations=ToolAnnotations(
+            title="Set Face Units",
+            readOnlyHint=False,
+            # clear_first zeroes every unit not named in this call, and a
+            # composed face survives nothing anyway (see the module docstring).
+            destructiveHint=True,
+            idempotentHint=True,
+            openWorldHint=False,
+        )
+    )
+    def mpfb_set_face_units(name: str | None = None,
+                            face_units: list[dict] | None = None,
+                            clear_first: bool = False,
+                            refit: bool = True) -> dict[str, object]:
+        """
+        Compose a MakeHuman character's face from ARKit face units - the same
+        52-unit vocabulary `mpfb_get_face_units` reads and MPFB's own composer
+        panel edits, applied directly to the `!ex-` shape keys.
+
+        **Send the whole expression as one call.** `face_units` is a list of
+        `{face_unit, weight}`, `weight` in 0.0-1.0. Call `mpfb_get_face_units`
+        first if you need the exact 52 legal names, grouped by region in
+        `known_face_units`.
+
+        **Nothing is written unless every name resolves.** Every `face_unit` is
+        checked against MPFB's own vocabulary before anything is touched; one
+        misspelled name refuses the whole call and `unknown_face_units` names
+        it together with the closest legal spellings. This tool also refuses
+        outright when the `faceunits01` asset pack is not installed, since
+        every target file would then be missing - check
+        `mpfb_get_face_units`' `faceunits01_installed` first if unsure.
+
+        **This is additive by default**, matching MPFB: a face unit not
+        mentioned in `face_units` is left exactly as it was. `clear_first`
+        (default false) zeroes every one of the 52 units before applying this
+        call's entries, which is the difference between "smile a bit more" and
+        "make this face and nothing else".
+
+        `refit` (default **true**, unlike every other refitting tool here,
+        because it matches MPFB's own composer-panel default) re-fits clothes
+        and the rig to the new expression afterwards.
+
+        **A composed face is transient.** It is not saved by `mpfb_save_preset`
+        and is destroyed by anything that rebuilds MPFB's applied-expressions
+        stack. It exists only in the running `.blend`.
+
+        `result` carries `applied` - one entry per unit actually written, with
+        `previous_value` and `new_value` - plus `loaded_from_disk` (units whose
+        shape key had to be created from a target file on this call),
+        `could_not_load` (a unit whose target file was missing even though the
+        pack passed its own install probe - a partially installed pack), and
+        `skipped_absent_at_zero` (a unit requested at `0.0` with no shape key
+        yet, which is left alone rather than created). `basemesh_name` names
+        the object actually changed. A subject that cannot be resolved
+        (`found: false`) and a basemesh in edit mode (`ready: false`) are
+        answers, not errors.
+        """
+        # `result` (built in bridge/mpfb_bridge/commands/set_face_units.py) is plain
+        # JSON-safe data. The bridge serializes a result before it commits to an
+        # answer, so a value that is not JSON-safe would be a failed command
+        # rather than a repr() quietly standing in for one.
+        return backend.send(
+            "set_face_units",
+            params={
+                "name": _validated_name(name),
+                "face_units": _validated_face_units(face_units),
+                "clear_first": _validated_flag("clear_first", clear_first),
+                "refit": _validated_flag("refit", refit),
+            },
+        )

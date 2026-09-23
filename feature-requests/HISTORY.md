@@ -310,3 +310,26 @@ widgets behind, which `mpfb_list_objects` cannot even see.
 [verification/README.md](../verification/README.md#what-fr-033-cost-this-instrument) carries this
 where a passing run will be read, and whether the bridge should serve its own harness is
 [an open question](NEXT_STEPS.md#should-the-bridge-serve-its-own-test-harness).
+
+## [FR 026](done/026-face-units/README.md) — `mpfb_get_face_units` and `mpfb_set_face_units`
+
+The first tools to reach the `!ex-` shape keys that drive an ARKit face: `mpfb_get_face_units`
+reads the live 52-unit expression, always reporting `known_face_units` (grouped by region) and
+`faceunits01_installed` regardless of whether a subject resolves; `mpfb_set_face_units` composes
+one, batched like `mpfb_set_targets`, refusing the whole call on an unrecognised name (with
+closest-match suggestions) or on the `faceunits01` asset pack being absent. **The first tool pair
+gated on an optional asset pack rather than on MPFB itself**, which
+[mpfb-integration.md](../specifications/mpfb-integration.md#a-capability-that-depends-on-an-optional-asset-pack)
+now states as a standing pattern: probe the pack's own installed-check, report it on every
+dependent answer, refuse a write rather than succeeding emptily, and keep a per-item resolution
+failure (`could_not_load`) separately reportable even after the probe passes, since the probe tests
+one target and a partially installed pack passes it anyway. `refit` defaults to **true** here,
+unlike every other refitting tool, matching MPFB's composer-panel default. What it writes is
+transient — not saved by `mpfb_save_preset`, destroyed by anything that rebuilds MPFB's
+applied-expressions stack — which [mutating-tools.md](../specifications/mutating-tools.md#a-tool-whose-effect-is-known-in-advance-to-be-transient)
+now covers as its own case. A live check confirmed three things this side of the socket could not:
+`set_expression()` returns normally rather than raising with the pack absent; `mpfb_set_targets`
+cannot create a `!ex-` shape key from nothing but can write one that already exists; and refitting
+after composing an expression really does move a fitted eyebrow asset further than not refitting.
+Queued behind it: [FR 027](027-expression-library/README.md), the saved-expression library and the
+stack that applies it.

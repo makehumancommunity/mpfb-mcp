@@ -10,9 +10,10 @@ records what has already landed and why. When an effort below is finished, move 
 
 ## Expressions
 
-**Scoped as two requests, in this order: [FR 026](026-face-units/README.md) (Accepted) for the
-face-unit layer, then [FR 027](027-expression-library/README.md) (Accepted) for the saved-expression
-library and the stack that applies it. FR 027 extends FR 026's tools; see
+**Scoped as two requests, in this order: [FR 026](done/026-face-units/README.md) (Done) landed the
+face-unit layer — `mpfb_get_face_units` and `mpfb_set_face_units`. What remains is
+[FR 027](027-expression-library/README.md) (Accepted), the saved-expression library and the stack
+that applies it, which extends FR 026's tools; see
 [the dependency](027-expression-library/README.md#the-dependency-and-what-happens-if-the-order-reverses).**
 
 These are the `!ex-` prefixed shape keys. They depend on particular asset packs being installed.
@@ -24,7 +25,7 @@ some functionality for working with expressions.
 
 Queued behind [FR 027](027-expression-library/README.md), which reads and applies expressions but
 writes none. An `mpfb_save_expression` would close the gap named in
-[FR 026](026-face-units/README.md#a-composed-face-is-transient): a face composed from ARKit units
+[FR 026](done/026-face-units/README.md#a-composed-face-is-transient): a face composed from ARKit units
 survives nothing today — not a preset save (a preset serializes the applied-expressions *stack*, and
 a composed face has no stack rows), and not the next library call, which clears every `!ex-` key
 before rebuilding.
@@ -46,7 +47,7 @@ library.
 ## Visemes and lip sync
 
 The rest of `FaceService`, deliberately excluded from both expression requests (see
-[Not visemes](026-face-units/README.md#not-visemes)): `MICROSOFT_VISEMES` and `META_VISEMES`,
+[Not visemes](done/026-face-units/README.md#not-visemes)): `MICROSOFT_VISEMES` and `META_VISEMES`,
 `load_targets`, `interpolate_targets` and `configure_lip_sync`.
 
 This is speech animation rather than expression — a different vocabulary, different asset packs

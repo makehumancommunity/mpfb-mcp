@@ -4,7 +4,7 @@
 The preloaded tool surface, measured and capped.
 
 An MCP client downloads every tool's description and parameter schema before
-any work happens, so the twenty-five docstrings in ``src/mpfbmcp/tools/`` are a
+any work happens, so the twenty-seven docstrings in ``src/mpfbmcp/tools/`` are a
 call-time cost paid by every session whether or not a tool is used.
 [FR 013](../feature-requests/done/013-live-verification/review.md) measured it
 for the first time and found 66.7 KB of descriptions against an estimate of
@@ -78,7 +78,17 @@ import mpfbmcp
 # tools rather than restated); and `mpfb_save_preset` is the only tool here that
 # writes a file nothing can undo. The ceiling moves by roughly what the three
 # cost, and the paragraph of headroom stays a paragraph.
-DESCRIPTION_CEILING = 59200
+#
+# Raised from 59,200 to 62,400 by
+# [FR 026](../feature-requests/done/026-face-units/README.md), which added
+# `mpfb_get_face_units` and `mpfb_set_face_units` - 1,283 and 2,149 B against a
+# 2,302 B per-tool average. The read tool came in well under, as a catalogue-ish
+# tool should; the write tool spends its bytes on what a caller cannot discover
+# from a response - the asset-pack precondition, the additive-by-default
+# semantics, and the warning that a composed face is transient. The ceiling
+# moves by roughly what the two cost, and the paragraph of headroom stays a
+# paragraph.
+DESCRIPTION_CEILING = 62400
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -88,7 +98,11 @@ DESCRIPTION_CEILING = 59200
 # eight parameters, seven of them nullable, which is 881 B of `anyOf` - the
 # largest schema in the package and the price of the "omitted means use what the
 # preset says" idiom it shares with `mpfb_set_macro_details`.
-SCHEMA_CEILING = 10400
+#
+# Raised from 10,400 to 10,600 by FR 026: `mpfb_set_face_units`'s batched
+# `face_units` list is 431 B of array-of-object schema, the same shape
+# `mpfb_set_targets` pays for twice over.
+SCHEMA_CEILING = 10600
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.
@@ -140,7 +154,7 @@ class DescriptionBudgetTests(unittest.TestCase):
         self.measured = measure()
 
     def test_every_registered_tool_is_measured(self) -> None:
-        self.assertEqual(25, len(self.measured))
+        self.assertEqual(27, len(self.measured))
 
     def test_total_description_size_is_under_the_ceiling(self) -> None:
         total = sum(entry["description_bytes"] for entry in self.measured)

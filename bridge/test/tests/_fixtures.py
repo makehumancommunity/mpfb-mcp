@@ -56,6 +56,7 @@ __all__ = (
     "write",
     "write_mhclo",
     "write_mhmat",
+    "write_target",
 )
 
 import contextlib

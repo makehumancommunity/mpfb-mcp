@@ -48,6 +48,7 @@ from . import add_rig
 from . import create_human
 from . import create_human_from_preset
 from . import generate_rigify_rig
+from . import get_face_units
 from . import get_macro_details
 from . import get_mpfb_status
 from . import get_object_info
@@ -65,6 +66,7 @@ from . import refit_human
 from . import remove_asset
 from . import save_preset
 from . import set_asset_material
+from . import set_face_units
 from . import set_macro_details
 from . import set_skin
 from . import set_targets
@@ -107,6 +109,12 @@ COMMANDS = {
         params=generate_rigify_rig.PARAMS,
         requires_mpfb=True,
         summary=generate_rigify_rig.SUMMARY),
+    "get_face_units": Command(
+        name="get_face_units",
+        handler=get_face_units.get_face_units,
+        params=get_face_units.PARAMS,
+        requires_mpfb=True,
+        summary=get_face_units.SUMMARY),
     "get_macro_details": Command(
         name="get_macro_details",
         handler=get_macro_details.get_macro_details,
@@ -231,6 +239,12 @@ COMMANDS = {
         params=set_asset_material.PARAMS,
         requires_mpfb=True,
         summary=set_asset_material.SUMMARY),
+    "set_face_units": Command(
+        name="set_face_units",
+        handler=set_face_units.set_face_units,
+        params=set_face_units.PARAMS,
+        requires_mpfb=True,
+        summary=set_face_units.SUMMARY),
     "set_macro_details": Command(
         name="set_macro_details",
         handler=set_macro_details.set_macro_details,

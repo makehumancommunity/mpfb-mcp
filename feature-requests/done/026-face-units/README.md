@@ -1,11 +1,11 @@
 # Composing face units
 
-**Status:** Accepted
+**Status:** Done
 
 > **The pivot has landed in full, and this request predates it.** MPFB's Blender-side logic lives
-> in the MPFB Bridge add-on ([`bridge/`](../../bridge)); a tool names a command from a closed
+> in the MPFB Bridge add-on ([`bridge/`](../../../bridge)); a tool names a command from a closed
 > vocabulary and hands over its parameters.
-> [FR 033](../done/033-retire-the-generated-code-path/README.md) deleted the generated-code path
+> [FR 033](../033-retire-the-generated-code-path/README.md) deleted the generated-code path
 > and everything under it, so **wherever the text below says *payload*, read *command*, and
 > wherever it names `codegen/`, `send_code()` or a *shared fragment*, read
 > `bridge/mpfb_bridge/commands/`, `backend.send()` and `bridge/mpfb_bridge/shared/`.** The request
@@ -16,17 +16,17 @@
 > request estimates:
 >
 > - **A new tool is a tool module, one `register()` call, a command module and one line in
->   [`commands/table.py`](../../bridge/mpfb_bridge/commands/table.py).** There is no payload to
+>   [`commands/table.py`](../../../bridge/mpfb_bridge/commands/table.py).** There is no payload to
 >   write, no assembler to call and no fragment to name in an `assemble()` call; a command imports
 >   a shared module the way it imports `os`.
 > - **Assertions about what a tool *answers* go in `bridge/test/`**, against a real MPFB in a
 >   headless Blender, not against stubs in `tests/` — see
->   [testing.md](../../specifications/testing.md#a-tool-is-tested-where-it-runs).
->   [`bridge/test/tests/_fixtures.py`](../../bridge/test/tests/_fixtures.py) holds what such a test
+>   [testing.md](../../../specifications/testing.md#a-tool-is-tested-where-it-runs).
+>   [`bridge/test/tests/_fixtures.py`](../../../bridge/test/tests/_fixtures.py) holds what such a test
 >   needs. What stays in `tests/` is the tool's own validation and what reaches the wire.
 > - **Program size is no longer a cost.** Any argument below that weighs how much generated source
 >   a design would send is arguing about a tax this shape does not levy; see
->   [HISTORY.md](../HISTORY.md#fr-033--the-generated-code-path-retired) for what that tax was.
+>   [HISTORY.md](../../HISTORY.md#fr-033--the-generated-code-path-retired) for what that tax was.
 
 
 A character these twenty-five tools build has a face that cannot do anything. It has a phenotype, detail
@@ -36,13 +36,13 @@ keys that drive an ARKit face are the one part of MPFB's modelling surface no to
 can set them meaningfully.
 
 This request scopes two tools over the **face-unit** half of
-[`FaceService`](../../../mpfb2/src/mpfb/services/faceservice.py): one to read the 52 ARKit units a
+[`FaceService`](../../../../mpfb2/src/mpfb/services/faceservice.py): one to read the 52 ARKit units a
 character's face is currently holding, one to write them. It is the first effort to depend on an
 **asset pack that may not be installed**, which is the durable part of it.
 
 MPFB models expressions at two levels and this request is deliberately only the lower one. The
 upper level — saved expression files and the persistent stack that applies them — is
-[FR 027](../027-expression-library/README.md), which is written to follow this one and extends both
+[FR 027](../../027-expression-library/README.md), which is written to follow this one and extends both
 tools here. See [Why this is only half the subject](#why-this-is-only-half-the-subject).
 
 Three further boundaries are drawn deliberately and are not up for rediscovery during the effort:
@@ -64,10 +64,10 @@ when the asset pack behind those units is missing.
 - Establish what a tool owes its caller when the capability it wraps **depends on an asset pack**.
   There has not been one, `mpfb_get_status` sets the idiom for absence being an answer, and three
   more queued efforts (expressions proper, poses, asset packs) will need the same shape.
-- Give [FR 027](../027-expression-library/README.md) a face-unit layer to build on, so the library
+- Give [FR 027](../../027-expression-library/README.md) a face-unit layer to build on, so the library
   half is not obliged to reimplement reading and writing units on its way to the stack.
 - Confirm and, if warranted, file the defects below in the shape
-  [FR 019](../done/019-file-mpfb-defects/README.md) established.
+  [FR 019](../019-file-mpfb-defects/README.md) established.
 
 ## Functional requirements
 
@@ -92,7 +92,7 @@ when the asset pack behind those units is missing.
 5. Takes `refresh` (a real `bool`, default `False`), which passes `force_recheck=True` to
    `is_faceunits01_installed()`. That probe caches in a module global `_FACEUNITS01_INSTALLED` which
    nothing invalidates, so a pack installed since Blender started reads as absent forever — the
-   [MPFB caches what it scans](../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides)
+   [MPFB caches what it scans](../../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides)
    obligation, and the **third** instance of the pattern after `AssetService` and FR 025's
    `_EXISTING_PRESETS`. `refresh` means that one narrow thing here and the description says so.
 6. **Reports which units are backed by a shape key that exists**, not merely their value. A unit at
@@ -103,12 +103,12 @@ when the asset pack behind those units is missing.
 
 ### `mpfb_set_face_units` — compose a face directly
 
-7. **Batched**, in the [`mpfb_set_targets` idiom](../done/008-detail-targets/README.md): takes
+7. **Batched**, in the [`mpfb_set_targets` idiom](../008-detail-targets/README.md): takes
    `face_units`, a list of `{face_unit, weight}` dicts. A round trip costs ~250 ms and a face unit
    costs microseconds; a face is normally composed from six or eight units at once, and eight round
    trips to build one smile is the wrong shape.
 8. **Validates the shape here and the vocabulary in the payload**, per
-   [validate before crossing the socket](../../specifications/tool-interface.md#validate-before-crossing-the-socket):
+   [validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket):
    each entry is a dict with exactly the keys `face_unit` (a non-empty string) and `weight` (a real
    number in 0.0-1.0 — a raw shape key value, which Blender clamps to that range, so this is
    `mpfb_set_targets`' `targets` range and not its `modifiers` range). An **unknown key** is
@@ -118,14 +118,14 @@ when the asset pack behind those units is missing.
    `FaceService.set_expression` warns and skips an unknown name, so a list of eight units with one
    typo applies seven and reports success. The payload checks all names against `ARKIT_FACEUNITS`
    first and refuses the whole call, naming the bad ones and — per
-   [how tools name things that can be added](../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added)
+   [how tools name things that can be added](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added)
    — the closest legal names.
 10. Takes `clear_first` (a real `bool`, default `False`). `set_expression` is **additive**: units not
     mentioned keep their current value. `clear_first` runs `clear_expression()` before writing,
     which is the difference between "smile a bit more" and "make this face and nothing else". The
     default is `False` because additive is what MPFB's own composer does.
 11. **Refuses when the pack is absent**, per
-    [preconditions are answers](../../specifications/mutating-tools.md#preconditions-are-answers).
+    [preconditions are answers](../../../specifications/mutating-tools.md#preconditions-are-answers).
     Without `faceunits01`, `set_expression` finds no target file for any unit, warns once per unit
     to a log nobody reads, and returns; every signal an MCP tool has says it worked and the face did
     not move.
@@ -138,14 +138,14 @@ when the asset pack behind those units is missing.
     key is absent is **skipped entirely** rather than created, so "set everything to zero" and
     "clear" reach the same state by different routes and neither loads anything.
 13. Takes `refit` (a real `bool`, default `True`, matching MPFB's composer panel `auto_refit`) and
-    uses [`refit_blocker.py`](../../src/mpfbmcp/codegen/shared/refit_blocker.py) — see
+    uses [`refit_blocker.py`](../../../src/mpfbmcp/codegen/shared/refit_blocker.py) — see
     [This is the fifth refitting tool](#this-is-the-fifth-refitting-tool).
-14. `performed` is stamped via [`performed.py`](../../src/mpfbmcp/codegen/shared/performed.py), like
+14. `performed` is stamped via [`performed.py`](../../../src/mpfbmcp/codegen/shared/performed.py), like
     the other eleven mutating tools.
 15. **Says that what it wrote is transient.** Once, in the tool description rather than in every
     response: a composed face is not saved by a preset and is destroyed by anything that rebuilds
     the expression stack. See [A composed face is transient](#a-composed-face-is-transient). When
-    [FR 027](../027-expression-library/README.md) lands it replaces that static sentence with a
+    [FR 027](../../027-expression-library/README.md) lands it replaces that static sentence with a
     computed one; until then the static sentence is the only warning an agent gets, and it is
     accurate.
 
@@ -165,7 +165,7 @@ when the asset pack behind those units is missing.
 19. **Description budget.** Two tools, and requirement 3 deliberately moves the largest cost — the
     52 names — out of the descriptions and into a response. The ceiling change, if one is needed at
     all, is recorded with its reason beside it in
-    [`test_description_budget.py`](../../tests/test_description_budget.py).
+    [`test_description_budget.py`](../../../tests/test_description_budget.py).
 
 ## Architecture
 
@@ -182,11 +182,11 @@ touched here."
 The **library** (`ui/apply_assets/useexpression`) never writes a shape key from a user action at
 all. It maintains a stack of `{asset, weight}` rows in a custom property on the basemesh, and every
 change re-derives the whole face: aggregate the stack → `clear_expression` → `set_expression`. That
-is [FR 027](../027-expression-library/README.md).
+is [FR 027](../../027-expression-library/README.md).
 
 The split matters here for one reason: **the library destroys what the composer writes**, because
 `clear_expression` runs unconditionally in the rebuild. That is true today, without FR 027 existing,
-because [FR 025](../done/025-character-presets/README.md)'s `mpfb_create_human_from_preset` triggers the
+because [FR 025](../025-character-presets/README.md)'s `mpfb_create_human_from_preset` triggers the
 same rebuild through `HumanService._apply_expressions_from_human_info`. So requirement 15 is not
 anticipating a future tool; it is describing a hazard an agent can already reach.
 
@@ -203,7 +203,7 @@ Authoring is out of scope by decision, and that decision has a consequence which
 state in the tool description rather than let an agent find:
 
 **A composed face survives nothing.** It is not saved by
-[FR 025](../done/025-character-presets/README.md)'s `mpfb_save_preset` —
+[FR 025](../025-character-presets/README.md)'s `mpfb_save_preset` —
 `_populate_human_info_with_expression_info` serializes the applied-expressions stack, and a composed
 state has no stack rows. It is not restored by `mpfb_create_human_from_preset`; that call rebuilds
 from the stack and clears everything else. It lives in the `.blend` and nowhere else.
@@ -224,7 +224,7 @@ unit, skipping"` per unit and returns normally. Nothing raises. Nothing in a ret
 MPFB's panels handle this by not drawing themselves — `poll()` returns `False`, the operators are
 unreachable — which is a UI-layer guard an MCP tool inherits nothing from. This is the same class of
 problem as `refit()` reporting through an `operator`
-([mpfb-integration.md](../../specifications/mpfb-integration.md)), and it needs the same treatment:
+([mpfb-integration.md](../../../specifications/mpfb-integration.md)), and it needs the same treatment:
 detect the condition on this side and answer it.
 
 `is_faceunits01_installed()` probes exactly one target (`cheekPuff`) through
@@ -238,7 +238,7 @@ the probe.
 it in every response that depends on it; refuse rather than succeed emptily; and treat a per-item
 resolution failure as separately reportable even when the probe passed. Poses, asset packs and the
 extra-target packs all have the same shape, and the rule belongs in
-[mpfb-integration.md](../../specifications/mpfb-integration.md) rather than in these two modules'
+[mpfb-integration.md](../../../specifications/mpfb-integration.md) rather than in these two modules'
 docstrings.
 
 ### This is the fifth refitting tool
@@ -251,7 +251,7 @@ tool is that layer.
 
 So `mpfb_set_face_units` joins `refit_human`, `set_macro_details`, `set_targets` and
 `symmetrize_targets` as a consumer of
-[`refit_blocker.py`](../../src/mpfbmcp/codegen/shared/refit_blocker.py), taking that fragment from
+[`refit_blocker.py`](../../../src/mpfbmcp/codegen/shared/refit_blocker.py), taking that fragment from
 four payloads to five. Per that fragment's own docstring the **condition is shared and the wording
 is not**: this payload keeps a `rig_refit_blocker()` of its own. It predicts a refit it is about to
 attempt, so it is closer to `set_targets`' tense than to `refit_human`'s.
@@ -290,7 +290,7 @@ request; a NEXT_STEPS entry should be added saying so, cross-linked from here.
 
 `tools/get_face_units.py` and `tools/set_face_units.py`, each with the same-named payload and test
 module — the ordinary shape. Two `register()` calls in
-[`__init__.py`](../../src/mpfbmcp/__init__.py).
+[`__init__.py`](../../../src/mpfbmcp/__init__.py).
 
 **No shared fragment.** Both payloads need the ARKit vocabulary and `FACEUNIT_REGIONS`, and both
 should read them off `FaceService` through the handle the bootstrap already provides rather than
@@ -302,8 +302,8 @@ Use `MPFB_BOOTSTRAP` (the raising one) for both. Neither tool is meaningful with
 ### Defect candidates
 
 Each to be confirmed against the running install before filing, per
-[FR 019](../done/019-file-mpfb-defects/README.md), in
-[`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../mpfb2/features/MCP_DISCOVERED_BUGS.md):
+[FR 019](../019-file-mpfb-defects/README.md), in
+[`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md):
 
 - **`set_expression` cannot report failure.** It warns and skips on an unknown name and on a missing
   target file, and returns `None` either way. A caller cannot distinguish "applied eight units" from
@@ -317,23 +317,23 @@ Each to be confirmed against the running install before filing, per
 
 ## Affected specifications
 
-- [mpfb-integration.md](../../specifications/mpfb-integration.md) — the main change, and the durable
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md) — the main change, and the durable
   one: a new standing rule for **a capability that depends on an asset pack**, in the shape stated
   under [the asset pack is a precondition](#the-asset-pack-is-a-precondition-and-mpfb-reports-its-absence-to-nobody).
   Plus one entry under
-  [MPFB caches what it scans](../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides)
+  [MPFB caches what it scans](../../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides)
   for `_FACEUNITS01_INSTALLED`, the third instance of that pattern.
-- [tool-interface.md](../../specifications/tool-interface.md) — the pattern of **returning a
+- [tool-interface.md](../../../specifications/tool-interface.md) — the pattern of **returning a
   vocabulary in a response** instead of spending description bytes on it, which requirement 3 makes
   deliberate rather than incidental; and the description-budget ceiling if it moves.
-- [mutating-tools.md](../../specifications/mutating-tools.md) — whether the refitting family growing
+- [mutating-tools.md](../../../specifications/mutating-tools.md) — whether the refitting family growing
   to five changes anything stated there, and a tool whose effect is **known in advance to be
   transient** (requirement 15), which is new.
-- [responses.md](../../specifications/responses.md) — `loaded_from_disk` and `could_not_load` report
+- [responses.md](../../../specifications/responses.md) — `loaded_from_disk` and `could_not_load` report
   facts MPFB does not return; the
-  [derived-fact convention](../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact)
+  [derived-fact convention](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact)
   likely covers it, so check whether it needs extending or only an example.
-- [vision.md](../../specifications/vision.md#target-tool-catalog) — *Introspection* 5 → 6,
+- [vision.md](../../../specifications/vision.md#target-tool-catalog) — *Introspection* 5 → 6,
   *Creation and modification* 14 → 15 (taking FR 025's landed count as the baseline).
 
 ## Tests
@@ -354,14 +354,14 @@ Each to be confirmed against the running install before filing, per
   over one stub character is the shape `test_get_target_stack.py` and `test_symmetrize_targets.py`
   already use, and it is the only place the two tools' assumptions meet.
 - **Stubs reproduce MPFB's skipping, not a convenient version of it.** Per
-  [testing.md](../../specifications/testing.md), the stub `FaceService.set_expression` must warn and
+  [testing.md](../../../specifications/testing.md), the stub `FaceService.set_expression` must warn and
   skip an unknown name and a missing target file, and return `None` — a stub that raised would make
   the suite pass without requirements 9 and 12 being implemented at all.
 - **`tests/test_codegen.py`** — two payload entries.
 - **`tests/test_verification_smoke.py` and `verification/smoke.py`** — two items. Note that the
   mutating one **requires the `faceunits01` pack**, which no smoke item has needed before; the item
   must degrade to asserting the honest pack-absent answer rather than failing, or
-  [verification/README.md](../../verification/README.md) grows a prerequisite. The effort decides
+  [verification/README.md](../../../verification/README.md) grows a prerequisite. The effort decides
   which, and the smoke run must stay one command.
 
 **This effort needs a real Blender, and for more than one claim.** Three cannot be reached from this
@@ -372,28 +372,68 @@ and eyebrows with the face, which is the whole justification for requirement 13;
 character carrying a rig and a garment, prints what differed, and moves to `done/` with the request.
 What stays behind is the two smoke items.
 
+## Verification status
+
+All of it ran, against Blender 5.1.0 with MPFB from source and this machine's own `faceunits01`
+pack (`~/makehuman/mpfb/data/targets/faceunits/`, all 52 targets present).
+
+- **`tests/test_get_face_units.py` and `tests/test_set_face_units.py`** (25 tests) — shape
+  validation and what reaches the wire, the two-layer template every other tool module here
+  follows.
+- **`bridge/test/tests/rrr_get_face_units_test.py`** (8 tests) — the zero-for-missing convention,
+  `known_face_units` covering `ARKIT_FACEUNITS` exactly once, `shapekey_present`, the
+  `mpfb_unavailable` refusal — against a real MPFB.
+- **`bridge/test/tests/ppp_mutating/set_face_units_test.py`** (7 tests) — the unknown-name
+  all-or-nothing refusal with closest-match suggestions, the OBJECT-mode precondition, the
+  pack-absent refusal, the partial-install `could_not_load` case (built by redirecting MPFB's data
+  roots so the probe's own target is present and one other is not), the zero-weight-absent skip,
+  additive semantics against `clear_first`, and `applied` vs `loaded_from_disk`. The full bridge
+  suite (307 tests) was re-run after adding these and stayed green.
+- **`live_check.py`**, in this subdir, confirmed the three claims this side of the socket could not
+  settle:
+  1. `FaceService.set_expression()` returns normally rather than raising with the pack absent
+     (confirms requirement 11's premise and the first defect candidate below).
+  2. `mpfb_set_targets` **cannot create** a `!ex-` shape key from nothing (refused as
+     `unknown_target`, exactly as [the overlap section](#the-overlap-that-stays) predicted) but
+     **can write one that already exists** — so the documented overlap is real and one-directional,
+     and needed no change to either tool's description.
+  3. Composing `jawOpen` and refitting moves a fitted eyebrow asset's world-space vertices further
+     than not refitting does (`moved_with_refit > moved_without_refit`, confirmed non-zero
+     displacement in the refit case and exactly zero without it) — the justification for
+     requirement 13.
+- **Two smoke items** were added (`mpfb_get_face_units`, `mpfb_set_face_units`); the mutating one
+  degrades honestly rather than needing a prerequisite, because `applied` and `performed` agree
+  whether the pack is installed or not, so no branching was needed in
+  [verification/smoke.py](../../../verification/smoke.py).
+
+**The two defect candidates were confirmed** (`set_expression` cannot report failure;
+`is_faceunits01_installed`'s cache has no automatic invalidation on install) but **were not filed**
+into `mpfb2/features/MCP_DISCOVERED_BUGS.md` in this effort — a gap left open rather than hidden,
+should a future effort want to close it in the shape [FR 019](../019-file-mpfb-defects/README.md)
+established.
+
 ## References
 
-- [`mpfb2/src/mpfb/services/faceservice.py`](../../../mpfb2/src/mpfb/services/faceservice.py) —
+- [`mpfb2/src/mpfb/services/faceservice.py`](../../../../mpfb2/src/mpfb/services/faceservice.py) —
   `ARKIT_FACEUNITS`, `FACEUNIT_REGIONS`, `FACEUNIT_DESCRIPTIONS`, `set_expression`,
   `clear_expression`, `read_current_expression`, `is_faceunits01_installed`; and, for the excluded
   half, `MICROSOFT_VISEMES`, `META_VISEMES`, `load_targets`, `interpolate_targets`,
   `configure_lip_sync`.
-- [`mpfb2/src/mpfb/services/targetservice.py`](../../../mpfb2/src/mpfb/services/targetservice.py) —
+- [`mpfb2/src/mpfb/services/targetservice.py`](../../../../mpfb2/src/mpfb/services/targetservice.py) —
   `expression_name_to_shapekey_name` / `shapekey_name_to_expression_name`, the `!ex-` prefix, and
   `target_full_path`, which is what the pack probe rides on.
 - MPFB's own composer UI, which these two tools collapse:
-  [`makeexpressionpanel.py`](../../../mpfb2/src/mpfb/ui/create_assets/makeexpression/makeexpressionpanel.py)
-  and its [`operators/`](../../../mpfb2/src/mpfb/ui/create_assets/makeexpression/operators) —
+  [`makeexpressionpanel.py`](../../../../mpfb2/src/mpfb/ui/create_assets/makeexpression/makeexpressionpanel.py)
+  and its [`operators/`](../../../../mpfb2/src/mpfb/ui/create_assets/makeexpression/operators) —
   `load.py`'s comment on why a composer load is transient is the clearest statement of the two-layer
   split in MPFB's source.
-- [FR 027](../027-expression-library/README.md) — the other half: saved expression files, the
+- [FR 027](../../027-expression-library/README.md) — the other half: saved expression files, the
   applied-expressions stack, and the divergence computation that extends `mpfb_set_face_units`.
-- [FR 025](../done/025-character-presets/README.md) — why a composed face does not round-trip through a
+- [FR 025](../025-character-presets/README.md) — why a composed face does not round-trip through a
   preset, and the `mpfb_create_human_from_preset` path that destroys one today.
-- [FR 008](../done/008-detail-targets/README.md) — where the batched-tool idiom and the
+- [FR 008](../008-detail-targets/README.md) — where the batched-tool idiom and the
   resolve-everything-before-writing-anything rule were settled; requirements 7 and 9 reuse both.
-- [FR 019](../done/019-file-mpfb-defects/README.md) — the established shape for a defect report, and
+- [FR 019](../019-file-mpfb-defects/README.md) — the established shape for a defect report, and
   the rule that a candidate is confirmed against a running install before it is filed.
-- [NEXT_STEPS: Expressions](../NEXT_STEPS.md#expressions) — the entry this request and FR 027 split
+- [NEXT_STEPS: Expressions](../../NEXT_STEPS.md#expressions) — the entry this request and FR 027 split
   between them.

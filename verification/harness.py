@@ -68,6 +68,7 @@ MUTATING_VERBS = {
     "mpfb_refit_human": "refit_performed",
     "mpfb_set_targets": "applied",
     "mpfb_symmetrize_targets": "changed",
+    "mpfb_set_face_units": "applied",
     "mpfb_add_rig": "added",
     "mpfb_generate_rigify_rig": "generated",
     "mpfb_add_asset": "added",

@@ -29,7 +29,7 @@
 >   [HISTORY.md](../HISTORY.md#fr-033--the-generated-code-path-retired) for what that tax was.
 
 
-[FR 026](../026-face-units/README.md) gives an agent the 52 ARKit face units and nothing to do with
+[FR 026](../done/026-face-units/README.md) gives an agent the 52 ARKit face units and nothing to do with
 them but compose from scratch, unit by unit, every time. MPFB's users do not work that way: an
 expression is a **named, saved, weighted combination** — a `smile`, an `angry-shout` — stored as a
 JSON file in an asset library, applied at a strength, and stacked with others. That library is what
@@ -46,7 +46,7 @@ It is written to follow FR 026 and depends on it. See
 
 Three boundaries carry over from FR 026 unchanged and are not up for rediscovery: **authoring is out
 of scope** (no tool writes an expression file — see
-[FR 026's transience section](../026-face-units/README.md#a-composed-face-is-transient) and the
+[FR 026's transience section](../done/026-face-units/README.md#a-composed-face-is-transient) and the
 `mpfb_save_expression` entry queued behind it); **visemes and lip sync are out of scope**; and
 **`mpfb_set_targets` is left alone**.
 
@@ -86,7 +86,7 @@ expressions by an identifier that means the same thing on another machine.
    installed" from "the tool looked in the wrong place" — requirement 2 of
    [FR 025's `mpfb_list_presets`](../done/025-character-presets/README.md), and the same reasoning.
 4. **Reports `faceunits01_installed`**, and takes `refresh` for it, in the shape
-   [FR 026 established](../026-face-units/README.md#the-asset-pack-is-a-precondition-and-mpfb-reports-its-absence-to-nobody).
+   [FR 026 established](../done/026-face-units/README.md#the-asset-pack-is-a-precondition-and-mpfb-reports-its-absence-to-nobody).
    An expression file can exist while the face-unit targets it references do not; the catalogue is
    then a list of things that cannot be applied, and it must say so rather than let
    `mpfb_apply_expressions` discover it. Note that the *file scan* itself is not cached —
@@ -119,7 +119,7 @@ expressions by an identifier that means the same thing on another machine.
     invisible everywhere else, MPFB's own UI included. See
     [Two mechanisms, one set of shape keys](#two-mechanisms-one-set-of-shape-keys).
 11. **Does not restate the live face-unit values.** Those are
-    [`mpfb_get_face_units`](../026-face-units/README.md)' answer, and two tools reporting the same 52
+    [`mpfb_get_face_units`](../done/026-face-units/README.md)' answer, and two tools reporting the same 52
     numbers is two answers that can disagree. This tool reports the *aggregate* the stack implies and
     the *difference* from what is live, and names `mpfb_get_face_units` for the raw reading. The
     boundary is stated in both descriptions.
@@ -215,7 +215,7 @@ expressions by an identifier that means the same thing on another machine.
 This is the single most important thing the effort has to get right, and this request owns it
 because it implements the half that does the damage.
 
-The **composer** ([FR 026](../026-face-units/README.md)) writes the 52 `!ex-` shape keys directly.
+The **composer** ([FR 026](../done/026-face-units/README.md)) writes the 52 `!ex-` shape keys directly.
 The **library** — this request — never writes a shape key from a user action at all. It maintains a
 stack of `{asset, weight}` rows in a custom property on the basemesh, and every change re-derives
 the whole face: `aggregate_expression_stack` → `clear_expression` → `set_expression`.
@@ -232,7 +232,7 @@ implementations.
 
 ### The dependency, and what happens if the order reverses
 
-This request is written to land after [FR 026](../026-face-units/README.md) and uses two things from
+This request is written to land after [FR 026](../done/026-face-units/README.md) and uses two things from
 it: the asset-pack precondition rule (requirements 4, 12, 17) and the face-unit reading that
 requirement 10's comparison needs. Requirement 22 extends a tool FR 026 introduces.
 
@@ -403,7 +403,7 @@ and moves to `done/` with the request. What stays behind is the three smoke item
   `_populate_human_info_with_expression_info` and `_apply_expressions_from_human_info`, which are
   where a preset meets the stack, and the precedent for both the private-accessor call and the UI
   import.
-- [FR 026](../026-face-units/README.md) — the other half: the 52 ARKit units, the asset-pack
+- [FR 026](../done/026-face-units/README.md) — the other half: the 52 ARKit units, the asset-pack
   precondition rule this request applies, and the two tools requirement 22 extends.
 - [FR 025](../done/025-character-presets/README.md) — the preset tools this request completes the round
   trip for, and the name-not-a-path convention the queued `mpfb_save_expression` will follow.

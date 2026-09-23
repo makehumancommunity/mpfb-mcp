@@ -6,10 +6,10 @@ rather than executing code.
 
 ## Status
 
-Proof of concept. Twenty-five tools are implemented.
+Proof of concept. Twenty-seven tools are implemented.
 
-**All twenty-four tools that cross the socket speak to the bridge**, and there is nothing else
-for them to speak to. The twenty-fifth, `mpfb_list_docs`, answers from a local table and reaches
+**All twenty-six tools that cross the socket speak to the bridge**, and there is nothing else
+for them to speak to. The odd one out, `mpfb_list_docs`, answers from a local table and reaches
 no Blender at all.
 
 It was not always one machine. Until
@@ -29,6 +29,7 @@ See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
 - `mpfb_get_object_info` — what is this object, what was it made from, and what belongs with it?
 - `mpfb_get_macro_details` — what is this character's phenotype?
 - `mpfb_get_target_stack` — which detail morphs are on this character, and how strong?
+- `mpfb_get_face_units` — what is this character's face doing, in ARKit face units?
 
 **Catalogues** — what could be added, each entry named the way the acting tool will want it:
 
@@ -50,6 +51,8 @@ See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
 - `mpfb_set_macro_details` — change a character's phenotype in place.
 - `mpfb_set_targets` — set detail morphs, batched.
 - `mpfb_symmetrize_targets` — copy one side of a character onto the other.
+- `mpfb_set_face_units` — compose a character's face from ARKit face units. Transient: not saved
+  by a preset.
 - `mpfb_refit_human` — refit everything to a changed body.
 - `mpfb_add_rig` / `mpfb_generate_rigify_rig` — attach an armature, and finish a Rigify meta rig.
 - `mpfb_add_asset` / `mpfb_remove_asset` — equip an MHCLO asset, and take it off properly.
@@ -63,7 +66,7 @@ See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
 generate a Rigify rig after them. The tools report the violation they can see rather than
 enforcing it.
 
-**All twenty-five have been run against a real Blender, and re-checking all of them is one short
+**All twenty-seven have been run against a real Blender, and re-checking all of them is one short
 command.** [verification/](verification/) is a smoke run — one call per tool with default
 arguments, measured at 1.5 s for the whole set against a headless Blender — so confirming that
 nothing has stopped working is a command rather than a session. It leaves what it builds in the

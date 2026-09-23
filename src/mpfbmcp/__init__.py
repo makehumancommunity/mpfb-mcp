@@ -106,6 +106,10 @@ def build_server() -> FastMCP:
             "entry fails to resolve. mpfb_symmetrize_targets repairs a "
             "left/right asymmetry that MPFB itself has no way to undo; run it "
             "with dry_run first. "
+            "To give a character an expression, mpfb_get_face_units reads the "
+            "52 ARKit face units and mpfb_set_face_units composes them; both "
+            "need the faceunits01 asset pack, and a composed face is transient "
+            "- not saved by mpfb_save_preset. "
             "Changing a body's shape moves it out from under everything fitted "
             "to it, so finish a series of modeling changes with one call to "
             "mpfb_refit_human. "
@@ -151,15 +155,16 @@ def build_server() -> FastMCP:
 
     from mpfbmcp.tools import (
         add_asset, add_rig, create_human, create_human_from_preset, generate_rigify_rig,
-        get_macro_details, get_object_info, get_status, get_target_stack, list_asset_materials,
-        list_assets, list_docs, list_objects, list_presets, list_rigs, list_targets, list_urls,
-        refit_human, remove_asset, save_preset, set_asset_material, set_macro_details, set_skin,
-        set_targets, symmetrize_targets)
+        get_face_units, get_macro_details, get_object_info, get_status, get_target_stack,
+        list_asset_materials, list_assets, list_docs, list_objects, list_presets, list_rigs,
+        list_targets, list_urls, refit_human, remove_asset, save_preset, set_asset_material,
+        set_face_units, set_macro_details, set_skin, set_targets, symmetrize_targets)
     add_asset.register(mcp)
     add_rig.register(mcp)
     create_human.register(mcp)
     create_human_from_preset.register(mcp)
     generate_rigify_rig.register(mcp)
+    get_face_units.register(mcp)
     get_macro_details.register(mcp)
     get_object_info.register(mcp)
     get_status.register(mcp)
@@ -176,6 +181,7 @@ def build_server() -> FastMCP:
     remove_asset.register(mcp)
     save_preset.register(mcp)
     set_asset_material.register(mcp)
+    set_face_units.register(mcp)
     set_macro_details.register(mcp)
     set_skin.register(mcp)
     set_targets.register(mcp)

@@ -237,6 +237,23 @@ def _symmetrize_targets(run: _Run) -> dict:
     return run.tools["mpfb_symmetrize_targets"](name=_character(run), direction="left_to_right")
 
 
+@_item("mpfb_get_face_units", "face_units", "known_face_units", "faceunits01_installed",
+       "basemesh_name")
+def _get_face_units(run: _Run) -> dict:
+    return run.tools["mpfb_get_face_units"](name=_character(run))
+
+
+@_item("mpfb_set_face_units", "applied", "basemesh_name", "faceunits01_installed")
+def _set_face_units(run: _Run) -> dict:
+    # Degrades honestly rather than failing: this is the first mutating item
+    # whose tool refuses when an optional asset pack (faceunits01) is not
+    # installed. `applied` is always present and always agrees with
+    # `performed` either way - refused (pack absent) or genuinely composed -
+    # so no install-specific branching is needed here.
+    return run.tools["mpfb_set_face_units"](
+        name=_character(run), face_units=[{"face_unit": "jawOpen", "weight": 0.4}])
+
+
 @_item("mpfb_add_rig", "rig_object_name", "basemesh_name", "family", "weights_loaded")
 def _add_rig(run: _Run) -> dict:
     identifier, family = _first_available_rig(run)

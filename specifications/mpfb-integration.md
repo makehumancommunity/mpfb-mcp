@@ -198,6 +198,12 @@ answer means rather than merely how fast it arrives.
 - **The list of saved character presets**, in the module global `_EXISTING_PRESETS`, which exactly
   one thing invalidates: a save through `serialize_to_json_file()`. A preset written by MPFB's panel
   in another Blender, by hand, or by an earlier session is invisible until something rescans.
+- **Whether the `faceunits01` asset pack is installed**, in `FaceService`'s module global
+  `_FACEUNITS01_INSTALLED` — the third instance of the pattern, and the first one gating a whole
+  capability rather than one listing's freshness (see
+  [below](#a-capability-that-depends-on-an-optional-asset-pack)). `mpfb_get_face_units`' `refresh`
+  busts it via `force_recheck=True`; `mpfb_set_face_units` reads the cached answer, since a caller
+  who wants a fresh probe before writing reads one through the get tool first.
 
 What follows for a tool:
 
@@ -229,6 +235,39 @@ What follows for a tool:
   nothing called it until
   [FR 018](../feature-requests/done/018-alternative-material-refresh/README.md) wired it up as
   `mpfb_list_asset_materials`' `refresh`, which is why that tool no longer says so.
+
+## A capability that depends on an optional asset pack
+
+[FR 026](../feature-requests/done/026-face-units/README.md) is the first tool pair whose whole
+capability depends on an asset pack that may not be installed — the 52 ARKit face units, every one
+of which needs a target file from `faceunits01` — and it is not the last: poses, further asset
+packs and the extra-target packs all have the same shape. The generalisation is the durable part of
+that effort:
+
+- **MPFB reports the absence of an optional pack to nobody.** Without `faceunits01`,
+  `FaceService.set_expression()` logs a warning per unit ("Target file not found for face unit,
+  skipping") and returns normally, having moved nothing. MPFB's own panels handle this by not
+  drawing themselves — `poll()` returns `False`, the operators are unreachable — which is a UI-layer
+  guard an MCP tool inherits nothing from. **Probe the pack's own installed-check, and report it in
+  every response that depends on it**, not only in a refusal: `mpfb_get_face_units` carries
+  `faceunits01_installed` whether or not a subject even resolves, because a caller reading an
+  all-zero answer needs to know whether that means "neutral" or "not installed" before it means
+  anything at all.
+- **Refuse a write outright when the probe fails, rather than succeeding emptily.** MPFB's own
+  behaviour — warn and continue — turns a pack-absent call into what looks like a successful no-op.
+  `mpfb_set_face_units` checks the probe before writing anything and answers `blocked_by:
+  "faceunits01_not_installed"`, per [preconditions are
+  answers](mutating-tools.md#preconditions-are-answers).
+- **The probe is not a verification, and a per-item resolution failure stays separately
+  reportable even after the probe passed.** `is_faceunits01_installed()` tests exactly one target
+  (`cheekPuff`); a pack installed halfway — a partial download, a manual copy that missed a file —
+  passes that probe and still has individual targets missing. `mpfb_set_face_units`'
+  `could_not_load` is what a caller reads when the probe said yes and one specific unit said no
+  anyway: checked per requested unit, at write time, never folded into the up-front refusal.
+- **Use MPFB's own install-check rather than inventing a second definition.** `faceunits01` has no
+  service function whose name says "is this pack here" other than the one `FaceService` already
+  exposes; a tool inventing its own (checking for a specific file, say) risks disagreeing with what
+  MPFB itself will and will not do.
 
 ## When mpfb-mcp models a concept MPFB's UI has but its services do not
 

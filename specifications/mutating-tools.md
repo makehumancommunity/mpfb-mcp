@@ -279,3 +279,22 @@ is written, and if any entry fails, none of them are applied.**
   that fails costs the caller one resend. Where the work inside a call is itself expensive —
   loading an MHCLO asset is seconds of mesh import and vertex fitting — the argument does not carry
   over, and one-per-call is the better shape.
+
+## A tool whose effect is known in advance to be transient
+
+Most of what a mutating tool changes lives in the `.blend` until something explicitly saves or
+discards it — the same durability a user's own edits have. `mpfb_set_face_units` is the first tool
+whose effect is narrower than that on its own terms, independent of anything the caller does: a
+composed face survives neither `mpfb_save_preset` (which serializes MPFB's applied-expressions
+*stack*, and a composed face has no stack rows) nor `mpfb_create_human_from_preset` (which rebuilds
+from that stack and clears everything else) — see
+[FR 026](../feature-requests/done/026-face-units/README.md#a-composed-face-is-transient) for why,
+which is a fact about MPFB's two-level expression model rather than a limitation of this tool.
+
+**Say it once, in the tool description, rather than computing it into every response.** A per-call
+"this will not survive a save" would be true on every answer and would cost a sentence every tool
+downloads for a fact that does not change per call. Where a *later* effort can compute the true,
+current state — FR 026's own sibling, the expression-library tool, knows whether the live face
+agrees with the stack that claims to explain it — replace the static sentence with the computed
+one; until such an effort lands, the static sentence is the only warning an agent gets, and it must
+be accurate rather than merely cautious.
