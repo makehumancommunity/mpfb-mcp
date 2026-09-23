@@ -53,10 +53,6 @@ fourteen and flipped the default; and
 had been carrying nothing since. What that path was is in
 [HISTORY.md](feature-requests/HISTORY.md) and nowhere else in this repository.
 
-**Publishing is the one remaining stage** in
-[NEXT_STEPS.md](feature-requests/NEXT_STEPS.md#a-larger-pivot-an-mpfb-specific-bridge-add-on), and
-it is not an engineering problem.
-
 **Twenty-five tools are implemented, and all twenty-five have been run against a
 real Blender.** [README.md](README.md) lists them by purpose;
 [HISTORY.md](feature-requests/HISTORY.md) tells the story of each effort, including what the live
