@@ -10,3 +10,5 @@ verification/results/
 bridge/test/.coverage
 bridge/test/.coverage.*
 bridge/test/coverage/
+local_environment.md
+

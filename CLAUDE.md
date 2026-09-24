@@ -18,6 +18,12 @@ and none of which is summarized here:
 | Why a test or a fixture is written the way it is | that module's docstring, and [specifications/testing.md](specifications/testing.md) |
 | What an effort decided, and what it found | [feature-requests/HISTORY.md](feature-requests/HISTORY.md) |
 
+## Environment
+
+There should be a file [local_environment.md](local_environment.md) with information about 
+where blender, mpfb and local user data can be found. This file is gitignored since it is only
+relevant per machine. 
+
 ## Documentation
 
 The [specifications directory](specifications/) describes the system. **These specifications are
