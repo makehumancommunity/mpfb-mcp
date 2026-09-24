@@ -33,6 +33,8 @@ which could or should be abstracted to shared modules.
 
 ## Strange naming of bridge tests
 
+Formulated as [FR 035](035-bridge-test-layers/README.md) (Accepted).
+
 The test module names in bridge/test/tests adopted a three letter prefix ("aaa", "bbb"...) without
 any understanding of the purpose. This was probably inspired from MPFB's test hierarchy.
 
