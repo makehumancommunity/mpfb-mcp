@@ -1,6 +1,6 @@
 # One word per concept across the tool surface
 
-**Status:** Accepted
+**Status:** In progress
 
 The specifications already have the rule: "A field that means the same thing in two tools is
 spelled the same way in both"
@@ -135,9 +135,9 @@ types, the `$md-` and `!ex-` prefixes) or the keys of MPFB's own files read back
 | `mpfb_set_targets`, `mpfb_set_face_units` | `applied` is a list of writes, but it is `set_skin`'s and `set_asset_material`'s verb | `changes` (R3) |
 | `mpfb_set_macro_details`, `mpfb_symmetrize_targets` | `changed` is a list, but it is a bool in `mpfb_apply_expressions` | `changes`. `apply_expressions` keeps `changed` (R3) |
 | `mpfb_get_object_info`'s `asset_info`, and so `mpfb_get_character_summary` | `material_type` is `identify_material()`'s `makeskin`/`enhanced_skin`/…, but `mpfb_add_asset`'s `material_type` is `MAKESKIN`/`GAMEENGINE`/… | `material_identified_as`, as `mpfb_set_skin` already reports it (R4) |
-| `mpfb_create_human_from_preset` | `material_instances` is `NEVER`/`ENHANCED`/`ENHANCEDMS`, but it is a bool in `mpfb_set_skin` | A new name (R7). `set_skin` keeps the bool. See [open question 2](#open-questions) |
+| `mpfb_create_human_from_preset` | `material_instances` is `NEVER`/`ENHANCED`/`ENHANCEDMS`, but it is a bool in `mpfb_set_skin` | `material_instances_policy` (R7): a rule MPFB applies per skin type, not a choice for one skin. Not `_mode`, which R6 gives to merge versus replace. `material_instances_used`, `material_instances_service_default` and `unknown_material_instances` follow it. `set_skin` keeps the bool |
 | `mpfb_refit_human`, `mpfb_save_preset` | `rig_name` is the rig object, but it is an input to `mpfb_generate_rigify_rig` | `rig_object_name` (R2) |
-| `mpfb_generate_rigify_rig` | `rig_name` is the name to give the generated rig | See [open question 1](#open-questions) |
+| `mpfb_generate_rigify_rig` | `rig_name` is the name to give the generated rig | `generated_rig_name`. It is a basename, not an object name: MPFB writes it to `rigify_rig_basename`, Rigify may uniquify it, and MPFB derives the meta rig's new name from it. Not `rig_object_name`, which would promise an exact name; not `rig_name`, which reads as a catalogue `name` from `mpfb_list_rigs`. The echo `rig_name_requested` becomes `generated_rig_name_requested`, and `rig_object_name` stays what it became |
 
 ### Divergent spellings
 
@@ -150,6 +150,7 @@ types, the `$md-` and `!ex-` prefixes) or the keys of MPFB's own files read back
 | MPFB's type string | `asset_type` (with `unknown_asset_type`/`known_asset_types`) in `mpfb_add_asset`, `object_type` everywhere else | `object_type` (R6, R7) |
 | Merge versus replace | `clear_first: bool` in `mpfb_set_face_units`, `mode: "merge" \| "replace"` in `mpfb_apply_expressions` | `mode` (R6) |
 | The material model | `material_type` / `skin_type`, and `override_skin_model` / `override_clothes_model` / `override_eyes_model` | `override_skin_type` / `override_clothes_material_type` / `override_eyes_material_type` (R7) |
+| A face unit's number | `weight` in `mpfb_get_face_units`, `mpfb_set_face_units` and the per-unit records of the expression tools; `value` for the same `!ex-` shape key in `mpfb_get_target_stack` | `value`: it is what a shape key holds, and `mpfb_set_targets`' `targets` entries write the same kind of number as `value`. `weight` stays on an expression row, which is a multiplier over a whole expression |
 | A per-entry before and after | `previous` / `new` in `mpfb_set_macro_details`, `previous_value` / `new_value` elsewhere | `previous_value` / `new_value` (R5) |
 | A field before a write | `stack_before`, `material_source_before`, but `previous_alternative_material` | `alternative_material_before` (R5). The census lists the rest |
 | The mesh assets on a character | `mesh_assets`, `mesh_assets_present`, `equipped_assets`, the summary's `assets` | The census decides. Some of these may be different sets under the same noun |
@@ -168,6 +169,10 @@ These go into the glossary as deliberate exceptions, so the next census confirms
 - **`shapekey_name` beside `name`** in the target tools exists because the two differ above 60
   characters.
 - **`refit` defaulting to true in `mpfb_set_face_units`** was decided in FR 027.
+- **`weight` on an expression row** is a multiplier MPFB applies to a whole expression before summing, not
+  a shape key's value. A face unit is `value`; see [Divergent spellings](#divergent-spellings).
+  The census rules on `mpfb_get_macro_details`' `macro_target_stack[].weight`, which is what MPFB
+  computed a macro target's shape key should hold, and is compared against the value actually read.
 - **Tool names**: a renamed tool breaks every client configuration and every saved transcript,
   which a renamed key does not.
 
@@ -256,24 +261,13 @@ These go into the glossary as deliberate exceptions, so the next census confirms
 
 ## Open questions
 
-The request was accepted with these three still open. They are naming details that do not block
-the effort. Each is decided when its rename lands, folded into the text above, and removed from
-this list. Four questions were settled before acceptance: a straight rename with a protocol bump
-(requirement 6), the glossary over MPFB's spellings (R7), refusing undeclared arguments in this
-effort and first (requirement 5), and the prose in scope (requirement 7).
-
-1. **What is `mpfb_generate_rigify_rig`'s input called?** It names an object that does not exist
-   yet, and MPFB may uniquify it. Candidates are `new_rig_name`, `generated_rig_name`, or
-   `rig_object_name` (the same key as the output that reports what it became).
-2. **What is `mpfb_create_human_from_preset`'s `material_instances` called?** It chooses which skin
-   types get per-region slots (`NEVER`, `ENHANCED`, `ENHANCEDMS`), while `mpfb_set_skin`'s bool
-   asks for them on the one skin it builds. The candidate is `material_instances_mode`.
-   `material_instances_used` and `material_instances_service_default` follow whatever it becomes.
-3. **Face units: `weight` or `value`?** An `!ex-` shape key's number is `value` in
-   `mpfb_get_target_stack` and `weight` in `mpfb_get_face_units`, `mpfb_set_face_units` and the
-   expression tools. `weight` is MPFB's term for an expression row, which sums and clamps. A face
-   unit read off a shape key is the same number the target stack calls `value`. The proposal is to
-   keep `weight` for expression rows and face units, and to record why.
+None. The three left open at acceptance were settled on 2026-09-24, before the first rename:
+`mpfb_generate_rigify_rig`'s input is `generated_rig_name` and `mpfb_create_human_from_preset`'s
+is `material_instances_policy` (both in [Collisions](#collisions)), and a face unit's number is
+`value` while an expression row keeps `weight` ([Divergent spellings](#divergent-spellings)). The
+FR had proposed `material_instances_mode` and keeping `weight` for face units; the first would
+have given `mode` a second meaning beside R6's, and the second would have kept one shape key's
+number under two names.
 
 ## References
 
