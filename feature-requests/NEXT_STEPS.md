@@ -12,37 +12,16 @@ records what has already landed and why. When an effort below is finished, move 
 
 **Scoped as two requests, in this order: [FR 026](done/026-face-units/README.md) (Done) landed the
 face-unit layer — `mpfb_get_face_units` and `mpfb_set_face_units`. What remains is
-[FR 027](027-expression-library/README.md) (Accepted), the saved-expression library and the stack
-that applies it, which extends FR 026's tools; see
-[the dependency](027-expression-library/README.md#the-dependency-and-what-happens-if-the-order-reverses).**
+[FR 027](027-expression-library/README.md) (Accepted): the saved-expression library, the stack that
+applies it, and `mpfb_save_expression`, which turns a composed face into a file the library can
+carry. Saving was queued here as a separate entry behind FR 027 and has been folded into it, since
+neither half is useful without the other; see
+[its requirements](027-expression-library/README.md#mpfb_save_expression--keep-a-composed-face).**
 
 These are the `!ex-` prefixed shape keys. They depend on particular asset packs being installed.
 Expressions should be a mix of functionality from the `src/mpfb/ui/create_assets/makeexpression`
 and `src/mpfb/ui/apply_assets/useexpression` UI code hierarchies in MPFB. TargetService has
 some functionality for working with expressions.
-
-## Saving expressions
-
-Queued behind [FR 027](027-expression-library/README.md), which reads and applies expressions but
-writes none. An `mpfb_save_expression` would close the gap named in
-[FR 026](done/026-face-units/README.md#a-composed-face-is-transient): a face composed from ARKit units
-survives nothing today — not a preset save (a preset serializes the applied-expressions *stack*, and
-a composed face has no stack rows), and not the next library call, which clears every `!ex-` key
-before rebuilding.
-
-`FaceService.save_expression` already exists and already does the filtering, rounding and metadata
-defaulting. The tool writes outside the `.blend`, which is now a settled shape rather than an open
-question: follow
-[a tool whose effect is outside the `.blend`](../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more),
-landed by [FR 025](done/025-character-presets/README.md) — name and never a path, the name validated
-on this side of the socket, `overwrite: False`, the absolute path in every answer — writing to
-`LocationService.get_user_data("expressions")`. Whether the name rule can be *reused* rather than
-restated is the effort's to decide: `src/mpfbmcp/preset_names.py` and
-`codegen/shared/preset_files.py` are written around `human.<name>.json` in the user config
-directory, so a second artifact in a different directory either generalises them or copies them,
-and FR 025's own reason for two copies (a silent gap between two sides of the socket) does not by
-itself argue for a third. It comes after FR 027 because what it writes is read back through the
-library.
 
 ## Visemes and lip sync
 
