@@ -101,9 +101,9 @@ MODIFIER_CAP = 25
 ASYMMETRY_CAP = 8
 
 _PHENOTYPE_FIELDS = ("macro_details", "race_sum", "race_normalized", "macro_drift")
-_ASSET_FIELDS = ("asset_source", "material_type", "material_source")
-_RIG_FIELDS = ("rig_type", "rig_definition_path")
-_SKIN_FIELDS = ("material_type", "material_source", "mhmat_path")
+_ASSET_FIELDS = ("asset_source", "material_identified_as", "material_source")
+_RIG_FIELDS = ("rig_identified_as", "rig_definition_path")
+_SKIN_FIELDS = ("material_identified_as", "material_source", "mhmat_path")
 _STACK_ROW_FIELDS = ("fragment", "weight", "resolved")
 
 

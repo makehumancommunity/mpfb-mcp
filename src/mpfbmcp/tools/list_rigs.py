@@ -1,7 +1,7 @@
 """
 The ``mpfb_list_rigs`` tool: which rigs this Blender could add to a character.
 
-The catalogue counterpart to ``mpfb_get_object_info``'s ``rig_type``, which says
+The catalogue counterpart to ``mpfb_get_object_info``'s ``rig_identified_as``, which says
 what an *existing* armature looks like. The two vocabularies overlap without
 being interchangeable, and closing that gap is the reason this tool exists: what
 is reported here is, per rig, the exact string an adding function takes, plus
@@ -80,7 +80,7 @@ def register(mcp: FastMCP) -> None:
             does not show up" undiagnosable.
 
         **Do not expect this list to match `mpfb_get_object_info`'s
-        `rig_type`.** That value comes from MPFB identifying an armature by its
+        `rig_identified_as`.** That value comes from MPFB identifying an armature by its
         bone names and can be `rigify_generated.*` or `unknown`, neither of
         which names something addable. A character whose rig is not in this
         list is ordinary, not an error.

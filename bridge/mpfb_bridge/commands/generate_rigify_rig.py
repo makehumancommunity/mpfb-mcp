@@ -154,9 +154,9 @@ def _survey(services, subject):
         if kind == "metarig" and meta_rig is None:
             meta_rig = skeleton
         elif kind == "generated":
-            generated_present.append({"name": skeleton.name, "rig_type": rig_type})
+            generated_present.append({"name": skeleton.name, "rig_identified_as": rig_type})
         elif kind != "metarig":
-            other_skeletons.append({"name": skeleton.name, "rig_type": rig_type})
+            other_skeletons.append({"name": skeleton.name, "rig_identified_as": rig_type})
     return (meta_rig, generated_present, other_skeletons)
 
 
@@ -189,7 +189,7 @@ def _refusal(services, subject, subject_resolved_by, message,
             "'{:s}' is rigged, but with '{!s}' rather than a Rigify meta rig, so nothing was "
             "generated. Only a rig added from a 'rigify.*' identifier can be generated; "
             "mpfb_list_rigs reports which those are.".format(
-                subject.name, other_skeletons[0]["rig_type"]),
+                subject.name, other_skeletons[0]["rig_identified_as"]),
             skeletons=other_skeletons)
     if meta_rig is None:
         return blocked(

@@ -64,9 +64,9 @@ def register(mcp: FastMCP) -> None:
           - `asset_info`: what the object was made from, or null when it has no
             MPFB type. **Its keys depend on the object type** - a skeleton has
             no mhclo, so it has no `mhclo_path` key rather than a null one.
-            `Skeleton`/`Subrig` carry `rig_type` and `rig_definition_path`; a
+            `Skeleton`/`Subrig` carry `rig_identified_as` and `rig_definition_path`; a
             mesh asset (`Clothes`, `Eyes`, `Hair`, `Proxymeshes`, ...) carries
-            `asset_source`, `mhclo_path`, `material_type`, `material_source`
+            `asset_source`, `mhclo_path`, `material_identified_as`, `material_source`
             and `mhmat_path`; a `Basemesh` carries the last three. An
             unrecognized MakeHuman type gets an empty dict.
           - `related_objects`: the MakeHuman objects among this one's parents,
@@ -86,8 +86,8 @@ def register(mcp: FastMCP) -> None:
         means the asset is recorded but is not installed under any asset root
         this Blender can see. A null `material_source` on a mesh asset is
         ordinary: the object uses the default material named inside its mhclo,
-        deliberately not resolved here. `rig_type` and `material_type` are
-        identified from the object as it is now, while the `*_source` fragments
+        deliberately not resolved here. The `*_identified_as` values are read
+        off the object as it is now, while the `*_source` fragments
         record what was loaded and are never rewritten when the object is
         edited by hand; where they disagree, the identified value describes
         reality. And `mhclo_path` may point at a `.proxy` file, so do not

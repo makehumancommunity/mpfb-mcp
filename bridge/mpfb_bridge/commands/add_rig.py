@@ -274,7 +274,7 @@ def _refusal(services, subject, basemesh, subject_resolved_by, requested_identif
             "first orphaned. Delete '{:s}' first if the rig really should be replaced.".format(
                 basemesh.name, existing_rig.name, existing_rig.name),
             existing_rig_object_name=existing_rig.name,
-            existing_rig_type=services["RigService"].identify_rig(existing_rig)
+            existing_rig_identified_as=services["RigService"].identify_rig(existing_rig)
             if existing_rig.type == "ARMATURE" else None)
     if basemesh.mode != "OBJECT" or bpy.context.mode != "OBJECT":
         # Two checks rather than one, and both are needed. Building the armature

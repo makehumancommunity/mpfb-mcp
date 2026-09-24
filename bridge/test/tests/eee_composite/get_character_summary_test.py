@@ -107,14 +107,14 @@ def _assert_agreement(name):
     basemesh = summary["basemesh_name"]
     info = result("get_object_info", {"name": basemesh})
     assert summary["skin"] == _pick(
-        info["asset_info"], ("material_type", "material_source", "mhmat_path"))
+        info["asset_info"], ("material_identified_as", "material_source", "mhmat_path"))
 
     expected_assets = []
     for entry in info["related_objects"]:
         if entry["object_type"] in ("Skeleton", "Subrig", "Basemesh", None):
             continue
         row = _pick(entry, ("name", "object_type", "in_current_scene"))
-        row.update(_pick(entry["asset_info"], ("asset_source", "material_type",
+        row.update(_pick(entry["asset_info"], ("asset_source", "material_identified_as",
                                                 "material_source")))
         expected_assets.append(row)
     expected_assets.sort(key=lambda row: (row["object_type"], row["name"]))
@@ -128,7 +128,7 @@ def _assert_agreement(name):
         assert summary["rig"]["name"] in skeletons
         rig_info = result("get_object_info", {"name": summary["rig"]["name"]})
         expected_rig = _pick(rig_info, ("name", "in_current_scene", "rigify_role"))
-        expected_rig.update(_pick(rig_info["asset_info"], ("rig_type", "rig_definition_path")))
+        expected_rig.update(_pick(rig_info["asset_info"], ("rig_identified_as", "rig_definition_path")))
         assert summary["rig"] == expected_rig
 
     stack = result("get_target_stack", {"name": name})
@@ -165,7 +165,7 @@ def test_every_shared_field_agrees_with_its_detailed_command(tmp_path):
 
     assert inside["subject_name"] == garment
     assert inside["basemesh_name"] == basemesh_name
-    assert inside["rig"]["rig_type"] == "default"
+    assert inside["rig"]["rig_identified_as"] == "default"
     assert [row["name"] for row in inside["assets"]] == [garment]
     # Inside the fixture the stack explains everything but the composed unit;
     # outside it, the saved file is out of reach and explains nothing.

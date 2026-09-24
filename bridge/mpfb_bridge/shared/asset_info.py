@@ -191,7 +191,7 @@ def asset_info_for(lookup, blender_object, object_type):
             # not built from.
             rig_type = lookup.services["RigService"].identify_rig(blender_object)
         return {
-            "rig_type": rig_type,
+            "rig_identified_as": rig_type,
             "rig_definition_path": _rig_definition_path(lookup, rig_type),
         }
 
@@ -209,13 +209,13 @@ def asset_info_for(lookup, blender_object, object_type):
         info = {
             "asset_source": asset_source,
             "mhclo_path": mhclo_path,
-            "material_type": _material_type_of(lookup, blender_object),
+            "material_identified_as": _material_type_of(lookup, blender_object),
         }
         info.update(_material_asset_info(lookup, blender_object, object_type))
         return info
 
     if object_type == "Basemesh":
-        info = {"material_type": _material_type_of(lookup, blender_object)}
+        info = {"material_identified_as": _material_type_of(lookup, blender_object)}
         info.update(_material_asset_info(lookup, blender_object, object_type))
         return info
 

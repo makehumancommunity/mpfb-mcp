@@ -101,9 +101,9 @@ def test_a_basemesh_answers_the_material_question_and_not_the_mhclo_one():
         # The shape *is* the answer. A union with the inapplicable keys nulled
         # would report mhclo_path: null on a basemesh, which reads as "we looked
         # for its mhclo and failed".
-        assert set(info) == {"material_type", "material_source", "mhmat_path"}, \
+        assert set(info) == {"material_identified_as", "material_source", "mhmat_path"}, \
             "A Basemesh answers the material question only, got {!r}".format(sorted(info))
-        assert info["material_type"] is not None, \
+        assert info["material_identified_as"] is not None, \
             "identify_material() answers for a mesh even with no material on it"
 
 

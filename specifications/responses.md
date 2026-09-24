@@ -86,8 +86,9 @@ roots. Any tool reporting that follows three conventions:
   was asked; their values say whether it could be answered.
 
 Two cautions belong in the docstring of any tool reporting these. Values *identified* from the
-object as it is now — which rig the bone names look like, which material the node tree looks like —
-can disagree with values *recorded* when something was loaded, because nothing rewrites a record
+object as it is now — which rig the bone names look like, which material the node tree looks like,
+reported as `rig_identified_as` and `material_identified_as` — can disagree with values *recorded*
+when something was loaded, because nothing rewrites a record
 when the object is later edited by hand; where they disagree, the identified value describes
 reality, and both are heuristics rather than authorities. And resolving a fragment is an `os.walk`
 of the asset roots, so it must happen only when there is a fragment to resolve.
