@@ -33,7 +33,7 @@ executes this file's source directly - so it imports nothing but the standard
 library.
 
 It also holds the two ``os.stat`` helpers that report what is already at such
-a path - the ``previous_file`` both saving commands refuse and report with -
+a path - the ``file_before`` both saving commands refuse and report with -
 because "what is there" is the other half of "what may it be called". Reads
 nothing out of MPFB, so like ``performed`` it takes no ``services``.
 """
@@ -109,7 +109,7 @@ def file_facts(path):
 
     Every field here is **derived from the filesystem**, not recorded by MPFB
     and not read out of the JSON: MPFB's own lists are bare names and know
-    nothing about size or age. This is the ``previous_file`` shape both
+    nothing about size or age. This is the ``file_before`` shape both
     ``save_preset`` and ``save_expression`` refuse and report with.
     ``exists: false`` is an ordinary answer - MPFB's cached preset list can
     name a preset whose file has since been deleted.

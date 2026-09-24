@@ -57,8 +57,8 @@ def test_a_named_slider_is_written_and_the_shape_rebuilt():
             "MPFB should have stored the new value, got {!r}".format(after["gender"])
         assert abs(before["gender"] - after["gender"]) > 0.0001, \
             "the fixture should have started somewhere else, or this proves nothing"
-        assert result["changes"][0]["new"] is not None
-        assert abs(result["changes"][0]["new"] - after["gender"]) < 0.0001, \
+        assert result["changes"][0]["new_value"] is not None
+        assert abs(result["changes"][0]["new_value"] - after["gender"]) < 0.0001, \
             "the reported new value must be the one MPFB holds"
 
 

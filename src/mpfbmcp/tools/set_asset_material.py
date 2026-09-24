@@ -124,7 +124,7 @@ def register(mcp: FastMCP) -> None:
         On `applied: true`, `result` carries `asset_object_name`,
         `object_type`, `asset_subdir`, `resolved_by`/`resolved_path`,
         `alternative_material` (the fragment now recorded on the object, empty
-        when the default was restored) beside `previous_alternative_material`,
+        when the default was restored) beside `alternative_material_before`,
         `materials_destroyed`, `material_name` and `diffuse_color_from`.
 
         Refusals come back as `applied: false` (and so `performed: false`) with

@@ -83,7 +83,7 @@ def register(mcp: FastMCP) -> None:
         `overwrite` (default false) is the only thing standing between a call
         and the loss of an existing preset. With it false and the preset
         present, the tool refuses - `blocked_by: "preset_exists"`, nothing
-        written - and `previous_file` carries that file's size and age so the
+        written - and `file_before` carries that file's size and age so the
         decision can be made from the response.
 
         **A generated Rigify rig does not round-trip.** MPFB stores the meta
@@ -93,7 +93,7 @@ def register(mcp: FastMCP) -> None:
         substitution on the call where it happened.
 
         On `saved: true` (and so `performed: true`), `result` carries `path`,
-        `size_bytes`, `modified`, `overwrote`, `previous_file` (the replaced
+        `size_bytes`, `modified`, `overwrote`, `file_before` (the replaced
         file's facts, or null), `config_dir`, `basemesh_name`, `rig_object_name`,
         `rig_identified_as`/`rig_saved_as`, and `contents` - what the written
         file actually holds, read back from it: `rig`, `proxy`, `bodyparts`,

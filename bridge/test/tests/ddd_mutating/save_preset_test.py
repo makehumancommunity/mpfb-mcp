@@ -63,7 +63,7 @@ def test_a_character_is_written_and_the_answer_names_the_file():
         assert os.path.isfile(result["path"]), "the file must really be there"
         assert result["size_bytes"] > 0
         assert result["overwrote"] is False
-        assert result["previous_file"] is None
+        assert result["file_before"] is None
 
 
 def test_the_reported_contents_are_read_back_from_the_file():
@@ -101,14 +101,14 @@ def test_an_existing_preset_is_not_replaced_unless_asked():
             assert refused["performed"] is False
             assert refused["path"] == first["path"], \
                 "the path is on every refusal too - the caller cannot see the directory"
-            assert refused["previous_file"]["size_bytes"] == first["size_bytes"]
+            assert refused["file_before"]["size_bytes"] == first["size_bytes"]
 
             allowed = _result({"preset_name": "carol", "name": character.basemesh.name,
                                "overwrite": True})
 
         assert allowed["saved"] is True
         assert allowed["overwrote"] is True
-        assert allowed["previous_file"] is not None
+        assert allowed["file_before"] is not None
 
 
 def test_a_mesh_that_is_not_a_human_project_is_refused_rather_than_raising():

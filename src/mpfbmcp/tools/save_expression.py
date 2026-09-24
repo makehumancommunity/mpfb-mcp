@@ -109,7 +109,7 @@ def register(mcp: FastMCP) -> None:
         `apply_with` holds exactly those arguments.
 
         `overwrite` (default false) refuses an existing file
-        (`blocked_by: "expression_exists"`, `previous_file` giving its size and
+        (`blocked_by: "expression_exists"`, `file_before` giving its size and
         age); the directory is shared with installed asset packs. Other
         refusals, nothing written: `name_shadowed` (a same-named file in a
         higher-priority data root would hide this one from MPFB for good -

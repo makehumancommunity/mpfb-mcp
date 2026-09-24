@@ -110,7 +110,7 @@ def test_the_recorded_alternative_material_is_written_and_read_back():
             info = _fixture_result("get_object_info", {"name": asset_name})
 
         assert result["alternative_material"], "an alternative should have been recorded"
-        assert result["previous_alternative_material"] is None, \
+        assert result["alternative_material_before"] is None, \
             "there was none before this call"
         # ``get_object_info`` reports it as ``material_source`` - the field is
         # named for what it *is* to a reader of that answer (where this asset's
@@ -140,7 +140,7 @@ def test_restore_default_puts_back_the_mhclos_own_material_and_clears_the_record
                 restored["resolved_path"])
         assert restored["alternative_material"] is None, \
             "the record is cleared on a restore, exactly as MPFB's panel does"
-        assert restored["previous_alternative_material"], \
+        assert restored["alternative_material_before"], \
             "and the answer should say what was cleared"
 
 

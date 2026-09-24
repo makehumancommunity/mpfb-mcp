@@ -59,7 +59,7 @@ def test_the_live_face_is_written_rounded_and_without_zeros(tmp_path):
     assert on_disk["tags"] == ["test"]
     assert answer["metadata"]["author"] == "me"
     assert answer["overwrote"] is False
-    assert answer["previous_file"] is None
+    assert answer["file_before"] is None
     assert answer["apply_with"] == dict(
         expressions=[dict(fragment="composed.json", weight=1.0)], mode="replace")
 
@@ -92,11 +92,11 @@ def test_an_existing_file_is_refused_with_its_facts_and_left_byte_identical(tmp_
     assert refused["blocked_by"] == "expression_exists"
     assert refused["performed"] is False
     assert refused["path"] == paths["smile"]
-    assert refused["previous_file"]["size_bytes"] == len(before)
-    assert refused["previous_file"]["modified"]
+    assert refused["file_before"]["size_bytes"] == len(before)
+    assert refused["file_before"]["modified"]
     assert after == before
     assert replaced["overwrote"] is True
-    assert replaced["previous_file"]["size_bytes"] == len(before)
+    assert replaced["file_before"]["size_bytes"] == len(before)
     assert replaced["face_units"] == {"browInnerUp": 0.9}
 
 

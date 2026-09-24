@@ -222,7 +222,7 @@ def _blocked(params, request, reason, message, **extra):
         path=request.file_path,
         fragment=request.fragment,
         overwrote=False,
-        previous_file=request.previous_file,
+        file_before=request.previous_file,
         message=message,
     )
     answer.update(extra)
@@ -313,9 +313,9 @@ def save_expression(params, resolution):  # pylint: disable=too-many-return-stat
         now = file_facts(request.file_path)
         return blocked(
             "save_failed",
-            "MPFB raised while writing '{:s}': {:s}. current_file reports what is at that path "
+            "MPFB raised while writing '{:s}': {:s}. file_after reports what is at that path "
             "now.".format(request.file_path, str(error)),
-            current_file=now if now["exists"] else None)
+            file_after=now if now["exists"] else None)
 
     written = file_facts(request.file_path)
     contents = _read_back(request.file_path) or {}
@@ -355,7 +355,7 @@ def save_expression(params, resolution):  # pylint: disable=too-many-return-stat
         size_bytes=written["size_bytes"],
         modified=written["modified"],
         overwrote=request.previous_file is not None,
-        previous_file=request.previous_file,
+        file_before=request.previous_file,
         face_units=contents.get("face_units") or {},
         metadata={key: contents.get(key) for key in ("name",) + METADATA_KEYS},
         stack_contributed=bool(stack),

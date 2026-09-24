@@ -241,7 +241,7 @@ def _blocked(params, request, reason, message, **extra):
         # first thing they need in order to fix a name or pass overwrite.
         path=request.file_path,
         overwrote=False,
-        previous_file=request.previous_file,
+        file_before=request.previous_file,
         message=message,
     )
     answer.update(extra)
@@ -305,7 +305,7 @@ def _refusal(services, params, request):  # pylint: disable=too-many-return-stat
             "preset_exists",
             "A preset named '{!s}' already exists, written {!s}, and overwrite is false, so "
             "nothing was written. Pass overwrite=true to replace it, or choose another name - "
-            "there is no undo for a file across this socket. previous_file carries its size and "
+            "there is no undo for a file across this socket. file_before carries its size and "
             "age.".format(params["preset_name"], request.previous_file["modified"]))
     return None
 
@@ -364,9 +364,9 @@ def save_preset(params, resolution):
             params, request, "serialize_failed",
             "MPFB raised while serializing '{:s}': {:s} The file is opened only after the whole "
             "character has been serialized to a string, so an existing preset is normally "
-            "untouched; current_file reports what is at that path now.".format(
+            "untouched; file_after reports what is at that path now.".format(
                 request.basemesh.name, failure),
-            current_file=now if now["exists"] else None,
+            file_after=now if now["exists"] else None,
             rig_identified_as=request.rig_identified_as)
 
     written = preset_files.file_facts(request.file_path)
@@ -389,7 +389,7 @@ def save_preset(params, resolution):
         size_bytes=written["size_bytes"],
         modified=written["modified"],
         overwrote=request.previous_file is not None,
-        previous_file=request.previous_file,
+        file_before=request.previous_file,
         is_human_project=True,
         rig_object_name=None if request.armature is None else request.armature.name,
         rig_identified_as=request.rig_identified_as,

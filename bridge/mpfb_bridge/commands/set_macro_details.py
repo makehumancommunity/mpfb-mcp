@@ -284,8 +284,8 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
         dict(
             name=change["argument"],
             property=change["property"],
-            previous=_flat_value(details_before, change["property"]),
-            new=_flat_value(details_after, change["property"]),
+            previous_value=_flat_value(details_before, change["property"]),
+            new_value=_flat_value(details_after, change["property"]),
         )
         for change in changes
     ]

@@ -267,7 +267,7 @@ def _set_face_units(run: _Run) -> dict:
         name=_character(run), face_units=[{"face_unit": "jawOpen", "weight": 0.4}])
 
 
-@_item("mpfb_save_expression", "path", "fragment", "overwrote", "previous_file",
+@_item("mpfb_save_expression", "path", "fragment", "overwrote", "file_before",
        "face_units", "metadata", "apply_with")
 def _save_expression(run: _Run) -> dict:
     """The second item that writes outside the ``.blend``, after ``mpfb_save_preset``.
@@ -392,7 +392,7 @@ def _get_character_summary(run: _Run) -> dict:
     return run.tools["mpfb_get_character_summary"](name=_character(run))
 
 
-@_item("mpfb_save_preset", "path", "size_bytes", "overwrote", "previous_file",
+@_item("mpfb_save_preset", "path", "size_bytes", "overwrote", "file_before",
        "basemesh_name", "contents")
 def _save_preset(run: _Run) -> dict:
     """The one item that writes outside the ``.blend``, deliberately and once.
