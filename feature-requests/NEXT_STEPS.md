@@ -47,6 +47,37 @@ way. FastMCP reports either as a tool error, so nothing is sent, but the sentenc
 nothing it can act on. The fix is a type check before the range check; its refusal sentences then
 belong in a unit test, which is where FR 036 found none.
 
+<a id="stale-anchor-links"></a>
+
+## Stale anchor links in the documentation
+
+Found by a link check while [FR 037](done/037-one-word-per-concept/README.md) closed. These relative
+links point at an anchor that no longer exists: the file is there, the heading is not. All but the
+last predate FR 037.
+
+- `specifications/vision.md` and `CLAUDE.md` link to
+  `NEXT_STEPS.md#superseded-second-backend-the-community-blender-mcp`, which has no heading or
+  `<a id>` of that name any more.
+- `specifications/testing.md` links to
+  `NEXT_STEPS.md#file-upstream-mpfb-cannot-find-a-rigify-meta-rig-any-more`.
+- `specifications/architecture.md` links to `HISTORY.md#fr-033--the-generated-code-path-retired`.
+  That heading contains a markdown link, so its generated anchor is not the one written; an explicit
+  `<a id>` above it would fix this and any other link to it.
+- `specifications/architecture.md` links to `CLAUDE.md#the-twenty-five-tools`; the heading is "The
+  thirty-two tools" now.
+- `HISTORY.md` links to `NEXT_STEPS.md#should-the-bridge-serve-its-own-test-harness`.
+- `bridge/mpfb_bridge/commands/list_asset_materials.py` links to
+  `specifications/architecture.md#shared-fragments`, a section that was renamed when shared
+  fragments became shared modules.
+- `HISTORY.md`'s FR 036 entry links to `NEXT_STEPS.md#resolved-from-and-subject-resolved-by`, the
+  entry FR 037 closed and removed. HISTORY is not rewritten, so this one may be left, or repointed at
+  FR 037's entry.
+
+The fix is to repoint each at the heading it meant, or drop the anchor where the section is gone. A
+small script that checks every `](path#anchor)` against GitHub-style heading slugs and `<a id>` tags
+would find the next one, and could become a test beside `tests/test_reference_drift.py` if drift
+here turns out to recur.
+
 <a id="direct-tests-of-the-bridges-shared-modules"></a>
 
 ## Direct tests of the bridge's shared modules
