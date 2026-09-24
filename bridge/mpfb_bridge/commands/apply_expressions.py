@@ -90,10 +90,9 @@ import difflib
 import json
 import os
 
-import bpy
-
 from ..log import get_logger
 from ..shared import expression_panel
+from ..shared import selection
 from ..shared import subject_resolution
 from ..shared.expression_divergence import TOLERANCE
 from ..shared.expression_divergence import divergence
@@ -406,14 +405,8 @@ def apply_expressions(params, resolution):  # pylint: disable=too-many-locals,to
         refit_incomplete_reason = _rig_refit_blocker(services, rig)
         # refit() reaches bpy.ops through ClothesService. Put back what was
         # borrowed, as refit_human does: the user is looking at this scene.
-        previous_active = bpy.context.view_layer.objects.active
-        basemesh_was_selected = bool(basemesh.select_get())
-        try:
+        with selection.restored(basemesh):
             services["HumanService"].refit(basemesh)
-        finally:
-            if not basemesh_was_selected:
-                basemesh.select_set(False)
-            bpy.context.view_layer.objects.active = previous_active
         refit_performed = refit_incomplete_reason is None
 
     after = divergence(services, basemesh)

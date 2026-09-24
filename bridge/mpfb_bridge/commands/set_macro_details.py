@@ -66,12 +66,10 @@ __all__ = (
     "set_macro_details",
 )
 
-
-import bpy
-
 from ..log import get_logger
 from ..shared import macro_reading
 from ..shared import mpfb_surface
+from ..shared import selection
 from ..shared import subject_resolution
 from ..shared.performed import with_performed
 from ..shared.refit_blocker import rig_refit_is_blocked
@@ -259,10 +257,7 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
     # Nothing in reapply_macro_details() obviously requires it, but the refit
     # below reaches bpy.ops through ClothesService, so follow MPFB - and put
     # back what was borrowed: the user is looking at this scene.
-    previous_active = bpy.context.view_layer.objects.active
-    basemesh_was_selected = bool(basemesh.select_get())
-
-    try:
+    with selection.restored(basemesh):
         for change in changes:
             HumanObjectProperties.set_value(
                 change["property"], change["value"], entity_reference=basemesh)
@@ -280,10 +275,6 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
             refit_incomplete_reason = _rig_refit_blocker(services, rig)
             services["HumanService"].refit(basemesh)
             refit_performed = refit_incomplete_reason is None
-    finally:
-        if not basemesh_was_selected:
-            basemesh.select_set(False)
-        bpy.context.view_layer.objects.active = previous_active
 
     details_after = macro_reading.macro_details_of(target_service, basemesh)
     shapekeys_after = _macro_shapekeys_of(target_service, basemesh)

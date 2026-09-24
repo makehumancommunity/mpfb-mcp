@@ -77,6 +77,7 @@ import bpy
 from ..log import get_logger
 from ..shared import asset_sections
 from ..shared import mpfb_surface
+from ..shared import selection
 from ..shared import subject_resolution
 from ..shared.performed import with_performed
 from ..validation import Param
@@ -426,33 +427,26 @@ def set_skin(params, resolution):  # pylint: disable=too-many-locals,too-many-st
     if request.skin_type in ENHANCED_TYPES:
         scale_assumption = _scale_assumption_for(services, basemesh)
 
-    previous_active = bpy.context.view_layer.objects.active
-    basemesh_was_selected = bool(basemesh.select_get())
-
     failure_message = None
-    try:
-        # MPFB's own operator runs with the character active, and the material
-        # slot assignment goes through bpy.ops, which reads the context.
-        object_service.activate_blender_object(basemesh)
-        services["HumanService"].set_character_skin(
-            request.resolved_path,
-            basemesh,
-            bodyproxy=body_proxy,
-            skin_type=request.skin_type,
-            material_instances=material_instances_used)
-    except Exception as error:  # pylint: disable=broad-except
-        # Broad on purpose. By the time anything in there can raise, the old
-        # materials are already deleted - so a command_failed envelope would
-        # leave the caller with a character stripped of materials and no record
-        # of what was on it. This is reported as an answer instead, with
-        # materials_destroyed intact.
-        failure_message = "MPFB raised while building a {:s} skin: {:s}".format(
-            request.skin_type, str(error))
-    finally:
-        if not basemesh_was_selected:
-            basemesh.select_set(False)
-        # Put back what was borrowed: the user is looking at this scene.
-        bpy.context.view_layer.objects.active = previous_active
+    with selection.restored(basemesh):
+        try:
+            # MPFB's own operator runs with the character active, and the material
+            # slot assignment goes through bpy.ops, which reads the context.
+            object_service.activate_blender_object(basemesh)
+            services["HumanService"].set_character_skin(
+                request.resolved_path,
+                basemesh,
+                bodyproxy=body_proxy,
+                skin_type=request.skin_type,
+                material_instances=material_instances_used)
+        except Exception as error:  # pylint: disable=broad-except
+            # Broad on purpose. By the time anything in there can raise, the old
+            # materials are already deleted - so a command_failed envelope would
+            # leave the caller with a character stripped of materials and no record
+            # of what was on it. This is reported as an answer instead, with
+            # materials_destroyed intact.
+            failure_message = "MPFB raised while building a {:s} skin: {:s}".format(
+                request.skin_type, str(error))
 
     if failure_message is not None:
         return _blocked(

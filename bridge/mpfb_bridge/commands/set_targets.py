@@ -73,9 +73,8 @@ __all__ = (
     "set_targets",
 )
 
-import bpy
-
 from ..log import get_logger
+from ..shared import selection
 from ..shared import subject_resolution
 from ..shared import target_categories
 from ..shared import target_rollup
@@ -623,14 +622,11 @@ def set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many
 
     shapekeys_before = target_rollup.shapekey_names(basemesh)
 
+    applied = []
     # MPFB's own slider callback activates the basemesh before writing, and the
     # refit below reaches bpy.ops through ClothesService. Put back what was
     # borrowed: the user is looking at this scene.
-    previous_active = bpy.context.view_layer.objects.active
-    basemesh_was_selected = bool(basemesh.select_get())
-
-    applied = []
-    try:
+    with selection.restored(basemesh):
         object_service.activate_blender_object(basemesh)
         for resolved in resolved_entries:
             if resolved["kind"] == "modifier":
@@ -666,10 +662,6 @@ def set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many
             refit_incomplete_reason = _rig_refit_blocker(services, rig)
             services["HumanService"].refit(basemesh)
             refit_performed = refit_incomplete_reason is None
-    finally:
-        if not basemesh_was_selected:
-            basemesh.select_set(False)
-        bpy.context.view_layer.objects.active = previous_active
 
     shapekeys_after = target_rollup.shapekey_names(basemesh)
     mesh_assets = [asset.name for asset in object_service.find_related_mesh_assets(basemesh)]

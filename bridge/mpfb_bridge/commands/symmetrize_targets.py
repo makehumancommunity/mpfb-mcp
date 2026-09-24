@@ -51,9 +51,8 @@ __all__ = (
     "symmetrize_targets",
 )
 
-import bpy
-
 from ..log import get_logger
+from ..shared import selection
 from ..shared import subject_resolution
 from ..shared import target_categories
 from ..shared import target_rollup
@@ -388,9 +387,7 @@ def symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,t
             reported["targets"] = None
             changed.append(reported)
     elif planned:
-        previous_active = bpy.context.view_layer.objects.active
-        basemesh_was_selected = bool(basemesh.select_get())
-        try:
+        with selection.restored(basemesh):
             object_service.activate_blender_object(basemesh)
             for entry, section_name, category, source_value in planned:
                 touched = _write_side(target_service, tables, basemesh, section_name, category,
@@ -404,10 +401,6 @@ def symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,t
                 refit_incomplete_reason = _rig_refit_blocker(services, rig)
                 services["HumanService"].refit(basemesh)
                 refit_performed = refit_incomplete_reason is None
-        finally:
-            if not basemesh_was_selected:
-                basemesh.select_set(False)
-            bpy.context.view_layer.objects.active = previous_active
         shapekeys_after = target_rollup.shapekey_names(basemesh)
 
     mesh_assets = [asset.name for asset in object_service.find_related_mesh_assets(basemesh)]

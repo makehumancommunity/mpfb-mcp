@@ -48,9 +48,8 @@ __all__ = (
     "refit_human",
 )
 
-import bpy
-
 from ..log import get_logger
+from ..shared import selection
 from ..shared import subject_resolution
 from ..shared.performed import with_performed
 from ..shared.refit_blocker import rig_refit_is_blocked
@@ -174,17 +173,10 @@ def refit_human(params, resolution):
 
     refit_incomplete_reason = _rig_refit_blocker(services, rig)
 
-    previous_active = bpy.context.view_layer.objects.active
-    basemesh_was_selected = bool(basemesh.select_get())
-    try:
+    # ClothesService restores the active object itself, but only around its own
+    # edit-mode excursion. Restoring here covers the whole call.
+    with selection.restored(basemesh):
         services["HumanService"].refit(basemesh)
-    finally:
-        # ClothesService restores the active object itself, but only around its
-        # own edit-mode excursion. Restoring here covers the whole call, and the
-        # user is looking at this scene.
-        if not basemesh_was_selected:
-            basemesh.select_set(False)
-        bpy.context.view_layer.objects.active = previous_active
 
     _LOG.debug("refit_human: %d mesh asset(s), rig=%r, blocked=%r",
                len(mesh_assets), None if rig is None else rig.name,

@@ -77,6 +77,7 @@ import bpy
 from ..log import get_logger
 from ..shared import asset_sections
 from ..shared import mpfb_surface
+from ..shared import selection
 from ..shared import subject_resolution
 from ..shared.performed import with_performed
 from ..validation import Param
@@ -572,36 +573,29 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
     names_material, mhmat_path = _mhclo_material(request.resolved_path)
     weights_beside = _weights_files_beside(request.resolved_path)
 
-    previous_active = bpy.context.view_layer.objects.active
-    basemesh_was_selected = bool(basemesh.select_get())
-
     asset_object = None
     failure_message = None
-    try:
-        # MPFB's own operators run with the basemesh active, and the import and
-        # the fitting both go through bpy.ops, which reads the context.
-        object_service.activate_blender_object(basemesh)
-        asset_object = services["HumanService"].add_mhclo_asset(
-            request.resolved_path,
-            basemesh,
-            asset_type=request.normalized_asset_type,
-            subdiv_levels=params["subdiv_levels"],
-            material_type=request.material_type,
-            set_up_rigging=params["set_up_rigging"],
-            interpolate_weights=params["interpolate_weights"],
-            import_subrig=params["import_subrig"],
-            import_weights=params["import_weights"])
-    except IOError as error:
-        # add_mhclo_asset() raises this when the mesh import produced nothing.
-        # It has already created no object at that point, but the import may
-        # have left one, which is why the stray check below runs either way.
-        failure_message = "MPFB could not import the mesh for '{:s}': {:s}".format(
-            os.path.basename(request.resolved_path), str(error))
-    finally:
-        if not basemesh_was_selected:
-            basemesh.select_set(False)
-        # Put back what was borrowed: the user is looking at this scene.
-        bpy.context.view_layer.objects.active = previous_active
+    with selection.restored(basemesh):
+        try:
+            # MPFB's own operators run with the basemesh active, and the import and
+            # the fitting both go through bpy.ops, which reads the context.
+            object_service.activate_blender_object(basemesh)
+            asset_object = services["HumanService"].add_mhclo_asset(
+                request.resolved_path,
+                basemesh,
+                asset_type=request.normalized_asset_type,
+                subdiv_levels=params["subdiv_levels"],
+                material_type=request.material_type,
+                set_up_rigging=params["set_up_rigging"],
+                interpolate_weights=params["interpolate_weights"],
+                import_subrig=params["import_subrig"],
+                import_weights=params["import_weights"])
+        except IOError as error:
+            # add_mhclo_asset() raises this when the mesh import produced nothing.
+            # It has already created no object at that point, but the import may
+            # have left one, which is why the stray check below runs either way.
+            failure_message = "MPFB could not import the mesh for '{:s}': {:s}".format(
+                os.path.basename(request.resolved_path), str(error))
 
     if failure_message is not None:
         stray = sorted(_object_names() - names_before)

@@ -66,6 +66,7 @@ import bpy
 from ..log import get_logger
 from ..shared import mpfb_surface
 from ..shared import rig_lookup
+from ..shared import selection
 from ..shared import subject_resolution
 from ..shared.performed import with_performed
 from ..validation import Param
@@ -367,35 +368,29 @@ def add_rig(params, resolution_context):  # pylint: disable=too-many-locals
     basemesh_location_before = _location_of(basemesh)
     names_before = _object_names()
 
-    previous_active = bpy.context.view_layer.objects.active
-    basemesh_was_selected = bool(basemesh.select_get())
-
     rig_object = None
     assertion_message = None
-    try:
-        # MPFB's own operators run with the basemesh active, and the armature is
-        # created through bpy.ops, which reads the context.
-        object_service.activate_blender_object(basemesh)
-        if requested_family == "custom":
-            rig_object = services["HumanService"].add_custom_rig(
-                basemesh, requested_identifier, import_weights=import_weights)
-        else:
-            rig_object = services["HumanService"].add_builtin_rig(
-                basemesh, requested_identifier, import_weights=import_weights)
-    except AssertionError:
-        # add_builtin_rig()'s bare `assert len(armature_object.data.rigify_colors) > 0`,
-        # which carries no message at all. It fires after the armature has been
-        # created and named and before it is parented, so there is a stray
-        # object to account for.
-        assertion_message = (
-            "Blender has Rigify enabled but its colour sets did not initialise, so MPFB's "
-            "internal check on the new armature failed. This is an AssertionError with no message "
-            "inside HumanService.add_builtin_rig(). The rig was not attached to the character.")
-    finally:
-        if not basemesh_was_selected:
-            basemesh.select_set(False)
-        # Put back what was borrowed: the user is looking at this scene.
-        bpy.context.view_layer.objects.active = previous_active
+    with selection.restored(basemesh):
+        try:
+            # MPFB's own operators run with the basemesh active, and the armature is
+            # created through bpy.ops, which reads the context.
+            object_service.activate_blender_object(basemesh)
+            if requested_family == "custom":
+                rig_object = services["HumanService"].add_custom_rig(
+                    basemesh, requested_identifier, import_weights=import_weights)
+            else:
+                rig_object = services["HumanService"].add_builtin_rig(
+                    basemesh, requested_identifier, import_weights=import_weights)
+        except AssertionError:
+            # add_builtin_rig()'s bare `assert len(armature_object.data.rigify_colors) > 0`,
+            # which carries no message at all. It fires after the armature has been
+            # created and named and before it is parented, so there is a stray
+            # object to account for.
+            assertion_message = (
+                "Blender has Rigify enabled but its colour sets did not initialise, so MPFB's "
+                "internal check on the new armature failed. This is an AssertionError with no "
+                "message inside HumanService.add_builtin_rig(). The rig was not attached to the "
+                "character.")
 
     if assertion_message is not None:
         stray = sorted(_object_names() - names_before)

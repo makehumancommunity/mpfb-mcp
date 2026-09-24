@@ -78,6 +78,7 @@ import bpy
 
 from ..log import get_logger
 from ..shared import mpfb_surface
+from ..shared import selection
 from ..shared.performed import with_performed
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
@@ -427,28 +428,21 @@ def set_asset_material(params, resolution):  # pylint: disable=too-many-locals
     # Read before the slots are popped: afterwards there is nothing left to name.
     materials_destroyed = _material_names(asset)
 
-    previous_active = bpy.context.view_layer.objects.active
-    asset_was_selected = bool(asset.select_get())
-
     failure_message = None
     material_name = None
     diffuse_color_from = None
-    try:
-        object_service.activate_blender_object(asset)
-        material_name, diffuse_color_from = _apply_mhmat(
-            services, asset, request.resolved_path)
-    except Exception as error:  # pylint: disable=broad-except
-        # Broad on purpose, for the same reason set_skin's is: the slots are
-        # popped before the node tree is built, so a failure part-way through
-        # leaves the object with no material and the caller needs to be told
-        # which one it lost rather than handed a traceback.
-        failure_message = "MPFB raised while building a material from '{:s}': {:s}".format(
-            os.path.basename(str(request.resolved_path)), str(error))
-    finally:
-        if not asset_was_selected:
-            asset.select_set(False)
-        # Put back what was borrowed: the user is looking at this scene.
-        bpy.context.view_layer.objects.active = previous_active
+    with selection.restored(asset):
+        try:
+            object_service.activate_blender_object(asset)
+            material_name, diffuse_color_from = _apply_mhmat(
+                services, asset, request.resolved_path)
+        except Exception as error:  # pylint: disable=broad-except
+            # Broad on purpose, for the same reason set_skin's is: the slots are
+            # popped before the node tree is built, so a failure part-way through
+            # leaves the object with no material and the caller needs to be told
+            # which one it lost rather than handed a traceback.
+            failure_message = "MPFB raised while building a material from '{:s}': {:s}".format(
+                os.path.basename(str(request.resolved_path)), str(error))
 
     if failure_message is not None:
         return _blocked(
