@@ -89,5 +89,7 @@ The structured specifications for the project live in the
 - [Architecture](specifications/architecture.md) — standing architectural principles new
   tools should follow.
 
-Developer setup and commands are documented in [CLAUDE.md](CLAUDE.md). Planned and in-progress
+To install every part from this checkout — MPFB, the bridge add-on, the server and an MCP client
+configuration — follow [INSTALL.md](INSTALL.md). Developer setup and commands are documented in
+[CLAUDE.md](CLAUDE.md). Planned and in-progress
 development efforts are tracked in [feature-requests/](feature-requests/).
