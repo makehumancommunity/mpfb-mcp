@@ -10,7 +10,7 @@ records what has already landed and why. When an effort below is finished, move 
 
 <a id="one-basemesh-resolver"></a>
 
-## One basemesh resolver
+## Basemesh resolver and other code duplications
 
 Eighteen bridge commands resolve "any object in the character's family, or the active one" to a
 basemesh through `ObjectService.find_object_of_type_amongst_nearest_relatives(subject, "Basemesh")`,
@@ -27,6 +27,22 @@ The same effort is the natural place for the one **reading** FR 034 left duplica
 tolerance, and reports `macro_details` and `race_sum` from them - so its answer and
 `mpfb_get_macro_details`' can drift apart in exactly the way `shared/macro_reading.py` exists to
 prevent. It was out of FR 034's scope because the summary does not read through it.
+
+When formulating a feature request for this, a scan should be done for other code duplications
+which could or should be abstracted to shared modules. 
+
+## Strange naming of bridge tests
+
+The test module names in bridge/test/tests adopted a three letter prefix ("aaa", "bbb"...) without
+any understanding of the purpose. This was probably inspired from MPFB's test hierarchy.
+
+The three letter prefix should only be used on folders grouping tests by what they cover. The
+idea is to run primitives and shared code tests first while running larger code aggregate tests later.
+The hypothesis is that if a primitive fails, there's no idea to run a test on an aggregate anyway.
+
+The tests should be grouped accordingly in a very limited set of folders with three letter prefixes,
+causing the **folders** to be run in order. The test module files themselves do not need to have
+the prefix.
 
 ## Visemes and lip sync
 
