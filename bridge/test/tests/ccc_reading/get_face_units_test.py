@@ -53,7 +53,7 @@ def test_include_zero_reports_all_fifty_two():
         assert answer["face_unit_count"] == 52
         names = set(entry["face_unit"] for entry in answer["face_units"])
         assert len(names) == 52, "Every ARKit unit should be named exactly once"
-        assert all(entry["weight"] == 0.0 for entry in answer["face_units"])
+        assert all(entry["value"] == 0.0 for entry in answer["face_units"])
         assert all(entry["shapekey_present"] is False for entry in answer["face_units"]), \
             "A fresh character has no !ex- shape keys at all yet"
 
@@ -99,7 +99,7 @@ def test_a_manually_added_shapekey_is_reported_as_present_with_its_value():
 
         entries = {entry["face_unit"]: entry for entry in answer["face_units"]}
         assert entries["jawOpen"]["shapekey_present"] is True
-        assert abs(entries["jawOpen"]["weight"] - 0.35) < 1e-6
+        assert abs(entries["jawOpen"]["value"] - 0.35) < 1e-6
         others = [entry for name, entry in entries.items() if name != "jawOpen"]
         assert all(entry["shapekey_present"] is False for entry in others)
 

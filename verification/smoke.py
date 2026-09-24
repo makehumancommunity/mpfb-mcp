@@ -264,7 +264,7 @@ def _set_face_units(run: _Run) -> dict:
     # `performed` either way - refused (pack absent) or genuinely composed -
     # so no install-specific branching is needed here.
     return run.tools["mpfb_set_face_units"](
-        name=_character(run), face_units=[{"face_unit": "jawOpen", "weight": 0.4}])
+        name=_character(run), face_units=[{"face_unit": "jawOpen", "value": 0.4}])
 
 
 @_item("mpfb_save_expression", "path", "fragment", "overwrote", "file_before",

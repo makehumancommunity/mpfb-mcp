@@ -58,9 +58,9 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_entries_are_normalized_before_they_cross_the_socket(self):
         with mock.patch.object(bridge_connection, "send_command") as send_command:
             send_command.return_value = {"status": "ok", "result": {}}
-            self.tool(face_units=[{"face_unit": "jawOpen", "weight": 1}])
+            self.tool(face_units=[{"face_unit": "jawOpen", "value": 1}])
         self.assertEqual(send_command.call_args[0][1]["face_units"],
-                         [{"face_unit": "jawOpen", "weight": 1.0}])
+                         [{"face_unit": "jawOpen", "value": 1.0}])
 
     def test_a_bad_name_is_rejected_locally(self):
         for bad in (1, True, [], object(), "", "   "):
@@ -105,15 +105,27 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_an_unknown_key_in_an_entry_is_rejected_locally(self):
         with mock.patch.object(bridge_connection, "send_command") as send_command:
             with self.assertRaises(ValueError) as raised:
-                self.tool(face_units=[{"faceunit": "jawOpen", "weight": 0.5}])
+                self.tool(face_units=[{"faceunit": "jawOpen", "value": 0.5}])
         send_command.assert_not_called()
         self.assertIn("faceunit", str(raised.exception))
+
+    def test_the_retired_weight_key_names_its_replacement(self):
+        # A face unit's number was `weight` until FR 037. It is the shape key's
+        # value, as mpfb_get_target_stack and mpfb_set_targets spell it.
+        with mock.patch.object(bridge_connection, "send_command") as send_command:
+            with self.assertRaises(ValueError) as raised:
+                self.tool(face_units=[{"face_unit": "jawOpen", "weight": 0.5}])
+        send_command.assert_not_called()
+        self.assertEqual(
+            str(raised.exception),
+            "face_units[0] has unknown key(s) weight (now called value); "
+            "known keys are face_unit, value")
 
     def test_the_error_names_the_offending_entry_by_position(self):
         with self.assertRaises(ValueError) as raised:
             self.tool(face_units=[
-                {"face_unit": "jawOpen", "weight": 0.5},
-                {"face_unit": "mouthLeft", "weight": 5.0}])
+                {"face_unit": "jawOpen", "value": 0.5},
+                {"face_unit": "mouthLeft", "value": 5.0}])
 
         self.assertIn("face_units[1]", str(raised.exception))
 
@@ -122,7 +134,7 @@ class ArgumentValidationTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.tool(face_units=[{"face_unit": "jawOpen"}])
             with self.assertRaises(ValueError):
-                self.tool(face_units=[{"weight": 0.5}])
+                self.tool(face_units=[{"value": 0.5}])
         send_command.assert_not_called()
 
     def test_a_weight_must_be_a_number_in_zero_to_one(self):
@@ -132,17 +144,17 @@ class ArgumentValidationTests(unittest.TestCase):
             with self.subTest(value=bad):
                 with mock.patch.object(bridge_connection, "send_command") as send_command:
                     with self.assertRaises(ValueError):
-                        self.tool(face_units=[{"face_unit": "jawOpen", "weight": bad}])
+                        self.tool(face_units=[{"face_unit": "jawOpen", "value": bad}])
                 send_command.assert_not_called()
 
     def test_an_empty_face_unit_name_is_rejected_locally(self):
         with mock.patch.object(bridge_connection, "send_command") as send_command:
             with self.assertRaises(ValueError):
-                self.tool(face_units=[{"face_unit": "  ", "weight": 0.5}])
+                self.tool(face_units=[{"face_unit": "  ", "value": 0.5}])
         send_command.assert_not_called()
 
     def test_a_batch_above_the_ceiling_is_rejected_locally(self):
-        entries = [{"face_unit": "jawOpen", "weight": 0.1}] * (
+        entries = [{"face_unit": "jawOpen", "value": 0.1}] * (
             set_face_units.MAX_ENTRIES + 1)
         with mock.patch.object(bridge_connection, "send_command") as send_command:
             with self.assertRaises(ValueError):
@@ -154,7 +166,7 @@ class ArgumentValidationTests(unittest.TestCase):
         # payload against MPFB's own ARKIT_FACEUNITS, not by a copy here.
         with mock.patch.object(bridge_connection, "send_command") as send_command:
             send_command.return_value = {"status": "ok", "result": {}}
-            self.tool(face_units=[{"face_unit": "no-such-unit", "weight": 0.5}])
+            self.tool(face_units=[{"face_unit": "no-such-unit", "value": 0.5}])
         send_command.assert_called_once()
 
     def test_a_failure_reaches_the_caller_with_a_slug_to_branch_on(self):
@@ -189,11 +201,11 @@ class SetFaceUnitsOverTheBridgeTests(fake_bridge.BridgeTestCase):
         })
 
     def test_the_tool_sends_the_set_face_units_command(self) -> None:
-        self.call(face_units=[{"face_unit": "jawOpen", "weight": 0.4}])
+        self.call(face_units=[{"face_unit": "jawOpen", "value": 0.4}])
 
         self.assertEqual(self.bridge.commands()[-1], "set_face_units")
         params = self.bridge.decoded_requests()[-1]["params"]
-        self.assertEqual(params["face_units"], [{"face_unit": "jawOpen", "weight": 0.4}])
+        self.assertEqual(params["face_units"], [{"face_unit": "jawOpen", "value": 0.4}])
         self.assertEqual(params["mode"], "merge")
         self.assertEqual(params["refit"], True)
 

@@ -60,8 +60,8 @@ def test_an_unknown_face_unit_refuses_the_whole_batch_and_writes_nothing():
         result = _result({
             "name": character.basemesh.name,
             "face_units": [
-                {"face_unit": "jawOpen", "weight": 0.3},
-                {"face_unit": "browDownLeftt", "weight": 0.2},
+                {"face_unit": "jawOpen", "value": 0.3},
+                {"face_unit": "browDownLeftt", "value": 0.2},
             ],
         })
 
@@ -84,7 +84,7 @@ def test_edit_mode_blocks_the_write():
         try:
             result = _result({
                 "name": character.basemesh.name,
-                "face_units": [{"face_unit": "jawOpen", "weight": 0.3}],
+                "face_units": [{"face_unit": "jawOpen", "value": 0.3}],
             })
         finally:
             bpy.ops.object.mode_set(mode="OBJECT")
@@ -104,7 +104,7 @@ def test_the_pack_absent_refuses_the_whole_call():
             try:
                 result = _result({
                     "name": character.basemesh.name,
-                    "face_units": [{"face_unit": "jawOpen", "weight": 0.3}],
+                    "face_units": [{"face_unit": "jawOpen", "value": 0.3}],
                 })
             finally:
                 # Restore the real answer before this `with` block exits, so a
@@ -138,8 +138,8 @@ def test_a_partially_installed_pack_reports_could_not_load_rather_than_refusing(
                 result = _result({
                     "name": character.basemesh.name,
                     "face_units": [
-                        {"face_unit": "jawOpen", "weight": 0.3},
-                        {"face_unit": "mouthLeft", "weight": 0.2},
+                        {"face_unit": "jawOpen", "value": 0.3},
+                        {"face_unit": "mouthLeft", "value": 0.2},
                     ],
                     "refit": False,
                 })
@@ -165,7 +165,7 @@ def test_a_zero_weight_on_an_absent_shapekey_is_skipped_entirely():
     with _Character() as character:
         result = _result({
             "name": character.basemesh.name,
-            "face_units": [{"face_unit": "jawOpen", "weight": 0.0}],
+            "face_units": [{"face_unit": "jawOpen", "value": 0.0}],
             "refit": False,
         })
 
@@ -187,7 +187,7 @@ def test_loading_then_reapplying_is_additive_and_replace_zeroes_it():
     with _Character() as character:
         first = _result({
             "name": character.basemesh.name,
-            "face_units": [{"face_unit": "jawOpen", "weight": 0.4}],
+            "face_units": [{"face_unit": "jawOpen", "value": 0.4}],
             "refit": False,
         })
         assert first["performed"] is True
@@ -198,7 +198,7 @@ def test_loading_then_reapplying_is_additive_and_replace_zeroes_it():
         # be left exactly as it was.
         second = _result({
             "name": character.basemesh.name,
-            "face_units": [{"face_unit": "mouthSmileLeft", "weight": 0.6}],
+            "face_units": [{"face_unit": "mouthSmileLeft", "value": 0.6}],
             "refit": False,
         })
         assert second["performed"] is True
@@ -212,7 +212,7 @@ def test_loading_then_reapplying_is_additive_and_replace_zeroes_it():
         # asked for on this call.
         third = _result({
             "name": character.basemesh.name,
-            "face_units": [{"face_unit": "jawOpen", "weight": 0.1}],
+            "face_units": [{"face_unit": "jawOpen", "value": 0.1}],
             "mode": "replace",
             "refit": False,
         })
@@ -232,13 +232,13 @@ def test_an_already_present_shapekey_is_reported_under_applied_not_loaded():
     with _Character() as character:
         _result({
             "name": character.basemesh.name,
-            "face_units": [{"face_unit": "jawOpen", "weight": 0.2}],
+            "face_units": [{"face_unit": "jawOpen", "value": 0.2}],
             "refit": False,
         })
 
         second = _result({
             "name": character.basemesh.name,
-            "face_units": [{"face_unit": "jawOpen", "weight": 0.7}],
+            "face_units": [{"face_unit": "jawOpen", "value": 0.7}],
             "refit": False,
         })
 
@@ -262,7 +262,7 @@ def test_a_write_reports_whether_the_stack_still_explains_the_face(tmp_path):
         with expression_library(services, tmp_path):
             answer = _result({
                 "name": character.basemesh.name,
-                "face_units": [{"face_unit": "jawOpen", "weight": 0.4}],
+                "face_units": [{"face_unit": "jawOpen", "value": 0.4}],
                 "refit": False,
             })
 
@@ -309,7 +309,7 @@ def test_a_refit_puts_the_selection_back(tmp_path):
                     blender_object.select_set(False)
                 answer = _result({
                     "name": character.basemesh.name,
-                    "face_units": [{"face_unit": "jawOpen", "weight": 0.4}],
+                    "face_units": [{"face_unit": "jawOpen", "value": 0.4}],
                 })
                 active = bpy.context.view_layer.objects.active
                 active_after = None if active is None else active.name

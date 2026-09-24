@@ -89,7 +89,7 @@ def _put_on_a_face(name):
         "refit": False})
     result("set_face_units", {
         "name": name, "refit": False,
-        "face_units": [{"face_unit": "browInnerUp", "weight": 0.4}]})
+        "face_units": [{"face_unit": "browInnerUp", "value": 0.4}]})
 
 
 def _assert_agreement(name):
@@ -142,7 +142,7 @@ def _assert_agreement(name):
     expression = result("get_expression", {"name": name})
     face = summary["face"]
     assert face["faceunits01_installed"] == units["faceunits01_installed"]
-    assert face["face_units"] == [_pick(entry, ("face_unit", "weight"))
+    assert face["face_units"] == [_pick(entry, ("face_unit", "value"))
                                   for entry in units["face_units"]]
     assert face["applied_expressions"] == [_pick(row, ("fragment", "weight", "resolved"))
                                            for row in expression["applied_expressions"]]

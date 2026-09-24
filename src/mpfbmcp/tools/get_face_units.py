@@ -50,7 +50,7 @@ def register(mcp: FastMCP) -> None:
         Changes nothing.
 
         `result`'s `face_units` is one entry per face unit: `face_unit` (the bare ARKit
-        name, e.g. `"jawOpen"`), `weight`, and `shapekey_present` - whether a
+        name, e.g. `"jawOpen"`), `value`, and `shapekey_present` - whether a
         real shape key backs this value or MPFB is reporting a default for a
         unit that has never been touched. Defaults to the non-zero units only;
         `include_zero` (default false) returns all 52.

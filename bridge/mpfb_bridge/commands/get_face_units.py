@@ -134,7 +134,7 @@ def get_face_units(params, resolution):
             continue
         entries.append(dict(
             face_unit=face_unit_name,
-            weight=round(weight, 6),
+            value=round(weight, 6),
             shapekey_present=_shapekey_present(target_service, basemesh, face_unit_name),
         ))
 

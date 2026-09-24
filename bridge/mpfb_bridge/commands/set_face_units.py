@@ -114,7 +114,7 @@ PARAMS = (
           description="Any object in the character's family. Omit or pass null to use "
                       "whatever object is currently active."),
     Param("face_units", TYPE_ARRAY, default=(),
-          description="One object per face unit: {'face_unit', 'weight'} with weight in "
+          description="One object per face unit: {'face_unit', 'value'} with value in "
                       "0.0-1.0. Every name is checked against ARKIT_FACEUNITS before anything "
                       "is written; one unrecognised name refuses the whole call."),
     Param("mode", TYPE_STRING, default="merge", choices=MODES,
@@ -318,7 +318,7 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
     previous_values = {}
     for entry in requested:
         face_unit_name = entry["face_unit"]
-        weight = float(entry["weight"])
+        weight = float(entry["value"])
         previous_value = _shapekey_present(target_service, basemesh, face_unit_name)
         present_before = previous_value is not None
 
@@ -342,7 +342,7 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
     for face_unit_name in applied + loaded_from_disk:
         applied_entries.append(dict(
             face_unit=face_unit_name,
-            weight=round(float(expression_dict[face_unit_name]), 6),
+            value=round(float(expression_dict[face_unit_name]), 6),
             previous_value=previous_values[face_unit_name],
             new_value=round(
                 _shapekey_present(target_service, basemesh, face_unit_name) or 0.0, 6),

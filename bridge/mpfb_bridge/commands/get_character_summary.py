@@ -177,7 +177,7 @@ def _face(services, basemesh):
     for face_unit_name in arkit_faceunits:
         weight = float(current.get(face_unit_name, 0.0))
         if weight != 0.0:
-            face_units.append(dict(face_unit=face_unit_name, weight=round(weight, 6)))
+            face_units.append(dict(face_unit=face_unit_name, value=round(weight, 6)))
 
     compared = divergence(services, basemesh)
     return dict(

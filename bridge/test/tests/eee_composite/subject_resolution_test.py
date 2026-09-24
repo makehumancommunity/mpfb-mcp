@@ -61,7 +61,7 @@ def _calls(subject):
             dict(section="nose", category="unused", side="unsided", value=0.2)]),
         "symmetrize_targets": dict(name=subject, direction="left_to_right", dry_run=True),
         "set_face_units": dict(name=subject, face_units=[dict(face_unit="jawOpen",
-                                                              weight=0.3)]),
+                                                              value=0.3)]),
         "apply_expressions": dict(name=subject, expressions=[]),
         "save_expression": dict(expression_name="bridge_test_never_written", name=subject),
         "save_preset": dict(preset_name="bridge_test_never_written", name=subject),

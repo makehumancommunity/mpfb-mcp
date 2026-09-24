@@ -38,8 +38,8 @@ def test_the_three_divergence_users_agree_about_one_character(tmp_path):
                 "refit": False})
             composed = result("set_face_units", {
                 "name": name, "refit": False,
-                "face_units": [{"face_unit": "browInnerUp", "weight": 0.4},
-                               {"face_unit": "jawOpen", "weight": 0.1}]})
+                "face_units": [{"face_unit": "browInnerUp", "value": 0.4},
+                               {"face_unit": "jawOpen", "value": 0.1}]})
             read = result("get_expression", {"name": name})
             applied = result("apply_expressions", {
                 "name": name, "expressions": [{"fragment": "jaw.json", "weight": 0.5}],
@@ -83,8 +83,8 @@ def test_compose_save_apply_returns_the_composed_face_and_the_stack_explains_it(
                 "refit": False})
             result("set_face_units", {
                 "name": name, "refit": False,
-                "face_units": [{"face_unit": "browInnerUp", "weight": 0.33333},
-                               {"face_unit": "mouthSmileLeft", "weight": 0.6}]})
+                "face_units": [{"face_unit": "browInnerUp", "value": 0.33333},
+                               {"face_unit": "mouthSmileLeft", "value": 0.6}]})
             composed = face_service.read_current_expression(character.basemesh)
 
             saved = result("save_expression", {"expression_name": "kept", "name": name})

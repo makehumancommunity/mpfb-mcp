@@ -8,8 +8,11 @@ call, the ``mpfb_set_targets`` idiom: a round trip costs about as much as
 applying fifty units, so send a whole face as one call.
 
 **Validated here is shape only.** Each entry is a dict with exactly
-`face_unit` (a non-empty string) and `weight` (0.0-1.0, the range Blender
-clamps a shape key to). Whether `face_unit` names a real ARKit unit is checked
+`face_unit` (a non-empty string) and `value` (0.0-1.0, the range Blender
+clamps a shape key to). It is the shape key's value, and `value` is what
+``mpfb_get_target_stack`` and ``mpfb_set_targets`` call the same number; it
+was ``weight`` until FR 037, and ``weight`` is now only an expression row's
+multiplier, in the expression tools. Whether `face_unit` names a real ARKit unit is checked
 in the payload against MPFB's own `ARKIT_FACEUNITS`, per
 [validate before crossing the socket](../../../specifications/tool-interface.md#validate-before-crossing-the-socket) -
 a copy kept here could drift, and the payload's refusal comes back naming the
@@ -43,7 +46,12 @@ from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in
 from mpfbmcp import arguments
 from mpfbmcp import backend
 
-_ENTRY_KEYS = ("face_unit", "weight")
+_ENTRY_KEYS = ("face_unit", "value")
+
+# An entry key renamed by FR 037, and what it became. The per-entry counterpart
+# of arguments.RETIRED_ARGUMENTS: a caller still sending `weight` is told the new
+# spelling rather than only that the key is unknown.
+_RETIRED_ENTRY_KEYS = {"weight": "value"}
 
 # Generous, but not unbounded: MPFB only has 52 face units, so a caller sending
 # more than this made a mistake worth catching locally.
@@ -69,7 +77,12 @@ def _validated_face_units(value: object) -> list[dict]:
         if unknown:
             raise ValueError(
                 "{} has unknown key(s) {}; known keys are {}".format(
-                    where, ", ".join(unknown), ", ".join(_ENTRY_KEYS)))
+                    where,
+                    ", ".join(
+                        "{} (now called {})".format(key, _RETIRED_ENTRY_KEYS[key])
+                        if key in _RETIRED_ENTRY_KEYS else key
+                        for key in unknown),
+                    ", ".join(_ENTRY_KEYS)))
 
         face_unit = entry.get("face_unit")
         if not isinstance(face_unit, str):
@@ -77,19 +90,19 @@ def _validated_face_units(value: object) -> list[dict]:
         if not face_unit.strip():
             raise ValueError("{} face_unit must not be empty or whitespace".format(where))
 
-        weight = entry.get("weight")
-        if isinstance(weight, bool) or not isinstance(weight, (int, float)):
+        value = entry.get("value")
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
             # A bool is an int in Python, so True would otherwise be stored as
             # 1.0 under the guise of a number the caller never wrote.
             raise ValueError(
-                "{} weight must be a number between 0.0 and 1.0, got {!r}".format(where, weight))
+                "{} value must be a number between 0.0 and 1.0, got {!r}".format(where, value))
         # 0.0..1.0 and not wider: a raw shape key value, which Blender clamps
         # to that range. A negative here would silently store 0.0.
-        if not 0.0 <= float(weight) <= 1.0:
+        if not 0.0 <= float(value) <= 1.0:
             raise ValueError(
-                "{} weight must be between 0.0 and 1.0, got {!r}".format(where, weight))
+                "{} value must be between 0.0 and 1.0, got {!r}".format(where, value))
 
-        checked.append({"face_unit": face_unit, "weight": float(weight)})
+        checked.append({"face_unit": face_unit, "value": float(value)})
     return checked
 
 
@@ -115,7 +128,7 @@ def register(mcp: FastMCP) -> None:
         panel edits, applied directly to the `!ex-` shape keys.
 
         **Send the whole expression as one call.** `face_units` is a list of
-        `{face_unit, weight}`, `weight` in 0.0-1.0. Call `mpfb_get_face_units`
+        `{face_unit, value}`, `value` in 0.0-1.0. Call `mpfb_get_face_units`
         first if you need the exact 52 legal names, grouped by region in
         `known_face_units`.
 
