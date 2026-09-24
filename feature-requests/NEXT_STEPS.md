@@ -19,7 +19,8 @@ come from one resolver, and `get_object_info` maps the value at its call site. F
 no response field changed, so the difference was recorded rather than fixed. Fixing it means
 renaming a key or a value in an answer callers read, and deciding how to do that without breaking
 them - for instance reporting both keys for a while, with the tool description saying which one is
-going away.
+going away. Taken up by [FR 037](037-one-word-per-concept/README.md), as one row of a wider
+vocabulary cleanup.
 
 <a id="selection-restore-covers-one-object"></a>
 
