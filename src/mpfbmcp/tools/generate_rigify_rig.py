@@ -74,7 +74,7 @@ def register(mcp: FastMCP) -> None:
     )
     def mpfb_generate_rigify_rig(
         name: str | None = None,
-        rig_name: str | None = None,
+        generated_rig_name: str | None = None,
         meta_rig_action: str = "hide",
     ) -> dict[str, object]:
         """
@@ -89,8 +89,9 @@ def register(mcp: FastMCP) -> None:
 
         Unlike the other character tools, `name` resolves to the **meta rig**
         rather than to the basemesh, and `metarig_name` says which armature was
-        used. `rig_name` is the generated rig's basename; omit it for MPFB's
-        own fallback, which derives a unique name from the meta rig's.
+        used. `generated_rig_name` is a basename, not the final object name:
+        omit it for MPFB's own fallback, which derives a unique name from the
+        meta rig's, and read `rig_object_name` for what it became.
 
         `meta_rig_action` (default `"hide"`, MPFB's own) is what becomes of the
         meta rig afterwards: `"keep"` leaves it visible, `"hide"` keeps it in
@@ -129,8 +130,8 @@ def register(mcp: FastMCP) -> None:
             "generate_rigify_rig",
             params={
                 "name": arguments.validated_subject(name),
-                "rig_name": arguments.validated_text(
-                    rig_name, "rig_name",
+                "generated_rig_name": arguments.validated_text(
+                    generated_rig_name, "generated_rig_name",
                     "omit it to let MPFB derive a unique name from the meta rig's"),
                 "meta_rig_action": _validated_meta_rig_action(meta_rig_action),
             },

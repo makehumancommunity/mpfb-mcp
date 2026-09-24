@@ -298,7 +298,7 @@ def _refusal(services, params, request):  # pylint: disable=too-many-return-stat
             "this says custom rigs cannot be serialized, which is wrong: a custom rig that is "
             "still installed is saved as custom.<name>. Detach the armature, or reinstall the "
             "rig definition.".format(request.armature.name, request.rig_identified_as),
-            rig_name=request.armature.name,
+            rig_object_name=request.armature.name,
             rig_identified_as=request.rig_identified_as)
     if request.previous_file is not None and not params["overwrite"]:
         return blocked(
@@ -391,7 +391,7 @@ def save_preset(params, resolution):
         overwrote=request.previous_file is not None,
         previous_file=request.previous_file,
         is_human_project=True,
-        rig_name=None if request.armature is None else request.armature.name,
+        rig_object_name=None if request.armature is None else request.armature.name,
         rig_identified_as=request.rig_identified_as,
         rig_saved_as=rig_saved_as,
         contents=contents,

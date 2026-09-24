@@ -70,7 +70,7 @@ PARAMS = (
     Param("name", TYPE_STRING, default=None, nullable=True,
           description="Any object in the character's family. Omit or pass null to use whatever "
                       "object is currently active."),
-    Param("rig_name", TYPE_STRING, default=None, nullable=True,
+    Param("generated_rig_name", TYPE_STRING, default=None, nullable=True,
           description="Basename for the generated rig. Omit for MPFB's own naming."),
     Param("meta_rig_action", TYPE_STRING, default="hide", choices=META_RIG_ACTIONS,
           description="What to do with the meta rig afterwards. 'delete' makes the character "
@@ -248,7 +248,7 @@ def generate_rigify_rig(params, resolution):  # pylint: disable=too-many-locals
     object_service = services["ObjectService"]
 
     requested_name = params["name"]
-    requested_rig_name = params["rig_name"]
+    requested_rig_name = params["generated_rig_name"]
     meta_rig_action = params["meta_rig_action"]
 
     # The subject only: a meta rig is found among its relatives by _survey(),
@@ -318,7 +318,7 @@ def generate_rigify_rig(params, resolution):  # pylint: disable=too-many-locals
         metarig_renamed=bool(metarig_name_after is not None
                              and metarig_name_after != metarig_name_before),
         rig_object_name=None if rig_object is None else rig_object.name,
-        rig_name_requested=requested_rig_name,
+        generated_rig_name_requested=requested_rig_name,
         meta_rig_action=meta_rig_action,
         metarig_disposition=disposition,
         refit_will_be_possible=refit_will_be_possible,

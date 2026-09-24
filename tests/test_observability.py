@@ -219,7 +219,7 @@ class DisabledPathTests(ObservabilityTestCase):
 class RecordTests(ObservabilityTestCase):
     def test_the_request_and_the_response_are_written(self) -> None:
         root = self.enable_record()
-        self.bridge({"object_name": "Human"}, command="create_human")
+        self.bridge({"basemesh_name": "Human"}, command="create_human")
 
         bridge_connection.send_command("create_human", {"gender": 0.5})
 
@@ -229,7 +229,7 @@ class RecordTests(ObservabilityTestCase):
         with open(os.path.join(directory, "0002-create_human.json"), encoding="utf-8") as stream:
             envelope = json.load(stream)
         self.assertEqual(envelope["status"], "ok")
-        self.assertEqual(envelope["result"], {"object_name": "Human"})
+        self.assertEqual(envelope["result"], {"basemesh_name": "Human"})
 
     def test_the_request_is_written_as_the_json_that_went_on_the_wire(self) -> None:
         root = self.enable_record()
@@ -447,7 +447,7 @@ class ErrorEnvelopeTests(ObservabilityTestCase):
 
     def test_a_success_envelope_is_untouched(self) -> None:
         self.enable_record()
-        self.bridge({"object_name": "Human"})
+        self.bridge({"basemesh_name": "Human"})
 
         response = bridge_connection.send_command("list_objects")
 

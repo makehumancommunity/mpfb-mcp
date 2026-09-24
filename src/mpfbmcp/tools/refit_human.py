@@ -60,7 +60,7 @@ def register(mcp: FastMCP) -> None:
         idempotent: refitting a character already in fit is safe and costs the
         same.
 
-        `result` carries `refit_performed`, `basemesh_name`, `rig_name`,
+        `result` carries `refit_performed`, `basemesh_name`, `rig_object_name`,
         `mesh_assets` with `mesh_asset_count`, and `subrigs`.
 
         **Check `refit_performed` rather than assuming success**; `performed`

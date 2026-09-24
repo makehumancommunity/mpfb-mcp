@@ -188,7 +188,7 @@ def test_a_character_that_already_has_a_rig_is_refused():
 
         assert second["added"] is False
         assert second["blocked_by"] == "already_rigged"
-        assert second["existing_rig_name"] == first["rig_object_name"]
+        assert second["existing_rig_object_name"] == first["rig_object_name"]
         assert second["performed"] is False
 
 

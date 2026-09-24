@@ -94,7 +94,7 @@ def register(mcp: FastMCP) -> None:
 
         On `saved: true` (and so `performed: true`), `result` carries `path`,
         `size_bytes`, `modified`, `overwrote`, `previous_file` (the replaced
-        file's facts, or null), `config_dir`, `basemesh_name`, `rig_name`,
+        file's facts, or null), `config_dir`, `basemesh_name`, `rig_object_name`,
         `rig_identified_as`/`rig_saved_as`, and `contents` - what the written
         file actually holds, read back from it: `rig`, `proxy`, `bodyparts`,
         `clothes`, `skin_mhmat`, `skin_material_type`, `eyes_material_type`,

@@ -15,7 +15,7 @@ anything interesting happens. Three of them, all visible in the last four lines:
   that is safe rather than leaving a reader to work it out.
 - **The before/after report is what the tool has always answered with**: the object's name, its
   vertex count, its location and the macro dict that was applied. Blender
-  uniquifies a name that is already taken, so ``object_name`` is read off the
+  uniquifies a name that is already taken, so ``basemesh_name`` is read off the
   created object and is the address every later command needs.
 
 The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
@@ -87,7 +87,7 @@ def create_human(params, resolution):
                basemesh.name, len(basemesh.data.vertices))
 
     result = dict(
-        object_name=basemesh.name,
+        basemesh_name=basemesh.name,
         vertex_count=len(basemesh.data.vertices),
         location=list(basemesh.location),
         macro_detail_dict=macro_detail_dict,

@@ -72,7 +72,7 @@ def create_character(tools: dict) -> tuple:
     envelope = tools["mpfb_create_human"]()
     if envelope.get("status") != "ok":
         return envelope, None
-    return envelope, envelope["result"]["object_name"]
+    return envelope, envelope["result"]["basemesh_name"]
 
 
 def first_asset(tools: dict, asset_subdir: str) -> dict | None:

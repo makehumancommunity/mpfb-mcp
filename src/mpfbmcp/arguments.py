@@ -136,6 +136,9 @@ RETIRED_ARGUMENTS: dict[str, dict[str, str]] = {
     # became `name` - so in the save tools `name` changed meaning rather than
     # being retired, and the command's subject_not_found sentence covers it.
     "mpfb_create_human_from_preset": {"name": "preset_name"},
+    # R2: the argument names an object that does not exist yet, as a basename
+    # Rigify may uniquify; rig_object_name reports what it became.
+    "mpfb_generate_rigify_rig": {"rig_name": "generated_rig_name"},
     "mpfb_save_expression": {"subject": "name"},
     "mpfb_save_preset": {"subject": "name"},
 }

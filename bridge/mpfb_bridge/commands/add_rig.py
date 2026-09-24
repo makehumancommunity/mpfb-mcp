@@ -273,7 +273,7 @@ def _refusal(services, subject, basemesh, subject_resolved_by, requested_identif
             "way to swap a rig: adding a second one re-parents the basemesh to it and leaves the "
             "first orphaned. Delete '{:s}' first if the rig really should be replaced.".format(
                 basemesh.name, existing_rig.name, existing_rig.name),
-            existing_rig_name=existing_rig.name,
+            existing_rig_object_name=existing_rig.name,
             existing_rig_type=services["RigService"].identify_rig(existing_rig)
             if existing_rig.type == "ARMATURE" else None)
     if basemesh.mode != "OBJECT" or bpy.context.mode != "OBJECT":

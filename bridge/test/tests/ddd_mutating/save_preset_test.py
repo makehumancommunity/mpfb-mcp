@@ -176,7 +176,7 @@ def test_a_rigged_character_records_the_rig_by_identifier():
             result = _result({"preset_name": "rigged", "name": character.basemesh.name})
 
         assert result["saved"] is True, result["message"]
-        assert result["rig_name"] == rig.name
+        assert result["rig_object_name"] == rig.name
         assert result["rig_identified_as"], "identify_rig() should have named it"
         assert result["rig_saved_as"], "and the preset should record an identifier"
 

@@ -322,7 +322,7 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
             mesh_assets=mesh_assets,
             mesh_asset_count=len(mesh_assets),
             rig_attached=rig is not None,
-            rig_name=None if rig is None else rig.name,
+            rig_object_name=None if rig is None else rig.name,
         ),
         message=_message_for(basemesh, changed, refit_performed, refit_incomplete_reason,
                              mesh_assets, rig, race_sum),

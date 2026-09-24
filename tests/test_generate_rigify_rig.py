@@ -61,7 +61,8 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_the_defaults_are_mpfbs_own(self):
         command, params = self._sent()
         self.assertEqual(command, "generate_rigify_rig")
-        self.assertEqual(params, {"name": None, "rig_name": None, "meta_rig_action": "hide"})
+        self.assertEqual(
+            params, {"name": None, "generated_rig_name": None, "meta_rig_action": "hide"})
 
     def test_a_failure_reaches_the_caller_with_a_slug_to_branch_on(self):
         # The envelope is carried through with its status and message intact and
@@ -82,7 +83,7 @@ class ArgumentValidationTests(unittest.TestCase):
             with self.subTest(meta_rig_action=action):
                 self.assertEqual(
                     self._sent(meta_rig_action=action)[1],
-                    {"name": None, "rig_name": None, "meta_rig_action": action})
+                    {"name": None, "generated_rig_name": None, "meta_rig_action": action})
 
     def test_an_unknown_meta_rig_action_is_rejected_locally(self):
         # The one closed vocabulary this package validates on this side of the
@@ -96,9 +97,10 @@ class ArgumentValidationTests(unittest.TestCase):
                         self.tool(meta_rig_action=bad)
                 send_command.assert_not_called()
 
-    def test_an_explicitly_empty_name_or_rig_name_is_rejected(self):
-        for kwargs in ({"name": ""}, {"name": "  "}, {"rig_name": ""}, {"rig_name": "  "},
-                       {"name": 3}, {"rig_name": 3}):
+    def test_an_explicitly_empty_name_or_generated_rig_name_is_rejected(self):
+        for kwargs in ({"name": ""}, {"name": "  "}, {"name": 3},
+                       {"generated_rig_name": ""}, {"generated_rig_name": "  "},
+                       {"generated_rig_name": 3}):
             with self.subTest(**kwargs):
                 with mock.patch("mpfbmcp.bridge_connection.send_command") as send_command:
                     with self.assertRaises(ValueError):
@@ -127,7 +129,7 @@ class GenerateRigifyRigOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.assertEqual(self.bridge.commands()[-1], "generate_rigify_rig")
         params = self.bridge.decoded_requests()[-1]["params"]
         self.assertEqual(
-            params, {"name": None, "rig_name": None, "meta_rig_action": "hide"})
+            params, {"name": None, "generated_rig_name": None, "meta_rig_action": "hide"})
 
     def test_no_shared_fragment_reaches_the_bridge(self) -> None:
         self.call()

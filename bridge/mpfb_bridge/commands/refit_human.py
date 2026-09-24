@@ -190,7 +190,7 @@ def refit_human(params, resolution):
         subject_resolved_by=subject_resolved_by,
         basemesh_name=basemesh.name,
         basemesh_has_shapekeys=bool(services["TargetService"].has_any_shapekey(basemesh)),
-        rig_name=None if rig is None else rig.name,
+        rig_object_name=None if rig is None else rig.name,
         mesh_assets=mesh_assets,
         mesh_asset_count=len(mesh_assets),
         subrigs=subrigs,

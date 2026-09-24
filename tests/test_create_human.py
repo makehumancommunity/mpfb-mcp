@@ -86,7 +86,7 @@ class CreateHumanOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.bridge = self.run_answering_bridge({
             "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
             "create_human": fake_bridge.ok_envelope(
-                "create_human", {"object_name": "Human", "performed": True}),
+                "create_human", {"basemesh_name": "Human", "performed": True}),
         })
 
     def test_the_tool_sends_the_create_human_command(self) -> None:

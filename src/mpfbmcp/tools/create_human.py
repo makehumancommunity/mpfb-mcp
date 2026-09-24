@@ -76,9 +76,8 @@ def register(mcp: FastMCP) -> None:
         `detailed_helpers`, `extra_vertex_groups` and `feet_on_ground`; this
         proof-of-concept does not expose them.
 
-        On `status: "ok"`, `result` carries `object_name` - the Blender object
-        name of the new basemesh, and the address every later tool needs, since
-        Blender uniquifies a name already in use - plus `vertex_count`,
+        On `status: "ok"`, `result` carries `basemesh_name` - the address every
+        later tool needs, since Blender uniquifies a name already in use - plus `vertex_count`,
         `location` and the `macro_detail_dict` that was applied, in MPFB's own
         nested shape. `performed` is true: creation either succeeds or raises,
         so this tool has no separate verb of its own.

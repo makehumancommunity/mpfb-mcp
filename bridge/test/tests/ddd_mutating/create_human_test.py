@@ -62,8 +62,8 @@ def test_a_default_call_builds_a_basemesh():
 
         assert result["performed"] is True, \
             "creation either succeeds or raises, so performed is unconditional"
-        assert result["object_name"], "the new basemesh must be named"
-        assert result["object_name"] in bpy.data.objects, \
+        assert result["basemesh_name"], "the new basemesh must be named"
+        assert result["basemesh_name"] in bpy.data.objects, \
             "the reported name must be the name the object really has"
         # MPFB's hm08 basemesh. Asserted as "a lot" rather than as the exact
         # count, which is a property of the base mesh rather than of this
@@ -81,9 +81,9 @@ def test_the_reported_name_is_the_uniquified_one():
         first = _result()
         second = _result()
 
-        assert first["object_name"] != second["object_name"], \
+        assert first["basemesh_name"] != second["basemesh_name"], \
             "Blender uniquifies a name already in use, and the answer must carry the real one"
-        assert second["object_name"] in bpy.data.objects
+        assert second["basemesh_name"] in bpy.data.objects
         assert result_vertex_counts_agree(first, second)
 
 
@@ -114,7 +114,7 @@ def test_the_macro_detail_dict_is_applied_and_echoed():
             "the answer echoes what was applied, unreshaped"
 
         # And MPFB agrees, which is the half a stub could never establish.
-        basemesh = bpy.data.objects[result["object_name"]]
+        basemesh = bpy.data.objects[result["basemesh_name"]]
         stored = target_service.get_macro_info_dict_from_basemesh(basemesh)
         assert abs(stored["gender"] - 1.0) < 0.0001, \
             "MPFB should have stored the gender that was asked for, got {!r}".format(
@@ -129,8 +129,8 @@ def test_scale_reaches_mpfb():
         default = _result()
         scaled = _result({"scale": 1.0})
 
-        default_object = bpy.data.objects[default["object_name"]]
-        scaled_object = bpy.data.objects[scaled["object_name"]]
+        default_object = bpy.data.objects[default["basemesh_name"]]
+        scaled_object = bpy.data.objects[scaled["basemesh_name"]]
         default_height = max(vertex.co.z for vertex in default_object.data.vertices)
         scaled_height = max(vertex.co.z for vertex in scaled_object.data.vertices)
 

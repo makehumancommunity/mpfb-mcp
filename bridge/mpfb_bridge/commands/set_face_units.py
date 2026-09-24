@@ -388,7 +388,7 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
             mesh_assets=mesh_assets,
             mesh_asset_count=len(mesh_assets),
             rig_attached=rig is not None,
-            rig_name=None if rig is None else rig.name,
+            rig_object_name=None if rig is None else rig.name,
         ),
         message=_message_for(
             basemesh, applied, loaded_from_disk, could_not_load, skipped_absent_at_zero,

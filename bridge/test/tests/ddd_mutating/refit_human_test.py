@@ -69,7 +69,7 @@ def test_an_unrigged_character_is_refitted_and_says_so():
         assert result["ready"] is True
         assert result["refit_performed"] is True
         assert result["performed"] is True, "performed is set from refit_performed"
-        assert result["rig_name"] is None
+        assert result["rig_object_name"] is None
         assert result["refit_incomplete_reason"] is None
         assert "no rig" in result["message"]
 
@@ -192,7 +192,7 @@ def test_a_generated_rigify_rig_with_no_metarig_is_reported_not_claimed():
         assert result["performed"] is False, "performed is set from refit_performed"
         assert result["refit_incomplete_reason"] is not None
         assert "meta rig" in result["refit_incomplete_reason"]
-        assert result["rig_name"] == generated.name
+        assert result["rig_object_name"] == generated.name
 
 
 def test_the_answer_agrees_with_mpfbs_own_metarig_lookup():
@@ -243,7 +243,7 @@ def test_an_ordinary_rig_is_never_mistaken_for_a_generated_rigify_one():
 
         assert result["refit_performed"] is True
         assert result["refit_incomplete_reason"] is None
-        assert result["rig_name"] == rig.name
+        assert result["rig_object_name"] == rig.name
         assert "refitted as well" in result["message"]
 
 

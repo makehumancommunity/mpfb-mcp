@@ -439,7 +439,7 @@ def symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,t
             mesh_assets=mesh_assets,
             mesh_asset_count=len(mesh_assets),
             rig_attached=rig is not None,
-            rig_name=None if rig is None else rig.name,
+            rig_object_name=None if rig is None else rig.name,
         ),
         message=_message_for(dry_run, source_side, destination_side, basemesh, changed,
                              already_symmetric, skipped, refit_requested, refit_performed,

@@ -196,7 +196,7 @@ def _list_assets(run: _Run) -> dict:
     return run.tools["mpfb_list_assets"]()
 
 
-@_item("mpfb_create_human", "object_name", "vertex_count", "macro_detail_dict")
+@_item("mpfb_create_human", "basemesh_name", "vertex_count", "macro_detail_dict")
 def _create_human(run: _Run) -> dict:
     envelope, name = fixtures.create_character(run.tools)
     run.character = name
@@ -363,7 +363,7 @@ def _set_skin(run: _Run) -> dict:
     return run.tools["mpfb_set_skin"](name=_character(run), fragment=skin["fragment"])
 
 
-@_item("mpfb_refit_human", "basemesh_name", "rig_name", "mesh_assets", "mesh_asset_count",
+@_item("mpfb_refit_human", "basemesh_name", "rig_object_name", "mesh_assets", "mesh_asset_count",
        "subrigs")
 def _refit_human(run: _Run) -> dict:
     return run.tools["mpfb_refit_human"](name=_character(run))
@@ -564,7 +564,7 @@ def _run_item(run: _Run, item: dict) -> None:
 
 def _worth_reporting(result: dict) -> object:
     """The handful of fields that make a passing line say what actually happened."""
-    interesting = ("state", "found", "name", "count", "total_count", "object_name",
+    interesting = ("state", "found", "name", "count", "total_count",
                    "asset_object_name", "rig_object_name", "basemesh_name", "performed")
     return {key: result[key] for key in interesting if key in result} or None
 
