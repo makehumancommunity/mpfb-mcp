@@ -36,7 +36,7 @@ import pathlib
 import unittest
 from unittest import mock
 
-from mpfbmcp import preset_names
+from mpfbmcp import artifact_names
 from mpfbmcp.tools import save_preset
 
 from tests import fake_bridge
@@ -230,36 +230,37 @@ class SavePresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.assertEqual(response["error"], "mpfb_unavailable")
 
 
-class PresetNameRuleDriftTests(unittest.TestCase):
+class NameRuleDriftTests(unittest.TestCase):
     """The one rule that lives on both sides of the socket, run as **two**.
 
-    ``mpfbmcp.preset_names`` is the authoritative check - the tool above applies
-    it before anything crosses the socket, because a name that becomes a path is
-    a shape knowable here - and
-    ``bridge/mpfb_bridge/shared/preset_files.py`` carries the same rule as the
-    last statement before ``open()`` on the far side. It is there rather than
-    trusted to the client because a listening socket is reachable by anything on
-    this machine and not only by mpfb-mcp. So both are run over one table of
-    names and held to the same verdicts.
+    ``mpfbmcp.artifact_names`` is the authoritative check - the tools apply it
+    before anything crosses the socket, because a name that becomes a path is a
+    shape knowable here - and ``bridge/mpfb_bridge/shared/artifact_names.py``
+    carries the same rule as the last statement before ``open()`` on the far
+    side. It is there rather than trusted to the client because a listening
+    socket is reachable by anything on this machine and not only by mpfb-mcp.
+    So both are run over one table of names and held to the same verdicts.
+
+    **Both nouns.** Until FR 027 the rule was the preset rule, in
+    ``preset_names.py`` and ``shared/preset_files.py``. FR 027 generalised it on
+    each side rather than copying it for saved expressions, so the check now
+    runs every name as a ``"preset"`` and as an ``"expression"``: a gap between
+    the two sides for either artifact would let a file be written under a name
+    that cannot be addressed back.
 
     It lived in ``tests/test_codegen.py`` and ran as **three** until FR 033
-    deleted the generated path: ``codegen/shared/preset_files.py`` was the third,
-    and ``tests/test_fragment_drift.py`` compared it against the bridge module as
-    *source* where this compares behaviour. Both of those are gone with the
-    fragment. The reason the check exists is unchanged and is nothing to do with
-    how many copies there are: a disagreement between the tool side and the
-    add-on side would let a preset be written under a name that cannot be loaded
-    back - silently, and only for names in the gap between them.
+    deleted the generated path, which carried a third copy. The reason the check
+    exists is unchanged and is nothing to do with how many copies there are.
 
-    It sits in this module because ``mpfb_save_preset`` is where a preset name
-    first becomes a path, and because the ``name`` whitelist above is the same
-    rule asserted from the tool's side.
+    It sits in this module because ``mpfb_save_preset`` is where a name first
+    became a path.
     """
 
-    # Every name from the three preset tool test modules, plus the boundary
-    # cases that only a character-by-character rule can get wrong.
+    # Every name from the preset and expression tool test modules, plus the
+    # boundary cases that only a character-by-character rule can get wrong.
     NAMES = (
         "alice", "bob-2", "klara-v2", "Girl_test_walkCycle", "anna_v2", "v1.2",
+        "smile", "angry-shout", "Wink", "subtle.smile",
         "a" * 64, "a" * 65, "1", "_", "-", "...",
         "", "   ", ".", "..", ".hidden", "has space", "trailing ",
         "a/b", "a\\b", "../escape", "/absolute", "c:nope", "na\u00efve", "sm\u00f6rg\u00e5s",
@@ -267,50 +268,58 @@ class PresetNameRuleDriftTests(unittest.TestCase):
         None, 3, True, 1.5, [], {},
     )
 
-    def setUp(self) -> None:
-        self.bridge_namespace = _bridge_shared_namespace("preset_files.py")
-        self.bridge_rejection = self.bridge_namespace["preset_name_rejection"]
+    NOUNS = ("preset", "expression")
 
-    def _rules(self) -> dict:
-        """The two implementations, by where they run."""
-        return {
-            "mpfbmcp.preset_names": preset_names.preset_name_rejection,
-            "bridge/mpfb_bridge/shared/preset_files.py": self.bridge_rejection,
-        }
+    def setUp(self) -> None:
+        self.bridge_namespace = _bridge_shared_namespace("artifact_names.py")
+        self.bridge_rejection = self.bridge_namespace["name_rejection"]
 
     def test_both_accept_and_refuse_exactly_the_same_names(self) -> None:
-        rules = self._rules()
-        authoritative = rules["mpfbmcp.preset_names"]
-        for name in self.NAMES:
-            for where, rule in rules.items():
-                with self.subTest(name=name, rule=where):
-                    self.assertEqual(authoritative(name) is None, rule(name) is None)
+        for noun in self.NOUNS:
+            for name in self.NAMES:
+                with self.subTest(name=name, noun=noun):
+                    self.assertEqual(artifact_names.name_rejection(name, noun) is None,
+                                     self.bridge_rejection(name, noun) is None)
 
     def test_both_give_the_same_reason(self) -> None:
         # Not merely the same verdict: the sentence is what a caller is shown,
         # and two different explanations for one rule is the drift starting.
-        rules = self._rules()
-        authoritative = rules["mpfbmcp.preset_names"]
+        for noun in self.NOUNS:
+            for name in self.NAMES:
+                with self.subTest(name=name, noun=noun):
+                    self.assertEqual(artifact_names.name_rejection(name, noun),
+                                     self.bridge_rejection(name, noun))
+
+    def test_the_verdict_does_not_depend_on_the_noun(self) -> None:
+        # One rule, two artifacts: only the sentence may differ.
         for name in self.NAMES:
-            for where, rule in rules.items():
-                with self.subTest(name=name, rule=where):
-                    self.assertEqual(authoritative(name), rule(name))
+            with self.subTest(name=name):
+                self.assertEqual(artifact_names.name_rejection(name, "preset") is None,
+                                 artifact_names.name_rejection(name, "expression") is None)
+
+    def test_the_preset_wrapper_is_the_rule_with_the_preset_noun(self) -> None:
+        for name in self.NAMES:
+            with self.subTest(name=name):
+                self.assertEqual(artifact_names.preset_name_rejection(name),
+                                 artifact_names.name_rejection(name, "preset"))
 
     def test_the_bound_and_the_pattern_are_the_same_on_both(self) -> None:
-        self.assertEqual(preset_names.PRESET_NAME_MAX_LENGTH,
-                         self.bridge_namespace["PRESET_NAME_MAX_LENGTH"])
-        self.assertEqual(preset_names.PRESET_NAME_PATTERN,
-                         self.bridge_namespace["PRESET_NAME_PATTERN"])
+        self.assertEqual(artifact_names.NAME_MAX_LENGTH,
+                         self.bridge_namespace["NAME_MAX_LENGTH"])
+        self.assertEqual(artifact_names.NAME_PATTERN,
+                         self.bridge_namespace["NAME_PATTERN"])
 
-    def test_no_accepted_name_can_leave_the_config_directory(self) -> None:
+    def test_no_accepted_name_can_leave_its_directory(self) -> None:
         # The property the rule exists for, asserted rather than inferred from
-        # the pattern: os.path.join of the directory and the assembled filename
-        # stays inside the directory, for every name either side accepts.
-        preset_filename = self.bridge_namespace["preset_filename"]
-        confdir = os.path.abspath(os.path.join("/tmp", "mpfb", "config"))
+        # the pattern: os.path.join of the directory and each artifact's
+        # filename stays inside the directory, for every name either side
+        # accepts. The two filename shapes are the two commands' own.
+        directory = os.path.abspath(os.path.join("/tmp", "mpfb", "somewhere"))
+        shapes = (lambda name: "human." + name + ".json", lambda name: name + ".json")
         for name in self.NAMES:
-            if self.bridge_rejection(name) is not None:
+            if self.bridge_rejection(name, "preset") is not None:
                 continue
-            with self.subTest(name=name):
-                joined = os.path.abspath(os.path.join(confdir, preset_filename(name)))
-                self.assertEqual(os.path.dirname(joined), confdir)
+            for shape in shapes:
+                with self.subTest(name=name, filename=shape(name)):
+                    joined = os.path.abspath(os.path.join(directory, shape(name)))
+                    self.assertEqual(os.path.dirname(joined), directory)

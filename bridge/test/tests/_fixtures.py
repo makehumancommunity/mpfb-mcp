@@ -45,6 +45,7 @@ __all__ = (
     "build_rig_tree",
     "build_target_tree",
     "dispatch",
+    "expression_library",
     "linked_plain_object",
     "only_these_data_roots",
     "redirected_locations",
@@ -54,6 +55,7 @@ __all__ = (
     "supplied_resolution",
     "typed_child",
     "write",
+    "write_expression",
     "write_mhclo",
     "write_mhmat",
     "write_target",
@@ -652,3 +654,89 @@ def only_these_data_roots(services, user_data=None, mpfb_data=None,
         mpfb_data=mpfb_data or missing,
         second_root=second_root or missing,
         mh_user_data=mh_user_data or missing)
+
+
+# The face units the expression fixtures below use, plus "cheekPuff", which is
+# the one target FaceService.is_faceunits01_installed() probes for. Written as
+# real target files, so that the fixture is a small but genuine faceunits01
+# install rather than a probe that happens to pass: a mutating command loads
+# every one of these.
+FIXTURE_FACE_UNITS = ("cheekPuff", "jawOpen", "mouthSmileLeft", "mouthSmileRight",
+                      "browInnerUp", "eyeBlinkLeft")
+
+
+def write_expression(services, path, face_units, name=None, **metadata):
+    """One expression file, written by ``FaceService.save_expression()`` itself.
+
+    Never hand-written JSON: a fixture reproduces the install rather than a
+    convenient version of it (specifications/testing.md), and MPFB's own writer
+    is what decides the rounding, the zero-dropping and the field defaults.
+    ``name`` defaults to the file's basename; pass ``""`` for the file with no
+    name, which is the label-fallback case.
+    """
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    meta = dict(metadata)
+    meta["name"] = os.path.splitext(os.path.basename(path))[0] if name is None else name
+    return services["FaceService"].save_expression(path, dict(face_units), meta)
+
+
+@contextlib.contextmanager
+def expression_library(services, root):
+    """A redirected data tree holding a small faceunits01 pack and expressions.
+
+    Two data roots, in MPFB's priority order:
+
+    - ``mpfb_data`` holds ``expressions/shadowing.json``, so that a file of the
+      same name in user data is **shadowed** - the case ``save_expression``
+      refuses and ``list_expressions`` reports;
+    - ``user_data`` holds the targets under ``targets/faceunits/`` and the
+      expressions ``smile.json``, ``jaw.json`` and ``shadowing.json``.
+
+    ``smile`` and ``jaw`` both open the jaw, at 0.6 and 0.7, so stacking them at
+    full weight sums to 1.3 and **clamps** - which is what
+    ``clamped_face_units`` exists to report.
+
+    **Build the character first, outside this block.** ``create_human()``
+    loads the base mesh out of ``mpfb_data``, which this redirects to the
+    fixture tree - so a character created inside it fails with a missing
+    ``3dobjs/base.obj``.
+
+    The pack probe's cache is seeded inside the redirect and restored on the
+    way out, exactly as ``ppp_mutating/set_face_units_test.py`` does, so that a
+    module running afterwards is not left looking at the fixture's answer.
+
+    Yields a dict of the paths a test asserts against.
+    """
+    face_service = services["FaceService"]
+    system = os.path.join(str(root), "system")
+    user = os.path.join(str(root), "user")
+    for unit in FIXTURE_FACE_UNITS:
+        write_target(os.path.join(user, "targets", "faceunits", unit + ".target"))
+
+    paths = dict(
+        system=system,
+        user=user,
+        user_expressions=os.path.join(user, "expressions"),
+        system_expressions=os.path.join(system, "expressions"),
+    )
+    paths["smile"] = write_expression(
+        services, os.path.join(paths["user_expressions"], "smile.json"),
+        {"mouthSmileLeft": 0.8, "mouthSmileRight": 0.8, "jawOpen": 0.6},
+        description="A broad smile.", tags=["happy"], license="CC0")
+    paths["jaw"] = write_expression(
+        services, os.path.join(paths["user_expressions"], "jaw.json"), {"jawOpen": 0.7})
+    paths["shadowed"] = write_expression(
+        services, os.path.join(paths["user_expressions"], "shadowing.json"),
+        {"browInnerUp": 0.5})
+    paths["shadowing"] = write_expression(
+        services, os.path.join(paths["system_expressions"], "shadowing.json"),
+        {"eyeBlinkLeft": 0.5})
+
+    with only_these_data_roots(services, user_data=user, mpfb_data=system):
+        face_service.is_faceunits01_installed(force_recheck=True)
+        try:
+            yield paths
+        finally:
+            face_service.is_faceunits01_installed(force_recheck=True)

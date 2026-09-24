@@ -30,12 +30,13 @@ breaking it has side effects on somebody's `.blend` rather than a different-look
 |------|-------------|
 | Any object in the family is a valid subject | The **far side**, in both copies. Resolution needs MPFB's relationship walk |
 | A precondition is an answer, not an exception | The **far side**. Every `blocked_by` branch runs before the mutating call |
-| `performed` means the same thing everywhere | A **shared module**, [`bridge/mpfb_bridge/shared/performed.py`](../bridge/mpfb_bridge/shared/performed.py), imported by all thirteen |
+| `performed` means the same thing everywhere | A **shared module**, [`bridge/mpfb_bridge/shared/performed.py`](../bridge/mpfb_bridge/shared/performed.py), imported by every mutating command |
 | The before/after report | The **far side**, which is the only place that can observe both |
-| The caller's selection is restored | The **far side**, in a `finally`. Twelve of thirteen; `mpfb_generate_rigify_rig` reports `active_object_after` instead |
+| The caller's selection is restored | The **far side**, in a `finally`, around every `refit()` and every operator call. `mpfb_generate_rigify_rig` reports `active_object_after` instead |
 | A batch resolves before it writes | The **far side**. It is a property of the *code*, and nothing below the socket would enforce it |
-| A name that becomes a path is a name and never a path | **Both sides, deliberately.** `preset_names.py` before anything is sent, `shared/preset_files.py` as the last statement before `open()` |
+| A name that becomes a path is a name and never a path | **Both sides, deliberately.** `artifact_names.py` before anything is sent, `shared/artifact_names.py` as the last statement before `open()` - one rule for presets and saved expressions |
 | `overwrite: False`, and the absolute path in every answer | The **far side** |
+| Refuse to write where the result cannot be found | The **far side**, which alone can walk MPFB's roots |
 | Argument shape and range | The **near side**, before anything is sent — see [Validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket) |
 
 **One rule is enforced by neither and is worth naming as such.** Nothing makes a *failure*
@@ -213,8 +214,10 @@ affected** — rather than either failing or staying silent.
 ## A tool whose effect is outside the `.blend` owes more
 
 Everything else here changes a `.blend` that the user can undo, revert or simply not save.
-`mpfb_save_preset` writes a **file**, and FR 025 is where that difference was first paid for. Three
-properties follow, and they are the whole of the extra obligation:
+`mpfb_save_preset` writes a **file**, and FR 025 is where that difference was first paid for;
+`mpfb_save_expression` ([FR 027](../feature-requests/done/027-expression-library/README.md)) is the
+second, writing `<name>.json` into the expressions directory of MPFB's user data. Four properties
+follow, and they are the whole of the extra obligation:
 
 - **Address the artifact by name, never by a path.** A preset is `<name>` within MPFB's user config
   directory, resolving to `human.<name>.json`. A tool that took a caller-supplied path would write
@@ -240,8 +243,18 @@ properties follow, and they are the whole of the extra obligation:
   a refusal carrying that file's size and modification time — enough to decide from, without a
   second call — and `path` is in **every** answer, refusals included, because "which file was this
   about" is the first thing a caller needs whatever happened.
+- **Refuse to write where the result cannot be found.** FR 027 added this, and it is the one that
+  the preset case never needed: a preset has one directory, while an expression lives in a library
+  MPFB assembles from several data roots, **first root first**. A file saved into user data while a
+  higher-priority root holds one of the same name would be written and then never listed, never
+  applied and never restored from a preset - nothing fails, and the file is simply unreachable. So
+  `mpfb_save_expression` refuses (`blocked_by: "name_shadowed"`), naming the file that would win.
+  This rests on MPFB's *code*, which FR 027's live check confirmed, and not on MPFB's composer panel
+  and data README, which both say user files take priority; the discrepancy is filed as item 8 of
+  `mpfb2/features/MCP_DISCOVERED_BUGS.md`. If MPFB changes its precedence, this refusal changes
+  with it.
 
-The general obligation those three serve is that **a refusal must never be a partial write**: every
+The general obligation those four serve is that **a refusal must never be a partial write**: every
 precondition is settled before the writing call is made. MPFB's own path happens to be safe here
 (`serialize_to_json_string()` runs to completion before the file is opened), but that is an
 inherited property rather than a guarantee, so the ordering is the command's own.
@@ -286,15 +299,44 @@ Most of what a mutating tool changes lives in the `.blend` until something expli
 discards it — the same durability a user's own edits have. `mpfb_set_face_units` is the first tool
 whose effect is narrower than that on its own terms, independent of anything the caller does: a
 composed face survives neither `mpfb_save_preset` (which serializes MPFB's applied-expressions
-*stack*, and a composed face has no stack rows) nor `mpfb_create_human_from_preset` (which rebuilds
-from that stack and clears everything else) — see
-[FR 026](../feature-requests/done/026-face-units/README.md#a-composed-face-is-transient) for why,
-which is a fact about MPFB's two-level expression model rather than a limitation of this tool.
+*stack*, and a composed face has no stack rows) nor anything that rebuilds the face from that stack
+— `mpfb_apply_expressions`, `mpfb_create_human_from_preset` — which clears every face unit first.
+See [FR 026](../feature-requests/done/026-face-units/README.md#a-composed-face-is-transient) for
+why, which is a fact about MPFB's two-level expression model rather than a limitation of the tool.
 
-**Say it once, in the tool description, rather than computing it into every response.** A per-call
-"this will not survive a save" would be true on every answer and would cost a sentence every tool
-downloads for a fact that does not change per call. Where a *later* effort can compute the true,
-current state — FR 026's own sibling, the expression-library tool, knows whether the live face
-agrees with the stack that claims to explain it — replace the static sentence with the computed
-one; until such an effort lands, the static sentence is the only warning an agent gets, and it must
-be accurate rather than merely cautious.
+**Say the fact once, in the tool description, and compute the current state into the response.**
+FR 026 put a fixed "this will not survive" sentence in every answer as well as the description,
+because nothing could yet say whether it was true of *this* face. [FR 027](../feature-requests/done/027-expression-library/README.md)
+replaced it with the computation: `matches_stack` and `unexplained_face_units`, from
+[`shared/expression_divergence.py`](../bridge/mpfb_bridge/shared/expression_divergence.py), say
+whether the stack explains the face and which units it does not. The difference is the one
+[responses.md](responses.md) draws between a warning and a fact: a sentence true on every answer
+teaches an agent to ignore it, while `matches_stack: true` on a character with nothing composed is
+an answer, and `false` names exactly what is at risk and names `mpfb_save_expression` as what keeps
+it. The description keeps the one-paragraph explanation, because it is what an agent reads *before*
+calling.
+
+## A tool that destroys state it did not create owes the caller a list
+
+`mpfb_apply_expressions` is the other half of that model, and the first tool here whose own effect
+**destroys work another tool made**, silently in MPFB and unrecoverably across the socket: the
+library's rebuild clears every face unit before writing the stack's aggregate, so any unit composed
+on top with `mpfb_set_face_units` is gone. MPFB's UI survives this because the two panels are in
+different tabs and a human sees sliders move. Across MCP there is no such feedback.
+
+- **Name what went, measured on both sides of the write.** The units the stack did not explain are
+  read *before* the call, and those the rebuild then actually moved are returned as
+  `discarded_face_units`, each with its value before and now. Measuring only the first half
+  predicts a loss that may not happen: FR 027's own round-trip test found that the save-then-replace
+  sequence — which keeps everything, because the saved file holds the composed units — would
+  otherwise be reported as having discarded all of them.
+- **Name what would have kept it.** The answer says `mpfb_save_expression`, which is the only way
+  a composed face crosses into the library.
+- **Do not refuse, unless the destruction is never what a caller means.** Here it usually is what
+  a caller means: an agent that composes a face and then applies a library expression has, on the
+  most natural reading, changed its mind. A refusal would need an override argument on every call to
+  protect the minority case, which is a description cost paid by everyone; a list returned after the
+  fact costs nothing when it is empty. FR 027's live check confirmed the loss is real before this
+  was settled.
+- **Stay quiet when nothing is lost.** An empty `discarded_face_units` and no sentence about it,
+  per the rule above: a tool that warns on every call trains an agent to ignore it.

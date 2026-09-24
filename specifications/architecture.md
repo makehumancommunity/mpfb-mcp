@@ -518,6 +518,32 @@ installed since. Reading a UI module is not a general licence — it is availabl
 is a constant table, and the fallback the second rule already required is what makes being wrong
 about that survivable.
 
+**Calling a UI module is a third case, and FR 027 is where it was decided.** MPFB's
+expressions-library panel draws one slider per expression file, registered as a scene property
+**once, when `ui/apply_assets/useexpression` is imported**; `write_slider_values()` in that module
+syncs the sliders to a stack and `refresh_expression_sliders()` registers sliders for files that
+appeared since. `mpfb_apply_expressions` and `mpfb_save_expression` call them, through
+[`shared/expression_panel.py`](../bridge/mpfb_bridge/shared/expression_panel.py). That module is
+*not* a constant table — its map is exactly the import-time snapshot the `_modelsubpanels` case
+refuses to depend on — so the second condition above is not met, and what makes the call acceptable
+is different:
+
+- **MPFB itself does exactly this, from exactly these places.** Its preset loader calls
+  `write_slider_values()` after writing a stack, and its composer's save operator calls
+  `refresh_expression_sliders()` after writing a file. A command that changed the stack or the
+  library *without* the call would be the one path in or out of MPFB that left its panel showing
+  something the character does not have.
+- **The snapshot is not read to answer anything.** Nothing a tool reports comes out of the slider
+  map; the call is how the snapshot is *corrected*, which is the opposite of relying on it.
+- **Every rule for reaching it still holds.** Found with `sys.modules.get("<root>.ui.apply_assets.useexpression")`,
+  never imported — FR 027's live check found it loaded in both a windowed and a headless Blender; a
+  miss is an ordinary answer; each call is wrapped the way MPFB wraps it, because MPFB treats a
+  failure there as cosmetic; and the outcome is **reported**, as `panel_synced` with a
+  `panel_sync_reason`, rather than left implicit.
+
+This is not a general licence either. It covers calling a UI function whose only effect is on
+MPFB's own UI state, where MPFB makes the same call after the same change.
+
 ## Shared modules, and what warrants one
 
 `bridge/mpfb_bridge/shared/` holds the concepts two or more commands model identically. **Nothing
@@ -525,7 +551,7 @@ in it is reachable from the wire** — no handler, no `PARAMS`, no entry in `COM
 what lets [commands/table.py](../bridge/mpfb_bridge/commands/table.py) go on being the one file a
 sceptic reads to know everything this add-on can be asked to do.
 
-There are seven, and the warrant for each is the same shape: **duplication that must not drift,
+There are ten, and the warrant for each is the same shape: **duplication that must not drift,
 not size.** Three copies of a hundred-line scan of the user's target directories are three chances
 for two commands to disagree about what is installed, and that disagreement is worse than either
 behaviour on its own. Two commands sharing a five-line helper are not a reason to reach for this.
@@ -560,31 +586,50 @@ behaviour on its own. Two commands sharing a five-line helper are not a reason t
   answer to say which to believe. What is shared is the rule; the pair of lookups is passed in,
   because one command answers from a snapshot read once and the other from `key_blocks` on every
   question, since it writes between readings.
+- **`expression_divergence.py` is the same case for the face.** Whether the applied-expressions
+  stack explains the live face is a comparison MPFB makes nowhere, and three commands report it:
+  `mpfb_get_expression`, which exists to answer it; `mpfb_apply_expressions`, which names the
+  composed units its rebuild destroyed; and `mpfb_set_face_units`, which says whether what it just
+  composed is now at risk. One of them saying "nothing to lose" while another says "this will be
+  discarded" is the failure; `ppp_mutating/expression_divergence_test.py` asks all three about one
+  character. `mpfb_get_character_summary` (FR 034) is meant to read through it too.
 - **A shared module may share the condition and leave the wording alone.** `refit_blocker.py` is
   that case: `HumanService.refit()` cannot refit a generated Rigify rig with no meta rig left in
   the scene, reports it only through an `operator` no MCP tool has one of, and returns having
-  refitted the mesh assets. Four commands must detect that or claim a refit they did not
-  perform — but `mpfb_refit_human` reports one that has already happened and the other three
-  predict one they are about to attempt, so the sentences differ by tense and both are right for
-  their call site. The module therefore exposes a predicate and each command phrases the answer.
-  Four copies of the condition is the `rig_lookup.py` failure exactly; four copies of the message
-  is at worst four sentences that read slightly differently.
+  refitted the mesh assets. Six commands must detect that or claim a refit they did not
+  perform — `mpfb_refit_human`, the three body-shape writers, and since FR 026 and FR 027
+  `mpfb_set_face_units` and `mpfb_apply_expressions` — but `mpfb_refit_human` reports one that has
+  already happened and the others predict one they are about to attempt, so the sentences differ
+  by tense and both are right for their call site. The module therefore exposes a predicate and
+  each command phrases the answer. Six copies of the condition is the `rig_lookup.py` failure
+  exactly; six copies of the message is at worst six sentences that read slightly differently.
 - **`target_categories.py` is the largest and is rebuilt per call**, which is a rule about
   *freshness* rather than about sharing: `mpfb_list_targets`, `mpfb_get_target_stack`,
   `mpfb_set_targets` and `mpfb_symmetrize_targets` all need MPFB's `target.json` category table in
   the same shape, and a module-level scan would answer every request from a snapshot taken when
   Blender started — blind to a target installed since, which MPFB's own panels already are.
-- **`preset_files.py` is the one whose rule exists on both sides of the socket**, which is a shape
-  to notice rather than to copy. The authoritative check is in `src/mpfbmcp/preset_names.py` and
-  runs before anything is sent, because a name that becomes a path is a shape knowable there
+- **`artifact_names.py` is the one whose rule exists on both sides of the socket**, which is a
+  shape to notice rather than to copy. The authoritative check is in `src/mpfbmcp/artifact_names.py`
+  and runs before anything is sent, because a name that becomes a path is a shape knowable there
   ([validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket));
   this module restates it as the last statement before `open()`, because a listening socket is
   reachable by anything on the machine and not only by mpfb-mcp. Two copies are warranted only
-  because the consequence of a gap is silent — a preset written under a name that cannot be loaded
+  because the consequence of a gap is silent — a file written under a name that cannot be addressed
   back — so `tests/test_save_preset.py` runs both over one table of names and compares the
   *sentences*, not only the verdicts. It is the same duplication
   [Both ends validate, deliberately](#both-ends-validate-deliberately) describes, for the same
-  reason.
+  reason. **It covers two artifacts, and the noun is its argument.** Until FR 027 the rule lived in
+  `preset_names.py` and `preset_files.py` and said "preset"; saved expressions needed exactly the
+  same rule for exactly the same reason, and copying it would have made four copies of something
+  whose two-copy form is justified only by the cost of a gap. So it was generalised once on each
+  side, the drift test runs every name as both nouns, and what stays per artifact is the path —
+  `preset_files.py` keeps `human.<name>.json` in the config directory, and `save_expression`
+  builds `<name>.json` in `user_data/expressions/`.
+- **`expression_panel.py` is where two commands reach a UI module the same way.**
+  `mpfb_apply_expressions` and `mpfb_save_expression` both keep MPFB's expressions-library panel in
+  step (see [a UI module with no service behind it](#a-ui-module-with-no-service-behind-it)); how
+  the module is found, what a miss means and what `panel_synced` reports must not differ between
+  them, and the rules for reaching the module belong in one place a reader can check.
 
 **Being identical is not by itself a reason to merge.** A census of every function defined at
 module level in more than one of the programs these commands replaced — docstrings stripped,
@@ -598,7 +643,10 @@ than the six copies.
 *handed* `services`, because a module that resolved MPFB at import would hold a services dict
 across a disable and re-enable — the stale state `mpfb_resolution.resolve()` is called per dispatch
 to avoid. `target_categories.py` takes a `tables` record for the freshness reason above.
-`performed.py` takes neither, and is the one module here that reads nothing out of MPFB at all.
+Three take neither, because they read nothing out of MPFB's services: `performed.py` works on a
+dict the command has finished building, `artifact_names.py` on a name and a path, and
+`expression_panel.py` on MPFB's root package name, since the module it reaches is addressed by
+where MPFB lives rather than by anything a service knows.
 
 ## One module per tool
 

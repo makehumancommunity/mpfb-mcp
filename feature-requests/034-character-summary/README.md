@@ -6,8 +6,8 @@ Before an agent changes a character it has to know what the character already is
 phenotype, whether it has a rig and which kind, what it is wearing, what skin it has, which
 detail morphs are on it, and what its face is doing. Today that is **five or six calls** —
 `mpfb_get_macro_details`, `mpfb_get_object_info` on the basemesh, `mpfb_get_target_stack`,
-`mpfb_get_face_units`, once [FR 027](../027-expression-library/README.md) lands
-`mpfb_get_expression`, and usually `mpfb_list_objects` first to find a name. That is five or six
+`mpfb_get_face_units`, `mpfb_get_expression` ([FR 027](../done/027-expression-library/README.md)),
+and usually `mpfb_list_objects` first to find a name. That is five or six
 round trips at roughly 250 ms each, and five or six answers written for different questions, most of
 whose bytes the agent did not need.
 [vision.md](../../specifications/vision.md#target-tool-catalog) names the missing tool and sets one
@@ -32,8 +32,10 @@ are garments on it") were considered and left out; see
 It is read-only and changes nothing: no recalculation, no refit, no selection change, and no cache
 populated that a detailed tool would not also populate.
 
-**Ordered after FR 027**, because its `face` section carries FR 027's expression stack, read through
-the implementation FR 027 builds.
+**Ordered after FR 027, which has landed.** Its `face` section carries FR 027's expression stack,
+read through `stack_rows()` and `divergence()` in
+[`shared/expression_divergence.py`](../../bridge/mpfb_bridge/shared/expression_divergence.py), which
+FR 027 put there with this request in mind.
 
 ## Goals
 
@@ -150,7 +152,7 @@ detailed command is rewritten to call it:
 | `macro_reading.py` (new) | `get_macro_details`: `_macro_details_of`, `_race_sum_of`, the stack and current-shape-key reads, and the drift comparison this request adds | `get_macro_details`, `get_character_summary` |
 | `asset_info.py` (new) | `get_object_info`: `_asset_info_for`, its helpers, and the related-object walk | `get_object_info`, `get_character_summary` |
 | `target_rollup.py` (new), or an extension of `modifier_reading.py` | `get_target_stack`: `_shapekey_values`, `_build_modifiers`, the kind classification | `get_target_stack`, `get_character_summary` |
-| `expression_divergence.py` (FR 027's), plus the stack read if FR 027 leaves it in its command | `get_expression` | `get_expression`, `apply_expressions`, `set_face_units`, `get_character_summary` |
+| `expression_divergence.py` (FR 027's; the stack read is already there as `stack_rows()`, so nothing moves) | — | `get_expression`, `apply_expressions`, `set_face_units`, `get_character_summary` |
 
 `get_face_units` reads straight off `FaceService`, and the non-zero filter is a line; there is nothing
 there that clears the shared-module bar. If a live run shows the two disagreeing, that verdict is
@@ -172,16 +174,16 @@ answer is `mpfb_get_macro_details` gaining `macro_drift` (requirement 4).
 - **`get_target_stack` computes its rollup from a snapshot read once**, and `symmetrize_targets`
   from `key_blocks` per call; `modifier_reading.py` already takes the lookup as an argument for that
   reason. The summary is the snapshot case.
-- **Basemesh resolution is written fifteen times.** Fifteen commands reach the basemesh through
+- **Basemesh resolution is written eighteen times.** Eighteen commands reach the basemesh through
   `ObjectService.find_object_of_type_amongst_nearest_relatives(subject, "Basemesh")`, each inside a
   wrapper of its own, and even the three read-only `_resolve_basemesh` copies (`get_macro_details`,
   `get_target_stack`, `get_face_units`) differ from one another with their strings stripped. The
   summary uses the one `get_macro_details` uses, since requirement 1 promises that tool's
   resolution, and **moves it into `macro_reading.py` with the rest of that command's reading** —
-  that much is needed for requirement 1 to be true by construction. Consolidating the other fourteen
+  that much is needed for requirement 1 to be true by construction. Consolidating the other seventeen
   is [a separate entry in NEXT_STEPS.md](../NEXT_STEPS.md#one-basemesh-resolver) and is not done
   here.
-- **The count of shared modules** goes from FR 027's eight to eleven. The list in
+- **The count of shared modules** goes from FR 027's ten to thirteen. The list in
   [architecture.md](../../specifications/architecture.md#shared-modules-and-what-warrants-one) says
   what warrants each; these three share one warrant, which is worth stating once rather than three
   times.
@@ -246,7 +248,7 @@ answer is `mpfb_get_macro_details` gaining `macro_drift` (requirement 4).
 ## References
 
 - [vision.md — What is still missing](../../specifications/vision.md#target-tool-catalog)
-- [FR 027](../027-expression-library/README.md) — `mpfb_get_expression`, `expression_divergence.py`,
+- [FR 027](../done/027-expression-library/README.md) — `mpfb_get_expression`, `expression_divergence.py`,
   and the definitions of `matches_stack` and `unexplained_face_units`.
 - Commands whose reading is extracted:
   [get_macro_details.py](../../bridge/mpfb_bridge/commands/get_macro_details.py),

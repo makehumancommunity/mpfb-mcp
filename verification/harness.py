@@ -69,6 +69,8 @@ MUTATING_VERBS = {
     "mpfb_set_targets": "applied",
     "mpfb_symmetrize_targets": "changed",
     "mpfb_set_face_units": "applied",
+    "mpfb_save_expression": "saved",
+    "mpfb_apply_expressions": "changed",
     "mpfb_add_rig": "added",
     "mpfb_generate_rigify_rig": "generated",
     "mpfb_add_asset": "added",

@@ -43,7 +43,7 @@ from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-i
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
 from mpfbmcp import backend
-from mpfbmcp.preset_names import validated_preset_name
+from mpfbmcp.artifact_names import validated_preset_name
 
 
 def _validated_optional_text(value: object, argument: str, hint: str) -> str | None:
@@ -173,7 +173,7 @@ def register(mcp: FastMCP) -> None:
             "create_human_from_preset",
             params={
                 # The authoritative check, here rather than in Blender: this
-                # name becomes a path. See mpfbmcp/preset_names.py.
+                # name becomes a path. See mpfbmcp/artifact_names.py.
                 "name": validated_preset_name(name),
                 "override_rig": _validated_optional_text(
                     override_rig, "override_rig",

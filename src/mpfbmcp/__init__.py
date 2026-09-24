@@ -154,16 +154,19 @@ def build_server() -> FastMCP:
     )
 
     from mpfbmcp.tools import (
-        add_asset, add_rig, create_human, create_human_from_preset, generate_rigify_rig,
-        get_face_units, get_macro_details, get_object_info, get_status, get_target_stack,
-        list_asset_materials, list_assets, list_docs, list_objects, list_presets, list_rigs,
-        list_targets, list_urls, refit_human, remove_asset, save_preset, set_asset_material,
+        add_asset, add_rig, apply_expressions, create_human, create_human_from_preset,
+        generate_rigify_rig, get_expression, get_face_units, get_macro_details, get_object_info,
+        get_status, get_target_stack, list_asset_materials, list_assets, list_docs,
+        list_expressions, list_objects, list_presets, list_rigs, list_targets, list_urls,
+        refit_human, remove_asset, save_expression, save_preset, set_asset_material,
         set_face_units, set_macro_details, set_skin, set_targets, symmetrize_targets)
     add_asset.register(mcp)
     add_rig.register(mcp)
+    apply_expressions.register(mcp)
     create_human.register(mcp)
     create_human_from_preset.register(mcp)
     generate_rigify_rig.register(mcp)
+    get_expression.register(mcp)
     get_face_units.register(mcp)
     get_macro_details.register(mcp)
     get_object_info.register(mcp)
@@ -172,6 +175,7 @@ def build_server() -> FastMCP:
     list_asset_materials.register(mcp)
     list_assets.register(mcp)
     list_docs.register(mcp)
+    list_expressions.register(mcp)
     list_objects.register(mcp)
     list_presets.register(mcp)
     list_rigs.register(mcp)
@@ -179,6 +183,7 @@ def build_server() -> FastMCP:
     list_urls.register(mcp)
     refit_human.register(mcp)
     remove_asset.register(mcp)
+    save_expression.register(mcp)
     save_preset.register(mcp)
     set_asset_material.register(mcp)
     set_face_units.register(mcp)

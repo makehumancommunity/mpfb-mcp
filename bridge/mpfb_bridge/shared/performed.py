@@ -5,10 +5,10 @@ The uniform "it happened" flag every mutating command reports.
 [`__init__.py`](__init__.py) for why this directory exists beside ``commands/``
 and what the ``services`` argument is doing there.
 
-**Alone among the seven it takes no ``services`` argument**: it reads nothing
-out of MPFB at all. It is one function over a dict the command has already
-finished building, which is what makes it the simplest thing in this directory
-and the one whose being wrong would be most obvious.
+**Like ``artifact_names`` and ``expression_panel``, it takes no ``services``
+argument**: it reads nothing out of MPFB at all. It is one function over a dict
+the command has already finished building, which is what makes it the simplest
+thing in this directory and the one whose being wrong would be most obvious.
 
 Every mutating command keeps its own verb - ``added``, ``applied``, ``removed``,
 ``generated``, ``changed``, ``recalculated``, ``refit_performed`` - because

@@ -53,11 +53,28 @@ clears and then re-requests the same units at their old values should not see
 them as "already present with the old value" versus "cleared".
 
 Refits per [`shared/refit_blocker.py`](../shared/refit_blocker.py), the fifth
-command to. ``refit`` defaults to ``True`` here, matching the composer panel's
-own ``auto_refit`` - every other refitting command in this package defaults to
-``False``, because composing a face is normally a single call rather than a
-modeling session of many, and expression shape keys deform the face while
-garments and hair do not follow without a refit.
+command to. ``refit`` defaults to ``True`` here, unlike every other refitting
+command in this package *and unlike MPFB's composer panel*, whose ``auto_refit``
+defaults to ``False``. FR 026 wrote that the default matched that panel, and it
+did not: it is the *library* panel's ``auto_refit`` that defaults to ``True``.
+[FR 027](../../../feature-requests/done/027-expression-library/README.md) kept
+the default on its own merits and corrected the reason: the panel defaults to
+``False`` because a human drags a slider through dozens of values and each would
+refit, whereas composing across MCP is normally one batched call, and
+expression shape keys deform the face while garments and hair do not follow
+without a refit.
+
+**Every answer says whether the stack still explains the face**, through
+[`shared/expression_divergence.py`](../shared/expression_divergence.py) - the
+same comparison ``get_expression`` and ``apply_expressions`` report. What this
+command writes is transient: the next library change (``apply_expressions``, a
+preset load) rebuilds the face from the applied-expressions stack, clearing
+first. FR 026 said so in a fixed sentence in every answer; the computed
+``matches_stack`` and ``unexplained_face_units`` replaced it, per
+[a tool whose effect is known in advance to be transient](../../../specifications/mutating-tools.md#a-tool-whose-effect-is-known-in-advance-to-be-transient),
+so that the normal case - an empty stack and nothing composed - reads as
+nothing to worry about, and the case with something to lose names
+``mpfb_save_expression`` as what keeps it.
 
 The behaviours above are **MPFB's, reproduced rather than tidied up** where
 they come from ``FaceService`` at all: the additive semantics, the
@@ -77,6 +94,7 @@ import sys
 import bpy
 
 from ..log import get_logger
+from ..shared.expression_divergence import divergence
 from ..shared.performed import with_performed
 from ..shared.refit_blocker import rig_refit_is_blocked
 from ..validation import Param
@@ -99,8 +117,9 @@ PARAMS = (
                       "FaceService.set_expression is additive by default: a unit not "
                       "mentioned is left untouched."),
     Param("refit", TYPE_BOOLEAN, default=True,
-          description="Re-fit clothes and the rig afterwards. True is MPFB's own composer-panel "
-                      "default, unlike every other refitting command here."),
+          description="Re-fit clothes and the rig afterwards. True, unlike every other "
+                      "refitting command here and unlike the composer panel: composing across "
+                      "MCP is one batched call rather than a dragged slider."),
 )
 
 SUMMARY = "Compose a character's face from ARKit face units, directly and transiently."
@@ -174,7 +193,7 @@ def _rig_refit_blocker(services, rig):
 
 def _message_for(basemesh, applied, loaded_from_disk, could_not_load, skipped_absent_at_zero,
                  clear_first, installed, refit_requested, refit_performed,
-                 refit_incomplete_reason):
+                 refit_incomplete_reason, compared):
     parts = []
     if not installed:
         parts.append(
@@ -196,9 +215,12 @@ def _message_for(basemesh, applied, loaded_from_disk, could_not_load, skipped_ab
             parts.append(
                 " {:d} unit(s) were requested at 0.0 with no shape key on the mesh yet, so "
                 "nothing was created for them.".format(len(skipped_absent_at_zero)))
-        parts.append(
-            " A composed face is transient: it is not saved by mpfb_save_preset and is "
-            "destroyed by anything that rebuilds the expression stack.")
+        if compared is not None and not compared["matches_stack"]:
+            parts.append(
+                " {:d} face unit(s) are not explained by the character's applied-expressions "
+                "stack, so the next mpfb_apply_expressions call or preset load will overwrite "
+                "them; mpfb_save_expression keeps them.".format(
+                    len(compared["unexplained_face_units"])))
         if refit_requested:
             if refit_performed:
                 parts.append(" Assets and rig were refitted.")
@@ -350,10 +372,20 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
     rig = object_service.find_object_of_type_amongst_nearest_relatives(basemesh, "Skeleton")
     if refit_requested and changed_something:
         refit_incomplete_reason = _rig_refit_blocker(services, rig)
-        services["HumanService"].refit(basemesh)
+        # refit() reaches bpy.ops through ClothesService. Put back what was
+        # borrowed, as refit_human does: the user is looking at this scene.
+        previous_active = bpy.context.view_layer.objects.active
+        basemesh_was_selected = bool(basemesh.select_get())
+        try:
+            services["HumanService"].refit(basemesh)
+        finally:
+            if not basemesh_was_selected:
+                basemesh.select_set(False)
+            bpy.context.view_layer.objects.active = previous_active
         refit_performed = refit_incomplete_reason is None
 
     mesh_assets = [asset.name for asset in object_service.find_related_mesh_assets(basemesh)]
+    compared = divergence(services, basemesh)
 
     _LOG.debug(
         "set_face_units: %d applied, %d loaded, %d could_not_load, %d skipped-absent-at-zero",
@@ -375,6 +407,9 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
         skipped_absent_at_zero=skipped_absent_at_zero,
         cleared=cleared,
         unknown_face_units=[],
+        matches_stack=compared["matches_stack"],
+        unexplained_face_units=compared["unexplained_face_units"],
+        applied_expression_count=len(compared["applied_expressions"]),
         refit_requested=refit_requested,
         refit_performed=refit_performed,
         refit_incomplete_reason=refit_incomplete_reason,
@@ -386,7 +421,8 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
         ),
         message=_message_for(
             basemesh, applied, loaded_from_disk, could_not_load, skipped_absent_at_zero,
-            clear_first, installed, refit_requested, refit_performed, refit_incomplete_reason),
+            clear_first, installed, refit_requested, refit_performed, refit_incomplete_reason,
+            compared),
     )
 
     return with_performed(result, changed_something)

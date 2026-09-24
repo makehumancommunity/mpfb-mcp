@@ -32,6 +32,25 @@ gives `material_instances` as `NEVER`, while `ui/new_human/newhuman/properties/m
 `material_instances_used` beside `material_instances_service_default`. Both figures were read off
 the running install rather than the source.
 
+A fourth is not about a character at all. `FaceService.save_expression()` writes an empty `license`
+when none is given, while the composer panel behind MPFB's own "save expression" button pre-fills
+`CC0` ([`properties/license.json`](../../mpfb2/src/mpfb/ui/create_assets/makeexpression/properties/license.json)).
+`mpfb_save_expression` defaults `license` to `CC0` and reports the metadata it wrote, read back from
+the file. [FR 027](../feature-requests/done/027-expression-library/README.md) asked whether a licence
+- a statement made on the user's behalf - was a default an agent should apply silently, and kept it:
+the tool description names the default, so an agent applying it has read it, and a user saving
+through MPFB's own panel gets the same value unless they change it.
+
+**Where a tool departs from the panel's default, it says why, and the reason has to be true.**
+`mpfb_set_face_units` defaults `refit` to `true`. FR 026 wrote that this matched the composer
+panel's `auto_refit`; it does not - the composer's defaults to `false`, and it is the *library*
+panel's (`ExpressionsLibraryProperties`) that defaults to `true`. FR 027 found the error, kept the
+default on its merits - a human drags a composer slider through dozens of values and each would
+refit, while composing across MCP is one batched call, and garments do not follow the face without
+a refit - and corrected every place that gave the wrong reason. `mpfb_apply_expressions` follows
+the library panel's `true` directly. A default whose stated reason is wrong is harder to revisit
+than one that never gave a reason, which is why the correction was worth an effort's time.
+
 Passing the signature's value in either case would produce a character that **cannot be reproduced
 through MPFB's own UI**, which is the same quality bar
 [FR 007](../feature-requests/done/007-macro-details/README.md) sets for macro details: the goal is
@@ -84,6 +103,25 @@ choice load-bearing is not that three paths disagree but that the *obvious* impl
 service function whose name matches the operation, is the one that differs. A rule that only fired
 when three implementations visibly disagreed would not have fired here, and would have been wrong
 not to.
+
+**The sharpest instance is two paths that write the same thing, one destroying the other's work.**
+MPFB's expression composer writes the 52 `!ex-` shape keys directly (`FaceService.set_expression`,
+wrapped by `mpfb_set_face_units`); its expression library keeps a stack of `{asset, weight}` rows on
+the basemesh and re-derives the face from it on every change, clearing first
+(`mpfb_apply_expressions`, and every preset load). Neither is wrong, and a user in MPFB's UI copes
+because the panels are in different tabs and sliders visibly move. Across MCP nothing moves. So
+mpfb-mcp does not pick one here - it exposes both - and instead **computes the comparison MPFB never
+makes**: whether the stack explains the face
+([`shared/expression_divergence.py`](../bridge/mpfb_bridge/shared/expression_divergence.py)),
+reported by every tool on either side, with the one bridge between them - saving a composed face as
+an expression file - named whenever there is something to lose. See
+[a tool that destroys state it did not create](mutating-tools.md#a-tool-that-destroys-state-it-did-not-create-owes-the-caller-a-list).
+
+The same pair produced a smaller instance of the rule below. MPFB's composer save operator builds
+the file from the composer panel's scene properties (`MPFB_EX_<unit>`), which the composer's own
+UI keeps in step with the face but `set_expression()` does not touch. `mpfb_save_expression` saves
+the **shape keys** (`read_current_expression()`), because the panel's sliders are stale for a face
+composed across MCP, and its command docstring says so.
 
 This is the sharper, more general form of
 [When mpfb-mcp models a concept MPFB's UI has but its services do not](#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not),
@@ -202,8 +240,13 @@ answer means rather than merely how fast it arrives.
   `_FACEUNITS01_INSTALLED` — the third instance of the pattern, and the first one gating a whole
   capability rather than one listing's freshness (see
   [below](#a-capability-that-depends-on-an-optional-asset-pack)). `mpfb_get_face_units`' `refresh`
-  busts it via `force_recheck=True`; `mpfb_set_face_units` reads the cached answer, since a caller
-  who wants a fresh probe before writing reads one through the get tool first.
+  busts it via `force_recheck=True`, as do `mpfb_list_expressions`' and `mpfb_get_expression`'s;
+  the two writing tools (`mpfb_set_face_units`, `mpfb_apply_expressions`) read the cached answer,
+  since a caller who wants a fresh probe before writing reads one through a read tool first.
+  Nothing in MPFB invalidates it on a pack install, which is filed as item 10 of
+  `mpfb2/features/MCP_DISCOVERED_BUGS.md`. `list_available_expressions()`, by contrast, is **not**
+  cached - it walks the disk on every call - so `mpfb_list_expressions`' `refresh` is about the pack
+  probe only, and its description says which.
 
 What follows for a tool:
 
@@ -264,6 +307,15 @@ that effort:
   passes that probe and still has individual targets missing. `mpfb_set_face_units`'
   `could_not_load` is what a caller reads when the probe said yes and one specific unit said no
   anyway: checked per requested unit, at write time, never folded into the up-front refusal.
+- **Where the write outlives the missing pack, the refusal matters more, and it covers only what
+  would claim something.** `mpfb_apply_expressions` writes a stack that *persists* on the basemesh:
+  without the pack, the character would go on claiming an expression it has never displayed, and a
+  preset would carry the claim to another machine. So it refuses any call that adds or raises a row
+  - FR 027 applied this rule rather than extending it - but lets a call that only removes rows
+  through, since taking an expression off claims nothing and is how a stack from another machine
+  is cleaned up. A catalogue of things that depend on the pack (`mpfb_list_expressions`) reports
+  the probe on every answer for the same reason the read tool does: its list is a list of things
+  that cannot be applied when the answer is `false`.
 - **Use MPFB's own install-check rather than inventing a second definition.** `faceunits01` has no
   service function whose name says "is this pack here" other than the one `FaceService` already
   exposes; a tool inventing its own (checking for a specific file, say) risks disagreeing with what

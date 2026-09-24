@@ -22,7 +22,7 @@ name with a regex whose match it never checks, so any path not of exactly the
 shape ``human.<name>.json`` raises ``AttributeError: 'NoneType' object has no
 attribute 'group'`` from inside MPFB. Confining the input makes that unreachable
 rather than merely unlikely. The name rule itself is in
-``mpfbmcp.preset_names``.
+``mpfbmcp.artifact_names``.
 
 **One tool where MPFB has two operators.** ``mpfb.save_new_human_presets``
 refuses when the file exists, and ``mpfb.overwrite_human_presets`` is reachable
@@ -46,7 +46,7 @@ from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-i
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
 from mpfbmcp import backend
-from mpfbmcp.preset_names import validated_preset_name
+from mpfbmcp.artifact_names import validated_preset_name
 
 
 def _validated_subject(name: object) -> str | None:
@@ -139,7 +139,7 @@ def register(mcp: FastMCP) -> None:
             "save_preset",
             params={
                 # The authoritative check, here rather than in Blender: this
-                # name becomes a path. See mpfbmcp/preset_names.py.
+                # name becomes a path. See mpfbmcp/artifact_names.py.
                 "name": validated_preset_name(name),
                 "subject": _validated_subject(subject),
                 "overwrite": _validated_overwrite(overwrite),

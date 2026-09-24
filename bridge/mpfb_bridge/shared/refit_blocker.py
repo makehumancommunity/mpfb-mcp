@@ -13,21 +13,22 @@ first, but not the rig. Nothing in its return value says so. Every command that
 refits has therefore to detect the condition itself, or answer that it refitted
 a rig it never touched.
 
-Four commands need it: ``refit_human``, which refits as its whole purpose, and
+Six commands need it: ``refit_human``, which refits as its whole purpose;
 ``set_macro_details``, ``set_targets`` and ``symmetrize_targets``, which refit
-after changing the body. **The condition is here; the wording is not.**
-``refit_human`` reports a refit that has already happened ("could not be
-refitted, its mesh assets were") while the other three predict one they are
-about to attempt ("cannot be refitted to the new body shape"), and a shared
-helper exposing one message with a tense argument would be worse than four
-sentences written where they are read. Each command keeps a
-``rig_refit_blocker()`` of its own that phrases the answer and asks this
+after changing the body; and ``set_face_units`` (FR 026) and
+``apply_expressions`` (FR 027), which refit after changing the face. **The
+condition is here; the wording is not.** ``refit_human`` reports a refit that
+has already happened ("could not be refitted, its mesh assets were") while the
+other five predict one they are about to attempt ("cannot be refitted to the new
+body shape"), and a shared helper exposing one message with a tense argument
+would be worse than six sentences written where they are read. Each command
+keeps a ``rig_refit_blocker()`` of its own that phrases the answer and asks this
 function whether there is one to phrase.
 
-That split follows what the two failures cost. Four copies of the *condition* is
+That split follows what the two failures cost. Six copies of the *condition* is
 the ``rig_lookup.py`` case exactly: one careless edit and a character is
 reported refitted by one command and not by another, with nothing in either
-answer to say which is right. Four copies of the *message* is at worst four
+answer to say which is right. Six copies of the *message* is at worst six
 sentences that read slightly differently, which a caller notices and no caller
 is misled by.
 """

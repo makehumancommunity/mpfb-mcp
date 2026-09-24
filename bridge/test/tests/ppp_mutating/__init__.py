@@ -1,5 +1,6 @@
 """
-The thirteen commands that **change** a .blend, against a real MPFB.
+The commands that **change** a .blend, against a real MPFB - thirteen when this
+directory was made, sixteen since FR 026 and FR 027 added the face commands.
 
 **A directory rather than fourteen more prefixed files, and that is the whole
 reason this package exists.** ``bridge/test/tests/`` forces module order with an

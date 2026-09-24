@@ -4,7 +4,7 @@
 The preloaded tool surface, measured and capped.
 
 An MCP client downloads every tool's description and parameter schema before
-any work happens, so the twenty-seven docstrings in ``src/mpfbmcp/tools/`` are a
+any work happens, so the thirty-one docstrings in ``src/mpfbmcp/tools/`` are a
 call-time cost paid by every session whether or not a tool is used.
 [FR 013](../feature-requests/done/013-live-verification/review.md) measured it
 for the first time and found 66.7 KB of descriptions against an estimate of
@@ -88,7 +88,19 @@ import mpfbmcp
 # semantics, and the warning that a composed face is transient. The ceiling
 # moves by roughly what the two cost, and the paragraph of headroom stays a
 # paragraph.
-DESCRIPTION_CEILING = 62400
+#
+# Raised from 62,400 to 68,300 by
+# [FR 027](../feature-requests/done/027-expression-library/README.md), which
+# added `mpfb_list_expressions`, `mpfb_get_expression`,
+# `mpfb_apply_expressions` and `mpfb_save_expression` - 921, 1,067, 1,451 and
+# 1,660 B against a 2,300 B per-tool average - and grew
+# `mpfb_set_face_units` by about 300 B. All four came in under the average
+# because the request required the composer/library conflict to be explained
+# **once**, in `mpfb_set_face_units` (which is what its 300 B bought), and
+# pointed at from the others; `mpfb_save_expression` is the largest because it
+# is the second tool here to write a file nothing can undo. The ceiling moves by
+# what the five cost, and the paragraph of headroom stays a paragraph.
+DESCRIPTION_CEILING = 68300
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -102,7 +114,13 @@ DESCRIPTION_CEILING = 62400
 # Raised from 10,400 to 10,600 by FR 026: `mpfb_set_face_units`'s batched
 # `face_units` list is 431 B of array-of-object schema, the same shape
 # `mpfb_set_targets` pays for twice over.
-SCHEMA_CEILING = 10600
+#
+# Raised from 10,600 to 12,100 by FR 027: 1,482 B across four tools, of which
+# 706 B is `mpfb_save_expression` - six optional metadata arguments, one schema
+# line each, which the request named in advance as the largest new cost - and
+# 423 B is `mpfb_apply_expressions`' batched `expressions` list, the same
+# array-of-object shape as `mpfb_set_face_units`.
+SCHEMA_CEILING = 12100
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.
@@ -154,7 +172,7 @@ class DescriptionBudgetTests(unittest.TestCase):
         self.measured = measure()
 
     def test_every_registered_tool_is_measured(self) -> None:
-        self.assertEqual(27, len(self.measured))
+        self.assertEqual(31, len(self.measured))
 
     def test_total_description_size_is_under_the_ceiling(self) -> None:
         total = sum(entry["description_bytes"] for entry in self.measured)

@@ -44,10 +44,12 @@ growing back. It was three until FR 033, which retired the transport that let
 the harness send code of its own: the traceback item resolved a line number
 against a recorded *program*, and there are no programs any more.
 
-**One item writes outside the ``.blend``**, which nothing here did before
+**Two items write outside the ``.blend``**, which nothing here did before
 FR 025: ``mpfb_save_preset`` leaves ``human.mpfbmcp_smoke_run.json`` in MPFB's
-user config directory, under a name that says where it came from and constant
-across runs so that the pile does not grow.
+user config directory, and since FR 027 ``mpfb_save_expression`` leaves
+``mpfbmcp_smoke_run.json`` in the expressions directory of MPFB's user data -
+each under a name that says where it came from and constant across runs so
+that the pile does not grow.
 
 **And since FR 033 the run leaves what it built inside the ``.blend`` too.**
 Deleting it needed a channel into Blender that the bridge does not offer and
@@ -103,6 +105,8 @@ class _Run:
         self.rigs = None
         self.rig_family = None
         self.materials = None
+        self.expressions = None
+        self.saved_expression = None
 
     def __call__(self, tool_name: str, **arguments: object) -> dict:
         """A helper call: a prerequisite an item needs, not the item's own call."""
@@ -162,6 +166,15 @@ def _list_presets(run: _Run) -> dict:
     # read out of, and running it first means a preset left by an earlier run is
     # visible in the output rather than a surprise.
     return run.tools["mpfb_list_presets"]()
+
+
+@_item("mpfb_list_expressions", "expressions", "roots", "unreadable", "shadowed",
+       "faceunits01_installed")
+def _list_expressions(run: _Run) -> dict:
+    envelope = run.tools["mpfb_list_expressions"]()
+    if envelope.get("status") == "ok":
+        run.expressions = envelope["result"].get("expressions") or []
+    return envelope
 
 
 @_item("mpfb_list_targets", "sections")
@@ -252,6 +265,49 @@ def _set_face_units(run: _Run) -> dict:
     # so no install-specific branching is needed here.
     return run.tools["mpfb_set_face_units"](
         name=_character(run), face_units=[{"face_unit": "jawOpen", "weight": 0.4}])
+
+
+@_item("mpfb_save_expression", "path", "fragment", "overwrote", "previous_file",
+       "face_units", "metadata", "apply_with")
+def _save_expression(run: _Run) -> dict:
+    """The second item that writes outside the ``.blend``, after ``mpfb_save_preset``.
+
+    It saves the face the item above composed, under a constant name that says
+    where it came from, with ``overwrite`` true so a second run is not refused -
+    the same bargain ``mpfb_save_preset``'s item makes. The file lands in the
+    user's expression library, where MPFB's panel will show it; see
+    verification/README.md. Without the ``faceunits01`` pack there is no face to
+    save and the tool refuses (``empty_expression``), which reads as a failure
+    here the same way ``mpfb_set_face_units``' refusal does.
+    """
+    envelope = run.tools["mpfb_save_expression"](
+        name=EXPRESSION_NAME, subject=_character(run), overwrite=True)
+    if envelope.get("status") == "ok" and envelope["result"].get("saved"):
+        run.saved_expression = envelope["result"]["fragment"]
+    return envelope
+
+
+@_item("mpfb_apply_expressions", "changed", "requested", "applied_expressions", "aggregate",
+       "matches_stack", "discarded_face_units")
+def _apply_expressions(run: _Run) -> dict:
+    # The file the item above just saved, applied the way that tool's answer
+    # says to: replace, at 1.0. That makes the pair a round trip, and it leaves
+    # a stack on the character for mpfb_save_preset below to serialize.
+    fragment = run.saved_expression
+    if fragment is None:
+        installed = [entry["fragment"] for entry in (run.expressions or [])]
+        if not installed:
+            raise Skipped("nothing was saved and no expression is installed")
+        fragment = installed[0]
+    return run.tools["mpfb_apply_expressions"](
+        name=_character(run), expressions=[{"fragment": fragment, "weight": 1.0}],
+        mode="replace")
+
+
+@_item("mpfb_get_expression", "applied_expressions", "aggregate", "matches_stack",
+       "unexplained_face_units", "faceunits01_installed", "basemesh_name")
+def _get_expression(run: _Run) -> dict:
+    return run.tools["mpfb_get_expression"](name=_character(run))
 
 
 @_item("mpfb_add_rig", "rig_object_name", "basemesh_name", "family", "weights_loaded")
@@ -368,6 +424,10 @@ def _create_human_from_preset(run: _Run) -> dict:
 # finding it in their MPFB config directory can see where it came from, and
 # constant so that repeated runs leave one file rather than many.
 PRESET_NAME = "mpfbmcp_smoke_run"
+
+# The expression the save item writes and the apply item reads back, named and
+# kept constant for the same two reasons as PRESET_NAME.
+EXPRESSION_NAME = "mpfbmcp_smoke_run"
 
 
 def _character(run: _Run) -> str:
@@ -517,7 +577,7 @@ def run() -> dict:
             print("    {}".format(error), file=sys.stderr, flush=True)
         return dict(failed=1, exit_code=2)
 
-    report = Report("mpfb-mcp smoke run - twenty-five tools, default arguments")
+    report = Report("mpfb-mcp smoke run - one item per tool, default arguments")
 
     install = fixtures.check_install(tools)
     if not report.check("MPFB is loaded and initialized", install["usable"], install["state"]

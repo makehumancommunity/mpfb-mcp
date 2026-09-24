@@ -14,7 +14,7 @@ a thing two or more commands have to agree about, where disagreeing is a defect
 a caller cannot see: ``list_rigs`` predicts which file ``add_rig`` will load,
 ``list_assets`` reports the vocabulary ``add_asset`` resolves with, all three
 preset commands build ``<user config>/human.<name>.json`` the same way, and all
-four refitting commands decide the same way whether a refit would silently leave
+six refitting commands decide the same way whether a refit would silently leave
 the rig behind. One implementation is the only way to guarantee agreement;
 ``add_rig`` importing ``list_rigs`` would make the catalogue depend on the
 acting command and put a scan behind a handler.
@@ -36,17 +36,23 @@ away from the thing it reproduces. They are ordinary findings now that nothing
 compares these files against a second copy, so fix one *deliberately* and say
 in the commit which MPFB behaviour the new spelling still reproduces.
 
-**Seven modules**, and the count is not a coincidence: they are the seven
+**Ten modules**, and the count is not a coincidence: they are the ten
 concepts more than one command needed. ``preset_files``, ``rig_lookup``,
 ``asset_sections``, ``target_categories`` and ``modifier_reading`` arrived with
 FR 031's read-only commands; ``performed`` and ``refit_blocker`` with FR 032's
-mutating ones. Each mirrors a shared fragment from the generated-code path that
-FR 033 deleted, name for name, which is why the names are what they are.
+mutating ones. Each of those seven mirrors a shared fragment from the
+generated-code path that FR 033 deleted, name for name, which is why the names
+are what they are. FR 027 added three with no such ancestry:
+``artifact_names``, the name rule ``preset_files`` used to hold alone, now
+shared with saved expressions; ``expression_divergence``, the one comparison of
+stack and face three commands report; and ``expression_panel``, how two
+commands reach MPFB's expressions-library UI module.
 
-``performed`` is the plainest of the seven and the one exception to the
-``services`` rule above: it reads nothing out of MPFB, so it takes no services
-dict - it is one function over a dict the command has already finished
-building.
+``performed``, ``artifact_names`` and ``expression_panel`` are the exceptions
+to the ``services`` rule above: none reads anything out of MPFB's services, so
+none takes a services dict. ``performed`` is one function over a dict the
+command has already finished building, ``artifact_names`` works on a name and a
+path, and ``expression_panel`` takes MPFB's root package name.
 """
 
 __all__ = ()

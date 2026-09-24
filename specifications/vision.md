@@ -174,14 +174,14 @@ answer changes.
 
 | Area | An agent must be able to | Today |
 |---|---|---|
-| **Introspection** | ask what is already there, and what state it is in, before acting — always cheaply, and always getting an answer rather than an error | 6 tools |
-| **Catalogues** | learn what *could* be added, each entry named exactly as the acting tool will want it | 4 tools |
-| **Creation and modification** | build a character and change it: phenotype, detail morphs, rig, garments, materials, face — and undo a mistake; and **keep** it, as a preset that outlives the session | 15 tools |
+| **Introspection** | ask what is already there, and what state it is in, before acting — always cheaply, and always getting an answer rather than an error | 7 tools |
+| **Catalogues** | learn what *could* be added, each entry named exactly as the acting tool will want it | 5 tools |
+| **Creation and modification** | build a character and change it: phenotype, detail morphs, rig, garments, materials, face — and undo a mistake; and **keep** it, as a preset that outlives the session and a face as an expression the library can apply | 17 tools |
 | **Documentation** | answer "how does MPFB do X" without the client shipping its own copy of the manual | 2 tools |
 
-[README.md](../README.md) lists the twenty-seven that exist, grouped this way;
-[CLAUDE.md](../CLAUDE.md#the-twenty-seven-tools) gives one line each and points at the module
-docstring that explains it. **Twenty-seven tools become twenty-six bridge commands**, one for
+[README.md](../README.md) lists the thirty-one that exist, grouped this way;
+[CLAUDE.md](../CLAUDE.md#the-thirty-one-tools) gives one line each and points at the module
+docstring that explains it. **Thirty-one tools become thirty bridge commands**, one for
 one except `mpfb_list_docs`, as the migration proceeds — the count above is the count the bridge
 is aiming at, and a migration that changed it would be changing the product rather than the
 transport.

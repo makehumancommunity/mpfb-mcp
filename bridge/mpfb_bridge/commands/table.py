@@ -45,9 +45,11 @@ __all__ = (
 
 from . import add_asset
 from . import add_rig
+from . import apply_expressions
 from . import create_human
 from . import create_human_from_preset
 from . import generate_rigify_rig
+from . import get_expression
 from . import get_face_units
 from . import get_macro_details
 from . import get_mpfb_status
@@ -57,6 +59,7 @@ from . import get_status
 from . import list_asset_materials
 from . import list_assets
 from . import list_commands
+from . import list_expressions
 from . import list_objects
 from . import list_presets
 from . import list_rigs
@@ -64,6 +67,7 @@ from . import list_targets
 from . import list_urls
 from . import refit_human
 from . import remove_asset
+from . import save_expression
 from . import save_preset
 from . import set_asset_material
 from . import set_face_units
@@ -86,6 +90,12 @@ COMMANDS = {
         params=add_rig.PARAMS,
         requires_mpfb=True,
         summary=add_rig.SUMMARY),
+    "apply_expressions": Command(
+        name="apply_expressions",
+        handler=apply_expressions.apply_expressions,
+        params=apply_expressions.PARAMS,
+        requires_mpfb=True,
+        summary=apply_expressions.SUMMARY),
     "create_human": Command(
         name="create_human",
         handler=create_human.create_human,
@@ -109,6 +119,12 @@ COMMANDS = {
         params=generate_rigify_rig.PARAMS,
         requires_mpfb=True,
         summary=generate_rigify_rig.SUMMARY),
+    "get_expression": Command(
+        name="get_expression",
+        handler=get_expression.get_expression,
+        params=get_expression.PARAMS,
+        requires_mpfb=True,
+        summary=get_expression.SUMMARY),
     "get_face_units": Command(
         name="get_face_units",
         handler=get_face_units.get_face_units,
@@ -177,6 +193,12 @@ COMMANDS = {
         # against a broken install should still get an answer.
         requires_mpfb=False,
         summary=list_commands.SUMMARY),
+    "list_expressions": Command(
+        name="list_expressions",
+        handler=list_expressions.list_expressions,
+        params=list_expressions.PARAMS,
+        requires_mpfb=True,
+        summary=list_expressions.SUMMARY),
     "list_objects": Command(
         name="list_objects",
         handler=list_objects.list_objects,
@@ -227,6 +249,12 @@ COMMANDS = {
         params=remove_asset.PARAMS,
         requires_mpfb=True,
         summary=remove_asset.SUMMARY),
+    "save_expression": Command(
+        name="save_expression",
+        handler=save_expression.save_expression,
+        params=save_expression.PARAMS,
+        requires_mpfb=True,
+        summary=save_expression.SUMMARY),
     "save_preset": Command(
         name="save_preset",
         handler=save_preset.save_preset,

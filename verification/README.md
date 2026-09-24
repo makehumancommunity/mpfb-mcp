@@ -146,13 +146,21 @@ builds a whole second character, which is the only honest way to call that tool.
 - Compares the MakeHuman objects in the scene before and after: nothing that predates the run may
   disappear, and the equipped asset must be gone again. The compare is itself an item, so both are
   failures rather than footnotes.
-- **Exactly one file is written outside the `.blend`**, and it is the same file on every run:
+- **Exactly two files are written outside the `.blend`**, and they are the same two on every run:
   `human.mpfbmcp_smoke_run.json` in MPFB's user config directory, left there by the
-  `mpfb_save_preset` item (FR 025). The name says where it came from and is constant, so repeated
-  runs leave one file rather than a growing pile, and the item passes `overwrite=True` — the only
-  argument in the whole table that is not left at its default — because the default is correct and
-  would make the item pass once and fail forever after. Delete it by hand if you want it gone;
-  nothing here does. Before FR 025 this line said *nothing* outside the `.blend` was written, which
+  `mpfb_save_preset` item (FR 025), and `mpfbmcp_smoke_run.json` in the expressions directory of
+  MPFB's user data, left there by the `mpfb_save_expression` item (FR 027). The names say where
+  they came from and are constant, so repeated runs leave two files rather than a growing pile, and
+  both items pass `overwrite=True` — the only arguments in the whole table not left at their
+  default — because the default is correct and would make each item pass once and fail forever
+  after. **The expression is visible in MPFB's own expressions-library panel**, which the preset
+  is too, in MPFB's preset dropdown. FR 027 weighed keeping its item refusal-only instead and
+  did not: a mutating item must come back `performed: true`, and a smoke item that never writes
+  would never find out that writing broke. Delete them by hand if you want them gone; nothing here
+  does.
+- **One item leaves a custom property on the character**: `mpfb_apply_expressions` writes MPFB's
+  applied-expressions stack (`mpfb_applied_expressions`) on the run's basemesh, which the
+  `mpfb_save_preset` item then serializes. It is inside the `.blend` and goes with the character. Before FR 025 this line said *nothing* outside the `.blend` was written, which
   had been true since FR 013's three deliberate exceptions — probe targets in MPFB's user `custom`
   directory, `enhanced_settings.default.json` moved aside, a `.mhmat` written beside an asset —
   left with the checklists that needed them. The probe targets went to

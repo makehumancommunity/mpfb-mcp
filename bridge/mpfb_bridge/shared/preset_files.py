@@ -21,23 +21,14 @@ entry (``addressable``) rather than leaving the caller to find out.
 ``<user config>/human.<name>.json``, which is the namespace MPFB's own panels
 read and write. A second namespace would be two lists that disagree.
 
-The rule itself is a **whitelist**, and it is deliberately stricter than MPFB's.
-``savenewpresets.py`` rejects only an empty name and one containing a space; it
-does not reject ``/``, ``\\``, ``..`` or a leading dot, and
-``os.path.join(confdir, "human." + name + ".json")`` will happily escape the
-config directory with any of them. Strictness runs one way only: every name
-accepted here is one MPFB's panel would also accept, so the two never disagree
-about what exists. The space is rejected for exactly that reason rather than
-because a space in a filename is a problem.
-
-**This is the second copy of that rule and that is deliberate.**
-``mpfbmcp.preset_names`` carries it on the far side of the socket, where the
-authoritative check runs before anything is sent. This copy is **the last
-statement before ``open()``**, and it is here because a listening socket is
-reachable by anything on this machine, not only by mpfb-mcp. The two are run
-over one table of names by ``tests/test_save_preset.py``, because a
-disagreement between them would let a preset be written under a name that
-cannot be loaded back.
+The rule itself lives in [`artifact_names.py`](artifact_names.py), shared with
+``save_expression`` since
+[FR 027](../../../feature-requests/done/027-expression-library/README.md): the
+characters a name may hold are the same for a preset and a saved expression,
+and only the noun in the refusal and the path differ. This module keeps the
+preset half - the noun, the ``human.<name>.json`` shape and the directory - and
+re-exports the bound, the pattern and the two file-fact helpers under their
+old names so that nothing reading them had to change.
 
 Nothing here writes anything, creates a directory or populates an MPFB cache.
 ``update_list_of_human_presets()`` does a bare ``os.listdir(confdir)``, so a
@@ -71,52 +62,28 @@ __all__ = (
     "scan_preset_names",
 )
 
-import datetime
 import fnmatch
 import os
 import re
 
+from .artifact_names import NAME_MAX_LENGTH
+from .artifact_names import NAME_PATTERN
+from .artifact_names import file_facts
+from .artifact_names import modified_iso
+from .artifact_names import name_rejection
+
 PRESET_PREFIX = "human."
 PRESET_SUFFIX = ".json"
 
-# Long enough for any name a human types, short enough that the assembled path
-# cannot be the reason a write fails on a filesystem with a name limit.
-PRESET_NAME_MAX_LENGTH = 64
-
-# Letters, digits, underscore, hyphen, dot. Everything a path separator could be
-# made of is outside it, on every platform, which is what makes the escape
-# unreachable rather than merely unlikely.
-PRESET_NAME_PATTERN = "^[A-Za-z0-9_.-]+$"
+# The rule's bound and pattern, under the names this module has always given
+# them. Defined once, in artifact_names.py.
+PRESET_NAME_MAX_LENGTH = NAME_MAX_LENGTH
+PRESET_NAME_PATTERN = NAME_PATTERN
 
 
 def preset_name_rejection(name):
-    """Why this name may not become a preset file, as a sentence, or None.
-
-    A sentence rather than a bool: every caller of this puts the answer straight
-    into a refusal, and "invalid" on its own tells an agent nothing about which
-    character to drop.
-    """
-    if not isinstance(name, str):
-        return "A preset name must be a string, not " + type(name).__name__ + "."
-    if not name:
-        return "A preset name must not be empty."
-    if len(name) > PRESET_NAME_MAX_LENGTH:
-        return ("A preset name must be at most " + str(PRESET_NAME_MAX_LENGTH)
-                + " characters; this one is " + str(len(name)) + ".")
-    if name in (".", ".."):
-        return "'" + name + "' names a directory rather than a preset."
-    if name.startswith("."):
-        return "A preset name must not start with a dot."
-    if re.match(PRESET_NAME_PATTERN, name) is None:
-        # Named individually: an agent that built the name by joining a
-        # character's display name will otherwise retry with the same space.
-        illegal = sorted(set(
-            character for character in name
-            if re.match(PRESET_NAME_PATTERN, character) is None))
-        return ("A preset name may hold only letters, digits, '_', '-' and '.', so that it "
-                "cannot become a path. This one also holds: "
-                + ", ".join(repr(character) for character in illegal) + ".")
-    return None
+    """Why this name may not become a preset file, as a sentence, or None."""
+    return name_rejection(name, "preset")
 
 
 def config_directory(services):
@@ -216,41 +183,6 @@ def mpfb_presets(services, refresh):
     HumanService = services["HumanService"]
     names = HumanService.get_list_of_human_presets(as_list_enum=False, use_cache=not refresh)
     return list(names or [])
-
-
-def modified_iso(mtime):
-    """An mtime as local-time ISO 8601 with an offset, or None.
-
-    With the offset rather than as a bare timestamp: a preset's age is the
-    reason a caller reads this field at all, and a naive local time is a claim
-    nobody can check against their own clock.
-    """
-    try:
-        moment = datetime.datetime.fromtimestamp(mtime).astimezone()
-    except (OverflowError, OSError, ValueError):
-        return None
-    return moment.isoformat(timespec="seconds")
-
-
-def file_facts(path):
-    """``os.stat`` facts about one preset file, as a dict.
-
-    Every field here is **derived from the filesystem**, not recorded by MPFB
-    and not read out of the JSON: MPFB's own list is bare names and knows
-    nothing about size or age. ``exists: false`` is an ordinary answer - MPFB's
-    cached list can name a preset whose file has since been deleted.
-    """
-    facts = dict(exists=False, size_bytes=None, modified=None)
-    if path is None:
-        return facts
-    try:
-        stat = os.stat(path)
-    except OSError:
-        return facts
-    facts["exists"] = True
-    facts["size_bytes"] = int(stat.st_size)
-    facts["modified"] = modified_iso(stat.st_mtime)
-    return facts
 
 
 def preset_record(confdir, name):

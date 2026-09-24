@@ -23,14 +23,18 @@ module's own tests do not see each other's cache, and so that a module running
 after this one is not left looking at a faked "pack absent".
 """
 
+import os
 import sys
 
 import bpy
 
 from .._fixtures import Character as _Character
+from .._fixtures import expression_library
 from .._fixtures import only_these_data_roots
+from .._fixtures import redirected_locations
 from .._fixtures import result as _fixture_result
 from .._fixtures import services_or_skip as _services_or_skip
+from .._fixtures import write_loadable_mhclo
 from .._fixtures import write_target
 
 
@@ -243,3 +247,77 @@ def test_an_already_present_shapekey_is_reported_under_applied_not_loaded():
         assert applied_names == ["jawOpen"]
         assert abs(second["applied"][0]["previous_value"] - 0.2) < 1e-6
         assert abs(second["applied"][0]["new_value"] - 0.7) < 1e-6
+
+
+def test_a_write_reports_whether_the_stack_still_explains_the_face(tmp_path):
+    """FR 027 requirement 35: the computed divergence replaced the fixed warning.
+
+    Composing on a character with an empty stack *is* something to lose - the
+    next library change clears it - so it is reported; composing nothing is the
+    common case and is not (see ``expression_divergence_test.py``).
+    """
+    services = _services_or_skip()
+    with _Character() as character:
+        with expression_library(services, tmp_path):
+            answer = _result({
+                "name": character.basemesh.name,
+                "face_units": [{"face_unit": "jawOpen", "weight": 0.4}],
+                "refit": False,
+            })
+
+    assert answer["applied_expression_count"] == 0
+    assert answer["matches_stack"] is False
+    assert [(entry["face_unit"], entry["from_stack"])
+            for entry in answer["unexplained_face_units"]] == [("jawOpen", 0.0)]
+    assert "mpfb_save_expression" in answer["message"]
+    assert "A composed face is transient" not in answer["message"], \
+        "the fixed sentence left the response when the computed fields arrived"
+
+
+def test_a_refit_puts_the_selection_back(tmp_path):
+    """The selection rule every refitting command keeps, pinned for this one.
+
+    FR 026 left ``set_face_units`` without the ``finally`` that ``refit_human``
+    and ``set_targets`` put around ``refit()``, and FR 027 added it. **This test
+    does not fail without it on this install** - FR 027 checked, with the
+    garment equipped because ``ClothesService`` is the only way refit() reaches
+    ``bpy.ops`` at all, and the selection survived either way. So it pins the
+    outcome the rule promises rather than reproducing a failure; the restore is
+    there because the rule is, and because what ``ClothesService`` does to the
+    selection is MPFB's to change. Only user data is redirected, to a tree
+    holding the garment and the two targets this needs, because equipping reads
+    MPFB's own node trees out of ``mpfb_data``.
+    """
+    services = _services_or_skip()
+    face_service = services["FaceService"]
+    root = str(tmp_path)
+    write_target(os.path.join(root, "targets", "faceunits", "cheekPuff.target"))
+    write_target(os.path.join(root, "targets", "faceunits", "jawOpen.target"))
+    mhclo = write_loadable_mhclo(os.path.join(root, "clothes", "spike", "spike.mhclo"))
+    with _Character() as character:
+        with redirected_locations(services, user_data=root):
+            face_service.is_faceunits01_installed(force_recheck=True)
+            try:
+                equipped = _fixture_result("add_asset", {
+                    "name": character.basemesh.name, "path": mhclo, "asset_type": "Clothes"})
+                assert equipped["performed"] is True, equipped["message"]
+                bystander = bpy.data.objects.new("fr027_bystander", None)
+                bpy.context.scene.collection.objects.link(bystander)
+                bpy.context.view_layer.objects.active = bystander
+                for blender_object in bpy.context.view_layer.objects:
+                    blender_object.select_set(False)
+                answer = _result({
+                    "name": character.basemesh.name,
+                    "face_units": [{"face_unit": "jawOpen", "weight": 0.4}],
+                })
+                active = bpy.context.view_layer.objects.active
+                active_after = None if active is None else active.name
+                selected_after = sorted(blender_object.name for blender_object
+                                        in bpy.context.view_layer.objects
+                                        if blender_object.select_get())
+            finally:
+                face_service.is_faceunits01_installed(force_recheck=True)
+
+    assert answer["refit_performed"] is True
+    assert active_after == "fr027_bystander"
+    assert selected_after == []

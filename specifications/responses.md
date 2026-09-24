@@ -147,6 +147,17 @@ the asset's containing directory name against the asset names in the installed p
   are MPFB's names, annotated, not a directory listing dressed up as MPFB's answer), and the place
   the convention does not hold is named — a preset MPFB lists under a name these tools will not
   accept carries `addressable: false` rather than being quietly dropped or quietly offered.
+- **A comparison MPFB never makes is this kind too, and it owes one thing more: its tolerance.**
+  `matches_stack` and `unexplained_face_units` ([FR 027](../feature-requests/done/027-expression-library/README.md))
+  compare MPFB's own aggregate of the applied-expressions stack against the live shape keys; neither
+  side of the comparison is recorded anywhere as agreeing or not. The clauses above hold - the
+  derivation is from MPFB's own numbers (`aggregate_expression_stack()`, `read_current_expression()`),
+  never a recomputation standing in for them, and "nothing on the stack, nothing composed" is the
+  ordinary answer `true` - and a numeric comparison adds that **the tolerance is part of the
+  definition** and lives in one place: shape keys store 32-bit floats and expression files four
+  decimals, so exact equality would call every saved face unexplained. `clamped_face_units` is the
+  same kind again: MPFB clamps each unit's sum to `[0, 1]` and keeps no record that it did, so the
+  unclamped sum is recomputed over the same rows and reported beside the value MPFB applied.
 
 ## A response says which source answered it
 
@@ -252,6 +263,15 @@ And the same convention has a fourth form, seen from the other side:
   and because the invalidator takes no arguments and clears every asset's cached scan at once, the
   response says so explicitly through `cache_invalidated` rather than leaving a global side effect
   implicit in a per-asset call.
+
+And a fifth, where MPFB's UI says the opposite of what MPFB does:
+
+- **The tool reports what MPFB's own UI misdescribes.** A user-saved expression in user data is
+  hidden whenever a higher-priority data root holds a file of the same name, while MPFB's composer
+  panel and its data README both say user files take priority. `mpfb_list_expressions` reports each
+  hidden file under `shadowed`, with the file that hides it, and `mpfb_save_expression` refuses to
+  create one. A tool that followed the panel's description would report a file as available that
+  nothing in MPFB will ever load.
 
 Prefer describing what is actually on disk, and label the part MPFB will not show — rather than
 either papering over the difference or quietly inheriting the limitation. Where the difference is

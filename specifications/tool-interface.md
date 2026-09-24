@@ -63,7 +63,13 @@ ceiling, so the next drift is a failing test rather than a discovery.
   average, while the two acting tools did not — `mpfb_create_human_from_preset` is the only tool in
   the package with seven optional arguments, each of which changes what is built and none of which
   a caller can discover from a response. An above-average description needs a reason of that kind,
-  and it is not "the tool is important".
+  and it is not "the tool is important". [FR 027](../feature-requests/done/027-expression-library/README.md)
+  raised it to 68,300 for four tools that all came in **under** the average (921 to 1,660 B),
+  because it explained the one hard idea they share - that composing a face and applying a saved
+  expression write the same shape keys, and the second erases the first - **once**, in
+  `mpfb_set_face_units`' description, which grew by about 300 B to hold it, and had the other three
+  point there. A concept several tools share is explained in the tool a caller meets it in first,
+  not in each.
 - **The docstring crosses the wire verbatim**, indentation included: FastMCP takes `fn.__doc__`
   as it is written. `mpfbmcp.build_server()` dedents every description once, after registration,
   because eight spaces per line across twenty-five tools is twelve kilobytes of whitespace an agent
@@ -111,19 +117,31 @@ response still reports the valid values; the local check only means a typo never
 third case needs the same argument: naming the enum is not enough, the damage must precede the
 check.
 
+**A vocabulary this package defines is not an exception at all.** `mpfb_apply_expressions`' `mode`
+(`"merge"` or `"replace"`) is checked locally, and
+[FR 027](../feature-requests/done/027-expression-library/README.md) planned it as a third case of
+the exception above - but no MPFB function ever receives it. It selects between two ways the command
+builds the stack, so it cannot drift from anything MPFB or the user's disk holds, and the reason not
+to validate a vocabulary here does not apply to it. It is a shape, checked on both sides like any
+other: locally, and in the command's parameter contract (`choices`), which the dispatcher enforces
+before the handler runs.
+
 **An argument that becomes a path is a shape, not a vocabulary, and it is checked here.**
 `mpfb_save_preset` and `mpfb_create_human_from_preset` take a preset `name` that resolves to
-`human.<name>.json` in MPFB's user config directory, and a name carrying `/`, `\` or `..` would
+`human.<name>.json` in MPFB's user config directory, and `mpfb_save_expression` takes an expression
+`name` that resolves to `<name>.json` in the expressions directory of MPFB's user data - one rule
+for both, in `mpfbmcp.artifact_names`, with the noun in the refusal as its only argument; and a name carrying `/`, `\` or `..` would
 address — and on the saving side *write* — a file outside it. Which characters may appear in a
 filename cannot drift from anything on the user's disk, so this is the ordinary rule rather than an
 exception to it, and it is deliberately stricter than MPFB's own panel (which rejects only an empty
-name and one containing a space). Strictness runs one way only: every name accepted must be one
+name and one containing a space; the expression composer's save operator rejects only a path
+separator, `.` and `..`). Strictness runs one way only: every name accepted must be one
 MPFB would also accept, so the two never disagree about what exists — and where the reverse fails,
 the catalogue tool flags it (`mpfb_list_presets`' `addressable`) rather than letting a caller meet
 it as a refusal. The rule is also restated on the add-on side, as the last statement before
 `open()`, because a listening socket is reachable by anything on the machine; the two
-implementations are run over one table of names by `tests/test_save_preset.py` so they cannot
-drift. What that buys is in
+implementations are run over one table of names, as both nouns, by `tests/test_save_preset.py` so
+they cannot drift. What that buys is in
 [a tool whose effect is outside the `.blend`](mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more).
 
 **Structured input is taken as flat scalar arguments, not as a nested dict.** `mpfb_create_human`
@@ -257,3 +275,12 @@ takes them all, requires exactly one, and reports which one resolved and to what
   so hair added without it *becomes* clothes, permanently and silently. Where a defaulted argument
   changes what the character *is*, the tool requires it rather than inheriting the default, and says
   in its docstring that it diverges from MPFB's own signature for that reason.
+- **Where what the tool writes *is* one of the identifiers, it takes that one only.**
+  `mpfb_apply_expressions` takes `fragment` and not `path`, although `mpfb_list_expressions` reports
+  both. The tool does not load a file; it writes a stack row, and a stack row is a fragment. A path
+  would have to be converted back, and MPFB's own conversion
+  (`_compute_expression_library_relative_path()`) returns the bare basename for a file outside
+  every root - a row that would then resolve to some other file, or to none, on the next rebuild.
+  Taking the path would make the tool accept something it cannot store faithfully. The resolution
+  is still reported (`resolved_path` beside `listed_path`, per row), for the reason the clause
+  above gives.

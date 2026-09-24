@@ -324,12 +324,64 @@ now states as a standing pattern: probe the pack's own installed-check, report i
 dependent answer, refuse a write rather than succeeding emptily, and keep a per-item resolution
 failure (`could_not_load`) separately reportable even after the probe passes, since the probe tests
 one target and a partially installed pack passes it anyway. `refit` defaults to **true** here,
-unlike every other refitting tool, matching MPFB's composer-panel default. What it writes is
+unlike every other refitting tool — said here at the time to match MPFB's composer-panel default,
+which [FR 027](done/027-expression-library/README.md) found to be wrong: the composer's `auto_refit`
+is `false`, and the default was kept on its own merits. What it writes is
 transient — not saved by `mpfb_save_preset`, destroyed by anything that rebuilds MPFB's
 applied-expressions stack — which [mutating-tools.md](../specifications/mutating-tools.md#a-tool-whose-effect-is-known-in-advance-to-be-transient)
 now covers as its own case. A live check confirmed three things this side of the socket could not:
 `set_expression()` returns normally rather than raising with the pack absent; `mpfb_set_targets`
 cannot create a `!ex-` shape key from nothing but can write one that already exists; and refitting
 after composing an expression really does move a fitted eyebrow asset further than not refitting.
-Queued behind it: [FR 027](027-expression-library/README.md), the saved-expression library and the
-stack that applies it.
+Queued behind it: [FR 027](done/027-expression-library/README.md), the saved-expression library and
+the stack that applies it.
+
+## [FR 027](done/027-expression-library/README.md) — listing, applying and saving expressions
+
+Four tools over the *library* half of `FaceService`: `mpfb_list_expressions` (the installed
+expression files, addressed by `fragment`, with the files MPFB's scan drops reported as
+`unreadable` and `shadowed`), `mpfb_get_expression` (the applied-expressions stack on a character),
+`mpfb_apply_expressions` (change the stack, batched, `merge` or `replace`, and let MPFB rebuild the
+face) and `mpfb_save_expression` (keep the live face as an expression file). Thirty-one tools,
+thirty commands. **The effort turned on one comparison MPFB never makes**: the composer writes the
+`!ex-` shape keys directly, the library rebuilds them from the stack and clears first, so composed
+work dies silently on the next library change. `shared/expression_divergence.py` compares the
+stack's aggregate with the live face, and `mpfb_get_expression`, `mpfb_apply_expressions` and an
+extended `mpfb_set_face_units` all report it — `matches_stack`, `unexplained_face_units` — replacing
+the fixed "transient" sentence FR 026 put in every answer. Saving is the bridge between the halves,
+and the round trip it makes possible — compose, save, apply `replace`, preset — was run end to end
+and returned the composed face to within the file's four-decimal rounding.
+
+Decisions worth finding later. **`mpfb_save_expression` saves the shape keys, not the composer's
+sliders**, which MPFB's own save operator reads and `mpfb_set_face_units` never writes. **It
+refuses a name a higher-priority data root would hide** (`name_shadowed`): MPFB keeps the first
+root's file, user data is third, and MPFB's composer panel and data README both say the opposite —
+the live check confirmed the code. **MPFB's panel is kept honest** by calling `write_slider_values()`
+and `refresh_expression_sliders()` from its `useexpression` UI module, through `sys.modules`, which
+[architecture.md](../specifications/architecture.md#a-ui-module-with-no-service-behind-it) now
+records as a third case of reaching a UI module: calling one, where MPFB makes the same call after
+the same change. **The name rule was generalised rather than copied**: `preset_names.py` became
+`artifact_names.py` on both sides of the socket, the noun its only argument, and the drift test
+runs every name as a preset and as an expression. That touched shared code on both sides, a
+deliberate exception to "adding a tool touches exactly four things"; so did two new shared modules
+(`expression_divergence.py`, `expression_panel.py`), taking `shared/` from seven to ten.
+**`mode` is not a local-vocabulary exception** as the request planned: no MPFB function sees it, so
+it is a shape. **`mpfb_apply_expressions` takes `fragment` only**, because a stack row is one and a
+path converts back lossily.
+
+What the effort found by running things. A bridge round-trip test showed that
+`discarded_face_units`, as first written — the divergence measured *before* the call — reported the
+save-then-replace sequence as losing every composed unit, when it loses none; it is now the units the
+rebuild actually moved, measured on both sides. FR 026's reason for `mpfb_set_face_units`' `refit`
+default was wrong (the composer's `auto_refit` is `false`) and was corrected everywhere it was
+stated. `mpfb_set_face_units` also lacked the selection restore every other refitting command has
+around `refit()`; it was added to it and to `mpfb_apply_expressions`, though no disturbance could be
+provoked on this install even with a garment equipped, and the test that pins it says so. Three
+`FaceService` defects were filed as items 8-10 of `mpfb2/features/MCP_DISCOVERED_BUGS.md` — the
+shadowing, and FR 026's two (`set_expression()` cannot report failure; the pack probe's cache is
+never invalidated). Three candidates were deliberately not filed; the request says why.
+
+Verified by [`live_check.py`](done/027-expression-library/live_check.py) (23 checks, through the
+real tools over the socket to a headless Blender), 42 new bridge tests (349 in all), 42 new unit
+tests (423) and four smoke items; the smoke run is 33 items in 1.5 s, and now leaves a second file
+outside the `.blend`, which [verification/README.md](../verification/README.md) names.

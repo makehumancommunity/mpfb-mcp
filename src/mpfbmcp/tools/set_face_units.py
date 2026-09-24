@@ -16,9 +16,19 @@ a copy kept here could drift, and the payload's refusal comes back naming the
 closest legal spellings.
 
 **A composed face is transient.** It is not saved by `mpfb_save_preset` and is
-destroyed by anything that rebuilds MPFB's expression-library stack (loading
-another preset, applying a saved expression once that tool exists). It lives
-in the `.blend` and nowhere else - this tool does not author expression files.
+destroyed by anything that rebuilds MPFB's expression-library stack
+(`mpfb_apply_expressions`, loading a preset). It lives in the `.blend` and
+nowhere else until `mpfb_save_expression` writes it to an expression file. This
+description is where the two-mechanism model is explained for every expression
+tool, per FR 027's description-budget requirement; the others point here. Every
+answer carries the computed `matches_stack` / `unexplained_face_units` rather
+than a fixed warning, so the common case - nothing on the stack - reads as
+nothing to worry about.
+
+**`refit` defaults to true**, unlike every other refitting tool and unlike
+MPFB's composer panel (whose `auto_refit` is false; FR 026 said otherwise, and
+FR 027 corrected it). Composing across MCP is one batched call rather than a
+dragged slider, and garments do not follow the face without a refit.
 """
 
 from __future__ import annotations
@@ -143,13 +153,16 @@ def register(mcp: FastMCP) -> None:
         call's entries, which is the difference between "smile a bit more" and
         "make this face and nothing else".
 
-        `refit` (default **true**, unlike every other refitting tool here,
-        because it matches MPFB's own composer-panel default) re-fits clothes
-        and the rig to the new expression afterwards.
+        `refit` (default **true**, unlike every other refitting tool here:
+        composing is normally one call) re-fits clothes and the rig afterwards.
 
-        **A composed face is transient.** It is not saved by `mpfb_save_preset`
-        and is destroyed by anything that rebuilds MPFB's applied-expressions
-        stack. It exists only in the running `.blend`.
+        **A composed face is transient.** MPFB has two mechanisms over one set
+        of shape keys: this tool writes them directly, while saved expressions
+        live on a stack (`mpfb_get_expression`) that `mpfb_apply_expressions`
+        and preset loads rebuild the face from, **discarding anything composed
+        here**. `result`'s `matches_stack` is false when the face now differs
+        from the stack, and `unexplained_face_units` lists what the next rebuild
+        would overwrite. `mpfb_save_expression` keeps a composed face.
 
         `result` carries `applied` - one entry per unit actually written, with
         `previous_value` and `new_value` - plus `loaded_from_disk` (units whose
