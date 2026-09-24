@@ -74,10 +74,9 @@ __all__ = (
 import json
 import os
 
-import bpy
-
 from ..log import get_logger
 from ..shared import expression_panel
+from ..shared import subject_resolution
 from ..shared.artifact_names import file_facts
 from ..shared.artifact_names import name_rejection
 from ..shared.performed import with_performed
@@ -138,32 +137,13 @@ def _resolve(services, params):
         facts = file_facts(request.file_path)
         request.previous_file = facts if facts["exists"] else None
 
-    requested_subject = params["subject"]
-    request.subject_resolved_by = "active" if requested_subject is None else "name"
-    request.subject_message = None
-    if requested_subject is None:
-        request.subject = bpy.context.view_layer.objects.active
-        if request.subject is None:
-            request.subject_message = (
-                "No object name was given and no object is active in this Blender session, so "
-                "nothing was saved. Select a MakeHuman object, or call mpfb_list_objects and "
-                "pass one of its names.")
-    else:
-        request.subject = bpy.data.objects.get(requested_subject)
-        if request.subject is None:
-            request.subject_message = (
-                "No object named '{:s}' exists in this .blend file, so nothing was saved. Call "
-                "mpfb_list_objects to see what the current scene holds.".format(
-                    str(requested_subject)))
-
-    request.basemesh = None
-    if request.subject is not None:
-        request.basemesh = services["ObjectService"].find_object_of_type_amongst_nearest_relatives(
-            request.subject, "Basemesh")
-        if request.basemesh is None:
-            request.subject_message = (
-                "'{:s}' has no MakeHuman basemesh among its nearest relatives, so there is no "
-                "face to save.".format(request.subject.name))
+    # A miss is recorded, not returned: _refusal() judges the name and the file
+    # too, and decides which refusal comes first.
+    (request.basemesh, request.subject, request.subject_resolved_by,
+     request.subject_message) = subject_resolution.resolve_basemesh(
+         services, params["subject"],
+         not_done="nothing was saved",
+         not_a_character="there is no face to save")
     return request
 
 

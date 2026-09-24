@@ -28,9 +28,8 @@ __all__ = (
     "get_target_stack",
 )
 
-import bpy
-
 from ..log import get_logger
+from ..shared import subject_resolution
 from ..shared import target_categories
 from ..shared import target_rollup
 from ..validation import Param
@@ -60,37 +59,6 @@ PARAMS = (
 )
 
 SUMMARY = "Read the shape keys on one character, and the modeling categories they roll up into."
-
-def _resolve_basemesh(services, requested_name):
-    """The basemesh, the object asked about, and the sentence to say on a miss."""
-    if requested_name is None:
-        # The view layer rather than bpy.context.active_object: this runs from
-        # a timer or a background loop, not from a viewport operator.
-        subject = bpy.context.view_layer.objects.active
-        if subject is None:
-            return (None, None,
-                    "No object name was given and no object is active in this Blender session. "
-                    "Select a MakeHuman object, or call mpfb_list_objects and pass one of its "
-                    "names.")
-    else:
-        subject = bpy.data.objects.get(requested_name)
-        if subject is None:
-            return (None, None,
-                    "No object named '{:s}' exists in this .blend file. Call mpfb_list_objects "
-                    "to see what the current scene holds.".format(str(requested_name)))
-
-    # Any object in the character's family resolves to the basemesh that owns
-    # the shape keys - the caller may well be holding the name of the rig or of
-    # a garment, since that is what list_objects hands out.
-    basemesh = services["ObjectService"].find_object_of_type_amongst_nearest_relatives(
-        subject, "Basemesh")
-    if basemesh is None:
-        return (None, subject,
-                "'{:s}' has no MakeHuman basemesh among its nearest relatives, so it has no "
-                "target stack. Call mpfb_get_object_info to see what it is related "
-                "to.".format(subject.name))
-    return (basemesh, subject, None)
-
 
 def _nothing_found(subject, subject_resolved_by, message, offset, limit):
     return dict(
@@ -152,8 +120,8 @@ def get_target_stack(params, resolution):  # pylint: disable=too-many-locals
     offset = params["offset"]
     needle = name_contains.strip().lower() if name_contains is not None else None
 
-    subject_resolved_by = "active" if requested_name is None else "name"
-    basemesh, subject, message = _resolve_basemesh(services, requested_name)
+    basemesh, subject, subject_resolved_by, message = subject_resolution.resolve_basemesh(
+        services, requested_name, not_a_character="it has no target stack")
     if basemesh is None:
         _LOG.debug("get_target_stack: no basemesh resolved from %r", requested_name)
         return _nothing_found(subject, subject_resolved_by, message, offset, limit)

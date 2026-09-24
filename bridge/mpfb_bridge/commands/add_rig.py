@@ -65,6 +65,7 @@ import bpy
 
 from ..log import get_logger
 from ..shared import rig_lookup
+from ..shared import subject_resolution
 from ..shared.performed import with_performed
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
@@ -162,37 +163,6 @@ def _armature_modifier_for(mesh_object, armature_object):
 
 def _object_names():
     return set(blender_object.name for blender_object in bpy.data.objects)
-
-
-def _resolve(services, requested_name):
-    """The basemesh to rig, the object asked about, and the sentence on a miss."""
-    if requested_name is None:
-        subject = bpy.context.view_layer.objects.active
-        if subject is None:
-            return (None, None,
-                    "No object name was given and no object is active in this Blender session, so "
-                    "no rig was added. Select a MakeHuman object, or call mpfb_list_objects and "
-                    "pass one of its names.")
-    else:
-        subject = bpy.data.objects.get(requested_name)
-        if subject is None:
-            return (None, None,
-                    "No object named '{:s}' exists in this .blend file, so no rig was added. Call "
-                    "mpfb_list_objects to see what the current scene holds.".format(
-                        str(requested_name)))
-
-    # The same call MPFB's own rig panels make: the caller may name a garment or
-    # the rig of a *different* character - the names list_objects hands out -
-    # and the object actually rigged is reported back rather than the argument
-    # echoed.
-    basemesh = services["ObjectService"].find_object_of_type_amongst_nearest_relatives(
-        subject, "Basemesh")
-    if basemesh is None:
-        return (None, subject,
-                "'{:s}' has no MakeHuman basemesh among its nearest relatives, so there is "
-                "nothing to rig. Rigs attach to a basemesh; call mpfb_get_object_info to see what "
-                "this object is related to.".format(subject.name))
-    return (basemesh, subject, None)
 
 
 def _rig_resolution(services, requested_identifier, requested_family):
@@ -364,8 +334,10 @@ def add_rig(params, resolution_context):  # pylint: disable=too-many-locals
     import_weights = params["import_weights"]
 
     requested_family = rig_lookup.family_of(requested_identifier)
-    subject_resolved_by = "active" if requested_name is None else "name"
-    basemesh, subject, message = _resolve(services, requested_name)
+    basemesh, subject, subject_resolved_by, message = subject_resolution.resolve_basemesh(
+        services, requested_name,
+        not_done="no rig was added",
+        not_a_character="there is nothing to rig, since rigs attach to a basemesh")
 
     resolution = _rig_resolution(services, requested_identifier, requested_family)
 

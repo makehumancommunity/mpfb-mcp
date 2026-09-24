@@ -47,6 +47,7 @@ __all__ = (
     "dispatch",
     "expression_library",
     "linked_plain_object",
+    "nothing_active",
     "only_these_data_roots",
     "redirected_locations",
     "resolution_module",
@@ -170,6 +171,26 @@ def linked_plain_object(name):
     plain = bpy.data.objects.new(name, bpy.data.meshes.new(name + "Mesh"))
     bpy.context.scene.collection.objects.link(plain)
     return plain
+
+
+@contextlib.contextmanager
+def nothing_active():
+    """Run the block with no active object, and put the previous one back.
+
+    The state a caller is in after deselecting everything, and one no command
+    can produce: every command that creates something makes it active.
+    """
+    view_layer = bpy.context.view_layer
+    previous = view_layer.objects.active
+    view_layer.objects.active = None
+    try:
+        yield
+    finally:
+        try:
+            view_layer.objects.active = previous
+        except ReferenceError:
+            # The block deleted it, which is the block's own business.
+            pass
 
 
 # What a fake target file holds: MPFB's own format, one

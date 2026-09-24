@@ -57,6 +57,7 @@ __all__ = (
 import bpy
 
 from ..log import get_logger
+from ..shared import subject_resolution
 from ..shared.performed import with_performed
 from ..validation import Param
 from ..validation import TYPE_STRING
@@ -137,25 +138,6 @@ def _blocked(subject, subject_resolved_by, reason, message, **extra):
     )
     answer.update(extra)
     return with_performed(answer, False)
-
-
-def _resolve(requested_name):
-    """The object asked about, and the sentence on a miss."""
-    if requested_name is None:
-        subject = bpy.context.view_layer.objects.active
-        if subject is None:
-            return (None,
-                    "No object name was given and no object is active in this Blender session, so "
-                    "nothing was generated. Select a MakeHuman object, or call mpfb_list_objects "
-                    "and pass one of its names.")
-        return (subject, None)
-    subject = bpy.data.objects.get(requested_name)
-    if subject is None:
-        return (None,
-                "No object named '{:s}' exists in this .blend file, so nothing was generated. "
-                "Call mpfb_list_objects to see what the current scene holds.".format(
-                    str(requested_name)))
-    return (subject, None)
 
 
 def _survey(services, subject):
@@ -269,8 +251,10 @@ def generate_rigify_rig(params, resolution):  # pylint: disable=too-many-locals
     requested_rig_name = params["rig_name"]
     meta_rig_action = params["meta_rig_action"]
 
-    subject_resolved_by = "active" if requested_name is None else "name"
-    subject, message = _resolve(requested_name)
+    # The subject only: a meta rig is found among its relatives by _survey(),
+    # not by way of a basemesh.
+    subject, subject_resolved_by, message = subject_resolution.resolve_subject(
+        requested_name, not_done="nothing was generated")
 
     meta_rig = None
     generated_present = []

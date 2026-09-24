@@ -41,9 +41,8 @@ __all__ = (
     "get_expression",
 )
 
-import bpy
-
 from ..log import get_logger
+from ..shared import subject_resolution
 from ..shared.expression_divergence import divergence
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
@@ -62,31 +61,6 @@ PARAMS = (
 
 SUMMARY = ("Read a character's applied-expressions stack, and whether it explains the "
            "character's live face.")
-
-
-def _resolve(services, requested_name):
-    """The basemesh to read, the object asked about, and the sentence on a miss."""
-    if requested_name is None:
-        subject = bpy.context.view_layer.objects.active
-        if subject is None:
-            return (None, None,
-                    "No object name was given and no object is active in this Blender session. "
-                    "Select a MakeHuman object, or call mpfb_list_objects and pass one of its "
-                    "names.")
-    else:
-        subject = bpy.data.objects.get(requested_name)
-        if subject is None:
-            return (None, None,
-                    "No object named '{:s}' exists in this .blend file. Call mpfb_list_objects "
-                    "to see what the current scene holds.".format(str(requested_name)))
-
-    basemesh = services["ObjectService"].find_object_of_type_amongst_nearest_relatives(
-        subject, "Basemesh")
-    if basemesh is None:
-        return (None, subject,
-                "'{:s}' has no MakeHuman basemesh among its nearest relatives, so it has no "
-                "expression to read.".format(subject.name))
-    return (basemesh, subject, None)
 
 
 def _message_for(basemesh, compared, installed):
@@ -124,8 +98,8 @@ def get_expression(params, resolution):
     installed = bool(services["FaceService"].is_faceunits01_installed(
         force_recheck=params["refresh"]))
 
-    subject_resolved_by = "active" if requested_name is None else "name"
-    basemesh, subject, message = _resolve(services, requested_name)
+    basemesh, subject, subject_resolved_by, message = subject_resolution.resolve_basemesh(
+        services, requested_name, not_a_character="it has no expression to read")
     if basemesh is None:
         _LOG.debug("get_expression: no basemesh resolved from %r", requested_name)
         return dict(

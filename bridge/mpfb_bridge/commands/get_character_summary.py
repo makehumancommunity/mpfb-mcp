@@ -13,8 +13,9 @@ of [`shared/`](../shared/__init__.py), and reported under that command's field
 names:
 
 - ``phenotype`` - [`macro_reading.py`](../shared/macro_reading.py), as
-  ``get_macro_details``. The subject is resolved there too, so it resolves
-  exactly as that command's does.
+  ``get_macro_details``. The subject is resolved by
+  [`subject_resolution.py`](../shared/subject_resolution.py), as every
+  command's is, so it resolves exactly as that command's does.
 - ``rig``, ``assets`` and ``skin`` - [`asset_info.py`](../shared/asset_info.py),
   as ``get_object_info``: the rig's entry is the one ``get_object_info`` gives
   the rig among the basemesh's relatives, the assets are those relatives, and
@@ -73,6 +74,7 @@ import sys
 from ..log import get_logger
 from ..shared import asset_info
 from ..shared import macro_reading
+from ..shared import subject_resolution
 from ..shared import target_categories
 from ..shared import target_rollup
 from ..shared.expression_divergence import divergence
@@ -211,8 +213,7 @@ def get_character_summary(params, resolution):
     services = resolution.services
 
     requested_name = params["name"]
-    subject_resolved_by = "active" if requested_name is None else "name"
-    basemesh, subject, message = macro_reading.resolve_basemesh(
+    basemesh, subject, subject_resolved_by, message = subject_resolution.resolve_basemesh(
         services, requested_name, not_a_character="it is not part of a character")
 
     if basemesh is None:

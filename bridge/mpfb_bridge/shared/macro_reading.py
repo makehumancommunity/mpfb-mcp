@@ -6,10 +6,10 @@ A character's phenotype, read exactly as it is stored.
 ``commands/``. ``get_macro_details`` reports everything here;
 ``get_character_summary`` reports a subset of it under the same names, and a
 summary that read the phenotype its own way would be a second opinion the
-caller has no means of settling. That is also why the **basemesh resolution**
-lives here rather than in either command: the summary promises to resolve its
-subject exactly as ``get_macro_details`` does, and one function is the only
-way that promise stays true.
+caller has no means of settling. Which basemesh is read is not decided here:
+both commands resolve their subject through
+[`subject_resolution.py`](subject_resolution.py), like every other command
+that takes one.
 
 The eleven macro sliders - gender, age, muscle, weight, the three race weights
 and the rest - are what make a MakeHuman character the body it is. They live as
@@ -58,12 +58,9 @@ __all__ = (
     "RACE_NAMES",
     "RACE_SUM_TOLERANCE",
     "read_phenotype",
-    "resolve_basemesh",
 )
 
 import sys
-
-import bpy
 
 RACE_NAMES = ("asian", "caucasian", "african")
 
@@ -156,46 +153,6 @@ def _drifted(basemesh, stack, current_macro_shapekeys):
         if abs(float(block.value) - entry["weight"]) > DRIFT_TOLERANCE:
             return True
     return False
-
-
-def resolve_basemesh(services, requested_name,
-                     not_a_character="it is not part of a character with macro details"):
-    """The basemesh to read, the object asked about, and the sentence on a miss.
-
-    ``not_a_character`` finishes the sentence said when the subject resolves but
-    has no basemesh among its relatives - the one part of the miss that depends
-    on which question was being asked.
-    """
-    if requested_name is None:
-        # The view layer rather than bpy.context.active_object, for the reason
-        # given in get_object_info: this runs from a timer, not an operator.
-        subject = bpy.context.view_layer.objects.active
-        if subject is None:
-            return (None, None,
-                    "No object name was given and no object is active in this Blender session. "
-                    "Select a MakeHuman object, or call mpfb_list_objects and pass one of its "
-                    "names.")
-    else:
-        # bpy.data.objects rather than the scene: object names are unique across
-        # the whole .blend, and an object outside the current scene still has
-        # readable macro details.
-        subject = bpy.data.objects.get(requested_name)
-        if subject is None:
-            return (None, None,
-                    "No object named '{:s}' exists in this .blend file. Call mpfb_list_objects "
-                    "to see what the current scene holds.".format(str(requested_name)))
-
-    # The same call MPFB's own macro panel makes, which is what lets the caller
-    # pass the name of the rig or of a shirt rather than having to know which
-    # object owns the properties.
-    basemesh = services["ObjectService"].find_object_of_type_amongst_nearest_relatives(
-        subject, "Basemesh")
-    if basemesh is None:
-        return (None, subject,
-                "'{:s}' has no MakeHuman basemesh among its nearest relatives, so {:s}. Call "
-                "mpfb_get_object_info to see what it is related to.".format(
-                    subject.name, not_a_character))
-    return (basemesh, subject, None)
 
 
 def read_phenotype(services, basemesh):

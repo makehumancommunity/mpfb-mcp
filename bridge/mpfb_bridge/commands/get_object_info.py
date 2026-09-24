@@ -19,14 +19,14 @@ decisions there that look like oversights - three ``asset_info`` shapes, two
 entry shapes, ``rigify_role`` asked of typed objects, nothing selected in order
 to be inspected. It moved there so that ``get_character_summary`` reports a
 character's rig, assets and skin from the same walk
-([FR 034](../../../feature-requests/done/034-character-summary/README.md)). What is
-left here is resolving the subject and the answer's shape, and one decision of
-this command's own:
+([FR 034](../../../feature-requests/done/034-character-summary/README.md)). The
+subject is resolved by [`shared/subject_resolution.py`](../shared/subject_resolution.py),
+like every other command's, and what is left here is the answer's shape.
 
-- **``bpy.data.objects`` is searched by name, not the scene.** Object names are
-  unique across the whole ``.blend``, and "exists, but not in this scene" is a
-  far more useful answer than a bare "not found" - which is also why every
-  entry carries ``in_current_scene``.
+**That the file is searched by name, not the scene, matters most here.** Object
+names are unique across the whole ``.blend``, and "exists, but not in this
+scene" is a far more useful answer than a bare "not found" - which is also why
+every entry carries ``in_current_scene``.
 """
 
 __all__ = (
@@ -35,10 +35,9 @@ __all__ = (
     "get_object_info",
 )
 
-import bpy
-
 from ..log import get_logger
 from ..shared import asset_info
+from ..shared import subject_resolution
 from ..validation import Param
 from ..validation import TYPE_STRING
 
@@ -51,27 +50,6 @@ PARAMS = (
 )
 
 SUMMARY = "Identify one object, what it was made from, and the objects that belong with it."
-
-
-def _resolve(requested_name):
-    """The object to report on, and the sentence to say when there is none."""
-    if requested_name is None:
-        # The view layer rather than bpy.context.active_object: this code runs
-        # from a timer or a background loop, not from a viewport operator, and
-        # the view-layer form does not depend on which UI area happens to be
-        # current. It is None whenever nothing is active, which is an answer.
-        found = bpy.context.view_layer.objects.active
-        if found is None:
-            return (None, "No object name was given and no object is active in this Blender "
-                          "session, so there is nothing to report on. Select an object, or call "
-                          "mpfb_list_objects and pass one of its names.")
-        return (found, None)
-
-    found = bpy.data.objects.get(requested_name)
-    if found is None:
-        return (None, "No object named '{:s}' exists in this .blend file. Call mpfb_list_objects "
-                      "to see what the current scene holds.".format(str(requested_name)))
-    return (found, None)
 
 
 def _message_for(blender_object, object_type, rigify_role, in_scene, related_count):
@@ -108,8 +86,15 @@ def get_object_info(params, resolution):
     object_service = lookup.services["ObjectService"]
 
     requested_name = params["name"]
-    resolved_from = "active_object" if requested_name is None else "name"
-    blender_object, message = _resolve(requested_name)
+    # Any object at all is a subject here, so the caller is not told to select
+    # a MakeHuman one.
+    blender_object, resolved_by, message = subject_resolution.resolve_subject(
+        requested_name, select="an object")
+    # This answer says "active_object" where the seventeen other commands say
+    # "active", under a different key. Renaming either breaks a caller, so the
+    # difference is kept on purpose and recorded in NEXT_STEPS.md
+    # ("resolved_from and subject_resolved_by").
+    resolved_from = "active_object" if resolved_by == "active" else resolved_by
 
     if blender_object is None:
         _LOG.debug("get_object_info: nothing resolved from %r", requested_name)

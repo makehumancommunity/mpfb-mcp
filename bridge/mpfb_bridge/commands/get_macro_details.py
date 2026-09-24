@@ -17,11 +17,11 @@ successful answer, not an error.
 **How the phenotype is read is not in this module.** It is in
 [`shared/macro_reading.py`](../shared/macro_reading.py), with the three
 decisions a reimplementation would undo - nothing is recalculated, the macro
-shape keys are read undecoded, the values come through ``TargetService`` - and
-with the basemesh resolution, because ``get_character_summary`` reports a
-subset of this answer and promises to resolve its subject exactly as this does
-([FR 034](../../../feature-requests/done/034-character-summary/README.md)). What is
-left here is the answer's shape and its message.
+shape keys are read undecoded, the values come through ``TargetService`` -
+because ``get_character_summary`` reports a subset of this answer
+([FR 034](../../../feature-requests/done/034-character-summary/README.md)). The
+subject is resolved by [`shared/subject_resolution.py`](../shared/subject_resolution.py),
+as every command's is. What is left here is the answer's shape and its message.
 
 ``macro_drift`` is the one field that answers the comparison
 ``macro_target_stack`` and ``current_macro_shapekeys`` invite, rather than
@@ -39,6 +39,7 @@ import bpy
 
 from ..log import get_logger
 from ..shared import macro_reading
+from ..shared import subject_resolution
 from ..validation import Param
 from ..validation import TYPE_STRING
 
@@ -80,8 +81,9 @@ def get_macro_details(params, resolution):
     services = resolution.services
 
     requested_name = params["name"]
-    subject_resolved_by = "active" if requested_name is None else "name"
-    basemesh, subject, message = macro_reading.resolve_basemesh(services, requested_name)
+    basemesh, subject, subject_resolved_by, message = subject_resolution.resolve_basemesh(
+        services, requested_name,
+        not_a_character="it is not part of a character with macro details")
 
     if basemesh is None:
         _LOG.debug("get_macro_details: no basemesh resolved from %r", requested_name)

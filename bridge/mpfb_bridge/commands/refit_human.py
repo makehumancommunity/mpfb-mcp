@@ -51,6 +51,7 @@ __all__ = (
 import bpy
 
 from ..log import get_logger
+from ..shared import subject_resolution
 from ..shared.performed import with_performed
 from ..shared.refit_blocker import rig_refit_is_blocked
 from ..validation import Param
@@ -98,37 +99,6 @@ def _stamped(result):
     return with_performed(result, result["refit_performed"])
 
 
-def _resolve(services, requested_name):
-    """The basemesh to refit, the object asked about, and the sentence on a miss."""
-    if requested_name is None:
-        # The view layer rather than bpy.context.active_object: this runs from a
-        # timer in the add-on's own context, not from a viewport operator.
-        subject = bpy.context.view_layer.objects.active
-        if subject is None:
-            return (None, None,
-                    "No object name was given and no object is active in this Blender session, so "
-                    "nothing was refitted. Select a MakeHuman object, or call mpfb_list_objects "
-                    "and pass one of its names.")
-    else:
-        subject = bpy.data.objects.get(requested_name)
-        if subject is None:
-            return (None, None,
-                    "No object named '{:s}' exists in this .blend file, so nothing was refitted. "
-                    "Call mpfb_list_objects to see what the current scene holds.".format(
-                        str(requested_name)))
-
-    # refit() makes this same call and raises when it comes back None. Making it
-    # here first turns that into an answer.
-    basemesh = services["ObjectService"].find_object_of_type_amongst_nearest_relatives(
-        subject, "Basemesh")
-    if basemesh is None:
-        return (None, subject,
-                "'{:s}' has no MakeHuman basemesh among its nearest relatives, so there is "
-                "nothing to refit it to. Call mpfb_get_object_info to see what it is related "
-                "to.".format(subject.name))
-    return (basemesh, subject, None)
-
-
 def _message_for(basemesh, mesh_assets, rig, subrigs, refit_incomplete_reason):
     """What happened, said once, in the order a reader wants it."""
     parts = ["Refitted {:d} mesh asset(s) to basemesh '{:s}'.".format(
@@ -149,8 +119,12 @@ def refit_human(params, resolution):
     object_service = services["ObjectService"]
 
     requested_name = params["name"]
-    subject_resolved_by = "active" if requested_name is None else "name"
-    basemesh, subject, message = _resolve(services, requested_name)
+    # refit() finds the basemesh the same way and raises when it comes back
+    # None. Resolving it here first turns that into an answer.
+    basemesh, subject, subject_resolved_by, message = subject_resolution.resolve_basemesh(
+        services, requested_name,
+        not_done="nothing was refitted",
+        not_a_character="there is nothing to refit it to")
 
     if basemesh is None:
         _LOG.debug("refit_human: no basemesh resolved from %r", requested_name)

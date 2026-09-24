@@ -69,6 +69,15 @@ only change a caller can see is listed in requirement 3.
    at `mpfb_get_object_info` will start to do so: `get_face_units`, `get_expression`,
    `set_face_units`, `apply_expressions` and `save_expression`. The census found no reason for
    them to be different ([census.md](census.md#subject-resolution)).
+
+   **Five more were decided during implementation**, because one sentence shape could not
+   produce them word for word without a parameter per exception. The user chose one shape over
+   the extra parameters. `add_asset`, `add_rig` and `set_skin` fold their explanation into the
+   phrase ("there is nothing to equip, since mesh assets attach to a basemesh") instead of
+   continuing after a semicolon. Those three and `save_preset` now say "what it is related to"
+   rather than "what this object is related to". And `get_object_info`'s first miss drops
+   ", so there is nothing to report on", the clause its second miss never had, and takes the
+   reading form. The subject resolver's snapshot diff names exactly these ten sentences.
 4. **No response field changes.** `found`, `subject_name`, `basemesh_name`, `subject_resolved_by`,
    every `error` and `blocked_by` slug, and the order in which a command checks its refusals are
    all the same before and after. `get_object_info` keeps its `resolved_from: "active_object"`.
