@@ -237,8 +237,7 @@ def _compare_rig_assets_skin(summary, tools, name):
               skeletons)
     else:
         rig_info = ok(tools["mpfb_get_object_info"](name=rig["name"]), "get_object_info rig")
-        expected = dict(name=rig_info["name"], object_type=rig_info["object_type"],
-                        in_current_scene=rig_info["in_current_scene"],
+        expected = dict(name=rig_info["name"], in_current_scene=rig_info["in_current_scene"],
                         rigify_role=rig_info["rigify_role"])
         expected.update(_pick(rig_info["asset_info"], ("rig_type", "rig_definition_path")))
         check("rig agrees with mpfb_get_object_info on the rig", rig == expected,
@@ -261,12 +260,42 @@ def _compare_rig_assets_skin(summary, tools, name):
     return info
 
 
+def _is_sub_list(short, long):
+    """Whether ``short`` is ``long`` with some entries left out, order kept."""
+    remaining = iter(long)
+    return all(any(entry == candidate for candidate in remaining) for entry in short)
+
+
+def _compare_capped(label, kept, whole, count, magnitude):
+    check("{:s}: the count is the whole rollup's".format(label), count == len(whole),
+          (count, len(whole)))
+    check("{:s}: a sub-list of mpfb_get_target_stack's, in its order".format(label),
+          _is_sub_list(kept, whole), (kept, whole))
+    dropped = [entry for entry in whole if entry not in kept]
+    if dropped:
+        check("{:s}: what was kept is the largest".format(label),
+              min(magnitude(entry) for entry in kept) >= max(
+                  magnitude(entry) for entry in dropped))
+    else:
+        check("{:s}: uncut, so equal to mpfb_get_target_stack's".format(label), kept == whole)
+
+
 def _compare_targets(summary, tools, name):
     stack = ok(tools["mpfb_get_target_stack"](name=name), "get_target_stack")
-    shared = ("modifiers", "asymmetries", "counts_by_kind", "total_count")
-    check("targets agree with mpfb_get_target_stack's defaults",
-          summary["targets"] == _pick(stack, shared),
-          (summary["targets"], _pick(stack, shared)))
+    targets = summary["targets"]
+    for key in ("counts_by_kind", "total_count"):
+        check("targets.{:s} agrees with mpfb_get_target_stack's defaults".format(key),
+              targets[key] == stack[key], (targets[key], stack[key]))
+    check("targets.modifier_count is mpfb_get_target_stack's own",
+          targets["modifier_count"] == stack["modifier_count"])
+    _compare_capped("modifiers", targets["modifiers"], stack["modifiers"],
+                    targets["modifier_count"], lambda entry: abs(entry["value"]))
+    _compare_capped("asymmetries", targets["asymmetries"], stack["asymmetries"],
+                    targets["asymmetry_count"], lambda entry: abs(entry["difference"]))
+    check("rollup_truncated says whether anything was cut",
+          targets["rollup_truncated"] == (
+              len(targets["modifiers"]) < len(stack["modifiers"])
+              or len(targets["asymmetries"]) < len(stack["asymmetries"])))
     return stack
 
 
@@ -293,7 +322,9 @@ def _compare_face(summary, tools, name):
 def _timed(call):
     started = time.perf_counter()
     envelope = call()
-    return envelope, time.perf_counter() - started
+    elapsed = time.perf_counter() - started
+    ok(envelope, "a timed call")
+    return envelope, elapsed
 
 
 def _latency(tools, name, rig_name):
@@ -315,15 +346,16 @@ def _latency(tools, name, rig_name):
 def check_worst_case(tools):
     name = build_worst_case(tools)
     print("worst-case character: {!r}".format(name))
-    # Asked by a garment's name, so that the family resolution is exercised.
+    # Asked by another member's name, so that the family resolution is exercised.
     garment = [member for member in family_of(tools, name) if member != name][0]
     envelope = tools["mpfb_get_character_summary"](name=garment)
     summary = ok(envelope, "get_character_summary")
-    size = len(json.dumps(envelope, separators=(",", ":")))
+    # Measured as the bridge sends it: json.dumps with its default separators.
+    size = len(json.dumps(envelope))
     print(json.dumps(summary, indent=1))
 
     check("found", summary["found"] is True)
-    check("resolved from a garment to the basemesh", summary["basemesh_name"] == name
+    check("resolved from another family member to the basemesh", summary["basemesh_name"] == name
           and summary["subject_name"] == garment, (summary["subject_name"],
                                                     summary["basemesh_name"]))
     _compare_phenotype(summary, tools, garment)
@@ -337,10 +369,12 @@ def check_worst_case(tools):
           sorted(set(row["object_type"] for row in summary["assets"])) == sorted(
               ["Proxymeshes", "Eyes", "Eyebrows", "Eyelashes", "Hair", "Teeth", "Tongue",
                "Clothes"]), [row["object_type"] for row in summary["assets"]])
+    # MPFB's identify_material() vocabulary, not mpfb_set_skin's skin_type.
     check("the skin is the ENHANCED one asked for",
-          summary["skin"]["material_type"] == "ENHANCED", summary["skin"])
-    check("dozens of modifiers are reported", len(summary["targets"]["modifiers"]) >= 30,
-          len(summary["targets"]["modifiers"]))
+          summary["skin"]["material_type"] == "enhanced_skin", summary["skin"])
+    check("dozens of modifiers were set, and the rollup was cut",
+          summary["targets"]["modifier_count"] >= 40 and summary["targets"]["rollup_truncated"],
+          summary["targets"]["modifier_count"])
     check("the composed units are unexplained by the stack",
           summary["face"]["matches_stack"] is False
           and set(entry["face_unit"] for entry in summary["face"]["unexplained_face_units"])

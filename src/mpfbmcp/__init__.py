@@ -96,9 +96,10 @@ def build_server() -> FastMCP:
             "alternatives with mpfb_list_asset_materials - they are not in "
             "mpfb_list_assets' answer - and apply one with "
             "mpfb_set_asset_material. To change an existing "
-            "character rather than create one, read its phenotype with "
-            "mpfb_get_macro_details first and change only what should differ "
-            "with mpfb_set_macro_details, which leaves unnamed sliders alone. "
+            "character rather than create one, read it with "
+            "mpfb_get_character_summary first - one call for its phenotype, "
+            "rig, assets, skin, morphs and face - and change only what should "
+            "differ: mpfb_set_macro_details leaves unnamed sliders alone. "
             "For the individual morphs below the phenotype level, read "
             "mpfb_get_target_stack and write mpfb_set_targets - which is "
             "batched, so send a whole series of modeling changes as one call "
@@ -155,17 +156,19 @@ def build_server() -> FastMCP:
 
     from mpfbmcp.tools import (
         add_asset, add_rig, apply_expressions, create_human, create_human_from_preset,
-        generate_rigify_rig, get_expression, get_face_units, get_macro_details, get_object_info,
-        get_status, get_target_stack, list_asset_materials, list_assets, list_docs,
-        list_expressions, list_objects, list_presets, list_rigs, list_targets, list_urls,
-        refit_human, remove_asset, save_expression, save_preset, set_asset_material,
-        set_face_units, set_macro_details, set_skin, set_targets, symmetrize_targets)
+        generate_rigify_rig, get_character_summary, get_expression, get_face_units,
+        get_macro_details, get_object_info, get_status, get_target_stack, list_asset_materials,
+        list_assets, list_docs, list_expressions, list_objects, list_presets, list_rigs,
+        list_targets, list_urls, refit_human, remove_asset, save_expression, save_preset,
+        set_asset_material, set_face_units, set_macro_details, set_skin, set_targets,
+        symmetrize_targets)
     add_asset.register(mcp)
     add_rig.register(mcp)
     apply_expressions.register(mcp)
     create_human.register(mcp)
     create_human_from_preset.register(mcp)
     generate_rigify_rig.register(mcp)
+    get_character_summary.register(mcp)
     get_expression.register(mcp)
     get_face_units.register(mcp)
     get_macro_details.register(mcp)

@@ -100,7 +100,17 @@ import mpfbmcp
 # pointed at from the others; `mpfb_save_expression` is the largest because it
 # is the second tool here to write a file nothing can undo. The ceiling moves by
 # what the five cost, and the paragraph of headroom stays a paragraph.
-DESCRIPTION_CEILING = 68300
+#
+# Raised from 68,300 to 69,600 by
+# [FR 034](../feature-requests/034-character-summary/README.md), which added
+# `mpfb_get_character_summary` - 1,315 B against a 2,160 B per-tool average -
+# and grew `mpfb_get_macro_details` by one line for `macro_drift`. The summary
+# is under the average because it restates no field: its description names the
+# detailed tool behind each section, which the request required since the
+# response carries no such map, and leaves each field's meaning to that tool's
+# description. The ceiling moves by what the two cost, and the paragraph of
+# headroom stays a paragraph.
+DESCRIPTION_CEILING = 69600
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -120,7 +130,11 @@ DESCRIPTION_CEILING = 68300
 # line each, which the request named in advance as the largest new cost - and
 # 423 B is `mpfb_apply_expressions`' batched `expressions` list, the same
 # array-of-object shape as `mpfb_set_face_units`.
-SCHEMA_CEILING = 12100
+#
+# Raised from 12,100 to 12,300 by FR 034: `mpfb_get_character_summary`'s one
+# nullable `name` is 161 B, the smallest schema a tool acting on a character can
+# have.
+SCHEMA_CEILING = 12300
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.
@@ -172,7 +186,7 @@ class DescriptionBudgetTests(unittest.TestCase):
         self.measured = measure()
 
     def test_every_registered_tool_is_measured(self) -> None:
-        self.assertEqual(31, len(self.measured))
+        self.assertEqual(32, len(self.measured))
 
     def test_total_description_size_is_under_the_ceiling(self) -> None:
         total = sum(entry["description_bytes"] for entry in self.measured)

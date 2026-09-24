@@ -384,6 +384,14 @@ def _remove_asset(run: _Run) -> dict:
     return run.tools["mpfb_remove_asset"](name=_asset_object(run))
 
 
+@_item("mpfb_get_character_summary", "phenotype", "rig", "assets", "skin", "targets", "face")
+def _get_character_summary(run: _Run) -> dict:
+    # Here rather than beside the other readers, so that what it summarizes is
+    # the character every item above built: rigged, skinned, morphed, with an
+    # expression on it.
+    return run.tools["mpfb_get_character_summary"](name=_character(run))
+
+
 @_item("mpfb_save_preset", "path", "size_bytes", "overwrote", "previous_file",
        "basemesh_name", "contents")
 def _save_preset(run: _Run) -> dict:

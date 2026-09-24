@@ -49,6 +49,7 @@ from . import apply_expressions
 from . import create_human
 from . import create_human_from_preset
 from . import generate_rigify_rig
+from . import get_character_summary
 from . import get_expression
 from . import get_face_units
 from . import get_macro_details
@@ -119,6 +120,12 @@ COMMANDS = {
         params=generate_rigify_rig.PARAMS,
         requires_mpfb=True,
         summary=generate_rigify_rig.SUMMARY),
+    "get_character_summary": Command(
+        name="get_character_summary",
+        handler=get_character_summary.get_character_summary,
+        params=get_character_summary.PARAMS,
+        requires_mpfb=True,
+        summary=get_character_summary.SUMMARY),
     "get_expression": Command(
         name="get_expression",
         handler=get_expression.get_expression,
