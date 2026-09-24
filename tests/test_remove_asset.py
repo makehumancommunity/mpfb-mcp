@@ -10,7 +10,7 @@ with ``send_command`` mocked below the seam, and the **bridge path** against
 The interesting claims about this tool - which mask modifiers went, which vertex
 groups stayed, whether a character comes back to what it was - are only
 meaningful about state that MPFB's own loading path produced, so they are made
-in ``bridge/test/tests/ppp_mutating/remove_asset_test.py``, which equips an
+in ``bridge/test/tests/ddd_mutating/remove_asset_test.py``, which equips an
 asset against a real MPFB and then removes it.
 
 Run with::
@@ -84,7 +84,7 @@ class RemoveAssetOverTheBridgeTests(fake_bridge.BridgeTestCase):
     """What cannot cross the socket, and nothing else.
 
     Everything this tool *answers* - the four fates a removal can have, and the two things MPFB leaves behind - is checked against a real MPFB
-    in ``bridge/test/tests/ppp_mutating/remove_asset_test.py``.
+    in ``bridge/test/tests/ddd_mutating/remove_asset_test.py``.
     """
 
     def setUp(self) -> None:

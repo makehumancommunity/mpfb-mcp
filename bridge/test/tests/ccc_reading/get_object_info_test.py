@@ -28,14 +28,14 @@ place an asset is added.
 
 import bpy
 
-from . import bridge_module
-from ._fixtures import Character
-from ._fixtures import dispatch
-from ._fixtures import linked_plain_object
-from ._fixtures import result
-from ._fixtures import services_or_skip
-from ._fixtures import supplied_resolution
-from ._fixtures import typed_child
+from .. import bridge_module
+from .._fixtures import Character
+from .._fixtures import dispatch
+from .._fixtures import linked_plain_object
+from .._fixtures import result
+from .._fixtures import services_or_skip
+from .._fixtures import supplied_resolution
+from .._fixtures import typed_child
 
 COMMAND = "get_object_info"
 

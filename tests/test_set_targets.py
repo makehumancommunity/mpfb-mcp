@@ -12,7 +12,7 @@ since a misspelled ``catagory`` is otherwise silent.
 
 That every entry is resolved before any is written - so a batch with one bad
 entry applies nothing at all - is checked against a real MPFB in
-``bridge/test/tests/ppp_mutating/set_targets_test.py``.
+``bridge/test/tests/ddd_mutating/set_targets_test.py``.
 
 Run with::
 
@@ -180,7 +180,7 @@ class SetTargetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
     The all-or-nothing resolution phase, the write order and what a category
     resolves to are all checked against a real MPFB in
-    ``bridge/test/tests/ppp_mutating/set_targets_test.py``. What is left here is
+    ``bridge/test/tests/ddd_mutating/set_targets_test.py``. What is left here is
     the per-entry validation the tool does before any transport is chosen, and
     the fact that a **cached** fragment list leaves nothing on the bridge's
     wire - which is this tool's own claim, since it is the heaviest carrier of

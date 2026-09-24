@@ -17,31 +17,51 @@ there. It lives here.
 BLENDER_EXE=$(which blender) ./execute_tests_headless.bash
 ```
 
-Set `TEST_MODULE` to narrow the run to one file.
+Set `TEST_MODULE` to narrow the run, relative to this directory. It takes a whole layer or one
+module:
+
+```bash
+TEST_MODULE=tests/ddd_mutating BLENDER_EXE=$(which blender) ./execute_tests_headless.bash
+TEST_MODULE=tests/ccc_reading/list_rigs_test.py BLENDER_EXE=$(which blender) ./execute_tests_headless.bash
+```
+
+A narrowed run skips the layers before it, so a failure it reports may be a symptom of one of them.
 
 ## What is in here
 
-Modules are prefixed alphabetically to force order, as MPFB does it, and each one assumes
-the ones before it work. **Since [FR 032](../../feature-requests/done/032-creation-and-modification-migrated/README.md)
-the prefix also goes on a *directory*** — that effort added fourteen modules against the eleven
-letters left before `zzz_`, and prefixing directories is MPFB's own way out (`bbb_services/`,
-`ccc_data/`). Inside one, modules need no prefix of their own.
+**Only directories carry a prefix, and each directory is a layer** that assumes every earlier one
+passed. The harness runs pytest with `-x`, so the first failure stops the run: a fault in the
+add-on's own machinery is reported once, in `aaa_addon/`, rather than as thirty symptoms in thirty
+command modules that depend on it. That is MPFB's arrangement (`bbb_services/`, `ccc_data/`), and
+the rule is in [testing.md](../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary).
+Modules inside a layer are unprefixed, named after their subject — for a command module, the
+command name exactly — and their order carries no meaning. A new module goes into the layer that
+matches what it tests, never under a new letter.
+
+| Layer | What it holds |
+|-------|---------------|
+| `aaa_addon/` | The add-on itself, with no MPFB subject |
+| `bbb_shared/` | **Reserved, not created.** Direct tests of `mpfb_bridge/shared/`, called without going through dispatch. Today every shared module is tested only through the commands that use it |
+| `ccc_reading/` | One module per read-only command |
+| [`ddd_mutating/`](tests/ddd_mutating/__init__.py) | One module per command that changes a `.blend`, and the cleanup rules that go with that |
+| `eee_composite/` | Tests whose claim is about several commands at once |
 
 | Module | What it covers |
 |--------|----------------|
-| `aaa_bridge_test.py` | The harness itself, the shape of the command table, and the start/stop lifecycle. Also the background-mode refusal, which is **the one test that could only be written because the suite runs headless**: `bpy.app.background` is `True` here, so the refusal is directly assertable |
-| `bbb_validation_test.py` | The parameter contract, as one table of cases read by one loop. Every case is a failure that would otherwise be silent — `limit=True` paging one entry at a time, `refresh="false"` rescanning the disk, a misspelled key producing a call that succeeds and does nothing |
-| `ccc_dispatch_test.py` | What a request becomes before a handler sees it: the order of the checks, the `mpfb_unavailable` precondition with both non-`ok` states supplied rather than waited for, the handshake, and that a handler which raises does not take the server down |
-| `ddd_roundtrip_test.py` | **A real request over a real socket.** Client on a thread, dispatch on the main one, which is the add-on's production shape. This is what the headless drive mechanism bought: before it, the transport was the one part of the add-on its own tests could not reach |
-| `eee_metadata_test.py` | The two claims kept in step by hand — the reported version against the manifest, and `list_commands` against the table the dispatcher actually uses |
-| `fff_list_objects_test.py` | **The first module here whose subject is MPFB rather than the transport.** `list_objects` against a real install: the substring type match, an unrecognised type, `""` coerced to `null`, the `_ALL_TYPES` fallback, an object outside the current scene, and the `mpfb_unavailable` refusal. It also sets the three conventions the remaining twenty-three commands inherit — build a character with `HumanService.create_human()` and a snapshot-and-delete cleanup, skip with a reason when the install lacks a prerequisite, and supply a broken MPFB rather than waiting for one |
-| `ggg_`…`ooo_` | One module per command FR 031 migrated, each following `fff_`'s conventions |
-| `ppp_mutating/` | **The commands that change a `.blend`** — sixteen now, one module each, unprefixed among themselves, plus `expression_divergence_test.py`, which is about three commands at once. A directory rather than more prefixed files, and its [`__init__.py`](tests/ppp_mutating/__init__.py) carries the two rules that go with mutating: what a test made the fixture removes however the test ends, and a test that writes outside the `.blend` writes somewhere redirected. `set_face_units_test.py` shows the asset-pack technique: the pack-absent refusal and the `could_not_load` partial-install case redirect MPFB's data roots (`only_these_data_roots`) and force `FaceService`'s installed-probe cache to re-read them, restoring the real answer again before the `with` block exits. FR 027's `apply_expressions_test.py` and `save_expression_test.py` use `_fixtures.expression_library`, which does the same with a small but real `faceunits01` pack and expression files written by MPFB's own `save_expression()` — build the character **before** entering it, since it redirects `mpfb_data` too |
-| `qqq_list_urls_test.py` | `list_urls` against a real MPFB. A flat sibling rather than one of the fourteen, because it is **read-only** — and the third command declaring `requires_mpfb=False`, since "where do I download MPFB" is asked most often by somebody whose MPFB is not working |
-| `rrr_get_face_units_test.py` | `get_face_units` against a real MPFB: the zero-for-missing convention (a fresh character and one whose expression targets are simply absent read identically), `known_face_units` covering `ARKIT_FACEUNITS` exactly once, and `shapekey_present` against a shape key added with Blender's own API |
-| `sss_list_expressions_test.py` | `list_expressions` over a redirected expressions tree: the same path in two roots (first root wins, the other reported as `shadowed`), a malformed file (skipped by MPFB, counted here), a file with no name, an empty tree, and the pack probe's cache |
-| `ttt_get_expression_test.py` | `get_expression`'s divergence check in its four cases — agreeing, a composed unit, a row whose file is gone, a clamped sum — each set up with MPFB's own functions rather than with `apply_expressions`, and that the 52 live values are not restated |
-| `uuu_get_character_summary_test.py` | **The summary dispatched beside each command it summarizes**, on one character rigged, dressed, skinned, morphed and wearing an expression with a unit composed on top, and every shared field asserted equal — twice, inside and outside the expression fixture, since no one moment makes every section interesting. Also the rollup cap (lowered on the module rather than built up to), a generated Rigify rig, the miss, and that reading changes nothing. `iii_get_macro_details_test.py` gained `macro_drift` in both directions alongside it |
+| `aaa_addon/bridge_test.py` | The harness itself, the shape of the command table, and the start/stop lifecycle. Also the background-mode refusal, which is **the one test that could only be written because the suite runs headless**: `bpy.app.background` is `True` here, so the refusal is directly assertable |
+| `aaa_addon/validation_test.py` | The parameter contract, as one table of cases read by one loop. Every case is a failure that would otherwise be silent — `limit=True` paging one entry at a time, `refresh="false"` rescanning the disk, a misspelled key producing a call that succeeds and does nothing |
+| `aaa_addon/dispatch_test.py` | What a request becomes before a handler sees it: the order of the checks, the `mpfb_unavailable` precondition with both non-`ok` states supplied rather than waited for, the handshake, and that a handler which raises does not take the server down |
+| `aaa_addon/roundtrip_test.py` | **A real request over a real socket.** Client on a thread, dispatch on the main one, which is the add-on's production shape. This is what the headless drive mechanism bought: before it, the transport was the one part of the add-on its own tests could not reach |
+| `aaa_addon/metadata_test.py` | The two claims kept in step by hand — the reported version against the manifest, and `list_commands` against the table the dispatcher actually uses |
+| `ccc_reading/list_objects_test.py` | **The first module whose subject is MPFB rather than the transport.** `list_objects` against a real install: the substring type match, an unrecognised type, `""` coerced to `null`, the `_ALL_TYPES` fallback, an object outside the current scene, and the `mpfb_unavailable` refusal. It also sets the three conventions every other command module inherits — build a character with `HumanService.create_human()` and a snapshot-and-delete cleanup, skip with a reason when the install lacks a prerequisite, and supply a broken MPFB rather than waiting for one |
+| `ccc_reading/` (the rest) | One module per read-only command, each following `list_objects_test.py`'s conventions |
+| `ccc_reading/list_urls_test.py` | `list_urls` against a real MPFB. Here rather than in `aaa_addon/`, although it is the third command declaring `requires_mpfb=False` — since "where do I download MPFB" is asked most often by somebody whose MPFB is not working — because its subject is still what MPFB answers |
+| `ccc_reading/get_face_units_test.py` | `get_face_units` against a real MPFB: the zero-for-missing convention (a fresh character and one whose expression targets are simply absent read identically), `known_face_units` covering `ARKIT_FACEUNITS` exactly once, and `shapekey_present` against a shape key added with Blender's own API |
+| `ccc_reading/list_expressions_test.py` | `list_expressions` over a redirected expressions tree: the same path in two roots (first root wins, the other reported as `shadowed`), a malformed file (skipped by MPFB, counted here), a file with no name, an empty tree, and the pack probe's cache |
+| `ccc_reading/get_expression_test.py` | `get_expression`'s divergence check in its four cases — agreeing, a composed unit, a row whose file is gone, a clamped sum — each set up with MPFB's own functions rather than with `apply_expressions`, and that the 52 live values are not restated |
+| `ddd_mutating/` | **The sixteen commands that change a `.blend`**, one module each. Its [`__init__.py`](tests/ddd_mutating/__init__.py) carries the two rules that go with mutating: what a test made the fixture removes however the test ends, and a test that writes outside the `.blend` writes somewhere redirected. `set_face_units_test.py` shows the asset-pack technique: the pack-absent refusal and the `could_not_load` partial-install case redirect MPFB's data roots (`only_these_data_roots`) and force `FaceService`'s installed-probe cache to re-read them, restoring the real answer again before the `with` block exits. FR 027's `apply_expressions_test.py` and `save_expression_test.py` use `_fixtures.expression_library`, which does the same with a small but real `faceunits01` pack and expression files written by MPFB's own `save_expression()` — build the character **before** entering it, since it redirects `mpfb_data` too |
+| `eee_composite/get_character_summary_test.py` | **The summary dispatched beside each command it summarizes**, on one character rigged, dressed, skinned, morphed and wearing an expression with a unit composed on top, and every shared field asserted equal — twice, inside and outside the expression fixture, since no one moment makes every section interesting. Also the rollup cap (lowered on the module rather than built up to), a generated Rigify rig, the miss, and that reading changes nothing. `ccc_reading/get_macro_details_test.py` gained `macro_drift` in both directions alongside it |
+| `eee_composite/expression_divergence_test.py` | The three expression-aware commands asked about one character and required to agree, then the compose-save-apply round trip across them |
 
 **What this suite cannot establish** is that the *timer-driven* path answers the same as the
 blocking one, because there is no event loop here to drive a timer. That comparison belongs

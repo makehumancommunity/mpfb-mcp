@@ -16,12 +16,12 @@ answer.
 
 import os
 
-from ._fixtures import expression_library
-from ._fixtures import only_these_data_roots
-from ._fixtures import result
-from ._fixtures import services_or_skip
-from ._fixtures import write
-from ._fixtures import write_expression
+from .._fixtures import expression_library
+from .._fixtures import only_these_data_roots
+from .._fixtures import result
+from .._fixtures import services_or_skip
+from .._fixtures import write
+from .._fixtures import write_expression
 
 
 def _by_fragment(answer):

@@ -141,7 +141,7 @@ def _armature_modifier_for(mesh_object, armature_object):
     program this replaced carried a comment saying that
     ``RigService.ensure_armature_modifier()`` is called only when
     ``import_weights`` is true. Put to a running MPFB by
-    ``bridge/test/tests/ppp_mutating/add_rig_test.py`` it turned out to be
+    ``bridge/test/tests/ddd_mutating/add_rig_test.py`` it turned out to be
     false: ``Rig.create_armature_and_fit_to_basemesh()`` adds the modifier
     itself, with ``add_modifier`` defaulting to true, so the modifier is there
     either way and ``add_builtin_rig()``'s own ``ensure_armature_modifier()``

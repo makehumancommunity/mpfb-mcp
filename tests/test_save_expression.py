@@ -12,7 +12,7 @@ name as a preset and as an expression.
 What the command writes - the file after rounding and zero-dropping, the
 overwrite refusal carrying size and age, the shadowed-name refusal, the
 empty-face refusal, and that the character is untouched - is checked against a
-real MPFB in ``bridge/test/tests/ppp_mutating/save_expression_test.py``, with
+real MPFB in ``bridge/test/tests/ddd_mutating/save_expression_test.py``, with
 MPFB's user data redirected so a failing test cannot leave a file in the
 developer's own library.
 

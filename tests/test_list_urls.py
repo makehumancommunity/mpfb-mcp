@@ -24,7 +24,7 @@ leaves behind - including one reporting an **extra** ``URL_`` key and one
 **missing** a key mpfb-mcp vendors, since enumerate-by-prefix and the staleness
 report are exactly the two claims a table copied by hand cannot make for
 itself. What the command reads out of a real, initialized MPFB is asked in
-``bridge/test/tests/qqq_list_urls_test.py``; that ``<root>.ui.weburls`` is in
+``bridge/test/tests/ccc_reading/list_urls_test.py``; that ``<root>.ui.weburls`` is in
 ``sys.modules`` at all was established against a running Blender by
 ``feature-requests/done/024-documentation-urls/check_weburls.py``.
 

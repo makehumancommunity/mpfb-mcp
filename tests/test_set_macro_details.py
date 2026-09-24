@@ -12,7 +12,7 @@ the template).
 That every named property is written before anything is recalculated - once,
 not once per slider - and what MPFB does with an out-of-range value it is handed
 anyway, are checked against a real MPFB in
-``bridge/test/tests/ppp_mutating/set_macro_details_test.py``.
+``bridge/test/tests/ddd_mutating/set_macro_details_test.py``.
 
 Run with::
 
@@ -147,7 +147,7 @@ class SetMacroDetailsOverTheBridgeTests(fake_bridge.BridgeTestCase):
     Everything this tool *does* - that a written property moves the mesh, that
     the recalculation happens once, that an omitted slider is untouched - is
     checked against a real MPFB in
-    ``bridge/test/tests/ppp_mutating/set_macro_details_test.py``.
+    ``bridge/test/tests/ddd_mutating/set_macro_details_test.py``.
     """
 
     def setUp(self) -> None:

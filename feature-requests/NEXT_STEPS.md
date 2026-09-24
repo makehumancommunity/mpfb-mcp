@@ -36,20 +36,28 @@ prevent. It was out of FR 034's scope because the summary does not read through 
 When formulating a feature request for this, a scan should be done for other code duplications
 which could or should be abstracted to shared modules. 
 
-## Strange naming of bridge tests
+<a id="direct-tests-of-the-bridges-shared-modules"></a>
 
-Formulated as [FR 035](035-bridge-test-layers/README.md) (Accepted).
+## Direct tests of the bridge's shared modules
 
-The test module names in bridge/test/tests adopted a three letter prefix ("aaa", "bbb"...) without
-any understanding of the purpose. This was probably inspired from MPFB's test hierarchy.
+The thirteen modules in `bridge/mpfb_bridge/shared/` are tested **only through the commands that
+use them**: every test that reaches one goes through dispatch. A fault in a shared module is
+therefore reported as a failure in whichever command module happens to run first, and a branch no
+command's fixture reaches is never reached at all.
+[FR 035](done/035-bridge-test-layers/README.md) reserved the layer for this — `bbb_shared/`, which
+runs after the add-on's own machinery and before any command — and did not create it, because
+writing tests and moving files are different efforts and mixing them would have lost that
+request's before-and-after proof. [FR 036](036-subject-resolver-and-duplication/README.md) creates
+the directory for the shared modules *it* adds; the thirteen that exist remain this entry's.
 
-The three letter prefix should only be used on folders grouping tests by what they cover. The
-idea is to run primitives and shared code tests first while running larger code aggregate tests later.
-The hypothesis is that if a primitive fails, there's no idea to run a test on an aggregate anyway.
-
-The tests should be grouped accordingly in a very limited set of folders with three letter prefixes,
-causing the **folders** to be run in order. The test module files themselves do not need to have
-the prefix.
+Three of them read nothing out of MPFB's services and could be tested without a character, or
+without MPFB at all: `artifact_names.py` (the name rule; its tool-side twin is already tested
+exhaustively in `tests/test_save_preset.py`, the bridge copy only through the two save commands),
+`performed.py`, and `expression_panel.py`, whose failure branches — the UI module absent from
+`sys.modules`, a call that raises — are exactly the lines no command test reaches. The coverage
+report after FR 035 put the shared modules between 73% and 100% line coverage, all of it through
+dispatch; the uncovered lines are listed per module in `bridge/test/coverage/`, and are the place
+to start.
 
 ## Visemes and lip sync
 

@@ -1,8 +1,8 @@
 # Bridge tests grouped into ordered layers
 
-**Status:** Accepted
+**Status:** Done
 
-The bridge's test modules in [bridge/test/tests/](../../bridge/test/tests) carry a three-letter
+The bridge's test modules in [bridge/test/tests/](../../../bridge/test/tests) carry a three-letter
 prefix each, `aaa_bridge_test.py` through `uuu_get_character_summary_test.py`. The prefix was
 copied from MPFB's harness, but only its form was copied and not what it is for. In MPFB the prefix
 goes on **directories that group tests by what they cover**: `bbb_services/`, `ccc_data/`,
@@ -36,7 +36,7 @@ aggregate that depends on it.
 in layer order, from the add-on's own machinery, through shared code, then each command, to tests
 that span several commands. Test modules lose their prefixes and are named after their subject.
 
-**Primary:** record the rule in [testing.md](../../specifications/testing.md) so the next effort
+**Primary:** record the rule in [testing.md](../../../specifications/testing.md) so the next effort
 adds a module to the right layer instead of taking the next free letter.
 
 **Secondary:** leave a place for direct tests of `bridge/mpfb_bridge/shared/`, which has none
@@ -67,11 +67,11 @@ today. Every shared module is tested only through the commands that use it. Writ
 5. **`TEST_MODULE` works for a module and for a whole group.**
    `TEST_MODULE=tests/ddd_mutating` runs one layer, and
    `TEST_MODULE=tests/ccc_reading/list_rigs_test.py` runs one module.
-   [bridge/test/README.md](../../bridge/test/README.md) documents both forms.
+   [bridge/test/README.md](../../../bridge/test/README.md) documents both forms.
 6. **Every reference to an old path is updated.** That includes the root
-   [CLAUDE.md](../../CLAUDE.md), [specifications/](../../specifications/),
-   [bridge/test/README.md](../../bridge/test/README.md), the module docstrings under
-   [tests/](../../tests/) that point at their bridge counterpart, and
+   [CLAUDE.md](../../../CLAUDE.md), [specifications/](../../../specifications/),
+   [bridge/test/README.md](../../../bridge/test/README.md), the module docstrings under
+   [tests/](../../../tests/) that point at their bridge counterpart, and
    `bridge/mpfb_bridge/commands/add_rig.py`'s docstring. When the effort is finished, a search for
    `[a-u]{3}_[a-z_]+_test\.py` or `ppp_mutating` outside `feature-requests/done/` finds nothing.
    Finished requests are **not** edited. Their mentions describe the tree as it was then, and their
@@ -81,14 +81,14 @@ today. Every shared module is tested only through the commands that use it. Writ
 ## Non-functional requirements
 
 - **A layer that fails early must mean something.** The value of the ordering comes from `-x` in
-  [test_headless.py](../../bridge/test/test_headless.py). A failure in `aaa_addon/` should stop the
+  [test_headless.py](../../../bridge/test/test_headless.py). A failure in `aaa_addon/` should stop the
   run before thirty command modules report thirty symptoms of the same fault. The layering is
   right if and only if a failure in layer *n* makes a failure in a later layer uninteresting.
 - **The run order does not depend on pytest's collection rules.** Once `tests/` holds only
   directories as collectable entries, the order is the same under either collection rule described
   in the background.
 - **Readability, as the project defines it in
-  [architecture.md](../../specifications/architecture.md#readability-and-developer-experience-are-prioritized).**
+  [architecture.md](../../../specifications/architecture.md#readability-and-developer-experience-are-prioritized).**
   The directory tells a reader what obligations a module has: `ddd_mutating/` carries the cleanup
   rules. The module name tells them what it tests, and nothing in the name is noise.
 - **History is preserved.** Every move is a `git mv`, so `git log --follow` still finds a module's
@@ -107,7 +107,7 @@ prefixed files, and that is the whole reason this package exists"*, which will n
 The rules that follow that claim still hold: what a test made, the fixture removes, and a write
 outside the `.blend` goes to a redirected location. So does the rule found by FR 032's spike that a
 fixture asset tree must be a redirected data root. Keep those rules, and replace the reason.
-[testing.md](../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary) makes
+[testing.md](../../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary) makes
 the same claim (*"the prefix goes on a directory once twenty-six letters are not enough"*) and needs
 the same correction. This is the lifecycle's "check the claim you are replacing".
 
@@ -123,7 +123,7 @@ is composite. The `macro_drift` tests in the `get_macro_details` module go throu
 Writing direct tests for thirteen shared modules is a different effort from renaming files. Mixing
 the two would also lose this effort's simplest proof, that the before-and-after runs are identical
 (requirement 4). When the effort is finished, add an entry to
-[NEXT_STEPS.md](../NEXT_STEPS.md). It should say that
+[NEXT_STEPS.md](../../NEXT_STEPS.md). It should say that
 the shared modules are tested only through their commands. It should also name which shared modules
 could be tested without MPFB, such as `artifact_names.py` and `performed.py`, which read nothing
 from MPFB's services. The coverage report in `bridge/test/coverage/` shows which lines are reached
@@ -145,16 +145,16 @@ renaming anything.
 
 ## Affected specifications
 
-- [testing.md](../../specifications/testing.md), in the section
-  [Two harnesses, split at the directory boundary](../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary).
+- [testing.md](../../../specifications/testing.md), in the section
+  [Two harnesses, split at the directory boundary](../../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary).
   Replace "alphabetical prefixes to force order" and the twenty-six-letters paragraph with the
   layer rule: the prefix goes only on directories, a directory is a layer that assumes earlier
   layers passed, order inside a layer means nothing, and `bbb_shared/` is reserved. Re-point the
   `ppp_mutating/` mentions further down the file.
-- [architecture.md](../../specifications/architecture.md): one path mention of
+- [architecture.md](../../../specifications/architecture.md): one path mention of
   `ppp_mutating/expression_divergence_test.py`, which becomes
   `eee_composite/expression_divergence_test.py`. No decision changes.
-- The root [CLAUDE.md](../../CLAUDE.md), because the layout changes. Update the `bridge/test/` row
+- The root [CLAUDE.md](../../../CLAUDE.md), because the layout changes. Update the `bridge/test/` row
   of the bridge table, which describes `tests/ppp_mutating/` as MPFB's way out of running short of
   letters. Also update the bridge paths quoted in the test table.
 
@@ -163,7 +163,7 @@ renaming anything.
 **No new tests, and none are removed.** That is the requirement, and it is also the proof.
 
 Run the bridge suite **before and after** the move, with the Blender from
-[local_environment.md](../../local_environment.md). The two runs must be identical when compared as
+[local_environment.md](../../../local_environment.md). The two runs must be identical when compared as
 the set of `(module name without its prefix, test function, outcome)`: 359 each, the same passes
 and the same skips. A short `compare_runs.py` in this subdir parses two saved `-v` logs, strips the
 directory and the old prefix from each node ID, and diffs the results. It is this request's
@@ -172,17 +172,40 @@ re-runnable check, and it moves to `done/` with it. Also check the order in the 
 
 The unittest suite (`python3 -m unittest discover -s tests`, 428 tests) should not change, because
 only docstrings under `tests/` are edited. Run it anyway. No smoke item is added to
-[verification/](../../verification/), because no tool changes.
+[verification/](../../../verification/), because no tool changes.
+
+## Outcome
+
+Landed as specified, with the proposed directory names. Thirty-eight `git mv`s; three new
+`__init__.py` files carrying each layer's obligations; imports one dot deeper; prose and paths
+updated everywhere requirement 6 names, plus `_fixtures.py`, the bridge modules' own docstrings and
+[FR 036](../../036-subject-resolver-and-duplication/README.md), which had been written against this
+layout and now points at it.
+
+**Verification.** [`compare_runs.py`](compare_runs.py) against a log saved before the first move and
+one after the last edit: 359 results each, 359 passed, none skipped, the normalized sets identical,
+and every layer's node IDs ahead of the next layer's. `TEST_MODULE=tests/ddd_mutating` ran 166
+tests from that layer only, and `TEST_MODULE=tests/ccc_reading/list_rigs_test.py` ran 11. The
+unittest suite ran 428, all passing. The first version of the script read 260 results rather than
+359, because `--capture=tee-sys` puts a test's own output between its node ID and its outcome; it
+now pairs the two by position rather than expecting them on one line, and reports a node with no
+outcome rather than dropping it.
+
+**Found on the way.** The coverage report is overwritten by every run, including a narrowed one,
+so the numbers in `bridge/test/coverage/` describe the last run, not the suite. The full-suite
+figures for the shared modules (73% to 100%, all through dispatch) went into the
+[NEXT_STEPS.md](../../NEXT_STEPS.md#direct-tests-of-the-bridges-shared-modules) entry this request
+asked for.
 
 ## References
 
-- [NEXT_STEPS.md: "Strange naming of bridge tests"](../NEXT_STEPS.md#strange-naming-of-bridge-tests),
-  where this request came from.
+- NEXT_STEPS.md's "Strange naming of bridge tests", where this request came from. The entry
+  left the queue when this request was done; what landed is in [HISTORY.md](../../HISTORY.md).
 - MPFB's own layout: `../mpfb2/test/tests/`, with `aaa_context_test.py` followed by `bbb_services/`,
   `ccc_data/`, `ddd_entities/` and `eee_ui/`. MPFB still has one flat prefixed module at the top.
   This request goes one step further and has none.
-- [FR 032](../done/032-creation-and-modification-migrated/README.md), which introduced
+- [FR 032](../032-creation-and-modification-migrated/README.md), which introduced
   `ppp_mutating/` as a way out of running short of letters, and whose cleanup rules this request
   keeps.
-- [FR 034](../done/034-character-summary/README.md), whose summary test is the clearest example of
+- [FR 034](../034-character-summary/README.md), whose summary test is the clearest example of
   a composite test.

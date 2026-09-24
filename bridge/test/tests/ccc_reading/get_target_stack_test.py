@@ -34,14 +34,14 @@ import os
 import bpy
 import pytest
 
-from . import bridge_module
-from ._fixtures import Character
-from ._fixtures import build_target_tree
-from ._fixtures import dispatch
-from ._fixtures import only_these_data_roots
-from ._fixtures import result
-from ._fixtures import services_or_skip
-from ._fixtures import supplied_resolution
+from .. import bridge_module
+from .._fixtures import Character
+from .._fixtures import build_target_tree
+from .._fixtures import dispatch
+from .._fixtures import only_these_data_roots
+from .._fixtures import result
+from .._fixtures import services_or_skip
+from .._fixtures import supplied_resolution
 
 COMMAND = "get_target_stack"
 
@@ -283,7 +283,7 @@ def test_the_counts_are_taken_before_any_filter(character):
 
 def test_the_subject_may_be_any_object_in_the_family(character):
     """find_object_of_type_amongst_nearest_relatives(), as everywhere else"""
-    from ._fixtures import typed_child  # pylint: disable=import-outside-toplevel
+    from .._fixtures import typed_child  # pylint: disable=import-outside-toplevel
 
     services = services_or_skip()
     garment = typed_child(services, character.basemesh, "BridgeTestStackShirt", "Clothes")
@@ -299,7 +299,7 @@ def test_the_subject_may_be_any_object_in_the_family(character):
 
 def test_an_object_outside_a_character_is_an_answer_rather_than_an_error(character):
     """found: false, with a sentence saying which mistake was made"""
-    from ._fixtures import linked_plain_object  # pylint: disable=import-outside-toplevel
+    from .._fixtures import linked_plain_object  # pylint: disable=import-outside-toplevel
 
     plain = linked_plain_object("BridgeTestNoStack")
     try:

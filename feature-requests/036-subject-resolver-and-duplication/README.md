@@ -264,9 +264,9 @@ already takes its `hint` that way.
 - **`_shapekey_present` is not a duplicate**, even though the census lists it as one. The
   `get_face_units` version returns a bool and the `set_face_units` version returns a value. It
   goes in `KEPT`. Do not merge the two.
-- **FR 035 moves every bridge test file.** This effort should start after FR 035 is `Done`, so
-  that its new tests go straight into the layers FR 035 creates (see [Tests](#tests)) and do not
-  have to be moved a second time.
+- **FR 035 moved every bridge test file**, and is `Done`, so this effort's new tests go straight
+  into the layers FR 035 created (see [Tests](#tests)). The layer rule is in
+  [testing.md](../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary).
 
 ## Affected specifications
 
@@ -324,7 +324,8 @@ The diff must be empty. It needs no Blender, and it moves to `done/` with this r
   without going through dispatch. The subject resolver, the selection construct and the plain
   Blender reads need `bpy` but no MPFB, apart from the basemesh step. This does **not** also take
   on direct tests for the thirteen existing shared modules. FR 035 recorded that as a separate
-  effort, and it stays one.
+  effort ([NEXT_STEPS.md](../NEXT_STEPS.md#direct-tests-of-the-bridges-shared-modules)), and it
+  stays one.
 - **`eee_composite/subject_resolution_test.py`** dispatches all eighteen subject-taking commands in
   each of the three miss states: nothing active, a name that does not exist, and an object with no
   basemesh (a plain cube). For every command it asserts the same `found`, `subject_name` and
@@ -377,6 +378,6 @@ Blender.
 - [FR 034](../done/034-character-summary/README.md) moved the first resolver into
   `macro_reading.py`, and its `live_check.py --snapshot` is the model for this request's live
   check.
-- [FR 035](../035-bridge-test-layers/README.md) reserved `bbb_shared/`, which this request creates.
+- [FR 035](../done/035-bridge-test-layers/README.md) reserved `bbb_shared/`, which this request creates.
 - [shared/refit_blocker.py](../../bridge/mpfb_bridge/shared/refit_blocker.py) is the precedent for
   sharing the condition and keeping the wording per command.

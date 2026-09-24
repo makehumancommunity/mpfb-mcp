@@ -6,7 +6,7 @@ crosses the socket.
 Two layers (see ``tests/test_list_objects.py``, the template). What the tool
 *answers* - the stack rows, a row whose file is gone, the aggregate, clamping,
 and above all ``matches_stack`` / ``unexplained_face_units`` - is checked against
-a real MPFB in ``bridge/test/tests/ttt_get_expression_test.py``, together with
+a real MPFB in ``bridge/test/tests/ccc_reading/get_expression_test.py``, together with
 the rule that it does not restate ``mpfb_get_face_units``' 52 live values.
 
 Run with::

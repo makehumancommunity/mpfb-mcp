@@ -200,6 +200,5 @@ could not make two tools disagree. That argument answers rule 1 and says nothing
   attribute in one place instead of 29. The census did not search `tests/`, so this is left to a
   test-harness effort. It goes to NEXT_STEPS.
 - **`bridge/test/tests/`: `_result` ×17**, one per module, each unwrapping a dispatch envelope for
-  its own command. [FR 035](../035-bridge-test-layers/README.md) is moving every one of these files.
-  Any consolidation should wait until that is done, and would belong to the same test-harness
-  effort.
+  its own command. [FR 035](../done/035-bridge-test-layers/README.md) has since moved every one of
+  these files into its layers. Any consolidation would belong to the same test-harness effort.

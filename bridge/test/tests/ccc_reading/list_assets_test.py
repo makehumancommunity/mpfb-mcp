@@ -30,13 +30,13 @@ import os
 
 import pytest
 
-from . import bridge_module
-from ._fixtures import build_asset_library
-from ._fixtures import dispatch
-from ._fixtures import only_these_data_roots
-from ._fixtures import result
-from ._fixtures import services_or_skip
-from ._fixtures import supplied_resolution
+from .. import bridge_module
+from .._fixtures import build_asset_library
+from .._fixtures import dispatch
+from .._fixtures import only_these_data_roots
+from .._fixtures import result
+from .._fixtures import services_or_skip
+from .._fixtures import supplied_resolution
 
 COMMAND = "list_assets"
 

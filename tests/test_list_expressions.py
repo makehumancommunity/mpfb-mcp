@@ -8,7 +8,7 @@ Two layers (see ``tests/test_list_objects.py``, the template): the wrapper with
 ``tests/fake_bridge.py``. The tool takes one argument, so the first layer is
 small. What MPFB actually answers - first-root precedence, the shadowed and
 unreadable files its scan drops, the label fallback and the pack probe - is
-checked against a real MPFB in ``bridge/test/tests/sss_list_expressions_test.py``.
+checked against a real MPFB in ``bridge/test/tests/ccc_reading/list_expressions_test.py``.
 
 Run with::
 

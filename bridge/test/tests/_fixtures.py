@@ -269,7 +269,7 @@ def write_loadable_mhclo(path, material=True):
     garment equipped from outside every data root can never be refitted:
     ``ClothesService.fit_clothes_to_human()`` re-reads the MHCLO through
     ``AssetService``, which searches the roots rather than remembering where the
-    file came from. See this package's ``ppp_mutating/__init__.py``.
+    file came from. See this package's ``ddd_mutating/__init__.py``.
     """
     base = os.path.splitext(path)[0]
     name = os.path.basename(base)
@@ -704,7 +704,7 @@ def expression_library(services, root):
     ``3dobjs/base.obj``.
 
     The pack probe's cache is seeded inside the redirect and restored on the
-    way out, exactly as ``ppp_mutating/set_face_units_test.py`` does, so that a
+    way out, exactly as ``ddd_mutating/set_face_units_test.py`` does, so that a
     module running afterwards is not left looking at the fixture's answer.
 
     Yields a dict of the paths a test asserts against.

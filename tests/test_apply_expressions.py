@@ -14,7 +14,7 @@ it is resolved in Blender, the way the rebuild will resolve it.
 What the command does with a resolved batch - the refusal that leaves the stack
 byte-identical, merge and replace, removal at 0.0, the pack-absent refusal,
 clamping, and the composed units it discards - is checked against a real MPFB
-in ``bridge/test/tests/ppp_mutating/apply_expressions_test.py``.
+in ``bridge/test/tests/ddd_mutating/apply_expressions_test.py``.
 
 Run with::
 

@@ -15,7 +15,7 @@ Tests for the mpfb_get_status tool, in two layers (see
 
 Everything this tool *answers* - the three states, the tiers of fields, the
 disabled-but-loaded case - is checked against a real MPFB in
-``bridge/test/tests/ggg_get_mpfb_status_test.py``, where it is asserted against
+``bridge/test/tests/ccc_reading/get_mpfb_status_test.py``, where it is asserted against
 a real install rather than against stubs written by whoever wrote the code
 under test. Half of this module used to be a third layer executing the payload
 against stubbed ``sys.modules`` entries; FR 033 deleted the payload and the

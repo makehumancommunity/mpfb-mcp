@@ -12,7 +12,7 @@ guess, and guessing wrong destroys work with no undo across the socket.
 The category walk, the dry run agreeing with the real run, and the write order -
 the opposing target is zeroed first, or pruning deletes the wrong half of a
 pair - are checked against a real MPFB in
-``bridge/test/tests/ppp_mutating/symmetrize_targets_test.py``.
+``bridge/test/tests/ddd_mutating/symmetrize_targets_test.py``.
 
 Run with::
 
@@ -117,7 +117,7 @@ class SymmetrizeTargetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
     The category walk, the dry run agreeing with the real run, and the write
     order are checked against a real MPFB in
-    ``bridge/test/tests/ppp_mutating/symmetrize_targets_test.py``. What is left
+    ``bridge/test/tests/ddd_mutating/symmetrize_targets_test.py``. What is left
     here is the one required argument in the package, and that it is refused
     before a transport is chosen - which is what keeps the most destructive
     tool here from guessing which half of a face to keep.

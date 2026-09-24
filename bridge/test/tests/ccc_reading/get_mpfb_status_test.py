@@ -5,7 +5,7 @@ This is the command whose *value* is that MPFB's absence is a successful
 answer, so two of the three states it classifies are ones a working Blender
 cannot produce. They are **supplied** rather than waited for, exactly as the
 ``mpfb_unavailable`` refusal is in
-[`fff_list_objects_test.py`](fff_list_objects_test.py): the developer's Blender
+[`list_objects_test.py`](list_objects_test.py): the developer's Blender
 very likely has a perfectly good MPFB in it, and a test that could only run on
 a broken install would never run at all.
 
@@ -34,12 +34,12 @@ import sys
 
 import bpy
 
-from . import bridge_module
-from . import dynamic_import
-from ._fixtures import dispatch
-from ._fixtures import result
-from ._fixtures import services_or_skip
-from ._fixtures import supplied_resolution
+from .. import bridge_module
+from .. import dynamic_import
+from .._fixtures import dispatch
+from .._fixtures import result
+from .._fixtures import services_or_skip
+from .._fixtures import supplied_resolution
 
 COMMAND = "get_mpfb_status"
 

@@ -107,8 +107,8 @@ worth reusing:
 
 - **"Two commands agree" is tested by dispatching both.** For one subject in one state, dispatch
   the summary and each detailed command and assert every shared field equal
-  (`bridge/test/tests/uuu_get_character_summary_test.py`; FR 027's
-  `ppp_mutating/expression_divergence_test.py` is the same shape for three commands). A copy of a
+  (`bridge/test/tests/eee_composite/get_character_summary_test.py`; FR 027's
+  `eee_composite/expression_divergence_test.py` is the same shape for three commands). A copy of a
   reading grown inside one command passes that command's own tests; only asking both catches it.
   When the fixtures cannot make every section interesting at once, ask in each state that makes
   one interesting, rather than weakening the comparison.
@@ -128,14 +128,28 @@ the reason is written down next to it.
 `tests/` uses stdlib `unittest`, `tests/test_<name>.py`, `TestCase` classes, and no Blender
 anywhere. `bridge/test/` uses **MPFB's** arrangement: pytest called from inside a headless
 Blender, `<name>_test.py`, plain module functions, bare `assert` with a message, a docstring
-naming what is under test, and alphabetical prefixes to force order.
+naming what is under test, and alphabetical prefixes on directories to force order.
 
-**The prefix goes on a directory once twenty-six letters are not enough**, which is MPFB's own
-answer and the one FR 032 took rather than discovering it at the twelfth module. Flat prefixed
-modules ran from `aaa_` to `qqq_`; the thirteen commands that *change* a `.blend` live in
-`ppp_mutating/`, unprefixed among themselves and ordered as a group by the directory's own prefix.
-A directory earns one when its modules share an obligation rather than merely a number — those
-thirteen share the cleanup rule below.
+**In `bridge/test/tests/` the prefix goes only on directories, and a directory is a layer** that
+assumes every earlier layer passed. The harness runs pytest with `-x`, so the first failure stops
+the run, and the layering is right if and only if a failure in one layer makes a failure in a later
+one uninteresting: a fault in the transport should be reported once, not as thirty symptoms in
+thirty command modules. The layers, in run order, are `aaa_addon/` (the add-on itself, with no MPFB
+subject), `bbb_shared/` (direct tests of `mpfb_bridge/shared/` — **reserved and not yet created**,
+since every shared module is today tested only through the commands that use it), `ccc_reading/`
+(one module per read-only command), `ddd_mutating/` (one per command that changes a `.blend`) and
+`eee_composite/` (a claim about several commands at once, which means nothing asserted about one).
+Modules inside a layer are unprefixed and named `<subject>_test.py` — for a command module, the
+command name exactly — and **their order carries no meaning**. A new module goes into the layer its
+subject belongs to, never under the next free letter; if two modules in one layer turn out to need
+a particular order, the layer is two layers, and the modules do not get their prefixes back. With
+only directories collectable at the top, the order is also the same whichever way a pytest version
+sorts files against directories. MPFB's own layout is the model (`bbb_services/`, `ccc_data/`,
+`ddd_entities/`, `eee_ui/`), one step further: it keeps one flat prefixed module at the top, and
+this has none. [FR 035](../feature-requests/done/035-bridge-test-layers/README.md) replaced the
+arrangement before it, in which a prefix on each module recorded the order modules were written
+in, read-only commands ran after mutating ones, and the one prefixed directory existed only because
+the letters were running out.
 
 **The split is not a compromise; each side is right for what it tests.** `tests/` tests a package
 that never imports `bpy`, and its whole value is that it runs anywhere in seconds. `bridge/` is
@@ -146,7 +160,7 @@ twice: it is the arrangement that works, and it is the one an MPFB contributor a
 **A bridge test that mutates owes the suite a cleanup, and that is new since FR 032.** A read-only
 command could not leave anything behind. These add rigs, equip assets, create materials and write
 preset files, and a *failing* test is the one most likely to leave something. Two rules follow and
-every module in `ppp_mutating/` keeps both: what a test made, the fixture removes, however the test
+every module in `ddd_mutating/` and `eee_composite/` keeps both: what a test made, the fixture removes, however the test
 ends — which `Character`'s snapshot-and-delete already does for objects, so a test that adds a rig
 inside that block needs no cleanup code of its own; and a test that writes **outside the `.blend`**
 writes somewhere redirected, never into the developer's own MPFB config directory.
@@ -321,23 +335,23 @@ now answered in `bridge/test/`, and each is named here with where:
 
 - **No stub builds a node tree.** Nothing in the unit suite establishes that any of the five skin
   types produces the material MPFB's own skin library panel produces —
-  `ppp_mutating/set_skin_test.py` asks MPFB's own `identify_material()` instead.
+  `ddd_mutating/set_skin_test.py` asks MPFB's own `identify_material()` instead.
 - **No stub is MPFB.** Nothing establishes that a character modified through
   `mpfb_set_macro_details` matches one modified on MPFB's phenotype slider, that a garment
   equipped through `mpfb_add_asset` matches one from the asset library panel, or that a rig
   added through `mpfb_add_rig` matches one from the rig panel — the three
-  `ppp_mutating/` modules of those names do the modification for real.
+  `ddd_mutating/` modules of those names do the modification for real.
 - **No stub has geometry.** Nothing establishes that rigging after dressing leaves the clothes
   unrigged — the claim
   [A tool reports an ordering constraint it cannot enforce](mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
-  rests on. `ppp_mutating/add_rig_test.py` puts a real relative on a real character and reads the
+  rests on. `ddd_mutating/add_rig_test.py` puts a real relative on a real character and reads the
   enumeration back.
 - **No stub can establish what a real MPFB has loaded.** `mpfb_list_urls` reads
   `<root>.ui.weburls` out of `sys.modules`, and the test of the day executed it against a stub
   `sys.modules` carrying exactly such a module — which is to say the test was built out of the
   assumption under test and could only ever confirm it. This is the general shape of the trap:
-  **a fixture that reproduces a precondition cannot verify it.** `qqq_list_urls_test.py` asks the
-  module MPFB really loaded.
+  **a fixture that reproduces a precondition cannot verify it.** `ccc_reading/list_urls_test.py`
+  asks the module MPFB really loaded.
 
 **What neither harness establishes**, and FR 032's spike named rather than discovered:
 

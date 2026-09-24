@@ -8,7 +8,7 @@ Two layers (see ``tests/test_list_objects.py``, the template): the wrapper with
 ``tests/fake_bridge.py``. What MPFB actually answers - the zero-for-missing
 convention, the region grouping, the installed-pack probe and its cache - is
 checked against a real MPFB in
-``bridge/test/tests/rrr_get_face_units_test.py``.
+``bridge/test/tests/ccc_reading/get_face_units_test.py``.
 
 Run with::
 
@@ -90,7 +90,7 @@ class GetFaceUnitsOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
     What MPFB reports for a real character - the entries, the region grouping,
     the probe - is checked against a real MPFB in
-    ``bridge/test/tests/rrr_get_face_units_test.py``.
+    ``bridge/test/tests/ccc_reading/get_face_units_test.py``.
     """
 
     def setUp(self) -> None:

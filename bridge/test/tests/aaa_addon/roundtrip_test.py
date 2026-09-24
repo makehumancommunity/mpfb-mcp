@@ -15,7 +15,7 @@ one.** A test that drove both from one thread would prove the framing and
 nothing about the concurrency. It needs no second Blender process.
 
 What is checked here is framing and the round trip. The decisions a request goes
-through are ``ccc_dispatch_test``'s; a test that asserted both over a socket
+through are ``dispatch_test``'s; a test that asserted both over a socket
 would be slower and no more convincing.
 """
 
@@ -24,8 +24,8 @@ import socket
 import threading
 import time
 
-from . import bridge_module
-from . import dynamic_import
+from .. import bridge_module
+from .. import dynamic_import
 
 _TIMEOUT = 15.0
 

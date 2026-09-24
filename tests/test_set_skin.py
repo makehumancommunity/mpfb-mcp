@@ -14,7 +14,7 @@ types, so the default call creates no material instances.
 What this cannot say is that any of the five types produces the node tree MPFB's
 own panel produces, or that applying a skin really deletes every material
 already on the body and on its proxy. Both are checked against a real MPFB in
-``bridge/test/tests/ppp_mutating/set_skin_test.py``.
+``bridge/test/tests/ddd_mutating/set_skin_test.py``.
 
 Run with::
 
@@ -117,7 +117,7 @@ class SetSkinOverTheBridgeTests(fake_bridge.BridgeTestCase):
     """What cannot cross the socket, and nothing else.
 
     Everything this tool *answers* - the five node trees, what the call destroyed, the active-slot fixup and the settings file - is checked against a real MPFB
-    in ``bridge/test/tests/ppp_mutating/set_skin_test.py``.
+    in ``bridge/test/tests/ddd_mutating/set_skin_test.py``.
     """
 
     def setUp(self) -> None:

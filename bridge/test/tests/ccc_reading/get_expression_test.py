@@ -21,10 +21,10 @@ carrying a small but real faceunits01 pack, so the shape keys genuinely load.
 
 # pylint: disable=protected-access
 
-from ._fixtures import Character
-from ._fixtures import expression_library
-from ._fixtures import result
-from ._fixtures import services_or_skip
+from .._fixtures import Character
+from .._fixtures import expression_library
+from .._fixtures import result
+from .._fixtures import services_or_skip
 
 
 def _get(basemesh):

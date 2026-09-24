@@ -14,8 +14,8 @@ add-on confidently telling a client something untrue about itself.
 import os
 import tomllib
 
-from . import bridge_package
-from . import dynamic_import
+from .. import bridge_package
+from .. import dynamic_import
 
 
 def _manifest():

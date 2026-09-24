@@ -11,7 +11,7 @@ This is the one tool with no service function behind it at all - the mechanism
 exists only in a UI operator, reimplemented from services with three of its
 quirks reproduced rather than tidied up - so what it produces is a node tree,
 and no stub builds one. That, and the three refusals, are checked against a real
-MPFB in ``bridge/test/tests/ppp_mutating/set_asset_material_test.py``.
+MPFB in ``bridge/test/tests/ddd_mutating/set_asset_material_test.py``.
 
 Run with::
 
@@ -105,7 +105,7 @@ class SetAssetMaterialOverTheBridgeTests(fake_bridge.BridgeTestCase):
     """What cannot cross the socket, and nothing else.
 
     Everything this tool *answers* - the eleven refusals, the popped slots, the fixed material name and the viewport colour - is checked against a real MPFB
-    in ``bridge/test/tests/ppp_mutating/set_asset_material_test.py``.
+    in ``bridge/test/tests/ddd_mutating/set_asset_material_test.py``.
     """
 
     def setUp(self) -> None:

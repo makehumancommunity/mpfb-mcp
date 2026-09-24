@@ -8,7 +8,7 @@ Two layers (see ``tests/test_list_objects.py``, the template): the wrapper with
 ``tests/fake_bridge.py``.
 
 The questions this tool is defined by are put to a real MPFB in
-``bridge/test/tests/mmm_list_asset_materials_test.py`` - including the one that
+``bridge/test/tests/ccc_reading/list_asset_materials_test.py`` - including the one that
 defines it most, that MPFB's scan is cached per asset and nothing invalidates
 it, so this tool's answer is stale by design and says so.
 
@@ -90,7 +90,7 @@ class ListAssetMaterialsOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
     Everything this tool *answers* - the scan, its staleness, the default
     material and why it might be unknown - is checked against a real MPFB in
-    ``bridge/test/tests/mmm_list_asset_materials_test.py``.
+    ``bridge/test/tests/ccc_reading/list_asset_materials_test.py``.
     """
 
     def setUp(self):

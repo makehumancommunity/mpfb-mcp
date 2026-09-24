@@ -435,3 +435,34 @@ to a headless Blender) and, for the timer-driven path the headless runs cannot r
 comparisons against the two preset-built characters in a windowed Blender (46 checks, about 4.6 KB
 each). Ten new bridge tests (359 in all), five new unit tests (428) and one smoke item; the smoke run
 is 34 items in 1.5 s.
+
+## [FR 035](done/035-bridge-test-layers/README.md) — bridge tests grouped into ordered layers
+
+The bridge's test modules had carried MPFB's three-letter prefix without its purpose: the letter
+recorded the order modules were written in, read-only commands ran after the sixteen mutating
+ones, and the one prefixed directory sorted between flat files only because pytest 8 sorts files and
+directories together. **Now only directories are prefixed, and each is a layer** that assumes
+every earlier one passed — `aaa_addon/`, `ccc_reading/`, `ddd_mutating/`, `eee_composite/`, with
+`bbb_shared/` reserved and not created — so `-x` stops a run at the lowest layer that is broken
+instead of letting thirty command modules report one transport fault thirty times. Modules inside
+are unprefixed and named after their subject, for a command the command name exactly, and their
+order means nothing; a layer that needs an internal order is two layers. The rule is in
+[testing.md](../specifications/testing.md#two-harnesses-split-at-the-directory-boundary), the
+per-layer obligations in each layer's `__init__.py`, and `TEST_MODULE` now takes a layer as well
+as a module ([bridge/test/README.md](../bridge/test/README.md#running)).
+
+The two modules whose claim spans several commands — the character summary beside its detailed
+commands, and the three expression-aware commands agreeing — went to `eee_composite/` rather than
+staying with the commands they dispatch. `list_urls`, one of three commands declaring
+`requires_mpfb=False`, went to `ccc_reading/` rather than `aaa_addon/`, because its subject is
+still what MPFB answers. `ddd_mutating/__init__.py` kept its cleanup rules and lost its reason for
+existing, which had been running short of letters; testing.md carried the same claim and was
+corrected with it.
+
+Verified by [`compare_runs.py`](done/035-bridge-test-layers/compare_runs.py), which compares two
+saved `-v` logs as the set of (module name without its prefix, test, outcome) and checks the layer
+order of the second: before and after, **359 passed, none skipped, identical**, every layer's node
+IDs ahead of the next. `TEST_MODULE=tests/ddd_mutating` ran 166 and
+`TEST_MODULE=tests/ccc_reading/list_rigs_test.py` 11. No test was added or removed; the 428 unit
+tests changed only in docstrings. Direct tests for the thirteen shared modules are queued in
+[NEXT_STEPS.md](NEXT_STEPS.md#direct-tests-of-the-bridges-shared-modules).

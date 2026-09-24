@@ -10,7 +10,7 @@ template).
 The three fields worth having here - ``size_bytes``, ``modified`` and
 ``exists`` - come from ``os.stat`` and from nowhere else, so what this tool
 answers can only be checked against a real directory.
-``bridge/test/tests/jjj_list_presets_test.py`` builds one and points MPFB's own
+``bridge/test/tests/ccc_reading/list_presets_test.py`` builds one and points MPFB's own
 ``LocationService`` at it, which is where the claims about what MPFB's list
 holds are made.
 
@@ -78,7 +78,7 @@ class ListPresetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
     Everything this tool *answers* - what MPFB's cached list holds, which files
     its own match accepts, what a rescan gains - is checked against a real MPFB
-    in ``bridge/test/tests/jjj_list_presets_test.py``.
+    in ``bridge/test/tests/ccc_reading/list_presets_test.py``.
     """
 
     def setUp(self) -> None:

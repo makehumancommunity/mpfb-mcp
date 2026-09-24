@@ -13,7 +13,7 @@ number the session source cache existed because of, and over the bridge it is a
 single JSON request. What it *answers* - the two-source scan that merges the
 bundled index with the user's own target directories, the ``.target.gz`` MPFB's
 own scan misses, the name long enough that its shape key name is encoded - is
-asked of a real MPFB in ``bridge/test/tests/nnn_list_targets_test.py``.
+asked of a real MPFB in ``bridge/test/tests/ccc_reading/list_targets_test.py``.
 
 Run with::
 
@@ -213,7 +213,7 @@ class ListTargetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
     Everything this tool *answers* - the two-source merge, the over-60-character
     encoding, the gzipped target MPFB's own scan misses - is checked against a
-    real MPFB in ``bridge/test/tests/nnn_list_targets_test.py``.
+    real MPFB in ``bridge/test/tests/ccc_reading/list_targets_test.py``.
     """
 
     def setUp(self):

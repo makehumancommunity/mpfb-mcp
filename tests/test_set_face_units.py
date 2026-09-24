@@ -14,7 +14,7 @@ is real is answered by the payload against MPFB's own ``ARKIT_FACEUNITS``.
 What the payload does with a resolved batch - the all-or-nothing vocabulary
 refusal, the pack-absent refusal, on-demand loading, the
 zero-weight-absent-shape-key skip, and the refit - is checked against a real
-MPFB in ``bridge/test/tests/ppp_mutating/set_face_units_test.py``.
+MPFB in ``bridge/test/tests/ddd_mutating/set_face_units_test.py``.
 
 Run with::
 
@@ -159,7 +159,7 @@ class SetFaceUnitsOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
     The all-or-nothing vocabulary check, the pack-absent refusal and the write
     order are checked against a real MPFB in
-    ``bridge/test/tests/ppp_mutating/set_face_units_test.py``. What is left
+    ``bridge/test/tests/ddd_mutating/set_face_units_test.py``. What is left
     here is the per-entry validation this tool does before any transport is
     chosen.
     """

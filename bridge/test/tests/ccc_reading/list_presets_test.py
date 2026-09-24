@@ -33,13 +33,13 @@ import os
 
 import pytest
 
-from . import bridge_module
-from ._fixtures import dispatch
-from ._fixtures import redirected_locations
-from ._fixtures import result
-from ._fixtures import services_or_skip
-from ._fixtures import supplied_resolution
-from ._fixtures import write
+from .. import bridge_module
+from .._fixtures import dispatch
+from .._fixtures import redirected_locations
+from .._fixtures import result
+from .._fixtures import services_or_skip
+from .._fixtures import supplied_resolution
+from .._fixtures import write
 
 COMMAND = "list_presets"
 

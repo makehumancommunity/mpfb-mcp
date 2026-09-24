@@ -11,7 +11,7 @@ loop, because twenty near-identical test functions would be twenty places for a
 case to go missing and one place is enough.
 """
 
-from . import dynamic_import
+from .. import dynamic_import
 
 _ACCEPTED = object()
 

@@ -13,17 +13,17 @@ does not compute anywhere: it is a fact about the mesh (does a real shape key
 back this value), not about the expression dict MPFB hands back. The fixture
 for it adds a ``!ex-`` shape key with Blender's own API rather than through
 ``mpfb_set_face_units`` - the write side is the mutating command's own claim,
-in ``ppp_mutating/set_face_units_test.py``.
+in ``ddd_mutating/set_face_units_test.py``.
 """
 
 import bpy
 
-from . import bridge_module
-from ._fixtures import Character
-from ._fixtures import dispatch
-from ._fixtures import result
-from ._fixtures import services_or_skip
-from ._fixtures import supplied_resolution
+from .. import bridge_module
+from .._fixtures import Character
+from .._fixtures import dispatch
+from .._fixtures import result
+from .._fixtures import services_or_skip
+from .._fixtures import supplied_resolution
 
 COMMAND = "get_face_units"
 

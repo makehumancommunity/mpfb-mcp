@@ -11,7 +11,7 @@ about the size of an *answer* and are enforced here and nowhere else.
 The awkward cases a real install has - an asset claimed by two packs, an asset
 claimed by none, a pack listing an asset that is not installed, two assets whose
 labels collide, an asset sitting directly in the asset root - are each a branch,
-and each is asked of a real MPFB in ``bridge/test/tests/lll_list_assets_test.py``
+and each is asked of a real MPFB in ``bridge/test/tests/ccc_reading/list_assets_test.py``
 over an asset library that test builds.
 
 Run with::
@@ -154,7 +154,7 @@ class ListAssetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
     Everything this tool *answers* - the section table, the cap, the paging
     order, the pack attribution - is checked against a real MPFB in
-    ``bridge/test/tests/lll_list_assets_test.py``.
+    ``bridge/test/tests/ccc_reading/list_assets_test.py``.
     """
 
     def setUp(self):

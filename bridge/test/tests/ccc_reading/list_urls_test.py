@@ -1,12 +1,13 @@
 """
 ``list_urls`` against a real MPFB: the third command that does not need one.
 
-**A flat module rather than one under ``ppp_mutating/``, and the placement is
-the point.** FR 032 migrated fourteen tools; thirteen of them change a `.blend`
-and live in that directory. This one is read-only and belongs out here with the
-other read-only commands, which is also why its ``requires_mpfb`` is ``False``:
+**In ``ccc_reading/`` rather than ``aaa_addon/``, and the placement is the
+point.** It is one of three commands declaring ``requires_mpfb=False``, since
 "where do I download MPFB" is asked most often by somebody whose MPFB is not
-working.
+working, and that could be argued into the layer about the add-on itself. It
+belongs here because its subject is still what MPFB answers: FR 032 migrated
+fourteen tools, thirteen of them change a `.blend` and live in
+``ddd_mutating/``, and this one is read-only.
 
 Two claims live here:
 
@@ -29,11 +30,11 @@ import sys
 
 import pytest
 
-from . import bridge_module
-from ._fixtures import dispatch
-from ._fixtures import result as _fixture_result
-from ._fixtures import services_or_skip as _services_or_skip
-from ._fixtures import supplied_resolution
+from .. import bridge_module
+from .._fixtures import dispatch
+from .._fixtures import result as _fixture_result
+from .._fixtures import services_or_skip as _services_or_skip
+from .._fixtures import supplied_resolution
 
 
 def _result(params=None):

@@ -14,7 +14,7 @@ established work in a Blender with no window before any of this was written.
 temporary directory, because ``ClothesService.fit_clothes_to_human()`` re-reads
 a garment's MHCLO through ``AssetService``. That is the spike's other finding
 and it is the difference between this module testing a refit and this module
-testing an ``IOError``. See [`../ppp_mutating/__init__.py`](__init__.py).
+testing an ``IOError``. See [`ddd_mutating/__init__.py`](__init__.py).
 
 **Every test here runs inside a ``Character`` block**, so the rig, the garment
 and anything Rigify generated are all new objects that the fixture deletes

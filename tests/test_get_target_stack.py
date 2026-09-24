@@ -16,7 +16,7 @@ stack up into modifier values means reproducing
 ``_get_opposed_modifier_value()``, including its rule that the positive target
 wins and the negative one is reported negated. That, and the agreement between
 this tool's category reading and ``mpfb_symmetrize_targets``', are checked
-against a real MPFB in ``bridge/test/tests/ooo_get_target_stack_test.py``.
+against a real MPFB in ``bridge/test/tests/ccc_reading/get_target_stack_test.py``.
 
 Run with::
 
@@ -127,7 +127,7 @@ class GetTargetStackOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
     Everything this tool *answers* - the two views, the "basis" exclusion, how a
     category reads - is checked against a real MPFB in
-    ``bridge/test/tests/ooo_get_target_stack_test.py``.
+    ``bridge/test/tests/ccc_reading/get_target_stack_test.py``.
     """
 
     def setUp(self):

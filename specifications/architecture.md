@@ -591,7 +591,7 @@ behaviour on its own. Two commands sharing a five-line helper are not a reason t
   `mpfb_get_expression`, which exists to answer it; `mpfb_apply_expressions`, which names the
   composed units its rebuild destroyed; and `mpfb_set_face_units`, which says whether what it just
   composed is now at risk. One of them saying "nothing to lose" while another says "this will be
-  discarded" is the failure; `ppp_mutating/expression_divergence_test.py` asks all three about one
+  discarded" is the failure; `eee_composite/expression_divergence_test.py` asks all three about one
   character. `mpfb_get_character_summary` reads through it as well, which makes four.
 - **A summary and its detailed tool are one implementation.** `macro_reading.py`, `asset_info.py`
   and `target_rollup.py` share this one warrant, which is why it is stated once rather than three
@@ -607,9 +607,9 @@ behaviour on its own. Two commands sharing a five-line helper are not a reason t
   is the only way that stays true; the other resolvers were not consolidated (see
   [NEXT_STEPS.md](../feature-requests/NEXT_STEPS.md#one-basemesh-resolver)). The face-unit read was
   **not** moved: `get_face_units` reads straight off `FaceService` and the non-zero filter is one
-  line, which is below the bar. `bridge/test/tests/uuu_get_character_summary_test.py` dispatches
-  the summary beside each detailed command on one character and asserts every shared field equal —
-  the test that keeps them agreeing after the reason is forgotten.
+  line, which is below the bar. `bridge/test/tests/eee_composite/get_character_summary_test.py`
+  dispatches the summary beside each detailed command on one character and asserts every shared
+  field equal — the test that keeps them agreeing after the reason is forgotten.
 - **A shared module may share the condition and leave the wording alone.** `refit_blocker.py` is
   that case: `HumanService.refit()` cannot refit a generated Rigify rig with no meta rig left in
   the scene, reports it only through an `operator` no MCP tool has one of, and returns having

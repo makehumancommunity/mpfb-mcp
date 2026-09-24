@@ -11,7 +11,7 @@ The cases the tool exists for - resolving the basemesh from *any* member of the
 character's family, reporting the raw race sum rather than a normalized one,
 and reporting the derived target stack beside the shape keys actually on the
 mesh so that a drifted character is visible - are asserted against a real MPFB
-in ``bridge/test/tests/iii_get_macro_details_test.py``.
+in ``bridge/test/tests/ccc_reading/get_macro_details_test.py``.
 
 Run with::
 

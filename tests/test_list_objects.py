@@ -12,7 +12,7 @@ layers:
    the same parameters go on the wire, that the tool's own validation runs
    before anything is sent, and that an error envelope reaches the caller
    intact. **Nothing here asserts what MPFB answers.** Those assertions live in
-   ``bridge/test/tests/fff_list_objects_test.py``, where they are made against
+   ``bridge/test/tests/ccc_reading/list_objects_test.py``, where they are made against
    a real MPFB in a headless Blender instead of against a stub written by
    whoever wrote the code under test.
 

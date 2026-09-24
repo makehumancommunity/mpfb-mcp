@@ -12,7 +12,7 @@ template).
    locally invalid call reaches nothing.
 
 What the character MPFB actually builds looks like is checked against a real
-MPFB in ``bridge/test/tests/ppp_mutating/create_human_test.py``, which is where
+MPFB in ``bridge/test/tests/ddd_mutating/create_human_test.py``, which is where
 it could never be checked from this side.
 
 Run with::
@@ -77,7 +77,7 @@ class CreateHumanOverTheBridgeTests(fake_bridge.BridgeTestCase):
     Everything this tool *does* - that a basemesh appears, that it carries the
     phenotype it was given, that ``performed`` is true because creation either
     returns an object or raises - is checked against a real MPFB in
-    ``bridge/test/tests/ppp_mutating/create_human_test.py``.
+    ``bridge/test/tests/ddd_mutating/create_human_test.py``.
     """
 
     def setUp(self) -> None:

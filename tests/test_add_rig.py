@@ -13,8 +13,8 @@ so an unknown one has to reach Blender to be refused there with
 What this cannot say is that a rig added through this tool is indistinguishable
 from one added through MPFB's own panel, or that the catalogue's weights
 prediction equals this tool's outcome. Both are checked against a real MPFB in
-``bridge/test/tests/ppp_mutating/add_rig_test.py`` and
-``bridge/test/tests/kkk_list_rigs_test.py``, which is the only place the pair
+``bridge/test/tests/ddd_mutating/add_rig_test.py`` and
+``bridge/test/tests/ccc_reading/list_rigs_test.py``, which is the only place the pair
 can be run against one disk now that both halves are commands.
 
 Run with::
@@ -112,7 +112,7 @@ class AddRigOverTheBridgeTests(fake_bridge.BridgeTestCase):
     """What cannot cross the socket, and nothing else.
 
     Everything this tool *answers* - which file loads, whose weights come with it, the ordering warning, the AssertionError path - is checked against a real MPFB
-    in ``bridge/test/tests/ppp_mutating/add_rig_test.py``.
+    in ``bridge/test/tests/ddd_mutating/add_rig_test.py``.
     """
 
     def setUp(self) -> None:

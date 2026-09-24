@@ -13,8 +13,8 @@ contract the wire documents: a caller branches on ``error`` and reads
 broke nothing.
 """
 
-from . import bridge_module
-from . import dynamic_import
+from .. import bridge_module
+from .. import dynamic_import
 
 
 def _start_with(table):

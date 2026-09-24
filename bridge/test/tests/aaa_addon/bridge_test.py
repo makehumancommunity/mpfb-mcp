@@ -7,15 +7,16 @@ moving parts that finding out it does not work would be much worse later than
 now. The assertions are deliberately shallow - the bridge's real suite arrives
 with its real code.
 
-Named ``aaa_`` because pytest discovers alphabetically and MPFB uses the same
-prefix trick to force the core checks to run first. The convention is now
-earning itself: this module is what the others assume works.
+In ``aaa_addon/`` because pytest discovers alphabetically and that directory
+is the first layer: every later one assumes the add-on itself works. Inside the
+layer the order carries no meaning, but this module sorts first anyway, and it
+is what the others in it assume works.
 """
 
 import bpy
 
-from . import bridge_package
-from . import dynamic_import
+from .. import bridge_package
+from .. import dynamic_import
 
 
 def test_addon_is_loaded():

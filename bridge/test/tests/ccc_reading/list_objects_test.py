@@ -41,14 +41,14 @@ import sys
 
 import bpy
 
-from . import bridge_module
-from . import dynamic_import
-from ._fixtures import Character as _Character
-from ._fixtures import dispatch
-from ._fixtures import linked_plain_object as _linked_plain_object
-from ._fixtures import result as _fixture_result
-from ._fixtures import services_or_skip as _services_or_skip
-from ._fixtures import supplied_resolution
+from .. import bridge_module
+from .. import dynamic_import
+from .._fixtures import Character as _Character
+from .._fixtures import dispatch
+from .._fixtures import linked_plain_object as _linked_plain_object
+from .._fixtures import result as _fixture_result
+from .._fixtures import services_or_skip as _services_or_skip
+from .._fixtures import supplied_resolution
 
 
 def _answer(params=None):

@@ -12,7 +12,7 @@ call: a missing basemesh comes back as an answer rather than the ``ValueError``
 refit() raises, and a generated Rigify rig with no meta rig is reported rather
 than passed off as a successful refit. That, and whether a refit visibly puts
 clothes back on a deformed body, are checked against a real MPFB in
-``bridge/test/tests/ppp_mutating/refit_human_test.py``, which builds a
+``bridge/test/tests/ddd_mutating/refit_human_test.py``, which builds a
 character, equips a garment from a redirected data root, deforms the body and
 refits it.
 
@@ -72,7 +72,7 @@ class RefitHumanOverTheBridgeTests(fake_bridge.BridgeTestCase):
     Everything this tool *answers* - what was refitted, what a generated Rigify
     rig with no meta rig does to ``refit_performed``, that the caller's
     selection comes back - is checked against a real MPFB in
-    ``bridge/test/tests/ppp_mutating/refit_human_test.py``.
+    ``bridge/test/tests/ddd_mutating/refit_human_test.py``.
     """
 
     def setUp(self) -> None:

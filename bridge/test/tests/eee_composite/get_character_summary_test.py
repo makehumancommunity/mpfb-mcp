@@ -31,16 +31,16 @@ import os
 import bpy
 import pytest
 
-from . import bridge_module
-from ._fixtures import Character
-from ._fixtures import dispatch
-from ._fixtures import expression_library
-from ._fixtures import linked_plain_object
-from ._fixtures import redirected_locations
-from ._fixtures import result
-from ._fixtures import services_or_skip
-from ._fixtures import supplied_resolution
-from ._fixtures import write_loadable_mhclo
+from .. import bridge_module
+from .._fixtures import Character
+from .._fixtures import dispatch
+from .._fixtures import expression_library
+from .._fixtures import linked_plain_object
+from .._fixtures import redirected_locations
+from .._fixtures import result
+from .._fixtures import services_or_skip
+from .._fixtures import supplied_resolution
+from .._fixtures import write_loadable_mhclo
 
 COMMAND = "get_character_summary"
 

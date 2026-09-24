@@ -2,22 +2,23 @@
 The commands that **change** a .blend, against a real MPFB - thirteen when this
 directory was made, sixteen since FR 026 and FR 027 added the face commands.
 
-**A directory rather than fourteen more prefixed files, and that is the whole
-reason this package exists.** ``bridge/test/tests/`` forces module order with an
-``aaa_``…``ooo_`` prefix, MPFB's arrangement; fifteen of those are taken, and
-[FR 032](../../../../feature-requests/done/032-creation-and-modification-migrated/README.md)
-adds fourteen modules against the eleven letters left before ``zzz_``. MPFB
-prefixes *directories* as well as files - ``bbb_services/``, ``ccc_data/``,
-``ddd_entities/``, ``eee_ui/`` - and that is the way out, taken here once rather
-than discovered at the twelfth module. Inside a prefixed directory the modules
-need no prefix of their own: they are ordered among themselves alphabetically
-and the directory is ordered among its siblings.
+**A layer, after the add-on itself and the read-only commands.** A module here
+may assume that everything under ``aaa_addon/`` and ``ccc_reading/`` passed, and
+``-x`` makes sure it only runs if it did. That is what the ``ddd_`` buys: a
+write whose result is read back through a read-only command means nothing if
+that command's own module has not passed first. Inside the layer the modules are
+unprefixed and their order carries no meaning (see
+[testing.md](../../../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary)).
+Until [FR 035](../../../../feature-requests/done/035-bridge-test-layers/README.md)
+this directory sorted *between* read-only modules, and was a way out of running
+short of letters rather than a layer.
 
-**Thirteen, not fourteen.** ``list_urls`` migrated in the same effort and is
-*read-only*, so it stays a flat sibling module out here with the other read-only
-commands. What this directory holds is the set FR 032's requirement 3 is about:
-commands that mutate, and therefore commands whose tests have an obligation the
-fifteen before them did not.
+**One module per command, and only commands.** ``list_urls`` migrated in the same
+effort as these and is *read-only*, so it is in ``ccc_reading/``. A test whose
+claim is about several commands at once is in ``eee_composite/``, even when
+every command it dispatches is one of these. What this directory holds is the
+set FR 032's requirement 3 is about: commands that mutate, and therefore
+commands whose tests have an obligation the layers before them do not.
 
 **Cleanup is this suite's own risk now.** A read-only command could not leave
 anything behind. These add rigs, equip assets, create materials and write preset

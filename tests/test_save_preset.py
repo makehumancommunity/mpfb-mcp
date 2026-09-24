@@ -18,7 +18,7 @@ The three things a tool that writes a file owes its caller - that a refusal
 leaves the existing file byte-identical, that the absolute path is in every
 answer, and that what is reported as written is read back out of the file rather
 than assembled from the scene - are checked against a real MPFB in
-``bridge/test/tests/ppp_mutating/save_preset_test.py``, which redirects MPFB's
+``bridge/test/tests/ddd_mutating/save_preset_test.py``, which redirects MPFB's
 user config directory so that a failing test cannot leave a preset in the
 developer's own panel.
 
@@ -162,7 +162,7 @@ class SavePresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
     """What cannot cross the socket, and nothing else.
 
     Everything this tool *answers* - what MPFB writes, which characters it refuses to serialize, and the generated-Rigify substitution - is checked against a real MPFB
-    in ``bridge/test/tests/ppp_mutating/save_preset_test.py``.
+    in ``bridge/test/tests/ddd_mutating/save_preset_test.py``.
     """
 
     def setUp(self) -> None:

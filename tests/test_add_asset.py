@@ -12,7 +12,7 @@ and both are refused before anything is sent.
 What this cannot say is that an asset equipped through this tool is
 indistinguishable from the same asset equipped through MPFB's own asset library
 panel - same fit, same delete group, same material. That is checked against a
-real MPFB in ``bridge/test/tests/ppp_mutating/add_asset_test.py``, over an
+real MPFB in ``bridge/test/tests/ddd_mutating/add_asset_test.py``, over an
 asset library that test builds.
 
 Run with::
@@ -128,7 +128,7 @@ class AddAssetOverTheBridgeTests(fake_bridge.BridgeTestCase):
     """What cannot cross the socket, and nothing else.
 
     Everything this tool *answers* - the type vocabulary, the delete group, the proxy extras and every warning - is checked against a real MPFB
-    in ``bridge/test/tests/ppp_mutating/add_asset_test.py``.
+    in ``bridge/test/tests/ddd_mutating/add_asset_test.py``.
     """
 
     def setUp(self) -> None:

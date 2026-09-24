@@ -12,7 +12,7 @@ The three ``asset_info`` shapes and their three resolution outcomes each, the
 relationship walk, and the MPFB behaviours this tool is written around - ``""``
 for an untyped object, a non-bool ``object_is_any_makehuman_object()``, a
 ``find_related_objects()`` that yields the subject itself - are asserted
-against a real install in ``bridge/test/tests/hhh_get_object_info_test.py``.
+against a real install in ``bridge/test/tests/ccc_reading/get_object_info_test.py``.
 
 Run with::
 

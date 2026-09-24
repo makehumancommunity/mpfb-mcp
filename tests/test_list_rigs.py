@@ -9,7 +9,7 @@ Two layers (see ``tests/test_list_objects.py``, the template): the wrapper with
 
 This tool's whole job is ``os.listdir()`` and ``os.path.isfile()`` over MPFB's
 rig directories, so it can only be checked against a real tree.
-``bridge/test/tests/kkk_list_rigs_test.py`` builds one and points MPFB's own
+``bridge/test/tests/ccc_reading/list_rigs_test.py`` builds one and points MPFB's own
 ``LocationService`` at it, reproducing the asymmetries a real install has - a
 rig with no weights file of its own, a weights file with no rig, a rig with no
 entry in the UI enum - and it is also where the claim that this catalogue's
@@ -96,7 +96,7 @@ class ListRigsOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
     Everything this tool *answers* - which files are listed, which weights the
     fallback table resolves to, what happens when Rigify is off - is checked
-    against a real MPFB in ``bridge/test/tests/kkk_list_rigs_test.py``.
+    against a real MPFB in ``bridge/test/tests/ccc_reading/list_rigs_test.py``.
     """
 
     def setUp(self) -> None:

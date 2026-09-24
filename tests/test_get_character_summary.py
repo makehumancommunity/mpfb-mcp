@@ -7,7 +7,7 @@ Two layers (see ``tests/test_list_objects.py``, the template), and there is
 almost nothing to validate locally, which is right: the tool takes one optional
 name. What the tool *answers* - and above all that every field it shares with a
 detailed tool equals that tool's answer on the same character - is checked
-against a real MPFB in ``bridge/test/tests/uuu_get_character_summary_test.py``,
+against a real MPFB in ``bridge/test/tests/eee_composite/get_character_summary_test.py``,
 by dispatching both.
 
 Run with::

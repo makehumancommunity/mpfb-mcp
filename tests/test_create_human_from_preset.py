@@ -13,7 +13,7 @@ written is a name that can be looked up.
 What MPFB builds from a preset, and the settings dict it is built from - eight
 keys MPFB reads with ``[]``, so a dict missing one raises rather than
 degrading - are checked against a real MPFB in
-``bridge/test/tests/ppp_mutating/create_human_from_preset_test.py``, which does
+``bridge/test/tests/ddd_mutating/create_human_from_preset_test.py``, which does
 the save-and-load round trip there rather than between two stubs.
 
 Run with::
@@ -119,7 +119,7 @@ class CreateHumanFromPresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
     """What cannot cross the socket, and nothing else.
 
     Everything this tool *answers* - the settings dict, the unresolved assets, and what a mid-way failure left behind - is checked against a real MPFB
-    in ``bridge/test/tests/ppp_mutating/create_human_from_preset_test.py``.
+    in ``bridge/test/tests/ddd_mutating/create_human_from_preset_test.py``.
     """
 
     def setUp(self) -> None:

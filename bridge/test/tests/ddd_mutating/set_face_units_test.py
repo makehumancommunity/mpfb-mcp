@@ -6,12 +6,12 @@ vocabulary refusal (an unrecognised ``face_unit`` name) does not need
 ``faceunits01`` installed at all and is checked first. The pack-absent refusal
 and the partial-install ``could_not_load`` case are then reproduced by
 redirecting MPFB's data roots with :func:`only_these_data_roots` - the same
-technique ``lll_list_assets_test.py`` and friends use - and by forcing
+technique ``ccc_reading/list_assets_test.py`` and friends use - and by forcing
 ``FaceService``'s installed-probe cache to re-read them, since nothing else on
 this side would bust it between tests. Finally, with the developer's own real
 install (which ships every ARKit target under
 ``~/makehuman/mpfb/data/targets/faceunits/`` on this machine, confirmed by
-:mod:`rrr_get_face_units_test`), a real weight is loaded from disk, a real
+``ccc_reading/get_face_units_test.py``), a real weight is loaded from disk, a real
 shape key lands on the mesh, and a second call proves the additive default and
 ``clear_first`` against each other.
 

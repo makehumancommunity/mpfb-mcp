@@ -14,7 +14,7 @@ What this cannot say is that the generated rig deforms the character the way
 Rigify's own does, that a failed generation is not a no-op, or that
 ``meta_rig_action="delete"`` really leaves ``mpfb_refit_human`` unable to refit.
 All three are checked against a real Rigify in
-``bridge/test/tests/ppp_mutating/generate_rigify_rig_test.py``, which the FR 032
+``bridge/test/tests/ddd_mutating/generate_rigify_rig_test.py``, which the FR 032
 spike established can run in a Blender with no window.
 
 Run with::
@@ -110,7 +110,7 @@ class GenerateRigifyRigOverTheBridgeTests(fake_bridge.BridgeTestCase):
     """What cannot cross the socket, and nothing else.
 
     Everything this tool *answers* - the four refusals, what a rejected meta rig leaves behind, and ``active_object_after`` - is checked against a real MPFB
-    in ``bridge/test/tests/ppp_mutating/generate_rigify_rig_test.py``.
+    in ``bridge/test/tests/ddd_mutating/generate_rigify_rig_test.py``.
     """
 
     def setUp(self) -> None:
