@@ -59,6 +59,7 @@ __all__ = (
 import sys
 
 from ..log import get_logger
+from ..shared import mpfb_surface
 
 _LOG = get_logger("commands.listurls")
 
@@ -85,12 +86,6 @@ MISSING_MODULE_REASON = (
     "its UI during register(), so this install is unusual. The addresses below are mpfb-mcp's "
     "vendored copy of them."
 )
-
-
-def _dotted(version):
-    if version is None:
-        return None
-    return ".".join([str(part) for part in version])
 
 
 def _read_weburls(module):
@@ -133,7 +128,7 @@ def list_urls(params, resolution):  # pylint: disable=unused-argument
         return result
 
     result["package"] = resolution.module.__name__
-    result["version"] = _dotted(getattr(resolution.module, "VERSION", None))
+    result["version"] = mpfb_surface.dotted(getattr(resolution.module, "VERSION", None))
 
     # Attempted whatever the state is: a half-registered MPFB may still have
     # imported its UI, and reading a module that is already loaded costs nothing

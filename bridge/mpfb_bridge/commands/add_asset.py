@@ -76,6 +76,7 @@ import bpy
 
 from ..log import get_logger
 from ..shared import asset_sections
+from ..shared import blender_data
 from ..shared import mpfb_surface
 from ..shared import selection
 from ..shared import subject_resolution
@@ -227,16 +228,6 @@ def _added_modifiers(before, after):
         else:
             appeared.append(record)
     return appeared
-
-
-def _vertex_group_names(blender_object):
-    if blender_object is None:
-        return []
-    return [str(group.name) for group in (getattr(blender_object, "vertex_groups", None) or [])]
-
-
-def _object_names():
-    return set(blender_object.name for blender_object in bpy.data.objects)
 
 
 def _has_mask_for(blender_object, group_name):
@@ -566,9 +557,9 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
         basemesh, "Proxymeshes")
 
     basemesh_modifiers_before = _modifier_records(basemesh)
-    basemesh_groups_before = _vertex_group_names(basemesh)
+    basemesh_groups_before = blender_data.vertex_group_names(basemesh)
     proxy_modifiers_before = _modifier_records(body_proxy)
-    names_before = _object_names()
+    names_before = blender_data.object_names()
 
     names_material, mhmat_path = _mhclo_material(request.resolved_path)
     weights_beside = _weights_files_beside(request.resolved_path)
@@ -598,7 +589,7 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
                 os.path.basename(request.resolved_path), str(error))
 
     if failure_message is not None:
-        stray = sorted(_object_names() - names_before)
+        stray = sorted(blender_data.object_names() - names_before)
         return _blocked(
             subject, basemesh, subject_resolved_by, params, request, "import_failed",
             failure_message + (
@@ -625,7 +616,7 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
         record for record in _added_modifiers(proxy_modifiers_before,
                                               _modifier_records(body_proxy))
         if record[1] == "MASK"]
-    groups_added = [name for name in _vertex_group_names(basemesh)
+    groups_added = [name for name in blender_data.vertex_group_names(basemesh)
                     if name not in basemesh_groups_before]
 
     delete_group_name = None
@@ -721,7 +712,7 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
         subdiv_modifier_added=subdiv_modifier_added,
         weights_files_beside_asset=weights_beside,
         proxy_extras=proxy_extras,
-        objects_created=sorted(_object_names() - names_before),
+        objects_created=sorted(blender_data.object_names() - names_before),
         warnings=warnings,
         message=_message_for(request, basemesh, asset_object, existing_rig,
                              params["set_up_rigging"], delete_group_name, warnings),

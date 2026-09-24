@@ -88,3 +88,10 @@ def test_as_path_coerces_a_path_and_drops_an_empty_one():
     assert _module().as_path("/tmp/x") == "/tmp/x"
     assert _module().as_path("") is None
     assert _module().as_path(None) is None
+
+
+def test_dotted_joins_a_tuple_and_refuses_anything_else():
+    assert _module().dotted((2, 0, 14)) == "2.0.14"
+    assert _module().dotted([4, 2]) == "4.2"
+    assert _module().dotted(None) is None
+    assert _module().dotted("2.0") is None, "a string would be joined character by character"

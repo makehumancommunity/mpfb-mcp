@@ -65,13 +65,6 @@ SUMMARY = ("Report whether MPFB is loaded and usable in this Blender, and how it
            "For the bridge's own state, ask get_status instead.")
 
 
-def _dotted(version):
-    """A version tuple as the dotted string a human recognises, or ``None``."""
-    if version is None:
-        return None
-    return ".".join([str(part) for part in version])
-
-
 def _str_path(path):
     """One path, coerced at the point it enters the answer."""
     if path is None:
@@ -95,7 +88,7 @@ def _module_tier(result, module):
     # where the dict may not exist at all.
     result["package"] = module.__name__
     result["enabled"] = module.__name__ in bpy.context.preferences.addons
-    result["version"] = _dotted(getattr(module, "VERSION", None))
+    result["version"] = mpfb_surface.dotted(getattr(module, "VERSION", None))
     result["build_info"] = getattr(module, "BUILD_INFO", None)
 
 
@@ -140,7 +133,7 @@ def _services_tier(result, services):
     # Answer the compatibility question rather than handing back two versions to
     # compare - an incompatible Blender is a prime cause of not_initialized.
     result["blender"]["meets_mpfb_minimum"] = bool(system_service.is_blender_version_at_least())
-    result["blender"]["mpfb_minimum_version"] = _dotted(lowest_blender)
+    result["blender"]["mpfb_minimum_version"] = mpfb_surface.dotted(lowest_blender)
     result["rigify_available"] = bool(system_service.check_for_rigify())
 
 

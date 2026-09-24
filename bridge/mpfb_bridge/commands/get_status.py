@@ -24,6 +24,7 @@ import bpy
 from ..command_server import MIN_SUPPORTED_PROTOCOL_VERSION
 from ..command_server import PROTOCOL_VERSION
 from ..log import get_logger
+from ..shared import mpfb_surface
 from ..version import BRIDGE_VERSION
 
 _LOG = get_logger("commands.getstatus")
@@ -31,13 +32,6 @@ _LOG = get_logger("commands.getstatus")
 PARAMS = ()
 
 SUMMARY = "Report whether MPFB is present and initialized, and which protocol this bridge speaks."
-
-
-def _dotted(version):
-    """MPFB's ``VERSION`` tuple as the string a human recognises, or ``None``."""
-    if not isinstance(version, (tuple, list)):
-        return None
-    return ".".join(str(part) for part in version)
 
 
 def get_status(params, resolution):  # pylint: disable=unused-argument
@@ -77,7 +71,7 @@ def get_status(params, resolution):  # pylint: disable=unused-argument
         # where the dict may not exist at all.
         result["package"] = module.__name__
         result["enabled"] = module.__name__ in bpy.context.preferences.addons
-        result["version"] = _dotted(getattr(module, "VERSION", None))
+        result["version"] = mpfb_surface.dotted(getattr(module, "VERSION", None))
         result["build_info"] = getattr(module, "BUILD_INFO", None)
 
     _LOG.debug("get_status: %s (%d candidate modules)",

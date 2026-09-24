@@ -71,6 +71,7 @@ import os
 import bpy
 
 from ..log import get_logger
+from ..shared import blender_data
 from ..shared import mpfb_surface
 from ..shared import preset_files
 from ..shared.performed import with_performed
@@ -196,16 +197,6 @@ def _asset_expectations(services, human_info, load_clothes):
             kind="skin", fragment=str(skin).strip(), asset_subdir=SKIN_SUBDIR,
             resolved_path=_resolve_asset(services, skin, SKIN_SUBDIR), skipped=False))
     return expectations
-
-
-def _object_names():
-    """Every object in the file right now, as a set of names.
-
-    ``bpy.data`` rather than the scene: deserialization creates objects and
-    links them, and an object created into another collection would otherwise
-    look like nothing happened.
-    """
-    return set(str(blender_object.name) for blender_object in bpy.data.objects)
 
 
 def _object_record(general_properties, blender_object, kind):
@@ -477,7 +468,7 @@ def create_human_from_preset(params, resolution):  # pylint: disable=too-many-lo
     unresolved_assets = [entry for entry in expectations
                          if entry["resolved_path"] is None and not entry["skipped"]]
 
-    before = _object_names()
+    before = blender_data.object_names()
     basemesh = None
     failure = None
     try:
@@ -486,7 +477,7 @@ def create_human_from_preset(params, resolution):  # pylint: disable=too-many-lo
     except Exception as error:  # pylint: disable=broad-except
         failure = type(error).__name__ + ": " + str(error)
 
-    created = sorted(_object_names() - before)
+    created = sorted(blender_data.object_names() - before)
     active_after = bpy.context.view_layer.objects.active
     active_object_after = None if active_after is None else str(active_after.name)
 

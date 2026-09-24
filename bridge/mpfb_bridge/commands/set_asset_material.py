@@ -77,6 +77,7 @@ import os
 import bpy
 
 from ..log import get_logger
+from ..shared import blender_data
 from ..shared import mpfb_surface
 from ..shared import selection
 from ..shared.performed import with_performed
@@ -131,17 +132,6 @@ def _entities(services):
     """
     return (mpfb_surface.module_level(services, "HumanService", "MakeSkinMaterial", fallback=None),
             mpfb_surface.module_level(services, "HumanService", "Mhclo", fallback=None))
-
-
-def _material_names(blender_object):
-    names = []
-    if blender_object is None:
-        return names
-    for slot in getattr(blender_object, "material_slots", None) or []:
-        material = getattr(slot, "material", None)
-        if material is not None:
-            names.append(str(material.name))
-    return names
 
 
 def _find_default_material(services, blender_object, asset_subdir):
@@ -426,7 +416,7 @@ def set_asset_material(params, resolution):  # pylint: disable=too-many-locals
 
     asset = request.asset
     # Read before the slots are popped: afterwards there is nothing left to name.
-    materials_destroyed = _material_names(asset)
+    materials_destroyed = blender_data.material_names(asset)
 
     failure_message = None
     material_name = None

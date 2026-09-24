@@ -48,6 +48,7 @@ import os
 import bpy
 
 from ..log import get_logger
+from ..shared import blender_data
 from ..shared import mpfb_surface
 from ..shared.performed import with_performed
 from ..validation import Param
@@ -129,16 +130,6 @@ def _mask_modifiers_for(blender_object, group_name):
                 and getattr(modifier, "name", None) == group_name):
             found.append(str(modifier.name))
     return found
-
-
-def _vertex_group_names(blender_object):
-    if blender_object is None:
-        return []
-    return [str(group.name) for group in (getattr(blender_object, "vertex_groups", None) or [])]
-
-
-def _object_names():
-    return set(blender_object.name for blender_object in bpy.data.objects)
 
 
 def _blocked(services, requested_name, asset, reason, message, **extra):
@@ -277,11 +268,11 @@ def remove_asset(params, resolution):  # pylint: disable=too-many-locals
         for modifier_name in _mask_modifiers_for(owner, delete_group_name):
             expected_masks.append(dict(object_name=owner.name, modifier_name=modifier_name))
 
-    names_before = _object_names()
+    names_before = blender_data.object_names()
 
     services["HumanService"].unload_mhclo_asset(basemesh, asset)
 
-    names_after = _object_names()
+    names_after = blender_data.object_names()
     removed_objects = sorted(names_before - names_after)
     subrig_removed = bool(subrig_name is not None and subrig_name not in names_after)
 
@@ -299,7 +290,7 @@ def remove_asset(params, resolution):  # pylint: disable=too-many-locals
     for owner in [basemesh, body_proxy]:
         if owner is None:
             continue
-        for group_name in _vertex_group_names(owner):
+        for group_name in blender_data.vertex_group_names(owner):
             if group_name == delete_group_name:
                 groups_left.append(dict(object_name=owner.name, vertex_group=group_name))
 

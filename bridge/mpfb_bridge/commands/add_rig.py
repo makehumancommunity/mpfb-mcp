@@ -64,6 +64,7 @@ import os
 import bpy
 
 from ..log import get_logger
+from ..shared import blender_data
 from ..shared import mpfb_surface
 from ..shared import rig_lookup
 from ..shared import selection
@@ -161,10 +162,6 @@ def _armature_modifier_for(mesh_object, armature_object):
         if getattr(modifier, "object", None) is armature_object:
             return True
     return False
-
-
-def _object_names():
-    return set(blender_object.name for blender_object in bpy.data.objects)
 
 
 def _rig_resolution(services, requested_identifier, requested_family):
@@ -366,7 +363,7 @@ def add_rig(params, resolution_context):  # pylint: disable=too-many-locals
     ]
 
     basemesh_location_before = _location_of(basemesh)
-    names_before = _object_names()
+    names_before = blender_data.object_names()
 
     rig_object = None
     assertion_message = None
@@ -393,7 +390,7 @@ def add_rig(params, resolution_context):  # pylint: disable=too-many-locals
                 "character.")
 
     if assertion_message is not None:
-        stray = sorted(_object_names() - names_before)
+        stray = sorted(blender_data.object_names() - names_before)
         return _blocked(
             subject, basemesh, subject_resolved_by, requested_identifier, requested_family,
             "rigify_colors_missing",

@@ -76,6 +76,7 @@ import bpy
 
 from ..log import get_logger
 from ..shared import asset_sections
+from ..shared import blender_data
 from ..shared import mpfb_surface
 from ..shared import selection
 from ..shared import subject_resolution
@@ -122,22 +123,6 @@ PARAMS = (
 )
 
 SUMMARY = "Give a character a skin, in one of MPFB's five material models."
-
-
-def _material_names(blender_object):
-    """Every material name on an object, read off its slots.
-
-    Read *before* the call, because ``delete_all_materials()`` is the first
-    thing ``set_character_skin()`` does, and it takes the node groups with it.
-    """
-    names = []
-    if blender_object is None:
-        return names
-    for slot in getattr(blender_object, "material_slots", None) or []:
-        material = getattr(slot, "material", None)
-        if material is not None:
-            names.append(str(material.name))
-    return names
 
 
 def _material_slot_records(blender_object):
@@ -411,11 +396,14 @@ def set_skin(params, resolution):  # pylint: disable=too-many-locals,too-many-st
         params["material_instances"] and request.skin_type not in NO_MATERIAL_INSTANCES)
 
     # Everything below is observed *before* the call, which is what makes the
-    # claims afterwards precise rather than reconstructed.
-    materials_destroyed = [dict(object_name=basemesh.name, materials=_material_names(basemesh))]
+    # claims afterwards precise rather than reconstructed. The materials above
+    # all: delete_all_materials() is the first thing set_character_skin() does,
+    # and it takes the node groups with it.
+    materials_destroyed = [dict(object_name=basemesh.name,
+                                materials=blender_data.material_names(basemesh))]
     if body_proxy is not None:
         materials_destroyed.append(
-            dict(object_name=body_proxy.name, materials=_material_names(body_proxy)))
+            dict(object_name=body_proxy.name, materials=blender_data.material_names(body_proxy)))
 
     material_source_before = mpfb_surface.property_value(
         HumanObjectProperties, "material_source", basemesh)

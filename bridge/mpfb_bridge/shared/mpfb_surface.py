@@ -41,21 +41,24 @@ envelope naming what is missing - the outcome those four reads always had, with
 a sentence instead of an ``AttributeError``
 ([FR 036](../../../feature-requests/done/036-subject-resolver-and-duplication/README.md)).
 
-Two helpers go with it, because they are how a value read off that surface gets
-into an answer. :func:`property_value` turns an unset ``BlenderConfigSet``
+Three helpers go with it, because they are how a value read off that surface
+gets into an answer. :func:`property_value` turns an unset ``BlenderConfigSet``
 string, which reads back as ``""``, into ``None``, so that two commands cannot
 report ``""`` and ``None`` for the same object. :func:`as_path` turns the
 ``pathlib.Path`` MPFB's path getters have been caught returning into a ``str``,
 since one ``Path`` in a response fails the whole call with
-``result_not_serializable``.
+``result_not_serializable``. And :func:`dotted` turns a version tuple MPFB keeps
+at module level - its package's ``VERSION``, ``LOWEST_FUNCTIONAL_BLENDER_VERSION``
+- into the string a human recognises.
 
 Like the rest of this directory, the functions that read MPFB take ``services``
-first; the two helpers take the value they coerce.
+first; the helpers take the value they coerce.
 """
 
 __all__ = (
     "MissingFromMpfb",
     "as_path",
+    "dotted",
     "general_object_properties",
     "human_object_properties",
     "module_level",
@@ -142,3 +145,15 @@ def as_path(path):
     if not path:
         return None
     return str(path)
+
+
+def dotted(version):
+    """A version tuple as the dotted string a human recognises, or ``None``.
+
+    ``None`` for anything that is not a tuple or a list, not only for ``None``:
+    a version that arrived as a string would otherwise be joined character by
+    character.
+    """
+    if not isinstance(version, (tuple, list)):
+        return None
+    return ".".join(str(part) for part in version)
