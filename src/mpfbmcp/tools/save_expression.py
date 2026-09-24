@@ -80,8 +80,8 @@ def register(mcp: FastMCP) -> None:
         )
     )
     def mpfb_save_expression(  # pylint: disable=too-many-arguments
-        name: str,
-        subject: str | None = None,
+        expression_name: str,
+        name: str | None = None,
         overwrite: bool = False,
         description: str = "",
         tags: list[str] | None = None,
@@ -96,11 +96,11 @@ def register(mcp: FastMCP) -> None:
         and presets can carry. **This writes a file outside the .blend, and
         nothing in Blender can undo it.** The character is not changed.
 
-        `name` is a name, never a path: the file is `<name>.json` in the
-        expressions directory of MPFB's user data, and `path` and `fragment`
-        are in every answer. Same rule as preset names: letters, digits, `_`,
-        `-`, `.`, at most 64 characters, no leading dot. The character is named
-        by `subject` (any object in its family; omit for the active one).
+        `expression_name` is a name, never a path: the file is
+        `<expression_name>.json` in the expressions directory of MPFB's user
+        data, and `path` and `fragment` are in every answer. Same rule as preset
+        names: letters, digits, `_`, `-`, `.`, at most 64 characters, no leading
+        dot.
 
         What is saved is the **whole** live face, including what applied
         expressions contribute. To make it durable, call
@@ -129,8 +129,8 @@ def register(mcp: FastMCP) -> None:
             params={
                 # The authoritative check, here rather than in Blender: this
                 # name becomes a path. See mpfbmcp/artifact_names.py.
-                "name": validated_expression_name(name),
-                "subject": arguments.validated_subject(subject, "subject"),
+                "expression_name": validated_expression_name(expression_name),
+                "name": arguments.validated_subject(name),
                 # Not truthiness. This flag stands between a caller and an irreversible file
                 # replacement, so overwrite="false" must not read as permission to overwrite.
                 "overwrite": arguments.validated_flag(overwrite, "overwrite"),

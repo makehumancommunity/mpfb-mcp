@@ -88,10 +88,11 @@ from ..validation import TYPE_STRING
 _LOG = get_logger("commands.saveexpression")
 
 PARAMS = (
-    Param("name", TYPE_STRING, required=True,
+    Param("expression_name", TYPE_STRING, required=True,
           description="The expression's name, never a path. Letters, digits, underscore, "
-                      "hyphen and dot only; it becomes <user data>/expressions/<name>.json."),
-    Param("subject", TYPE_STRING, default=None, nullable=True,
+                      "hyphen and dot only; it becomes "
+                      "<user data>/expressions/<expression_name>.json."),
+    Param("name", TYPE_STRING, default=None, nullable=True,
           description="Any object in the character's family. Omit or pass null to use whatever "
                       "object is currently active."),
     Param("overwrite", TYPE_BOOLEAN, default=False,
@@ -127,12 +128,12 @@ def _resolve(services, params):
     """Everything that has to be true before a byte is written."""
     request = _Request()
     request.expressions_dir = str(services["LocationService"].get_user_data("expressions"))
-    request.name_rejection = name_rejection(params["name"], "expression")
+    request.name_rejection = name_rejection(params["expression_name"], "expression")
     request.file_path = None
     request.fragment = None
     request.previous_file = None
     if request.name_rejection is None:
-        request.fragment = params["name"] + ".json"
+        request.fragment = params["expression_name"] + ".json"
         request.file_path = os.path.join(request.expressions_dir, request.fragment)
         facts = file_facts(request.file_path)
         request.previous_file = facts if facts["exists"] else None
@@ -141,7 +142,7 @@ def _resolve(services, params):
     # too, and decides which refusal comes first.
     (request.basemesh, request.subject, request.subject_resolved_by,
      request.subject_message) = subject_resolution.resolve_basemesh(
-         services, params["subject"],
+         services, params["name"],
          not_done="nothing was saved",
          not_a_character="there is no face to save")
     return request
@@ -188,6 +189,21 @@ def _shadowing_file(services, fragment):
     return None
 
 
+def _mistaken_for_the_expression(params, request):
+    """The miss sentence, plus what a caller who passed the expression as ``name`` needs.
+
+    FR 037 swapped ``name`` in this command rather than retiring it: it was the
+    expression and is now the character. A caller still using the old spelling is
+    therefore not refused as sending an unknown parameter - they are told no
+    object has that name, and this sentence connects the two. Only then: an
+    object that exists but belongs to no character is a different mistake.
+    """
+    if params["name"] is None or request.subject is not None:
+        return request.subject_message
+    return ("{:s} If '{:s}' is the expression's own name, pass it as expression_name; name is the "
+            "character.".format(request.subject_message, str(params["name"])))
+
+
 def _blocked(params, request, reason, message, **extra):
     """One shape for every refusal, so a caller can branch on ``blocked_by``."""
     answer = dict(
@@ -195,7 +211,7 @@ def _blocked(params, request, reason, message, **extra):
         ready=False,
         saved=False,
         blocked_by=reason,
-        name=params["name"],
+        expression_name=params["expression_name"],
         subject_name=None if request.subject is None else request.subject.name,
         subject_resolved_by=request.subject_resolved_by,
         basemesh_name=None if request.basemesh is None else request.basemesh.name,
@@ -216,7 +232,7 @@ def _blocked(params, request, reason, message, **extra):
 def _metadata(params):
     metadata = {key: params[key] for key in METADATA_KEYS}
     metadata["tags"] = [str(tag) for tag in (params["tags"] or [])]
-    metadata["name"] = params["name"]
+    metadata["name"] = params["expression_name"]
     return metadata
 
 
@@ -240,7 +256,8 @@ def save_expression(params, resolution):  # pylint: disable=too-many-return-stat
         return _blocked(params, request, reason, text, **extra)
 
     if request.basemesh is None:
-        return blocked("subject_not_found", request.subject_message)
+        return blocked("subject_not_found",
+                       _mistaken_for_the_expression(params, request))
     if request.name_rejection is not None:
         # Defence in depth: mpfb-mcp refuses this before a request is built (see
         # mpfbmcp/artifact_names.py), so reaching it here means something else
@@ -328,7 +345,7 @@ def save_expression(params, resolution):  # pylint: disable=too-many-return-stat
         ready=True,
         saved=True,
         blocked_by=None,
-        name=params["name"],
+        expression_name=params["expression_name"],
         subject_name=request.subject.name,
         subject_resolved_by=request.subject_resolved_by,
         basemesh_name=request.basemesh.name,

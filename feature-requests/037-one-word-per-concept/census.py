@@ -73,8 +73,8 @@ _NOT_A_TOOL = frozenset(("table", "command", "get_status", "list_commands"))
 
 # Variables holding a dict of MPFB's own, whose keys are MPFB's spelling and are
 # never renamed: create_human_from_preset's deserialization settings, which it
-# also reports verbatim as `settings_used`.
-_MPFB_DICTS = frozenset(("settings",))
+# also reports verbatim as `settings_used`, and save_expression's file metadata.
+_MPFB_DICTS = frozenset(("settings", "metadata"))
 
 _SLUG = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)+$|^[a-z]+$")
 _BACKTICKED = re.compile(r"`([^`\n]+)`")
@@ -125,6 +125,9 @@ RENAMES: list[dict] = (
     + _renames("argument", "R1", ["mpfb_save_expression"], [("name", "expression_name")],
                old_stays=True)
     + _renames("argument", "R1", ["mpfb_create_human_from_preset"], [("name", "preset_name")])
+    + _renames("key", "R1", _commands("save_preset", "create_human_from_preset"),
+               [("name", "preset_name")])
+    + _renames("key", "R1", _commands("save_expression"), [("name", "expression_name")])
     # R2
     + _renames("key", "R2", _commands("create_human"), [("object_name", "basemesh_name")])
     + _renames("key", "R2", _commands("refit_human", "save_preset", *_ASSETS_POSSIBLY_STALE),

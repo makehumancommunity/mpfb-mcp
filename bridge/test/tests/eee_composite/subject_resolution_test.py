@@ -63,8 +63,8 @@ def _calls(subject):
         "set_face_units": dict(name=subject, face_units=[dict(face_unit="jawOpen",
                                                               weight=0.3)]),
         "apply_expressions": dict(name=subject, expressions=[]),
-        "save_expression": dict(name="bridge_test_never_written", subject=subject),
-        "save_preset": dict(name="bridge_test_never_written", subject=subject),
+        "save_expression": dict(expression_name="bridge_test_never_written", name=subject),
+        "save_preset": dict(preset_name="bridge_test_never_written", name=subject),
         "add_rig": dict(name=subject, identifier="default"),
         "generate_rigify_rig": dict(name=subject),
         "add_asset": dict(name=subject, fragment="none/none.mhclo", asset_type="Clothes"),
@@ -98,15 +98,14 @@ def _resolved_by(command, answer):
 def test_all_eighteen_are_covered():
     """Every command that takes a subject is in :func:`_calls`, and nothing else is.
 
-    A subject is an optional ``name`` - omitted, it is the active object - or,
-    for the two save commands, whose ``name`` is the file's, a ``subject``. A
-    required ``name`` names something else: an asset, or a preset.
+    A subject is an optional ``name`` - omitted, it is the active object. A
+    required ``name`` names something else, an asset. Until FR 037 the two save
+    commands took theirs as ``subject``, because their ``name`` was the file's.
     """
     commands = dynamic_import("commands", "COMMANDS")
     taking_a_subject = set(
         command_name for command_name, command in commands.items()
-        if any((param.name == "name" and param.nullable) or param.name == "subject"
-               for param in command.params))
+        if any(param.name == "name" and param.nullable for param in command.params))
     assert taking_a_subject == set(_calls(None))
 
 
@@ -126,6 +125,18 @@ def test_nothing_active(tmp_path):
             (command, answer["message"])
 
 
+# The one addition two commands make to the shared second sentence. In the save
+# commands FR 037 changed what ``name`` means - it was the file and is now the
+# character - so a name that resolves to nothing may be the file's, passed under
+# the old spelling, and the sentence says where that goes instead.
+_OLD_SPELLING = {
+    "save_preset": " If '{:s}' is the preset's own name, pass it as preset_name; name is the "
+                   "character.",
+    "save_expression": " If '{:s}' is the expression's own name, pass it as expression_name; "
+                       "name is the character.",
+}
+
+
 def test_a_name_that_does_not_exist(tmp_path):
     """The second sentence, and every command resolved by "name"."""
     answers = _answers(tmp_path, NO_SUCH)
@@ -133,12 +144,17 @@ def test_a_name_that_does_not_exist(tmp_path):
         assert answer["found"] is False, command
         assert _subject_name(command, answer) is None, command
         assert _resolved_by(command, answer) == "name", command
-        assert answer["message"].startswith(
+        message = answer["message"]
+        if command in _OLD_SPELLING:
+            suffix = _OLD_SPELLING[command].format(NO_SUCH)
+            assert message.endswith(suffix), (command, message)
+            message = message[:-len(suffix)]
+        assert message.startswith(
             "No object named '{:s}' exists in this .blend file".format(NO_SUCH)), \
-            (command, answer["message"])
-        assert answer["message"].endswith(
+            (command, message)
+        assert message.endswith(
             "Call mpfb_list_objects to see what the current scene holds."), \
-            (command, answer["message"])
+            (command, message)
 
 
 def test_an_object_with_no_basemesh(tmp_path):

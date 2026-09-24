@@ -119,43 +119,43 @@ class SavePresetNameValidationTests(unittest.TestCase):
     def test_every_dangerous_or_malformed_name_is_refused_before_the_socket(self) -> None:
         for name, why in REFUSED_NAMES:
             with self.subTest(name=name, why=why):
-                self._refused(name=name)
+                self._refused(preset_name=name)
 
     def test_a_refusal_says_what_to_do_instead(self) -> None:
-        message = self._refused(name="../escape")
+        message = self._refused(preset_name="../escape")
         self.assertIn("mpfb_list_presets", message)
         self.assertIn("human.<name>.json", message)
 
     def test_a_refusal_names_the_offending_characters(self) -> None:
         # An agent that built the name out of a display name needs to know which
         # character to drop, not that the name was rejected.
-        message = self._refused(name="Anna Svensson")
+        message = self._refused(preset_name="Anna Svensson")
         self.assertIn("' '", message)
 
     def test_every_name_a_working_install_actually_holds_is_accepted(self) -> None:
         for name in ACCEPTED_NAMES:
             with self.subTest(name=name):
-                self.assertEqual(self._run(name=name)["name"], name)
+                self.assertEqual(self._run(preset_name=name)["preset_name"], name)
 
     def test_a_name_is_not_trimmed_before_it_is_used(self) -> None:
         # A trailing space is a different name, MPFB's filename would carry it,
         # and quietly trimming would save a preset the caller did not ask for.
         # It is refused rather than repaired.
-        self._refused(name="alice ")
+        self._refused(preset_name="alice ")
 
     def test_overwrite_must_be_a_real_bool(self) -> None:
         for value in ("false", "true", 1, 0, None):
             with self.subTest(overwrite=value):
-                self._refused(name="alice", overwrite=value)
+                self._refused(preset_name="alice", overwrite=value)
 
     def test_the_default_call_refuses_to_overwrite(self) -> None:
-        self.assertIs(self._run(name="alice")["overwrite"], False)
+        self.assertIs(self._run(preset_name="alice")["overwrite"], False)
 
     def test_the_subject_is_optional_and_shape_checked(self) -> None:
-        self.assertIsNone(self._run(name="alice")["subject"])
-        self.assertEqual(self._run(name="alice", subject="Human")["subject"], "Human")
-        self._refused(name="alice", subject="")
-        self._refused(name="alice", subject=3)
+        self.assertIsNone(self._run(preset_name="alice")["name"])
+        self.assertEqual(self._run(preset_name="alice", name="Human")["name"], "Human")
+        self._refused(preset_name="alice", name="")
+        self._refused(preset_name="alice", name=3)
 
 
 class SavePresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
@@ -183,15 +183,15 @@ class SavePresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
         })
 
     def test_the_tool_sends_the_save_preset_command(self) -> None:
-        self.call(name="alice")
+        self.call(preset_name="alice")
 
         self.assertEqual(self.bridge.commands()[-1], "save_preset")
         self.assertEqual(
             self.bridge.decoded_requests()[-1]["params"],
-            {"name": "alice", "subject": None, "overwrite": False})
+            {"preset_name": "alice", "name": None, "overwrite": False})
 
     def test_the_shared_fragment_does_not_reach_the_bridge(self) -> None:
-        self.call(name="alice")
+        self.call(preset_name="alice")
 
         request = self.bridge.decoded_requests()[-1]
         self.assertNotIn("shared", request)
@@ -204,14 +204,14 @@ class SavePresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
         for name in ("../escape", "with space", "", "a/b", ".hidden"):
             with self.subTest(name=name):
                 with self.assertRaises(ValueError):
-                    self.call(name=name)
+                    self.call(preset_name=name)
 
         self.assertEqual(self.bridge.requests, [],
                          "a name that could become a path must not reach any backend")
 
     def test_local_validation_runs_before_a_transport_is_chosen(self) -> None:
         with self.assertRaises(ValueError):
-            self.call(name="alice", overwrite="true")
+            self.call(preset_name="alice", overwrite="true")
 
         self.assertEqual(self.bridge.requests, [],
                          "a locally invalid call must not be sent to any backend")
@@ -224,7 +224,7 @@ class SavePresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
                 "mpfb_unavailable", "The command needs MPFB, which is not usable here.",
                 command="save_preset", state="absent"))
 
-        response = self.call(name="alice")
+        response = self.call(preset_name="alice")
 
         self.assertEqual(response["status"], "error")
         self.assertEqual(response["error"], "mpfb_unavailable")

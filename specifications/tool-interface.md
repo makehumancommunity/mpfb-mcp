@@ -147,9 +147,10 @@ other: locally, and in the command's parameter contract (`choices`), which the d
 before the handler runs.
 
 **An argument that becomes a path is a shape, not a vocabulary, and it is checked here.**
-`mpfb_save_preset` and `mpfb_create_human_from_preset` take a preset `name` that resolves to
-`human.<name>.json` in MPFB's user config directory, and `mpfb_save_expression` takes an expression
-`name` that resolves to `<name>.json` in the expressions directory of MPFB's user data - one rule
+`mpfb_save_preset` and `mpfb_create_human_from_preset` take a `preset_name` that resolves to
+`human.<preset_name>.json` in MPFB's user config directory, and `mpfb_save_expression` takes an
+`expression_name` that resolves to `<expression_name>.json` in the expressions directory of MPFB's
+user data - one rule
 for both, in `mpfbmcp.artifact_names`, with the noun in the refusal as its only argument; and a name carrying `/`, `\` or `..` would
 address — and on the saving side *write* — a file outside it. Which characters may appear in a
 filename cannot drift from anything on the user's disk, so this is the ordinary rule rather than an

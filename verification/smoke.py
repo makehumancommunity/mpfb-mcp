@@ -281,7 +281,7 @@ def _save_expression(run: _Run) -> dict:
     here the same way ``mpfb_set_face_units``' refusal does.
     """
     envelope = run.tools["mpfb_save_expression"](
-        name=EXPRESSION_NAME, subject=_character(run), overwrite=True)
+        expression_name=EXPRESSION_NAME, name=_character(run), overwrite=True)
     if envelope.get("status") == "ok" and envelope["result"].get("saved"):
         run.saved_expression = envelope["result"]["fragment"]
     return envelope
@@ -408,7 +408,7 @@ def _save_preset(run: _Run) -> dict:
     Last, so that what it serializes is the character every item above built.
     """
     return run.tools["mpfb_save_preset"](
-        name=PRESET_NAME, subject=_character(run), overwrite=True)
+        preset_name=PRESET_NAME, name=_character(run), overwrite=True)
 
 
 @_item("mpfb_create_human_from_preset", "basemesh_name", "rig_object_name",
@@ -418,7 +418,7 @@ def _create_human_from_preset(run: _Run) -> dict:
     # than two calls that happen to be adjacent. It builds a whole second
     # character, which is the most expensive item in the run and the only honest
     # way to call this tool at all.
-    return run.tools["mpfb_create_human_from_preset"](name=PRESET_NAME)
+    return run.tools["mpfb_create_human_from_preset"](preset_name=PRESET_NAME)
 
 
 # --------------------------------------------------------------------------

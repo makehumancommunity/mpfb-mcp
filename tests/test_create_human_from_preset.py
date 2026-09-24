@@ -52,7 +52,7 @@ class CreateHumanFromPresetToolTests(unittest.TestCase):
 
     def _run(self, **arguments):
         """The parameters that reached the wire for one accepted call."""
-        arguments.setdefault("name", "alice")
+        arguments.setdefault("preset_name", "alice")
         with mock.patch("mpfbmcp.bridge_connection.send_command") as send:
             send.return_value = {"status": "ok", "result": {}}
             self.call(**arguments)
@@ -61,7 +61,7 @@ class CreateHumanFromPresetToolTests(unittest.TestCase):
             return send.call_args[0][1]
 
     def _refused(self, **arguments):
-        arguments.setdefault("name", "alice")
+        arguments.setdefault("preset_name", "alice")
         with mock.patch("mpfbmcp.bridge_connection.send_command") as send:
             with self.assertRaises(ValueError) as raised:
                 self.call(**arguments)
@@ -73,7 +73,7 @@ class CreateHumanFromPresetToolTests(unittest.TestCase):
         # name that can be looked up, and vice versa.
         for name in ("..", "../escape", "a/b", ".hidden", "", "has space", "x" * 65, 3):
             with self.subTest(name=name):
-                self._refused(name=name)
+                self._refused(preset_name=name)
 
     def test_every_override_defaults_to_null(self) -> None:
         # "Not mentioned" and "set to the default" are different requests, and
@@ -140,11 +140,11 @@ class CreateHumanFromPresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
         })
 
     def test_the_tool_sends_the_create_human_from_preset_command(self) -> None:
-        self.call(name="alice")
+        self.call(preset_name="alice")
 
         self.assertEqual(self.bridge.commands()[-1], "create_human_from_preset")
         params = self.bridge.decoded_requests()[-1]["params"]
-        self.assertEqual(params["name"], "alice")
+        self.assertEqual(params["preset_name"], "alice")
         # Every override defaults to null, which is "use what the preset says"
         # rather than a value - and that has to survive the transport.
         for key in ("override_rig", "override_skin_model", "override_clothes_model",
@@ -152,7 +152,7 @@ class CreateHumanFromPresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
             self.assertIsNone(params[key], "{} should default to null".format(key))
 
     def test_the_shared_fragment_does_not_reach_the_bridge(self) -> None:
-        self.call(name="alice")
+        self.call(preset_name="alice")
 
         request = self.bridge.decoded_requests()[-1]
         self.assertNotIn("shared", request)
@@ -165,13 +165,13 @@ class CreateHumanFromPresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
         for name in ("../escape", "with space", "", "a/b"):
             with self.subTest(name=name):
                 with self.assertRaises(ValueError):
-                    self.call(name=name)
+                    self.call(preset_name=name)
 
         self.assertEqual(self.bridge.requests, [])
 
     def test_local_validation_runs_before_a_transport_is_chosen(self) -> None:
         with self.assertRaises(ValueError):
-            self.call(name="alice", load_clothes="false")
+            self.call(preset_name="alice", load_clothes="false")
 
         self.assertEqual(self.bridge.requests, [],
                          "a locally invalid call must not be sent to any backend")
@@ -184,7 +184,7 @@ class CreateHumanFromPresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
                 "mpfb_unavailable", "The command needs MPFB, which is not usable here.",
                 command="create_human_from_preset", state="absent"))
 
-        response = self.call(name="alice")
+        response = self.call(preset_name="alice")
 
         self.assertEqual(response["status"], "error")
         self.assertEqual(response["error"], "mpfb_unavailable")

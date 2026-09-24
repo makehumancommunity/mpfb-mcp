@@ -61,8 +61,8 @@ def register(mcp: FastMCP) -> None:
         )
     )
     def mpfb_save_preset(
-        name: str,
-        subject: str | None = None,
+        preset_name: str,
+        name: str | None = None,
         overwrite: bool = False,
     ) -> dict[str, object]:
         """
@@ -72,17 +72,13 @@ def register(mcp: FastMCP) -> None:
         **This writes a file outside the .blend, and nothing in Blender can
         undo it.**
 
-        `name` is a preset name, never a path: the file is always
-        `human.<name>.json` in MPFB's user config directory, and `path` in the
-        response says which file that was. Letters, digits, `_`, `-` and `.`
+        `preset_name` is a name, never a path: the file is always
+        `human.<preset_name>.json` in MPFB's user config directory, and `path`
+        in the response says which file that was. Letters, digits, `_`, `-` and `.`
         only, at most 64 characters, no leading dot - stricter than MPFB's own
         panel, which rejects only a space, so that a name cannot become a path.
 
-        The character is named by **`subject`**, not by `name` as every other
-        tool here does - `name` is the preset. It takes any object in the
-        character's family (basemesh, rig, a garment fitted to it); omit it to
-        use whatever is active. `basemesh_name` says which character was
-        actually serialized.
+        `basemesh_name` says which character was actually serialized.
 
         `overwrite` (default false) is the only thing standing between a call
         and the loss of an existing preset. With it false and the preset
@@ -120,8 +116,8 @@ def register(mcp: FastMCP) -> None:
             params={
                 # The authoritative check, here rather than in Blender: this
                 # name becomes a path. See mpfbmcp/artifact_names.py.
-                "name": validated_preset_name(name),
-                "subject": arguments.validated_subject(subject, "subject"),
+                "preset_name": validated_preset_name(preset_name),
+                "name": arguments.validated_subject(name),
                 # Not truthiness. This flag stands between a caller and an irreversible file
                 # replacement, so overwrite="false" must not read as permission to overwrite.
                 "overwrite": arguments.validated_flag(overwrite, "overwrite"),

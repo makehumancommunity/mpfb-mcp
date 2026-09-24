@@ -81,10 +81,10 @@ from ..validation import TYPE_STRING
 _LOG = get_logger("commands.savepreset")
 
 PARAMS = (
-    Param("name", TYPE_STRING, required=True,
+    Param("preset_name", TYPE_STRING, required=True,
           description="The preset's name, never a path. Letters, digits, underscore, hyphen and "
                       "dot only; it becomes <user config>/human.<name>.json."),
-    Param("subject", TYPE_STRING, default=None, nullable=True,
+    Param("name", TYPE_STRING, default=None, nullable=True,
           description="Any object in the character's family. Omit or pass null to use whatever "
                       "object is currently active."),
     Param("overwrite", TYPE_BOOLEAN, default=False,
@@ -165,9 +165,9 @@ def _resolve(services, params):
 
     request.confdir = preset_files.config_directory(services)
     request.file_path = None
-    request.name_rejection = preset_files.preset_name_rejection(params["name"])
+    request.name_rejection = preset_files.preset_name_rejection(params["preset_name"])
     if request.name_rejection is None:
-        request.file_path = preset_files.preset_path(request.confdir, params["name"])
+        request.file_path = preset_files.preset_path(request.confdir, params["preset_name"])
 
     request.previous_file = None
     if request.file_path is not None:
@@ -181,7 +181,7 @@ def _resolve(services, params):
     # which refusal comes first.
     (request.basemesh, request.subject, request.subject_resolved_by,
      request.subject_message) = subject_resolution.resolve_basemesh(
-         services, params["subject"],
+         services, params["name"],
          not_done="nothing was saved",
          not_a_character="there is no character to save")
 
@@ -209,6 +209,21 @@ def _resolve(services, params):
     return request
 
 
+def _mistaken_for_the_preset(params, request):
+    """The miss sentence, plus what a caller who passed the preset as ``name`` needs.
+
+    FR 037 swapped ``name`` in this command rather than retiring it: it was the
+    preset and is now the character. A caller still using the old spelling is
+    therefore not refused as sending an unknown parameter - they are told no
+    object has that name, and this sentence connects the two. Only then: an
+    object that exists but belongs to no character is a different mistake.
+    """
+    if params["name"] is None or request.subject is not None:
+        return request.subject_message
+    return ("{:s} If '{:s}' is the preset's own name, pass it as preset_name; name is the "
+            "character.".format(request.subject_message, str(params["name"])))
+
+
 def _blocked(params, request, reason, message, **extra):
     """One shape for every refusal, so a caller can branch on ``blocked_by``."""
     answer = dict(
@@ -216,7 +231,7 @@ def _blocked(params, request, reason, message, **extra):
         ready=False,
         saved=False,
         blocked_by=reason,
-        name=params["name"],
+        preset_name=params["preset_name"],
         subject_name=None if request.subject is None else request.subject.name,
         subject_resolved_by=request.subject_resolved_by,
         basemesh_name=None if request.basemesh is None else request.basemesh.name,
@@ -239,7 +254,8 @@ def _refusal(services, params, request):  # pylint: disable=too-many-return-stat
         return _blocked(params, request, reason, text, **extra)
 
     if request.basemesh is None:
-        return blocked("subject_not_found", request.subject_message)
+        return blocked("subject_not_found",
+                       _mistaken_for_the_preset(params, request))
     if request.name_rejection is not None:
         # Defence in depth: mpfb-mcp refuses this before a request is built (see
         # mpfbmcp/preset_names.py), so reaching it here means something else
@@ -290,14 +306,14 @@ def _refusal(services, params, request):  # pylint: disable=too-many-return-stat
             "A preset named '{!s}' already exists, written {!s}, and overwrite is false, so "
             "nothing was written. Pass overwrite=true to replace it, or choose another name - "
             "there is no undo for a file across this socket. previous_file carries its size and "
-            "age.".format(params["name"], request.previous_file["modified"]))
+            "age.".format(params["preset_name"], request.previous_file["modified"]))
     return None
 
 
 def _message_for(params, request, contents, rig_saved_as):
     """What happened, said once, in the order a reader wants it."""
     parts = ["Saved '{:s}' as preset '{!s}' in '{!s}'.".format(
-        request.basemesh.name, params["name"], request.file_path)]
+        request.basemesh.name, params["preset_name"], request.file_path)]
     if request.previous_file is not None:
         parts.append(
             " It replaced an existing preset of {!s} bytes written {!s}; that file is gone and "
@@ -324,7 +340,7 @@ def save_preset(params, resolution):
 
     refused = _refusal(services, params, request)
     if refused is not None:
-        _LOG.debug("save_preset: refused %r for %r", refused["blocked_by"], params["name"])
+        _LOG.debug("save_preset: refused %r for %r", refused["blocked_by"], params["preset_name"])
         return refused
 
     # Everything above is settled, so this is the first statement that changes
@@ -364,7 +380,7 @@ def save_preset(params, resolution):
         ready=True,
         saved=True,
         blocked_by=None,
-        name=params["name"],
+        preset_name=params["preset_name"],
         subject_name=request.subject.name,
         subject_resolved_by=request.subject_resolved_by,
         basemesh_name=request.basemesh.name,

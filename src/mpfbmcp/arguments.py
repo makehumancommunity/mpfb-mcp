@@ -55,8 +55,8 @@ def validated_subject(value: object, argument: str = "name") -> str | None:
     An explicitly empty name is refused rather than read as "use the active
     object": the two come from different mistakes, and quietly answering about
     whatever happens to be selected, when the caller believed they had named
-    something, is worse than failing here. ``argument`` is ``"subject"`` for the
-    two save tools, whose ``name`` is the file's.
+    something, is worse than failing here. ``argument`` is the argument's name
+    in the refusal, which is ``name`` in every tool today.
     """
     if value is None:
         return None
@@ -130,7 +130,15 @@ def validated_text(value: object, argument: str, hint: str) -> str | None:
 # declared by another, where it means something else. An entry stays for as long
 # as a caller might still send the old spelling, which in a proof of concept with
 # no released users is until nobody remembers it.
-RETIRED_ARGUMENTS: dict[str, dict[str, str]] = {}
+RETIRED_ARGUMENTS: dict[str, dict[str, str]] = {
+    # FR 037, R1: `name` is the object a tool operates on. The file became
+    # `preset_name`/`expression_name`, and the character, which was `subject`,
+    # became `name` - so in the save tools `name` changed meaning rather than
+    # being retired, and the command's subject_not_found sentence covers it.
+    "mpfb_create_human_from_preset": {"name": "preset_name"},
+    "mpfb_save_expression": {"subject": "name"},
+    "mpfb_save_preset": {"subject": "name"},
+}
 
 
 def refuse_undeclared(tool: str, declared: object, supplied: object) -> None:

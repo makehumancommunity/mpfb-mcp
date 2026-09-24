@@ -99,7 +99,7 @@ def register(mcp: FastMCP) -> None:
         )
     )
     def mpfb_create_human_from_preset(
-        name: str,
+        preset_name: str,
         override_rig: str | None = None,
         override_skin_model: str | None = None,
         override_clothes_model: str | None = None,
@@ -115,7 +115,7 @@ def register(mcp: FastMCP) -> None:
         "load into the current character". Seconds, not milliseconds: it
         imports and fits every asset the preset names.
 
-        `name` is a preset name, never a path - `mpfb_list_presets` reports the
+        `preset_name` is a name, never a path - `mpfb_list_presets` reports the
         ones that exist, and a miss here comes back with `available_presets`
         naming them.
 
@@ -171,7 +171,7 @@ def register(mcp: FastMCP) -> None:
             params={
                 # The authoritative check, here rather than in Blender: this
                 # name becomes a path. See mpfbmcp/artifact_names.py.
-                "name": validated_preset_name(name),
+                "preset_name": validated_preset_name(preset_name),
                 "override_rig": _stripped_text(
                     override_rig, "override_rig",
                     "omit it to use the preset's rig, or pass 'NONE' for no rig"),

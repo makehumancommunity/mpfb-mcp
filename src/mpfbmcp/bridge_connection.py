@@ -70,7 +70,7 @@ DEFAULT_PORT = 9877
 # here would pull ``bpy`` into a process that has no Blender.
 # ``tests/test_bridge_connection.py`` reads the add-on's source and asserts the
 # two agree, skipping where the source is not beside this package.
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 
 # Bounds the whole round trip: how long Blender's main thread may be busy
 # before this client gives up. The transport itself contributes nothing

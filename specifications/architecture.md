@@ -262,6 +262,15 @@ written by hand at a terminal stays possible. MPFB, the bridge and mpfb-mcp are 
 released pieces, and that matrix is a real cost of this packaging choice — the only cheap defence
 is a handshake that exists from the first command.
 
+**A renamed parameter or answer key raises both numbers**: `PROTOCOL_VERSION`, and
+`MIN_SUPPORTED_PROTOCOL_VERSION` with it, so that a client and a bridge on either side of the
+rename refuse each other at the handshake with "upgrade X", rather than per command with an
+`invalid_params` that reads like a caller's mistake. There is no period in which both spellings are
+accepted: an undeclared argument is refused by name on the mpfb-mcp side
+([tool-interface.md](tool-interface.md#validate-before-crossing-the-socket)), which is what such a
+period would otherwise be for. [FR 037](../feature-requests/037-one-word-per-concept/README.md)
+raised both to 2.
+
 **Both halves of the handshake exist**: the bridge's, above, and the client's, in
 [the wire](#the-wire). One number is duplicated across the two — `PROTOCOL_VERSION`, which
 `bridge_connection` declares and the add-on serves — and it is kept in step by hand because

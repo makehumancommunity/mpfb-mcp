@@ -122,7 +122,7 @@ _OVERRIDE_KEYS = ("override_rig", "override_skin_model",
                   "override_clothes_model", "override_eyes_model")
 
 PARAMS = (
-    Param("name", TYPE_STRING, required=True,
+    Param("preset_name", TYPE_STRING, required=True,
           description="The preset's name, as list_presets reports it. Never a path."),
     Param("override_rig", TYPE_STRING, default=None, nullable=True,
           description="Use this rig identifier instead of the preset's. 'NONE' loads the "
@@ -250,10 +250,10 @@ def _resolve(services, params):
     )
 
     request.confdir = preset_files.config_directory(services)
-    request.name_rejection = preset_files.preset_name_rejection(params["name"])
+    request.name_rejection = preset_files.preset_name_rejection(params["preset_name"])
     request.file_path = None
     if request.name_rejection is None:
-        request.file_path = preset_files.preset_path(request.confdir, params["name"])
+        request.file_path = preset_files.preset_path(request.confdir, params["preset_name"])
     request.preset_exists = bool(
         request.file_path is not None and os.path.isfile(request.file_path))
 
@@ -290,7 +290,7 @@ def _blocked(params, request, reason, message, **extra):
         ready=False,
         created=False,
         blocked_by=reason,
-        name=params["name"],
+        preset_name=params["preset_name"],
         config_dir=request.confdir,
         path=request.file_path,
         basemesh_name=None,
@@ -332,7 +332,7 @@ def _refusal(services, params, request):  # pylint: disable=too-many-return-stat
             "preset_not_found",
             "No preset named '{!s}' exists in '{!s}'. available_presets names the {:d} of {:d} "
             "that do; mpfb_list_presets reports each one's age and size.".format(
-                params["name"], request.confdir,
+                params["preset_name"], request.confdir,
                 min(len(available), SUGGESTION_CAP), len(available)),
             available_presets=available[:SUGGESTION_CAP],
             available_preset_count=len(available))
@@ -423,7 +423,7 @@ def _equipped(services, general_properties, basemesh):
 def _message_for(params, request, basemesh, rig_object, rig_identified_as, equipped,
                  unresolved_assets, load_clothes, preset_clothes):
     """What happened, said once, in the order a reader wants it."""
-    parts = ["Created '{!s}' from preset '{!s}'.".format(basemesh.name, params["name"])]
+    parts = ["Created '{!s}' from preset '{!s}'.".format(basemesh.name, params["preset_name"])]
     if rig_object is not None:
         parts.append(" It carries the rig '{!s}' ({!s}).".format(
             rig_object.name, rig_identified_as))
@@ -490,7 +490,7 @@ def create_human_from_preset(params, resolution):  # pylint: disable=too-many-lo
             "undo for it across this socket. The commonest cause is a rig the preset names and "
             "this Blender does not have, since MPFB's rig adders raise rather than degrade; "
             "mpfb_list_rigs says which rigs exist here, and override_rig='NONE' loads the "
-            "character without one.".format(params["name"], failure),
+            "character without one.".format(params["preset_name"], failure),
             objects_created=created,
             active_object_after=active_object_after,
             preset_rig=request.human_info.get("rig") or None,
@@ -533,14 +533,14 @@ def create_human_from_preset(params, resolution):  # pylint: disable=too-many-lo
             used=settings.get(key),
         )
 
-    _LOG.debug("create_human_from_preset: built %r from %r", basemesh.name, params["name"])
+    _LOG.debug("create_human_from_preset: built %r from %r", basemesh.name, params["preset_name"])
 
     result = dict(
         found=True,
         ready=True,
         created=True,
         blocked_by=None,
-        name=params["name"],
+        preset_name=params["preset_name"],
         config_dir=request.confdir,
         path=request.file_path,
         basemesh_name=str(basemesh.name),

@@ -71,15 +71,15 @@ class SaveExpressionValidationTests(unittest.TestCase):
     def test_every_dangerous_or_malformed_name_is_refused_before_the_socket(self) -> None:
         for name, why in REFUSED_NAMES:
             with self.subTest(name=name, why=why):
-                self._refused(name=name)
+                self._refused(expression_name=name)
 
     def test_every_legal_name_is_accepted_and_sent_as_given(self) -> None:
         for name in ACCEPTED_NAMES + ("smile", "angry-shout", "Wink"):
             with self.subTest(name=name):
-                self.assertEqual(self._run(name=name)["name"], name)
+                self.assertEqual(self._run(expression_name=name)["expression_name"], name)
 
     def test_a_refusal_speaks_of_an_expression_and_says_where_files_go(self) -> None:
-        message = self._refused(name="../escape")
+        message = self._refused(expression_name="../escape")
         self.assertIn("expression name", message)
         self.assertIn("<name>.json", message)
         self.assertIn("mpfb_list_expressions", message)
@@ -87,30 +87,30 @@ class SaveExpressionValidationTests(unittest.TestCase):
     def test_a_name_is_not_trimmed_or_normalised(self) -> None:
         # MPFB's composer promises lowercasing and dashes and does neither; the
         # name is saved as given, and a trailing space is refused, not repaired.
-        self._refused(name="smile ")
-        self.assertEqual(self._run(name="Big_Smile")["name"], "Big_Smile")
+        self._refused(expression_name="smile ")
+        self.assertEqual(self._run(expression_name="Big_Smile")["expression_name"], "Big_Smile")
 
     def test_the_default_call(self) -> None:
-        self.assertEqual(self._run(name="smile"), {
-            "name": "smile", "subject": None, "overwrite": False,
+        self.assertEqual(self._run(expression_name="smile"), {
+            "expression_name": "smile", "name": None, "overwrite": False,
             "description": "", "tags": [], "author": "", "copyright": "",
             "license": "CC0", "homepage": ""})
 
     def test_overwrite_must_be_a_real_bool(self) -> None:
         for value in ("false", "true", 1, 0, None):
             with self.subTest(overwrite=value):
-                self._refused(name="smile", overwrite=value)
+                self._refused(expression_name="smile", overwrite=value)
 
     def test_the_subject_is_optional_and_shape_checked(self) -> None:
-        self.assertEqual(self._run(name="smile", subject="Human")["subject"], "Human")
-        self._refused(name="smile", subject="")
-        self._refused(name="smile", subject=3)
+        self.assertEqual(self._run(expression_name="smile", name="Human")["name"], "Human")
+        self._refused(expression_name="smile", name="")
+        self._refused(expression_name="smile", name=3)
 
     def test_each_text_argument_must_be_a_string(self) -> None:
         for argument in ("description", "author", "copyright", "license", "homepage"):
             for bad in (None, 3, True, ["x"]):
                 with self.subTest(argument=argument, value=bad):
-                    self._refused(name="smile", **{argument: bad})
+                    self._refused(expression_name="smile", **{argument: bad})
 
     def test_tags_must_be_a_list_of_strings(self) -> None:
         # A comma-separated string is refused rather than split: MPFB's
@@ -118,12 +118,12 @@ class SaveExpressionValidationTests(unittest.TestCase):
         # answers to what "a, b" means.
         for bad in ("happy, subtle", ["happy", 3], [None], {"happy": True}, 3):
             with self.subTest(tags=bad):
-                self._refused(name="smile", tags=bad)
-        self.assertEqual(self._run(name="smile", tags=["happy", "subtle"])["tags"],
+                self._refused(expression_name="smile", tags=bad)
+        self.assertEqual(self._run(expression_name="smile", tags=["happy", "subtle"])["tags"],
                          ["happy", "subtle"])
 
     def test_too_many_tags_are_refused(self) -> None:
-        self._refused(name="smile", tags=["t"] * (save_expression.MAX_TAGS + 1))
+        self._refused(expression_name="smile", tags=["t"] * (save_expression.MAX_TAGS + 1))
 
 
 class SaveExpressionOverTheBridgeTests(fake_bridge.BridgeTestCase):
@@ -139,18 +139,18 @@ class SaveExpressionOverTheBridgeTests(fake_bridge.BridgeTestCase):
         })
 
     def test_the_tool_sends_the_save_expression_command(self) -> None:
-        self.call(name="smile", license="CC-BY-4.0")
+        self.call(expression_name="smile", license="CC-BY-4.0")
 
         self.assertEqual(self.bridge.commands()[-1], "save_expression")
         params = self.bridge.decoded_requests()[-1]["params"]
-        self.assertEqual(params["name"], "smile")
+        self.assertEqual(params["expression_name"], "smile")
         self.assertEqual(params["license"], "CC-BY-4.0")
 
     def test_a_name_that_could_become_a_path_reaches_no_backend(self) -> None:
         for name in ("../escape", "with space", "", "a/b", ".hidden"):
             with self.subTest(name=name):
                 with self.assertRaises(ValueError):
-                    self.call(name=name)
+                    self.call(expression_name=name)
 
         self.assertEqual(self.bridge.requests, [],
                          "a name that could become a path must not reach any backend")

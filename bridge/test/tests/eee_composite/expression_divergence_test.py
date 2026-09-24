@@ -87,7 +87,7 @@ def test_compose_save_apply_returns_the_composed_face_and_the_stack_explains_it(
                                {"face_unit": "mouthSmileLeft", "weight": 0.6}]})
             composed = face_service.read_current_expression(character.basemesh)
 
-            saved = result("save_expression", {"name": "kept", "subject": name})
+            saved = result("save_expression", {"expression_name": "kept", "name": name})
             applied = result("apply_expressions", dict(
                 name=name, refit=False, **saved["apply_with"]))
             after = face_service.read_current_expression(character.basemesh)

@@ -2,9 +2,9 @@
 What a preset or a saved expression may be called, checked before anything is sent.
 
 The two arguments in this package that become a **path**. ``mpfb_save_preset``
-and ``mpfb_create_human_from_preset`` take ``name`` and resolve it to
-``<user config>/human.<name>.json``; ``mpfb_save_expression`` takes ``name`` and
-writes ``<user data>/expressions/<name>.json``. A name carrying ``/``, ``\\`` or
+and ``mpfb_create_human_from_preset`` take ``preset_name`` and resolve it to
+``<user config>/human.<preset_name>.json``; ``mpfb_save_expression`` takes
+``expression_name`` and writes ``<user data>/expressions/<expression_name>.json``. A name carrying ``/``, ``\\`` or
 ``..`` would address a file outside the directory MPFB owns - and on the saving
 side it would *write* one. That is a shape rather than a vocabulary, it is
 entirely knowable on this side of the socket, and the consequence of getting it

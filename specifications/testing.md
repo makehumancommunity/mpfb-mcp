@@ -116,7 +116,7 @@ worth reusing:
   `eee_composite/subject_resolution_test.py` dispatches all eighteen commands that take a subject in
   each of three miss states and asserts they agree on `found`, the subject, how it was resolved and
   the start of the sentence. It also asserts that the eighteen are exactly the commands declaring an
-  optional `name` or a `subject`, so a nineteenth cannot join without being asked.
+  optional `name`, so a nineteenth cannot join without being asked.
 - **"This refactor changes no answer" is tested by a snapshot diff.** The request's live check
   took a `--snapshot` of every affected command's answer — on its worst-case character, under
   several argument sets, including the misses — to one JSON file with sorted keys, before the

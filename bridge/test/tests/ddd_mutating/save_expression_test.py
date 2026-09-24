@@ -27,7 +27,7 @@ from .._fixtures import services_or_skip
 
 
 def _save(basemesh, name, **extra):
-    params = {"name": name, "subject": basemesh.name}
+    params = {"expression_name": name, "name": basemesh.name}
     params.update(extra)
     return _fixture_result("save_expression", params)
 
@@ -188,10 +188,13 @@ def test_an_unresolved_subject_is_refused_with_the_path(tmp_path):
     services = services_or_skip()
     with expression_library(services, tmp_path) as paths:
         answer = _fixture_result("save_expression",
-                                 {"name": "orphan", "subject": "no such object"})
+                                 {"expression_name": "orphan", "name": "no such object"})
 
     assert answer["blocked_by"] == "subject_not_found"
     assert answer["path"] == os.path.join(paths["user_expressions"], "orphan.json")
+    assert answer["expression_name"] == "orphan"
+    assert "pass it as expression_name" in answer["message"], \
+        "name changed meaning in FR 037, and a caller using the old spelling lands here"
 
 
 def test_a_path_shaped_name_is_refused_on_this_side_too(tmp_path):

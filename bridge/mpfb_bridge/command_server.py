@@ -84,13 +84,19 @@ _LOG = get_logger("commandserver")
 # add-on, MPFB and the MCP server are three separately released pieces, and a
 # handshake that exists from the first command is the cheap defence against that
 # matrix. Nothing else in the MakeHuman MCP stack carries a version today.
-PROTOCOL_VERSION = 1
+#
+# 2: FR 037 renamed command parameters and answer keys so that one concept has
+# one spelling across the tools. A straight rename, with no period in which both
+# spellings were accepted.
+PROTOCOL_VERSION = 2
 
-# The oldest request version this add-on still understands. Equal to
-# PROTOCOL_VERSION while there has only ever been one; the pair exists so that a
-# client can be told the difference between "too old" and "from the future"
-# without either side having to guess.
-MIN_SUPPORTED_PROTOCOL_VERSION = 1
+# The oldest request version this add-on still understands. The pair exists so
+# that a client can be told the difference between "too old" and "from the
+# future" without either side having to guess. Raised with PROTOCOL_VERSION to 2,
+# because a version-1 client sends parameters under names this add-on no longer
+# declares, and "upgrade mpfb-mcp" is a better answer than an invalid_params per
+# command.
+MIN_SUPPORTED_PROTOCOL_VERSION = 2
 
 # Not 9876. Both blender lab's MCP add-on and the community "blender-mcp" default
 # to that port, and a user may well have one of them running.

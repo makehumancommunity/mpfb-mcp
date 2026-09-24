@@ -52,9 +52,9 @@ def _config(root):
 
 def _saved(services, confdir, name, subject=None):
     """One preset, written through save_preset's own command."""
-    params = {"name": name, "overwrite": True}
+    params = {"preset_name": name, "overwrite": True}
     if subject is not None:
-        params["subject"] = subject
+        params["name"] = subject
     with redirected_locations(services, user_config=confdir):
         envelope = dispatch("save_preset", params)
     assert envelope["status"] == "ok", "the fixture save should have succeeded: {!r}".format(
@@ -100,7 +100,7 @@ def test_a_saved_preset_loads_back_as_a_new_character():
 
         with _Created():
             with redirected_locations(services, user_config=confdir):
-                result = _result({"name": "roundtrip"})
+                result = _result({"preset_name": "roundtrip"})
 
             assert result["performed"] is True, result["message"]
             assert result["created"] is True
@@ -128,7 +128,7 @@ def test_it_creates_a_character_rather_than_loading_into_one():
 
         with _Created():
             with redirected_locations(services, user_config=confdir):
-                result = _result({"name": "creates"})
+                result = _result({"preset_name": "creates"})
 
             assert _basemesh_count(services) == before + 1, \
                 "one more basemesh than before, not the same one reused"
@@ -151,7 +151,7 @@ def test_the_settings_used_are_mpfbs_own_defaults_with_overrides_written_in():
 
         with _Created():
             with redirected_locations(services, user_config=confdir):
-                result = _result({"name": "settings", "load_clothes": False})
+                result = _result({"preset_name": "settings", "load_clothes": False})
 
         settings = result["settings_used"]
         for key in ("mask_helpers", "detailed_helpers", "extra_vertex_groups", "feet_on_ground",
@@ -179,7 +179,7 @@ def test_material_instances_follows_mpfbs_panel_rather_than_the_service_default(
 
         with _Created():
             with redirected_locations(services, user_config=confdir):
-                result = _result({"name": "instances"})
+                result = _result({"preset_name": "instances"})
 
         assert result["material_instances_requested"] is None
         assert result["material_instances_used"] == "ENHANCED"
@@ -209,7 +209,7 @@ def test_a_preset_naming_a_rig_this_blender_lacks_names_what_it_left_behind():
 
         with _Created():
             with redirected_locations(services, user_config=confdir):
-                envelope = dispatch("create_human_from_preset", {"name": "badrig"})
+                envelope = dispatch("create_human_from_preset", {"preset_name": "badrig"})
 
             assert envelope["status"] == "ok", \
                 "a mid-way failure must be an answer, not a command_failed: {!r}".format(
@@ -238,7 +238,7 @@ def test_an_unknown_preset_name_offers_what_is_there():
         _saved(services, confdir, "realpreset", character.basemesh.name)
 
         with redirected_locations(services, user_config=confdir):
-            result = _result({"name": "notapreset"})
+            result = _result({"preset_name": "notapreset"})
 
         assert result["created"] is False
         assert result["blocked_by"] == "preset_not_found"
@@ -255,7 +255,7 @@ def test_an_unreadable_preset_is_an_answer():
         handle.write("{ not json at all")
 
     with redirected_locations(services, user_config=confdir):
-        result = _result({"name": "broken"})
+        result = _result({"preset_name": "broken"})
 
     assert result["created"] is False
     assert result["blocked_by"] == "preset_unreadable"
@@ -275,7 +275,7 @@ def test_the_selection_is_not_restored_and_the_answer_says_so():
 
         with _Created():
             with redirected_locations(services, user_config=confdir):
-                result = _result({"name": "selection"})
+                result = _result({"preset_name": "selection"})
 
             assert result["active_object_after"] is not None
             assert bpy.context.view_layer.objects.active.name == result["active_object_after"], \
@@ -283,14 +283,14 @@ def test_the_selection_is_not_restored_and_the_answer_says_so():
             assert "not restored" in result["message"]
 
 
-def test_the_name_is_required_by_the_contract():
-    """commands.create_human_from_preset with no name at all"""
+def test_the_preset_name_is_required_by_the_contract():
+    """commands.create_human_from_preset with no preset_name at all"""
     _services_or_skip()
     envelope = dispatch("create_human_from_preset", {})
 
     assert envelope["status"] == "error"
     assert envelope["error"] == "invalid_params"
-    assert "name" in envelope["message"]
+    assert "preset_name" in envelope["message"]
 
 
 def test_an_unknown_material_instances_is_refused_by_the_contract():
@@ -301,7 +301,7 @@ def test_an_unknown_material_instances_is_refused_by_the_contract():
     """
     _services_or_skip()
     envelope = dispatch("create_human_from_preset",
-                        {"name": "anything", "material_instances": "SOMETIMES"})
+                        {"preset_name": "anything", "material_instances": "SOMETIMES"})
 
     assert envelope["status"] == "error"
     assert envelope["error"] == "invalid_params"
@@ -312,7 +312,7 @@ def test_mpfb_being_unavailable_refuses_rather_than_half_building():
     """commands.create_human_from_preset against a Blender with no usable MPFB"""
     for state in ("absent", "not_initialized"):
         with supplied_resolution(state):
-            envelope = dispatch("create_human_from_preset", {"name": "anything"})
+            envelope = dispatch("create_human_from_preset", {"preset_name": "anything"})
 
         assert envelope["status"] == "error"
         assert envelope["error"] == "mpfb_unavailable"
