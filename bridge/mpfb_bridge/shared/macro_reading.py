@@ -57,6 +57,8 @@ __all__ = (
     "DRIFT_TOLERANCE",
     "RACE_NAMES",
     "RACE_SUM_TOLERANCE",
+    "macro_details_of",
+    "race_sum_of",
     "read_phenotype",
 )
 
@@ -87,8 +89,13 @@ def _as_float(value):
         return None
 
 
-def _macro_details_of(target_service, basemesh):
-    """The nested dict MPFB itself uses, with every value coerced to a float."""
+def macro_details_of(target_service, basemesh):
+    """The nested dict MPFB itself uses, with every value coerced to a float.
+
+    Public because ``set_macro_details`` reports the phenotype after a write,
+    and what it reports must be what ``get_macro_details`` would read on the
+    next call.
+    """
     raw = target_service.get_macro_info_dict_from_basemesh(basemesh)
     details = dict()
     for key in raw:
@@ -102,7 +109,8 @@ def _macro_details_of(target_service, basemesh):
     return details
 
 
-def _race_sum_of(macro_details):
+def race_sum_of(macro_details):
+    """The three race weights added up, rounded so that a sum is comparable."""
     total = 0.0
     for race_name in RACE_NAMES:
         weight = macro_details.get("race", dict()).get(race_name)
@@ -165,8 +173,8 @@ def read_phenotype(services, basemesh):
     """
     target_service = services["TargetService"]
 
-    macro_details = _macro_details_of(target_service, basemesh)
-    race_sum = _race_sum_of(macro_details)
+    macro_details = macro_details_of(target_service, basemesh)
+    race_sum = race_sum_of(macro_details)
     stack = _target_stack_entries(target_service, macro_details)
     current_macro_shapekeys = [
         str(name) for name in target_service.get_current_macro_targets(basemesh, decode_names=False)

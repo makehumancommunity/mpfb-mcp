@@ -44,6 +44,11 @@ forbids: both sides receive the tool's already-validated arguments. Written down
 here rather than left to be rediscovered; see ``commands/create_human.py`` for
 the same asymmetry in its other shape.
 
+**The phenotype it reports is read by [`shared/macro_reading.py`](../shared/macro_reading.py)**,
+the implementation ``get_macro_details`` reports from, so ``macro_details`` and
+``race_sum`` after a write are what that command would read on the next call
+([FR 036](../../../feature-requests/done/036-subject-resolver-and-duplication/README.md)).
+
 The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
 arrived here from the generated program this command replaced, where it had
 been established against a real install; a reimplementation that fixed one
@@ -66,6 +71,7 @@ import sys
 import bpy
 
 from ..log import get_logger
+from ..shared import macro_reading
 from ..shared import subject_resolution
 from ..shared.performed import with_performed
 from ..shared.refit_blocker import rig_refit_is_blocked
@@ -95,13 +101,6 @@ PARAMS = (
 
 SUMMARY = "Write a character's macro phenotype sliders and rebuild the shape from them."
 
-RACE_NAMES = ("asian", "caucasian", "african")
-
-# How far the three race weights may stray from summing to 1.0 before it is
-# worth saying so. MPFB treats them as independent and does not normalise.
-_RACE_SUM_TOLERANCE = 0.001
-
-
 def _human_object_properties(services):
     """MPFB's ``HumanObjectProperties``, or ``None``.
 
@@ -115,42 +114,11 @@ def _human_object_properties(services):
     return getattr(humanservice_module, "HumanObjectProperties", None)
 
 
-def _as_float(value):
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _macro_details_of(target_service, basemesh):
-    """The nested dict MPFB itself uses, with every value coerced to a float."""
-    raw = target_service.get_macro_info_dict_from_basemesh(basemesh)
-    details = dict()
-    for key in raw:
-        if key == "race":
-            details["race"] = dict(
-                (race_name, _as_float(raw["race"].get(race_name)))
-                for race_name in raw["race"]
-            )
-        else:
-            details[key] = _as_float(raw[key])
-    return details
-
-
 def _flat_value(macro_details, property_name):
     """One property out of the nested dict, whichever level it lives on."""
-    if property_name in RACE_NAMES:
+    if property_name in macro_reading.RACE_NAMES:
         return macro_details.get("race", dict()).get(property_name)
     return macro_details.get(property_name)
-
-
-def _race_sum_of(macro_details):
-    total = 0.0
-    for race_name in RACE_NAMES:
-        weight = macro_details.get("race", dict()).get(race_name)
-        if weight is not None:
-            total += weight
-    return round(total, 6)
 
 
 def _macro_shapekeys_of(target_service, basemesh):
@@ -217,7 +185,7 @@ def _message_for(basemesh, changed, refit_performed, refit_incomplete_reason,
             " Nothing was refitted, so the {:d} mesh asset(s){:s} on this character are now "
             "fitted to the old shape. Call mpfb_refit_human when the modeling is done.".format(
                 len(mesh_assets), " and the rig" if rig is not None else ""))
-    if abs(race_sum - 1.0) > _RACE_SUM_TOLERANCE:
+    if abs(race_sum - 1.0) > macro_reading.RACE_SUM_TOLERANCE:
         parts.append(
             " The three race weights now sum to {:s} rather than 1.0. MPFB treats them as "
             "independent and does not normalize them.".format(str(race_sum)))
@@ -255,7 +223,7 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
 
     blocked_by, blocked_message = _precondition(services, target_service, basemesh)
     if blocked_by is not None:
-        macro_details = _macro_details_of(target_service, basemesh)
+        macro_details = macro_reading.macro_details_of(target_service, basemesh)
         return with_performed(dict(
             found=True,
             ready=False,
@@ -266,7 +234,7 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
             changed=[],
             recalculated=False,
             macro_details=macro_details,
-            race_sum=_race_sum_of(macro_details),
+            race_sum=macro_reading.race_sum_of(macro_details),
             message=blocked_message,
         ), False)
 
@@ -274,8 +242,8 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
         # A no-op call is a common mistake, and a full macro reapply costs
         # seconds. Answering immediately is both cheaper and clearer than
         # rebuilding a shape that would come out identical.
-        macro_details = _macro_details_of(target_service, basemesh)
-        race_sum = _race_sum_of(macro_details)
+        macro_details = macro_reading.macro_details_of(target_service, basemesh)
+        race_sum = macro_reading.race_sum_of(macro_details)
         return with_performed(dict(
             found=True,
             ready=True,
@@ -287,7 +255,7 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
             recalculated=False,
             macro_details=macro_details,
             race_sum=race_sum,
-            race_normalized=abs(race_sum - 1.0) <= _RACE_SUM_TOLERANCE,
+            race_normalized=abs(race_sum - 1.0) <= macro_reading.RACE_SUM_TOLERANCE,
             refit_requested=refit_requested,
             refit_performed=False,
             message="No macro detail was named, so nothing was changed and no shape was "
@@ -296,7 +264,7 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
         ), False)
 
     HumanObjectProperties = _human_object_properties(services)
-    details_before = _macro_details_of(target_service, basemesh)
+    details_before = macro_reading.macro_details_of(target_service, basemesh)
     shapekeys_before = _macro_shapekeys_of(target_service, basemesh)
 
     # MPFB's own slider callback activates the basemesh before recalculating.
@@ -329,9 +297,9 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
             basemesh.select_set(False)
         bpy.context.view_layer.objects.active = previous_active
 
-    details_after = _macro_details_of(target_service, basemesh)
+    details_after = macro_reading.macro_details_of(target_service, basemesh)
     shapekeys_after = _macro_shapekeys_of(target_service, basemesh)
-    race_sum = _race_sum_of(details_after)
+    race_sum = macro_reading.race_sum_of(details_after)
 
     changed = [
         dict(
@@ -360,7 +328,7 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
         prune=prune,
         macro_details=details_after,
         race_sum=race_sum,
-        race_normalized=abs(race_sum - 1.0) <= _RACE_SUM_TOLERANCE,
+        race_normalized=abs(race_sum - 1.0) <= macro_reading.RACE_SUM_TOLERANCE,
         macro_shapekeys_before=shapekeys_before,
         macro_shapekeys_after=shapekeys_after,
         shapekeys_removed=[name for name in shapekeys_before if name not in shapekeys_after],
