@@ -79,9 +79,9 @@ class CreateHumanFromPresetToolTests(unittest.TestCase):
         # "Not mentioned" and "set to the default" are different requests, and
         # null is how the command is told which one it got.
         params = self._run()
-        for argument in ("override_rig", "override_skin_model", "override_clothes_model",
-                         "override_eyes_model", "load_clothes", "scale",
-                         "material_instances"):
+        for argument in ("override_rig", "override_skin_type", "override_clothes_material_type",
+                         "override_eyes_material_type", "load_clothes", "scale",
+                         "material_instances_policy"):
             with self.subTest(argument=argument):
                 self.assertIsNone(params[argument])
 
@@ -89,12 +89,12 @@ class CreateHumanFromPresetToolTests(unittest.TestCase):
         self.assertEqual(self._run(override_rig="NONE")["override_rig"], "NONE")
         self.assertIs(self._run(load_clothes=False)["load_clothes"], False)
         self.assertEqual(self._run(scale=1.0)["scale"], 1.0)
-        self.assertEqual(self._run(material_instances="NEVER")["material_instances"],
-                         "NEVER")
+        self.assertEqual(
+            self._run(material_instances_policy="NEVER")["material_instances_policy"], "NEVER")
 
     def test_an_explicitly_empty_override_is_not_an_omission(self) -> None:
-        for argument in ("override_rig", "override_skin_model", "override_clothes_model",
-                         "override_eyes_model", "material_instances"):
+        for argument in ("override_rig", "override_skin_type", "override_clothes_material_type",
+                         "override_eyes_material_type", "material_instances_policy"):
             with self.subTest(argument=argument):
                 self._refused(**{argument: "   "})
 
@@ -147,8 +147,9 @@ class CreateHumanFromPresetOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.assertEqual(params["preset_name"], "alice")
         # Every override defaults to null, which is "use what the preset says"
         # rather than a value - and that has to survive the transport.
-        for key in ("override_rig", "override_skin_model", "override_clothes_model",
-                    "override_eyes_model", "load_clothes", "scale", "material_instances"):
+        for key in ("override_rig", "override_skin_type", "override_clothes_material_type",
+                    "override_eyes_material_type", "load_clothes", "scale",
+                    "material_instances_policy"):
             self.assertIsNone(params[key], "{} should default to null".format(key))
 
     def test_the_shared_fragment_does_not_reach_the_bridge(self) -> None:

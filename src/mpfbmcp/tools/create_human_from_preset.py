@@ -26,8 +26,8 @@ cost description budget that this effort has very little of. They keep MPFB's
 own defaults, which is what its preset panel passes.
 
 The interesting decisions - why every settings dict starts from
-``get_default_deserialization_settings()``, why ``material_instances`` follows
-the panel rather than the service, which of the operator's conveniences were
+``get_default_deserialization_settings()``, why ``material_instances_policy``
+follows the panel rather than the service, which of the operator's conveniences were
 dropped and why, and what happens when a preset names an asset or a rig this
 Blender does not have - are in the command's docstring, where the code that
 makes them is.
@@ -101,12 +101,12 @@ def register(mcp: FastMCP) -> None:
     def mpfb_create_human_from_preset(
         preset_name: str,
         override_rig: str | None = None,
-        override_skin_model: str | None = None,
-        override_clothes_model: str | None = None,
-        override_eyes_model: str | None = None,
+        override_skin_type: str | None = None,
+        override_clothes_material_type: str | None = None,
+        override_eyes_material_type: str | None = None,
         load_clothes: bool | None = None,
         scale: float | None = None,
-        material_instances: str | None = None,
+        material_instances_policy: str | None = None,
     ) -> dict[str, object]:
         """
         Build a **new** character from a saved MPFB preset: phenotype, detail
@@ -127,23 +127,25 @@ def register(mcp: FastMCP) -> None:
             `mpfb_list_rigs` reports, `custom.*` included. A `rigify.*` preset
             gives you a **meta** rig - finish it with
             `mpfb_generate_rigify_rig`.
-          - `override_skin_model`: `mpfb_set_skin`'s five `skin_type` models,
+          - `override_skin_type`: `mpfb_set_skin`'s five `skin_type` values,
             plus `"NONE"` for no skin at all.
-          - `override_clothes_model` / `override_eyes_model`: material model
-            for garments and most body parts, and for the eyes.
+          - `override_clothes_material_type` / `override_eyes_material_type`:
+            `mpfb_add_asset`'s `material_type`, for garments and every body
+            part but the eyes, and for the eyes.
           - `load_clothes` false builds the body and skips the garments.
           - `scale`: 0.1 metre (MPFB's default), 1.0 decimetre, 10.0
             centimetre.
-          - `material_instances`: `NEVER`, `ENHANCED` or `ENHANCEDMS` - whether
-            the skin gets per-region material slots. **Defaults to `ENHANCED`,
-            which is MPFB's preset panel's default rather than the
+          - `material_instances_policy`: `NEVER`, `ENHANCED` or `ENHANCEDMS` -
+            which skin types get per-region material slots. **Defaults to
+            `ENHANCED`, which is MPFB's preset panel's default rather than the
             `NEVER` its service function defaults to**; both come back, as
-            `material_instances_used` and `material_instances_service_default`.
+            `material_instances_policy_used` and `_service_default`.
 
         On `created: true` (and so `performed: true`), `result` carries
         `basemesh_name`, `rig_object_name` and `rig_identified_as`,
         `equipped_assets` (kind, object name and asset source per item),
-        `skin_material_identified_as`, `settings_used`, `objects_created` and
+        `skin_material_identified_as`, `settings_used` (MPFB's own settings
+        dict, in MPFB's own key names), `objects_created` and
         `active_object_after` - **the selection is not restored**, because
         deserialization activates what it creates and there is no prior state
         to return to.
@@ -155,7 +157,8 @@ def register(mcp: FastMCP) -> None:
 
         Refusals come back as `created: false` with a `blocked_by`:
         `preset_not_found` (with `available_presets`), `preset_unreadable`,
-        `not_object_mode`, `unknown_material_instances`, `config_dir_missing`,
+        `not_object_mode`, `unknown_material_instances_policy`,
+        `config_dir_missing`,
         `settings_incomplete`, and `deserialization_failed` - the one that is
         **not** a no-op, since a character is built in stages, so
         `objects_created` names what was left behind. Its commonest cause is a
@@ -175,19 +178,19 @@ def register(mcp: FastMCP) -> None:
                 "override_rig": _stripped_text(
                     override_rig, "override_rig",
                     "omit it to use the preset's rig, or pass 'NONE' for no rig"),
-                "override_skin_model": _stripped_text(
-                    override_skin_model, "override_skin_model",
-                    "omit it to use the preset's skin model, or pass 'NONE' for no skin"),
-                "override_clothes_model": _stripped_text(
-                    override_clothes_model, "override_clothes_model",
-                    "omit it to use the preset's clothes material model"),
-                "override_eyes_model": _stripped_text(
-                    override_eyes_model, "override_eyes_model",
-                    "omit it to use the preset's eye material model"),
+                "override_skin_type": _stripped_text(
+                    override_skin_type, "override_skin_type",
+                    "omit it to use the preset's skin type, or pass 'NONE' for no skin"),
+                "override_clothes_material_type": _stripped_text(
+                    override_clothes_material_type, "override_clothes_material_type",
+                    "omit it to use the preset's clothes material type"),
+                "override_eyes_material_type": _stripped_text(
+                    override_eyes_material_type, "override_eyes_material_type",
+                    "omit it to use the preset's eye material type"),
                 "load_clothes": _validated_optional_flag(load_clothes, "load_clothes"),
                 "scale": _validated_scale(scale),
-                "material_instances": _stripped_text(
-                    material_instances, "material_instances",
+                "material_instances_policy": _stripped_text(
+                    material_instances_policy, "material_instances_policy",
                     "omit it for MPFB's preset panel default, ENHANCED"),
             },
             # preset_files.py so that this tool, the catalogue and the save tool

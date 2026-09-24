@@ -164,8 +164,8 @@ def test_the_settings_used_are_mpfbs_own_defaults_with_overrides_written_in():
         assert settings["override_skin_model"] == "PRESET"
 
 
-def test_material_instances_follows_mpfbs_panel_rather_than_the_service_default():
-    """commands.create_human_from_preset with material_instances omitted
+def test_material_instances_policy_follows_mpfbs_panel_rather_than_the_service_default():
+    """commands.create_human_from_preset with material_instances_policy omitted
 
     ``get_default_deserialization_settings()`` says NEVER; MPFB's own "from
     preset" panel defaults to ENHANCED, and a character loaded here should be
@@ -181,11 +181,11 @@ def test_material_instances_follows_mpfbs_panel_rather_than_the_service_default(
             with redirected_locations(services, user_config=confdir):
                 result = _result({"preset_name": "instances"})
 
-        assert result["material_instances_requested"] is None
-        assert result["material_instances_used"] == "ENHANCED"
-        assert result["material_instances_service_default"] == "NEVER", \
+        assert result["material_instances_policy_requested"] is None
+        assert result["material_instances_policy_used"] == "ENHANCED"
+        assert result["material_instances_policy_service_default"] == "NEVER", \
             "if MPFB's service default changes, this substitution needs revisiting; got " \
-            "{!r}".format(result["material_instances_service_default"])
+            "{!r}".format(result["material_instances_policy_service_default"])
 
 
 def test_a_preset_naming_a_rig_this_blender_lacks_names_what_it_left_behind():
@@ -293,7 +293,7 @@ def test_the_preset_name_is_required_by_the_contract():
     assert "preset_name" in envelope["message"]
 
 
-def test_an_unknown_material_instances_is_refused_by_the_contract():
+def test_an_unknown_material_instances_policy_is_refused_by_the_contract():
     """commands.create_human_from_preset with a value outside the three
 
     ``_set_skin()`` tests the value with substring matches, so an unrecognised
@@ -301,7 +301,7 @@ def test_an_unknown_material_instances_is_refused_by_the_contract():
     """
     _services_or_skip()
     envelope = dispatch("create_human_from_preset",
-                        {"preset_name": "anything", "material_instances": "SOMETIMES"})
+                        {"preset_name": "anything", "material_instances_policy": "SOMETIMES"})
 
     assert envelope["status"] == "error"
     assert envelope["error"] == "invalid_params"

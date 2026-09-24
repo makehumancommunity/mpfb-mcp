@@ -49,16 +49,12 @@ from mcp.shared.memory import create_connected_server_and_client_session
 import mpfbmcp
 from mpfbmcp import arguments
 
-# The argument names that carry two JSON types today, and the tools that declare
-# them. It is an exact match rather than an allowance, so that the commit which
-# removes a collision also removes it here: `material_instances` goes when
-# FR 037 renames the preset tool's to `material_instances_policy`.
-_KNOWN_TYPE_COLLISIONS = {
-    "material_instances": {
-        "boolean": ["mpfb_set_skin"],
-        "string": ["mpfb_create_human_from_preset"],
-    },
-}
+# The argument names that carry two JSON types, and the tools that declare them.
+# An exact match rather than an allowance, so that adding a collision fails
+# here. FR 037 removed the last one: the preset tool's `material_instances`
+# string became `material_instances_policy`, and `mpfb_set_skin`'s bool kept
+# the name.
+_KNOWN_TYPE_COLLISIONS: dict = {}
 
 _UNDECLARED = "not_an_argument_of_any_tool"
 

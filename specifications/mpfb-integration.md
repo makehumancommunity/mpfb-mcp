@@ -28,8 +28,9 @@ a coercion the service's own guard makes for only two of the three.
 A third instance says the pattern is not peculiar to skins. `get_default_deserialization_settings()`
 gives `material_instances` as `NEVER`, while `ui/new_human/newhuman/properties/material_instances.json`
 — the panel behind MPFB's "create human from save file" button — defaults it to `ENHANCED`. So
-`mpfb_create_human_from_preset` takes `ENHANCED` as the meaning of an omitted argument, and reports
-`material_instances_used` beside `material_instances_service_default`. Both figures were read off
+`mpfb_create_human_from_preset` takes `ENHANCED` as the meaning of an omitted
+`material_instances_policy`, and reports `material_instances_policy_used` beside
+`material_instances_policy_service_default`. Both figures were read off
 the running install rather than the source.
 
 A fourth is not about a character at all. `FaceService.save_expression()` writes an empty `license`
@@ -76,13 +77,37 @@ that the value reads back on MPFB's own slider.
   `ENHANCED` over the service's `NEVER`, and `mpfb_add_asset`'s per-type material default. The
   check is that effort's own
   [live comparison](../feature-requests/done/032-creation-and-modification-migrated/check_creation_migration.py),
-  which compares the two answers field by field — so `material_instances_used` disagreeing between
+  which compares the two answers field by field — so `material_instances_used` (as it was spelled
+  then) disagreeing between
   the transports would have been a failure rather than something to notice later.
 - **This is not the same as picking between code paths.**
   [Where MPFB's own code paths disagree](#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it)
   is about two implementations of an operation; this is about one implementation whose *arguments*
   the UI fills in differently from its signature. The remedy is different too: there, name the path
   you took; here, apply the coercion and report both values.
+
+## Where MPFB's spelling disagrees with the glossary, the glossary wins
+
+The tools spell one concept one way across the whole surface
+([the glossary](tool-interface.md#the-glossary)), and where MPFB names that concept differently the
+tool uses the glossary's word. **MPFB is not consistent with itself**, so mirroring it would import
+its inconsistencies: it calls a boolean `material_instances` in `set_character_skin()` and a
+three-value policy `material_instances` in its deserialization settings, and calls the material
+model `material_type` in one function and `skin_type` or `*_model` in others. A caller that learned
+`material_instances` from `mpfb_set_skin` and passed `true` to the preset tool would be refused only
+if the second tool happened to validate the type.
+
+So `mpfb_create_human_from_preset` takes `material_instances_policy` and `override_skin_type` /
+`override_clothes_material_type` / `override_eyes_material_type`, and `mpfb_add_asset` takes
+`object_type` where `add_mhclo_asset()` says `asset_type`. The tool's description names MPFB's
+spelling once, where a reader comparing the tool with MPFB's source would otherwise lose their
+bearings, and the command maps one to the other in a single visible table rather than at each use.
+
+Two things keep MPFB's spelling on purpose, because they *are* MPFB's rather than the tool's: a dict
+MPFB itself reads or wrote, reported as it is (`mpfb_create_human_from_preset`'s `settings_used`,
+`mpfb_save_preset`'s `contents`), and MPFB's own vocabularies, such as its object types and skin
+types. Renaming either would make a value impossible to look up in MPFB.
+[FR 037](../feature-requests/037-one-word-per-concept/README.md) established this.
 
 ## Where MPFB's own code paths disagree, mpfb-mcp picks one and names it
 

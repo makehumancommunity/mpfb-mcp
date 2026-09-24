@@ -150,7 +150,15 @@ RETIRED_ARGUMENTS: dict[str, dict[str, str]] = {
     # `preset_name`/`expression_name`, and the character, which was `subject`,
     # became `name` - so in the save tools `name` changed meaning rather than
     # being retired, and the command's subject_not_found sentence covers it.
-    "mpfb_create_human_from_preset": {"name": "preset_name"},
+    "mpfb_create_human_from_preset": {
+        "name": "preset_name",
+        # R7: the glossary over MPFB's spelling. MPFB's settings keep theirs,
+        # and settings_used reports them as MPFB read them.
+        "material_instances": "material_instances_policy",
+        "override_clothes_model": "override_clothes_material_type",
+        "override_eyes_model": "override_eyes_material_type",
+        "override_skin_model": "override_skin_type",
+    },
     # R2: the argument names an object that does not exist yet, as a basename
     # Rigify may uniquify; rig_object_name reports what it became.
     "mpfb_generate_rigify_rig": {"rig_name": "generated_rig_name"},

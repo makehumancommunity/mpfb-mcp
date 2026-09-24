@@ -21,14 +21,15 @@ one this was written against. Two keys go the other way:
 default dict - so the vocabulary is wider than the defaults and these are added
 rather than assumed to be there.
 
-**``material_instances`` follows MPFB's panel rather than the service's
-default.** ``get_default_deserialization_settings()`` says ``NEVER``; the
-property MPFB's own "from preset" panel is built from defaults to ``ENHANCED``.
-A character loaded through this command should be the character the user would
-have got from that panel, so ``ENHANCED`` is what an omitted argument means -
-and ``material_instances_requested`` comes back beside
-``material_instances_used`` and ``material_instances_service_default`` so the
-substitution is never silent.
+**``material_instances_policy`` follows MPFB's panel rather than the service's
+default.** It is MPFB's ``material_instances`` setting, renamed because it is a
+policy over skin types rather than ``mpfb_set_skin``'s bool of the same name.
+``get_default_deserialization_settings()`` says ``NEVER``; the property MPFB's
+own "from preset" panel is built from defaults to ``ENHANCED``. A character
+loaded through this command should be the character the user would have got
+from that panel, so ``ENHANCED`` is what an omitted argument means - and
+``material_instances_policy_requested`` comes back beside ``_used`` and
+``_service_default`` so the substitution is never silent.
 
 **A preset naming an asset that is not installed is silent inside MPFB.**
 ``_check_add_clothes()`` and ``_check_add_bodyparts()`` call
@@ -118,8 +119,25 @@ SKIN_SUBDIR = "skins"
 # command can produce.
 SUGGESTION_CAP = 50
 
-_OVERRIDE_KEYS = ("override_rig", "override_skin_model",
-                  "override_clothes_model", "override_eyes_model")
+# Each overridable argument, and the key MPFB's deserialization settings read it
+# under. They were one spelling until FR 037 (R7) named the arguments by the
+# glossary - material_instances is a policy over skin types, and the three
+# "models" are the material types the other tools call skin_type and
+# material_type - while the settings dict is MPFB's and keeps MPFB's names,
+# which is also how settings_used reports it.
+_SETTING_FOR = dict(
+    override_rig="override_rig",
+    override_skin_type="override_skin_model",
+    override_clothes_material_type="override_clothes_model",
+    override_eyes_material_type="override_eyes_model",
+    load_clothes="load_clothes",
+    scale="scale",
+    material_instances_policy="material_instances",
+)
+
+# The four whose absence from the settings dict means "use the preset's".
+_OVERRIDE_KEYS = ("override_rig", "override_skin_type",
+                  "override_clothes_material_type", "override_eyes_material_type")
 
 PARAMS = (
     Param("preset_name", TYPE_STRING, required=True,
@@ -127,17 +145,18 @@ PARAMS = (
     Param("override_rig", TYPE_STRING, default=None, nullable=True,
           description="Use this rig identifier instead of the preset's. 'NONE' loads the "
                       "character without one."),
-    Param("override_skin_model", TYPE_STRING, default=None, nullable=True,
-          description="Use this skin material model instead of the preset's."),
-    Param("override_clothes_model", TYPE_STRING, default=None, nullable=True,
-          description="Use this clothes material model instead of the preset's."),
-    Param("override_eyes_model", TYPE_STRING, default=None, nullable=True,
-          description="Use this eyes material model instead of the preset's."),
+    Param("override_skin_type", TYPE_STRING, default=None, nullable=True,
+          description="Use this skin type instead of the preset's."),
+    Param("override_clothes_material_type", TYPE_STRING, default=None, nullable=True,
+          description="Use this material type for garments and body parts instead of the "
+                      "preset's."),
+    Param("override_eyes_material_type", TYPE_STRING, default=None, nullable=True,
+          description="Use this material type for the eyes instead of the preset's."),
     Param("load_clothes", TYPE_BOOLEAN, default=None, nullable=True,
           description="Load the garments the preset names. Omit for MPFB's own default."),
     Param("scale", TYPE_NUMBER, default=None, nullable=True,
           description="Basemesh scale factor. Omit for the preset's."),
-    Param("material_instances", TYPE_STRING, default=None, nullable=True,
+    Param("material_instances_policy", TYPE_STRING, default=None, nullable=True,
           choices=MATERIAL_INSTANCES_VALUES,
           description="NEVER, ENHANCED or ENHANCEDMS. Omit for ENHANCED, which is MPFB's own "
                       "'from preset' panel default rather than the service's NEVER."),
@@ -241,12 +260,12 @@ def _resolve(services, params):
     request = _Request()
     request.overrides_requested = dict(
         override_rig=params["override_rig"],
-        override_skin_model=params["override_skin_model"],
-        override_clothes_model=params["override_clothes_model"],
-        override_eyes_model=params["override_eyes_model"],
+        override_skin_type=params["override_skin_type"],
+        override_clothes_material_type=params["override_clothes_material_type"],
+        override_eyes_material_type=params["override_eyes_material_type"],
         load_clothes=params["load_clothes"],
         scale=params["scale"],
-        material_instances=params["material_instances"],
+        material_instances_policy=params["material_instances_policy"],
     )
 
     request.confdir = preset_files.config_directory(services)
@@ -277,7 +296,7 @@ def _resolve(services, params):
     request.material_instances_used = None
     if request.settings is not None:
         # The panel's default, not the service's. Reported either way.
-        request.material_instances_used = request.overrides_requested["material_instances"]
+        request.material_instances_used = request.overrides_requested["material_instances_policy"]
         if request.material_instances_used is None:
             request.material_instances_used = PANEL_MATERIAL_INSTANCES
     return request
@@ -362,12 +381,12 @@ def _refusal(services, params, request):  # pylint: disable=too-many-return-stat
             known_settings=sorted(request.settings.keys()))
     if request.material_instances_used not in MATERIAL_INSTANCES_VALUES:
         return blocked(
-            "unknown_material_instances",
-            "'{!s}' is not a material_instances setting MPFB knows, so nothing was loaded. "
-            "known_material_instances lists the three; _set_skin() tests the value with "
+            "unknown_material_instances_policy",
+            "'{!s}' is not a material_instances_policy MPFB knows, so nothing was loaded. "
+            "known_material_instances_policies lists the three; _set_skin() tests the value with "
             "substring matches, so an unrecognised one silently means NEVER rather than "
-            "failing.".format(request.overrides_requested["material_instances"]),
-            known_material_instances=list(MATERIAL_INSTANCES_VALUES))
+            "failing.".format(request.overrides_requested["material_instances_policy"]),
+            known_material_instances_policies=list(MATERIAL_INSTANCES_VALUES))
     if bpy.context.mode != "OBJECT":
         # Building a character runs operators, and bpy.ops polls on the
         # *context* mode - so an unrelated object left in edit mode fails them.
@@ -386,9 +405,10 @@ def _settings_for(request, load_clothes):
     settings["material_instances"] = request.material_instances_used
     if request.overrides_requested["scale"] is not None:
         settings["scale"] = float(request.overrides_requested["scale"])
-    for key in _OVERRIDE_KEYS:
-        if request.overrides_requested[key] is not None:
-            settings[key] = request.overrides_requested[key]
+    for argument in _OVERRIDE_KEYS:
+        key = _SETTING_FOR[argument]
+        if request.overrides_requested[argument] is not None:
+            settings[key] = request.overrides_requested[argument]
         elif key not in settings:
             # The two MPFB's defaults omit. "PRESET" is the sentinel
             # deserialize_from_dict() reads as "use what the preset says", and
@@ -518,19 +538,19 @@ def create_human_from_preset(params, resolution):  # pylint: disable=too-many-lo
     # "I overrode the rig" and "the preset had no rig" are one read apart.
     preset_values = dict(
         override_rig=request.human_info.get("rig") or None,
-        override_skin_model=request.human_info.get("skin_material_type") or None,
-        override_clothes_model=request.human_info.get("clothes_material_type") or None,
-        override_eyes_model=request.human_info.get("eyes_material_type") or None,
+        override_skin_type=request.human_info.get("skin_material_type") or None,
+        override_clothes_material_type=request.human_info.get("clothes_material_type") or None,
+        override_eyes_material_type=request.human_info.get("eyes_material_type") or None,
         load_clothes=list(request.human_info.get("clothes") or []),
         scale=None,
-        material_instances=None,
+        material_instances_policy=None,
     )
     overrides = dict()
-    for key in request.overrides_requested:
-        overrides[key] = dict(
-            requested=request.overrides_requested[key],
-            preset_value=preset_values[key],
-            used=settings.get(key),
+    for argument in request.overrides_requested:
+        overrides[argument] = dict(
+            requested=request.overrides_requested[argument],
+            preset_value=preset_values[argument],
+            used=settings.get(_SETTING_FOR[argument]),
         )
 
     _LOG.debug("create_human_from_preset: built %r from %r", basemesh.name, params["preset_name"])
@@ -550,10 +570,12 @@ def create_human_from_preset(params, resolution):  # pylint: disable=too-many-lo
         unresolved_assets=unresolved_assets,
         skin_material_identified_as=skin_identified_as,
         overrides=overrides,
-        material_instances_requested=request.overrides_requested["material_instances"],
-        material_instances_used=request.material_instances_used,
-        material_instances_service_default=request.service_defaults.get("material_instances"),
-        known_material_instances=list(MATERIAL_INSTANCES_VALUES),
+        material_instances_policy_requested=request.overrides_requested[
+            "material_instances_policy"],
+        material_instances_policy_used=request.material_instances_used,
+        material_instances_policy_service_default=request.service_defaults.get(
+            "material_instances"),
+        known_material_instances_policies=list(MATERIAL_INSTANCES_VALUES),
         settings_used=settings,
         objects_created=created,
         active_object_after=active_object_after,
