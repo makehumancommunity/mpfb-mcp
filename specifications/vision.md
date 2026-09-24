@@ -188,8 +188,9 @@ transport.
 
 **What is still missing**, and why each is worth having:
 
-- `mpfb_get_human_summary` — macro details, equipped assets, rig, skin and active targets for one
-  character in a single answer. Today that is five calls, which is five round trips to establish
+- `mpfb_get_character_summary` — macro details, equipped assets, rig, skin and active targets for
+  one character in a single answer, scoped as
+  [FR 034](../feature-requests/034-character-summary/README.md). Today that is five calls, which is five round trips to establish
   what an agent needs before almost any modification. Its macro half must be produced by calling
   the same read `mpfb_get_macro_details` uses, not by a second implementation that can diverge.
 - `mpfb_search_docs` — ranked search over MPFB documentation *bundled with the client*, mirroring

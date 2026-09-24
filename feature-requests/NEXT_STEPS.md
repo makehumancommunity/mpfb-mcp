@@ -23,6 +23,27 @@ Expressions should be a mix of functionality from the `src/mpfb/ui/create_assets
 and `src/mpfb/ui/apply_assets/useexpression` UI code hierarchies in MPFB. TargetService has
 some functionality for working with expressions.
 
+## Character summary
+
+**Scoped as [FR 034](034-character-summary/README.md) (Accepted), ordered after FR 027.**
+`mpfb_get_character_summary` answers in one call what currently takes five or six: phenotype, rig,
+equipped assets, skin, the target rollup, and the face (face units and the expression stack). Each
+section is read by the same implementation as its detailed tool, which means moving the reading
+code of `get_macro_details`, `get_object_info` and `get_target_stack` into `bridge/.../shared/`.
+
+<a id="one-basemesh-resolver"></a>
+
+## One basemesh resolver
+
+Fifteen bridge commands resolve "any object in the character's family, or the active one" to a
+basemesh through `ObjectService.find_object_of_type_amongst_nearest_relatives(subject, "Basemesh")`,
+each inside a wrapper of its own (`_resolve`, `_resolve_basemesh`), and the copies are not the same
+code even with their messages stripped. [FR 034](034-character-summary/README.md) moves the
+`get_macro_details` copy into `shared/macro_reading.py` and leaves the other fourteen alone. This
+effort would decide whether they should all share one resolver, whether the variations between them
+are deliberate (some mutating commands may rightly resolve differently), and would record the
+differences it finds either way.
+
 ## Visemes and lip sync
 
 The rest of `FaceService`, deliberately excluded from both expression requests (see
