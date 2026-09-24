@@ -1,6 +1,6 @@
 # One subject resolver, and the rule for what else to share
 
-**Status:** Accepted
+**Status:** In progress
 
 Eighteen bridge commands take a subject: the object the caller named, or the active one if it
 named none. Sixteen of them then go on to that object's basemesh. The rules are in the

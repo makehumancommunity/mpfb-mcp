@@ -1,0 +1,5331 @@
+{
+ "character": [
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 0 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "create_human",
+    "protocol_version": 1,
+    "result": {
+     "location": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "macro_detail_dict": null,
+     "object_name": "Human",
+     "performed": true,
+     "vertex_count": 19158
+    },
+    "status": "ok"
+   },
+   "command": "create_human",
+   "label": "create_human"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 0 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 0 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "name",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "command": "get_object_info",
+   "label": "read get_object_info"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 0 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "get_macro_details",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_in_current_scene": true,
+     "basemesh_name": "Human",
+     "current_macro_shapekeys": [
+      "$md-$as-$fe-$yn",
+      "$md-$as-$ma-$yn",
+      "$md-$ca-$fe-$yn",
+      "$md-$ca-$ma-$yn",
+      "$md-$af-$fe-$yn",
+      "$md-$af-$ma-$yn",
+      "$md-universal-$fe-$yn-$av$mu-$av$wg",
+      "$md-universal-$ma-$yn-$av$mu-$av$wg"
+     ],
+     "current_macro_shapekeys_decoded": [
+      "macrodetail-asian-female-young",
+      "macrodetail-asian-male-young",
+      "macrodetail-caucasian-female-young",
+      "macrodetail-caucasian-male-young",
+      "macrodetail-african-female-young",
+      "macrodetail-african-male-young",
+      "macrodetail-universal-female-young-averagemuscle-averageweight",
+      "macrodetail-universal-male-young-averagemuscle-averageweight"
+     ],
+     "default_macro_details": {
+      "age": 0.5,
+      "cupsize": 0.5,
+      "firmness": 0.5,
+      "gender": 0.5,
+      "height": 0.5,
+      "muscle": 0.5,
+      "proportions": 0.5,
+      "race": {
+       "african": 0.33,
+       "asian": 0.33,
+       "caucasian": 0.33
+      },
+      "weight": 0.5
+     },
+     "found": true,
+     "has_shapekeys": true,
+     "is_human_project": true,
+     "macro_details": {
+      "age": 0.5,
+      "cupsize": 0.5,
+      "firmness": 0.5,
+      "gender": 0.5,
+      "height": 0.5,
+      "muscle": 0.5,
+      "proportions": 0.5,
+      "race": {
+       "african": 0.33000001311302185,
+       "asian": 0.33000001311302185,
+       "caucasian": 0.33000001311302185
+      },
+      "weight": 0.5
+     },
+     "macro_drift": false,
+     "macro_target_count": 8,
+     "macro_target_stack": [
+      {
+       "shapekey_name": "$md-$as-$fe-$yn",
+       "target_fragment": "macrodetails/asian-female-young",
+       "weight": 0.16500000655651093
+      },
+      {
+       "shapekey_name": "$md-$as-$ma-$yn",
+       "target_fragment": "macrodetails/asian-male-young",
+       "weight": 0.16500000655651093
+      },
+      {
+       "shapekey_name": "$md-$ca-$fe-$yn",
+       "target_fragment": "macrodetails/caucasian-female-young",
+       "weight": 0.16500000655651093
+      },
+      {
+       "shapekey_name": "$md-$ca-$ma-$yn",
+       "target_fragment": "macrodetails/caucasian-male-young",
+       "weight": 0.16500000655651093
+      },
+      {
+       "shapekey_name": "$md-$af-$fe-$yn",
+       "target_fragment": "macrodetails/african-female-young",
+       "weight": 0.16500000655651093
+      },
+      {
+       "shapekey_name": "$md-$af-$ma-$yn",
+       "target_fragment": "macrodetails/african-male-young",
+       "weight": 0.16500000655651093
+      },
+      {
+       "shapekey_name": "$md-universal-$fe-$yn-$av$mu-$av$wg",
+       "target_fragment": "macrodetails/universal-female-young-averagemuscle-averageweight",
+       "weight": 0.5
+      },
+      {
+       "shapekey_name": "$md-universal-$ma-$yn-$av$mu-$av$wg",
+       "target_fragment": "macrodetails/universal-male-young-averagemuscle-averageweight",
+       "weight": 0.5
+      }
+     ],
+     "message": "Read macro details from basemesh 'Human'. The three race weights sum to 0.99 rather than 1.0. That is legal in MPFB, which treats them as independent, but it scales the phenotype.",
+     "race_normalized": false,
+     "race_sum": 0.99,
+     "subject_name": "Human",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "command": "get_macro_details",
+   "label": "read get_macro_details"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 0 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "get_character_summary",
+    "protocol_version": 1,
+    "result": {
+     "assets": [],
+     "basemesh_in_current_scene": true,
+     "basemesh_name": "Human",
+     "face": {
+      "applied_expressions": [],
+      "face_units": [],
+      "faceunits01_installed": true,
+      "matches_stack": true,
+      "unexplained_face_units": []
+     },
+     "found": true,
+     "message": "Character 'Human': no rig, 0 equipped asset(s), 0 modeling categories set.",
+     "phenotype": {
+      "macro_details": {
+       "age": 0.5,
+       "cupsize": 0.5,
+       "firmness": 0.5,
+       "gender": 0.5,
+       "height": 0.5,
+       "muscle": 0.5,
+       "proportions": 0.5,
+       "race": {
+        "african": 0.33000001311302185,
+        "asian": 0.33000001311302185,
+        "caucasian": 0.33000001311302185
+       },
+       "weight": 0.5
+      },
+      "macro_drift": false,
+      "race_normalized": false,
+      "race_sum": 0.99
+     },
+     "rig": null,
+     "skin": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "subject_in_current_scene": true,
+     "subject_name": "Human",
+     "subject_resolved_by": "name",
+     "targets": {
+      "asymmetries": [],
+      "asymmetry_count": 0,
+      "counts_by_kind": {
+       "macro": 8
+      },
+      "modifier_count": 0,
+      "modifiers": [],
+      "rollup_truncated": false,
+      "total_count": 0
+     }
+    },
+    "status": "ok"
+   },
+   "command": "get_character_summary",
+   "label": "read get_character_summary"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 0 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "get_target_stack",
+    "protocol_version": 1,
+    "result": {
+     "asymmetries": [],
+     "basemesh_name": "Human",
+     "count": 0,
+     "counts_by_kind": {
+      "macro": 8
+     },
+     "counts_by_section": {
+      "(none)": 8
+     },
+     "found": true,
+     "has_shapekeys": true,
+     "limit": 200,
+     "message": "0 shape key(s) matched on basemesh 'Human', 0 returned. 'modifiers' is the same information rolled up into the categories MPFB's own sliders manipulate, and is what mpfb_set_targets takes; 'targets' entries are addressed by 'shapekey_name'. 8 macro shape key(s) were left out; pass include_macro to see them, or call mpfb_get_macro_details.",
+     "modifier_count": 0,
+     "modifiers": [],
+     "offset": 0,
+     "subject_name": "Human",
+     "subject_resolved_by": "name",
+     "targets": [],
+     "total_count": 0,
+     "truncated": false
+    },
+    "status": "ok"
+   },
+   "command": "get_target_stack",
+   "label": "read get_target_stack"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 0 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "get_face_units",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": "Human",
+     "face_unit_count": 0,
+     "face_units": [],
+     "faceunits01_installed": true,
+     "found": true,
+     "include_zero": false,
+     "known_face_units": {
+      "brow": [
+       "browInnerUp",
+       "browDownLeft",
+       "browDownRight",
+       "browOuterUpLeft",
+       "browOuterUpRight"
+      ],
+      "cheek": [
+       "cheekPuff",
+       "cheekSquintLeft",
+       "cheekSquintRight"
+      ],
+      "eye": [
+       "eyeBlinkLeft",
+       "eyeBlinkRight",
+       "eyeSquintLeft",
+       "eyeSquintRight",
+       "eyeWideLeft",
+       "eyeWideRight",
+       "eyeLookUpLeft",
+       "eyeLookUpRight",
+       "eyeLookDownLeft",
+       "eyeLookDownRight",
+       "eyeLookInLeft",
+       "eyeLookInRight",
+       "eyeLookOutLeft",
+       "eyeLookOutRight"
+      ],
+      "jaw": [
+       "jawOpen",
+       "jawForward",
+       "jawLeft",
+       "jawRight"
+      ],
+      "mouth": [
+       "mouthClose",
+       "mouthFunnel",
+       "mouthPucker",
+       "mouthLeft",
+       "mouthRight",
+       "mouthSmileLeft",
+       "mouthSmileRight",
+       "mouthFrownLeft",
+       "mouthFrownRight",
+       "mouthDimpleLeft",
+       "mouthDimpleRight",
+       "mouthStretchLeft",
+       "mouthStretchRight",
+       "mouthRollLower",
+       "mouthRollUpper",
+       "mouthShrugLower",
+       "mouthShrugUpper",
+       "mouthPressLeft",
+       "mouthPressRight",
+       "mouthLowerDownLeft",
+       "mouthLowerDownRight",
+       "mouthUpperUpLeft",
+       "mouthUpperUpRight"
+      ],
+      "nose": [
+       "noseSneerLeft",
+       "noseSneerRight"
+      ],
+      "tongue": [
+       "tongueOut"
+      ]
+     },
+     "message": "Read 52 of 52 ARKit face unit(s) from basemesh 'Human', 0 of them non-zero.",
+     "subject_name": "Human",
+     "subject_resolved_by": "name",
+     "total_count": 52
+    },
+    "status": "ok"
+   },
+   "command": "get_face_units",
+   "label": "read get_face_units"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 0 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "get_expression",
+    "protocol_version": 1,
+    "result": {
+     "aggregate": {},
+     "applied_expressions": [],
+     "basemesh_name": "Human",
+     "clamped_face_units": [],
+     "faceunits01_installed": true,
+     "found": true,
+     "matches_stack": true,
+     "message": "Basemesh 'Human' is wearing no saved expression. The live face is exactly what the stack produces.",
+     "subject_name": "Human",
+     "subject_resolved_by": "name",
+     "unexplained_face_units": [],
+     "unresolved_count": 0
+    },
+    "status": "ok"
+   },
+   "command": "get_expression",
+   "label": "read get_expression"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 0 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "set_macro_details",
+    "protocol_version": 1,
+    "result": {
+     "assets_possibly_stale": {
+      "mesh_asset_count": 0,
+      "mesh_assets": [],
+      "rig_attached": false,
+      "rig_name": null
+     },
+     "basemesh_name": "Human",
+     "blocked_by": null,
+     "changed": [
+      {
+       "name": "gender",
+       "new": 0.30000001192092896,
+       "previous": 0.5,
+       "property": "gender"
+      },
+      {
+       "name": "muscle",
+       "new": 0.699999988079071,
+       "previous": 0.5,
+       "property": "muscle"
+      }
+     ],
+     "found": true,
+     "macro_details": {
+      "age": 0.5,
+      "cupsize": 0.5,
+      "firmness": 0.5,
+      "gender": 0.30000001192092896,
+      "height": 0.5,
+      "muscle": 0.699999988079071,
+      "proportions": 0.5,
+      "race": {
+       "african": 0.33000001311302185,
+       "asian": 0.33000001311302185,
+       "caucasian": 0.33000001311302185
+      },
+      "weight": 0.5
+     },
+     "macro_shapekeys_after": [
+      "$md-$as-$fe-$yn",
+      "$md-$as-$ma-$yn",
+      "$md-$ca-$fe-$yn",
+      "$md-$ca-$ma-$yn",
+      "$md-$af-$fe-$yn",
+      "$md-$af-$ma-$yn",
+      "$md-universal-$fe-$yn-$av$mu-$av$wg",
+      "$md-universal-$ma-$yn-$av$mu-$av$wg",
+      "$md-universal-$fe-$yn-max$mu-$av$wg",
+      "$md-universal-$ma-$yn-max$mu-$av$wg"
+     ],
+     "macro_shapekeys_before": [
+      "$md-$as-$fe-$yn",
+      "$md-$as-$ma-$yn",
+      "$md-$ca-$fe-$yn",
+      "$md-$ca-$ma-$yn",
+      "$md-$af-$fe-$yn",
+      "$md-$af-$ma-$yn",
+      "$md-universal-$fe-$yn-$av$mu-$av$wg",
+      "$md-universal-$ma-$yn-$av$mu-$av$wg"
+     ],
+     "message": "Changed 2 macro detail(s) on basemesh 'Human' and rebuilt the macro target stack. The three race weights now sum to 0.99 rather than 1.0. MPFB treats them as independent and does not normalize them.",
+     "performed": true,
+     "prune": true,
+     "race_normalized": false,
+     "race_sum": 0.99,
+     "ready": true,
+     "recalculated": true,
+     "refit_incomplete_reason": null,
+     "refit_performed": false,
+     "refit_requested": false,
+     "shapekeys_added": [
+      "$md-universal-$fe-$yn-max$mu-$av$wg",
+      "$md-universal-$ma-$yn-max$mu-$av$wg"
+     ],
+     "shapekeys_removed": [],
+     "subject_name": "Human",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "command": "set_macro_details",
+   "label": "set_macro_details"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 0 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "set_targets",
+    "protocol_version": 1,
+    "result": {
+     "applied": [
+      {
+       "catalogue_shapekey_name": null,
+       "category": "nose-base-down-up",
+       "index": 0,
+       "kind": "modifier",
+       "name_diverges_from_catalogue": false,
+       "opposed": true,
+       "section": "nose",
+       "side": "unsided",
+       "symmetry_applied": false,
+       "targets": [
+        {
+         "loaded_from": "/home/joepal/claude/mpfb2/src/mpfb/data/targets/nose/nose-base-up.target.gz",
+         "new_value": 0.25,
+         "polarity": "positive",
+         "present_before": false,
+         "previous_value": null,
+         "pruned": false,
+         "side": "unsided",
+         "target": "nose-base-up"
+        }
+       ],
+       "value": 0.25
+      },
+      {
+       "catalogue_shapekey_name": null,
+       "category": "ear-flap-decr-incr",
+       "index": 1,
+       "kind": "modifier",
+       "name_diverges_from_catalogue": false,
+       "opposed": true,
+       "section": "ears",
+       "side": "left",
+       "symmetry_applied": false,
+       "targets": [
+        {
+         "loaded_from": "/home/joepal/claude/mpfb2/src/mpfb/data/targets/ears/l-ear-flap-incr.target.gz",
+         "new_value": 0.4000000059604645,
+         "polarity": "positive",
+         "present_before": false,
+         "previous_value": null,
+         "pruned": false,
+         "side": "left",
+         "target": "l-ear-flap-incr"
+        }
+       ],
+       "value": 0.4
+      },
+      {
+       "catalogue_shapekey_name": null,
+       "category": "ear-flap-decr-incr",
+       "index": 2,
+       "kind": "modifier",
+       "name_diverges_from_catalogue": false,
+       "opposed": true,
+       "section": "ears",
+       "side": "right",
+       "symmetry_applied": false,
+       "targets": [
+        {
+         "loaded_from": "/home/joepal/claude/mpfb2/src/mpfb/data/targets/ears/r-ear-flap-incr.target.gz",
+         "new_value": 0.10000000149011612,
+         "polarity": "positive",
+         "present_before": false,
+         "previous_value": null,
+         "pruned": false,
+         "side": "right",
+         "target": "r-ear-flap-incr"
+        }
+       ],
+       "value": 0.1
+      },
+      {
+       "catalogue_shapekey_name": null,
+       "category": "eye-bag-decr-incr",
+       "index": 3,
+       "kind": "modifier",
+       "name_diverges_from_catalogue": false,
+       "opposed": true,
+       "section": "eyes",
+       "side": "left",
+       "symmetry_applied": false,
+       "targets": [
+        {
+         "loaded_from": "/home/joepal/claude/mpfb2/src/mpfb/data/targets/eyes/l-eye-bag-incr.target.gz",
+         "new_value": 0.4000000059604645,
+         "polarity": "positive",
+         "present_before": false,
+         "previous_value": null,
+         "pruned": false,
+         "side": "left",
+         "target": "l-eye-bag-incr"
+        }
+       ],
+       "value": 0.4
+      },
+      {
+       "catalogue_shapekey_name": null,
+       "category": "eye-bag-decr-incr",
+       "index": 4,
+       "kind": "modifier",
+       "name_diverges_from_catalogue": false,
+       "opposed": true,
+       "section": "eyes",
+       "side": "right",
+       "symmetry_applied": false,
+       "targets": [
+        {
+         "loaded_from": "/home/joepal/claude/mpfb2/src/mpfb/data/targets/eyes/r-eye-bag-incr.target.gz",
+         "new_value": 0.10000000149011612,
+         "polarity": "positive",
+         "present_before": false,
+         "previous_value": null,
+         "pruned": false,
+         "side": "right",
+         "target": "r-eye-bag-incr"
+        }
+       ],
+       "value": 0.1
+      }
+     ],
+     "assets_possibly_stale": null,
+     "basemesh_name": "Human",
+     "blocked_by": null,
+     "found": true,
+     "message": "Applied 5 change(s) to basemesh 'Human', touching 5 target(s). Assets and rig were refitted to the new shape.",
+     "performed": true,
+     "prune": true,
+     "ready": true,
+     "refit_incomplete_reason": null,
+     "refit_performed": true,
+     "refit_requested": true,
+     "resolution_errors": [],
+     "shapekeys_added": [
+      "nose-base-up",
+      "l-ear-flap-incr",
+      "r-ear-flap-incr",
+      "l-eye-bag-incr",
+      "r-eye-bag-incr"
+     ],
+     "shapekeys_after": [
+      "Basis",
+      "$md-$as-$fe-$yn",
+      "$md-$as-$ma-$yn",
+      "$md-$ca-$fe-$yn",
+      "$md-$ca-$ma-$yn",
+      "$md-$af-$fe-$yn",
+      "$md-$af-$ma-$yn",
+      "$md-universal-$fe-$yn-$av$mu-$av$wg",
+      "$md-universal-$ma-$yn-$av$mu-$av$wg",
+      "$md-universal-$fe-$yn-max$mu-$av$wg",
+      "$md-universal-$ma-$yn-max$mu-$av$wg",
+      "nose-base-up",
+      "l-ear-flap-incr",
+      "r-ear-flap-incr",
+      "l-eye-bag-incr",
+      "r-eye-bag-incr"
+     ],
+     "shapekeys_before": [
+      "Basis",
+      "$md-$as-$fe-$yn",
+      "$md-$as-$ma-$yn",
+      "$md-$ca-$fe-$yn",
+      "$md-$ca-$ma-$yn",
+      "$md-$af-$fe-$yn",
+      "$md-$af-$ma-$yn",
+      "$md-universal-$fe-$yn-$av$mu-$av$wg",
+      "$md-universal-$ma-$yn-$av$mu-$av$wg",
+      "$md-universal-$fe-$yn-max$mu-$av$wg",
+      "$md-universal-$ma-$yn-max$mu-$av$wg"
+     ],
+     "shapekeys_removed": [],
+     "subject_name": "Human",
+     "subject_resolved_by": "name",
+     "symmetry": false
+    },
+    "status": "ok"
+   },
+   "command": "set_targets",
+   "label": "set_targets"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 0 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "get_target_stack",
+    "protocol_version": 1,
+    "result": {
+     "asymmetries": [
+      {
+       "category": "ear-flap-decr-incr",
+       "difference": 0.3,
+       "left": 0.4,
+       "right": 0.1,
+       "section": "ears"
+      },
+      {
+       "category": "eye-bag-decr-incr",
+       "difference": 0.3,
+       "left": 0.4,
+       "right": 0.1,
+       "section": "eyes"
+      }
+     ],
+     "basemesh_name": "Human",
+     "count": 5,
+     "counts_by_kind": {
+      "detail": 5,
+      "macro": 10
+     },
+     "counts_by_section": {
+      "(none)": 10,
+      "ears": 2,
+      "eyes": 2,
+      "nose": 1
+     },
+     "found": true,
+     "has_shapekeys": true,
+     "limit": 200,
+     "message": "5 shape key(s) matched on basemesh 'Human', 5 returned. 'modifiers' is the same information rolled up into the categories MPFB's own sliders manipulate, and is what mpfb_set_targets takes; 'targets' entries are addressed by 'shapekey_name'. 10 macro shape key(s) were left out; pass include_macro to see them, or call mpfb_get_macro_details.",
+     "modifier_count": 5,
+     "modifiers": [
+      {
+       "category": "ear-flap-decr-incr",
+       "opposed": true,
+       "section": "ears",
+       "side": "left",
+       "value": 0.4
+      },
+      {
+       "category": "ear-flap-decr-incr",
+       "opposed": true,
+       "section": "ears",
+       "side": "right",
+       "value": 0.1
+      },
+      {
+       "category": "eye-bag-decr-incr",
+       "opposed": true,
+       "section": "eyes",
+       "side": "left",
+       "value": 0.4
+      },
+      {
+       "category": "eye-bag-decr-incr",
+       "opposed": true,
+       "section": "eyes",
+       "side": "right",
+       "value": 0.1
+      },
+      {
+       "category": "nose-base-down-up",
+       "opposed": true,
+       "section": "nose",
+       "side": "unsided",
+       "value": 0.25
+      }
+     ],
+     "offset": 0,
+     "subject_name": "Human",
+     "subject_resolved_by": "name",
+     "targets": [
+      {
+       "category": "ear-flap-decr-incr",
+       "decoded_name": "l-ear-flap-incr",
+       "kind": "detail",
+       "listed_in_target_json": true,
+       "polarity": "positive",
+       "section": "ears",
+       "shapekey_name": "l-ear-flap-incr",
+       "side": "left",
+       "value": 0.4,
+       "visible_to_targetservice": true
+      },
+      {
+       "category": "ear-flap-decr-incr",
+       "decoded_name": "r-ear-flap-incr",
+       "kind": "detail",
+       "listed_in_target_json": true,
+       "polarity": "positive",
+       "section": "ears",
+       "shapekey_name": "r-ear-flap-incr",
+       "side": "right",
+       "value": 0.1,
+       "visible_to_targetservice": true
+      },
+      {
+       "category": "eye-bag-decr-incr",
+       "decoded_name": "l-eye-bag-incr",
+       "kind": "detail",
+       "listed_in_target_json": true,
+       "polarity": "positive",
+       "section": "eyes",
+       "shapekey_name": "l-eye-bag-incr",
+       "side": "left",
+       "value": 0.4,
+       "visible_to_targetservice": true
+      },
+      {
+       "category": "eye-bag-decr-incr",
+       "decoded_name": "r-eye-bag-incr",
+       "kind": "detail",
+       "listed_in_target_json": true,
+       "polarity": "positive",
+       "section": "eyes",
+       "shapekey_name": "r-eye-bag-incr",
+       "side": "right",
+       "value": 0.1,
+       "visible_to_targetservice": true
+      },
+      {
+       "category": "nose-base-down-up",
+       "decoded_name": "nose-base-up",
+       "kind": "detail",
+       "listed_in_target_json": true,
+       "polarity": "positive",
+       "section": "nose",
+       "shapekey_name": "nose-base-up",
+       "side": "unsided",
+       "value": 0.25,
+       "visible_to_targetservice": true
+      }
+     ],
+     "total_count": 5,
+     "truncated": false
+    },
+    "status": "ok"
+   },
+   "command": "get_target_stack",
+   "label": "read get_target_stack after set_targets"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 0 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "symmetrize_targets",
+    "protocol_version": 1,
+    "result": {
+     "already_symmetric": [
+      {
+       "category": "lowerarm-scale-depth-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "arms",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "upperarm-scale-horiz-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "arms",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "upperarm-fat-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "arms",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "lowerarm-fat-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "arms",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "lowerarm-scale-horiz-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "arms",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "lowerarm-muscle-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "arms",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "upperarm-shoulder-muscle-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "arms",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "upperarm-scale-depth-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "arms",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "lowerarm-scale-vert-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "arms",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "upperarm-muscle-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "arms",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "upperarm-scale-vert-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "arms",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "cheek-trans-down-up",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "cheek",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "cheek-volume-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "cheek",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "cheek-inner-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "cheek",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "cheek-bones-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "cheek",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "ear-lobe-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "ears",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "ear-shape-square-round",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "ears",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "ear-trans-backward-forward",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "ears",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "ear-rot-backward-forward",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "ears",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "ear-trans-down-up",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "ears",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "ear-scale-vert-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "ears",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "ear-shape-pointed-triangle",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "ears",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "ear-scale-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "ears",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "ear-scale-depth-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "ears",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "ear-wing-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "ears",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-corner1-down-up",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-height1-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-scale-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-push1-in-out",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-eyefold-down-up",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-height3-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-height2-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-push2-in-out",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-trans-down-up",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-bag-height-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-epicanthus-in-out",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-eyefold-angle-down-up",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-bag-in-out",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-corner2-down-up",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-trans-in-out",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "eye-eyefold-concave-convex",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "foot-scale-horiz-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "feet",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "foot-trans-in-out",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "feet",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "foot-scale-vert-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "feet",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "foot-trans-backward-forward",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "feet",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "foot-scale-depth-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "feet",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "foot-scale-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "feet",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "foot-trans-down-up",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "feet",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "hand-trans-in-out",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "hands",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "hand-fingers-length-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "hands",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "hand-scale-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "hands",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "hand-fingers-diameter-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "hands",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "hand-fingers-distance-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "hands",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "upperleg-fat-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "legs",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "lowerleg-muscle-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "legs",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "leg-valgus-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "legs",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "lowerleg-scale-depth-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "legs",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "lowerleg-scale-vert-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "legs",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "upperleg-scale-depth-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "legs",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "upperleg-scale-horiz-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "legs",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "lowerleg-fat-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "legs",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "lowerleg-scale-horiz-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "legs",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "upperleg-muscle-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "legs",
+       "source_side": "left",
+       "source_value": 0.0
+      },
+      {
+       "category": "upperleg-scale-vert-decr-incr",
+       "destination_side": "right",
+       "destination_value_before": 0.0,
+       "section": "legs",
+       "source_side": "left",
+       "source_value": 0.0
+      }
+     ],
+     "already_symmetric_count": 64,
+     "assets_possibly_stale": null,
+     "basemesh_name": "Human",
+     "blocked_by": null,
+     "changed": [
+      {
+       "category": "ear-flap-decr-incr",
+       "destination_side": "right",
+       "destination_value_after": 0.4,
+       "destination_value_before": 0.1,
+       "section": "ears",
+       "source_side": "left",
+       "source_value": 0.4,
+       "targets": null
+      },
+      {
+       "category": "eye-bag-decr-incr",
+       "destination_side": "right",
+       "destination_value_after": 0.4,
+       "destination_value_before": 0.1,
+       "section": "eyes",
+       "source_side": "left",
+       "source_value": 0.4,
+       "targets": null
+      }
+     ],
+     "changed_count": 2,
+     "destination_side": "right",
+     "direction": "left_to_right",
+     "dry_run": true,
+     "found": true,
+     "known_sections": [
+      "animal",
+      "arms",
+      "asym",
+      "breast",
+      "buttocks",
+      "cartoon",
+      "cheek",
+      "chin",
+      "custom",
+      "ears",
+      "eyebrows",
+      "eyes",
+      "faceunits",
+      "feet",
+      "forehead",
+      "genitals",
+      "hands",
+      "head",
+      "hip",
+      "legs",
+      "measure",
+      "mouth",
+      "neck",
+      "nose",
+      "pelvis",
+      "stomach",
+      "torso",
+      "visemes"
+     ],
+     "message": "Dry run: 2 category/categories would be changed, 64 are already symmetric. **Nothing was written.** Call again without dry_run to apply exactly these changes.",
+     "performed": false,
+     "prune": true,
+     "ready": true,
+     "refit_incomplete_reason": null,
+     "refit_performed": false,
+     "refit_requested": false,
+     "section": null,
+     "section_recognized": true,
+     "shapekeys_added": [],
+     "shapekeys_after": [
+      "Basis",
+      "$md-$as-$fe-$yn",
+      "$md-$as-$ma-$yn",
+      "$md-$ca-$fe-$yn",
+      "$md-$ca-$ma-$yn",
+      "$md-$af-$fe-$yn",
+      "$md-$af-$ma-$yn",
+      "$md-universal-$fe-$yn-$av$mu-$av$wg",
+      "$md-universal-$ma-$yn-$av$mu-$av$wg",
+      "$md-universal-$fe-$yn-max$mu-$av$wg",
+      "$md-universal-$ma-$yn-max$mu-$av$wg",
+      "nose-base-up",
+      "l-ear-flap-incr",
+      "r-ear-flap-incr",
+      "l-eye-bag-incr",
+      "r-eye-bag-incr"
+     ],
+     "shapekeys_before": [
+      "Basis",
+      "$md-$as-$fe-$yn",
+      "$md-$as-$ma-$yn",
+      "$md-$ca-$fe-$yn",
+      "$md-$ca-$ma-$yn",
+      "$md-$af-$fe-$yn",
+      "$md-$af-$ma-$yn",
+      "$md-universal-$fe-$yn-$av$mu-$av$wg",
+      "$md-universal-$ma-$yn-$av$mu-$av$wg",
+      "$md-universal-$fe-$yn-max$mu-$av$wg",
+      "$md-universal-$ma-$yn-max$mu-$av$wg",
+      "nose-base-up",
+      "l-ear-flap-incr",
+      "r-ear-flap-incr",
+      "l-eye-bag-incr",
+      "r-eye-bag-incr"
+     ],
+     "shapekeys_removed": [],
+     "skipped": [],
+     "source_side": "left",
+     "subject_name": "Human",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "command": "symmetrize_targets",
+   "label": "symmetrize_targets dry"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 0 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "set_face_units",
+    "protocol_version": 1,
+    "result": {
+     "applied": [
+      {
+       "face_unit": "jawOpen",
+       "new_value": 0.4,
+       "previous_value": null,
+       "weight": 0.4
+      }
+     ],
+     "applied_count": 1,
+     "applied_expression_count": 0,
+     "assets_possibly_stale": null,
+     "basemesh_name": "Human",
+     "blocked_by": null,
+     "clear_first": false,
+     "cleared": [],
+     "could_not_load": [],
+     "faceunits01_installed": true,
+     "found": true,
+     "loaded_from_disk": [
+      "jawOpen"
+     ],
+     "matches_stack": false,
+     "message": "Applied 1 face unit(s) to basemesh 'Human', loading 1 from disk. 1 face unit(s) are not explained by the character's applied-expressions stack, so the next mpfb_apply_expressions call or preset load will overwrite them; mpfb_save_expression keeps them. Assets and rig were refitted.",
+     "performed": true,
+     "ready": true,
+     "refit_incomplete_reason": null,
+     "refit_performed": true,
+     "refit_requested": true,
+     "skipped_absent_at_zero": [],
+     "subject_name": "Human",
+     "subject_resolved_by": "name",
+     "unexplained_face_units": [
+      {
+       "face_unit": "jawOpen",
+       "from_stack": 0.0,
+       "live": 0.4
+      }
+     ],
+     "unknown_face_units": []
+    },
+    "status": "ok"
+   },
+   "command": "set_face_units",
+   "label": "set_face_units"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 0 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "apply_expressions",
+    "protocol_version": 1,
+    "result": {
+     "aggregate": {},
+     "applied_expressions": [],
+     "assets_possibly_stale": null,
+     "basemesh_name": "Human",
+     "blocked_by": null,
+     "changed": true,
+     "clamped_face_units": [],
+     "discarded_face_units": [
+      {
+       "face_unit": "jawOpen",
+       "from_stack": 0.0,
+       "live": 0.4,
+       "now": 0.0
+      }
+     ],
+     "faceunits01_installed": true,
+     "found": true,
+     "matches_stack": true,
+     "message": "Stack on basemesh 'Human' (replace): no rows requested. It now holds 0 expression(s). 1 face unit(s) composed on top of the previous stack were discarded, because every library change rebuilds the face from the stack; mpfb_save_expression before this call would have kept them. Assets and rig were refitted.",
+     "mode": "replace",
+     "panel_sync_reason": null,
+     "panel_synced": true,
+     "performed": true,
+     "ready": true,
+     "refit_incomplete_reason": null,
+     "refit_performed": true,
+     "refit_requested": true,
+     "removed_by_replace": [],
+     "requested": [],
+     "stack_before": [],
+     "subject_name": "Human",
+     "subject_resolved_by": "name",
+     "unexplained_face_units": [],
+     "unresolved_count": 0
+    },
+    "status": "ok"
+   },
+   "command": "apply_expressions",
+   "label": "apply_expressions clear"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 1 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "rig_definition_path": "/home/joepal/claude/mpfb2/src/mpfb/data/rigs/rigify/rig.human.json",
+        "rig_type": "rigify.human"
+       },
+       "blender_type": "ARMATURE",
+       "in_current_scene": true,
+       "name": "Human.metarig",
+       "object_type": "Skeleton"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "add_rig",
+    "protocol_version": 1,
+    "result": {
+     "add_function_used": "add_builtin_rig",
+     "added": true,
+     "armature_modifier_added": true,
+     "basemesh_location_before": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "basemesh_moved_to_origin": false,
+     "basemesh_name": "Human",
+     "blocked_by": null,
+     "family": "rigify",
+     "found": true,
+     "identifier": "rigify.human",
+     "import_weights": true,
+     "is_metarig": true,
+     "mesh_assets_not_rigged": [],
+     "message": "Added the rigify rig 'rigify.human' to 'Human' as 'Human.metarig'. Weights were loaded from 'human_toes' through MPFB's fallback table, which is normal for this rig. This is a Rigify *meta* rig, not a finished rig. Attach the character's clothes and other mesh assets now, and only then call mpfb_generate_rigify_rig - generation re-parents and re-weights whatever is on the character at the time it runs, so anything added afterwards will not be handled.",
+     "next_step": "This is a Rigify *meta* rig, not a finished rig. Attach the character's clothes and other mesh assets now, and only then call mpfb_generate_rigify_rig - generation re-parents and re-weights whatever is on the character at the time it runs, so anything added afterwards will not be handled.",
+     "performed": true,
+     "ready": true,
+     "rig_definition_path": "/home/joepal/claude/mpfb2/src/mpfb/data/rigs/rigify/rig.human.json",
+     "rig_location": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "rig_object_name": "Human.metarig",
+     "subject_name": "Human",
+     "subject_resolved_by": "name",
+     "subrigs_not_rigged": [],
+     "weights_from": "human_toes",
+     "weights_loaded": true,
+     "weights_path": "/home/joepal/claude/mpfb2/src/mpfb/data/rigs/rigify/weights.human_toes.json"
+    },
+    "status": "ok"
+   },
+   "command": "add_rig",
+   "label": "add_rig"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 2 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "rig_definition_path": "/home/joepal/claude/mpfb2/src/mpfb/data/rigs/rigify/rig.human.json",
+        "rig_type": "rigify.human"
+       },
+       "blender_type": "ARMATURE",
+       "in_current_scene": true,
+       "name": "Human.metarig",
+       "object_type": "Skeleton"
+      },
+      {
+       "asset_info": {
+        "asset_source": "aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/clothes/aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Human.aethelraed_flapper_dress",
+       "object_type": "Clothes"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "add_asset",
+    "protocol_version": 1,
+    "result": {
+     "added": true,
+     "armature_modifier_targets": [
+      "Human.metarig"
+     ],
+     "asset_object_name": "Human.aethelraed_flapper_dress",
+     "asset_source": "aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo",
+     "asset_subdir": "clothes",
+     "basemesh_name": "Human",
+     "blocked_by": null,
+     "delete_group_applied_to": [
+      "Human"
+     ],
+     "delete_group_name": "Delete.aethelraed_flapper_dress",
+     "found": true,
+     "material_created": true,
+     "material_name": "Human.aethelraed_flapper_dress",
+     "material_type_defaulted": true,
+     "material_type_used": "MAKESKIN",
+     "message": "Equipped 'aethelraed_flapper_dress.mhclo' on 'Human' as 'Human.aethelraed_flapper_dress', of type Clothes. material_type was not given and defaulted to MAKESKIN for this asset type. It was rigged to 'Human.metarig'. 1 warning(s); see 'warnings'.",
+     "mhclo_names_material": true,
+     "mhmat_path": "/home/joepal/makehuman/mpfb/data/clothes/aethelraed_flapper_dress/green.mhmat",
+     "object_type_recorded": "Clothes",
+     "objects_created": [
+      "Human.aethelraed_flapper_dress"
+     ],
+     "parented_to": "Human.metarig",
+     "performed": true,
+     "proxy_extras": null,
+     "ready": true,
+     "requested_asset_type": "Clothes",
+     "resolved_by": "fragment",
+     "resolved_path": "/home/joepal/makehuman/mpfb/data/clothes/aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo",
+     "rigged_to": "Human.metarig",
+     "subdiv_levels": 1,
+     "subdiv_modifier_added": true,
+     "subject_name": "Human",
+     "subject_resolved_by": "name",
+     "subrig_object_name": null,
+     "vertex_groups_created_on_basemesh": [
+      "Delete.aethelraed_flapper_dress"
+     ],
+     "warnings": [
+      "import_weights was requested but no .mhw weights file ships beside this asset, so its weights are whatever interpolation produced. MPFB checks for the file and says nothing when it is absent."
+     ],
+     "weights_files_beside_asset": []
+    },
+    "status": "ok"
+   },
+   "command": "add_asset",
+   "label": "add_asset"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 2 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "rig_definition_path": "/home/joepal/claude/mpfb2/src/mpfb/data/rigs/rigify/rig.human.json",
+        "rig_type": "rigify.human"
+       },
+       "blender_type": "ARMATURE",
+       "in_current_scene": true,
+       "name": "Human.metarig",
+       "object_type": "Skeleton"
+      },
+      {
+       "asset_info": {
+        "asset_source": "aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/clothes/aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Human.aethelraed_flapper_dress",
+       "object_type": "Clothes"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "list_asset_materials",
+    "protocol_version": 1,
+    "result": {
+     "asset_object_name": "Human.aethelraed_flapper_dress",
+     "asset_source": "aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo",
+     "asset_subdir": "clothes",
+     "cache_invalidated": false,
+     "count": 1,
+     "current_alternative_material": null,
+     "default_material": {
+      "exists": true,
+      "fragment": "aethelraed_flapper_dress/green.mhmat",
+      "path": "/home/joepal/makehuman/mpfb/data/clothes/aethelraed_flapper_dress/green.mhmat"
+     },
+     "default_material_reason": null,
+     "found": true,
+     "materials": [
+      {
+       "fragment": "aethelraed_flapper_dress/green.mhmat",
+       "is_default": true,
+       "name": "green",
+       "path": "/home/joepal/makehuman/mpfb/data/clothes/aethelraed_flapper_dress/green.mhmat"
+      }
+     ],
+     "message": "1 material(s) ship beside 'aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo'. This list is a cached snapshot: MPFB caches it per asset and nothing invalidates that cache, so a material installed after the first call for this asset in this Blender session will not appear. Pass refresh=True to clear the cache first.",
+     "object_type": "Clothes",
+     "search_roots": [
+      "/home/joepal/makehuman/mpfb/data/clothes"
+     ]
+    },
+    "status": "ok"
+   },
+   "command": "list_asset_materials",
+   "label": "list_asset_materials"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": null,
+      "material_type": "empty",
+      "mhmat_path": null
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 2 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "rig_definition_path": "/home/joepal/claude/mpfb2/src/mpfb/data/rigs/rigify/rig.human.json",
+        "rig_type": "rigify.human"
+       },
+       "blender_type": "ARMATURE",
+       "in_current_scene": true,
+       "name": "Human.metarig",
+       "object_type": "Skeleton"
+      },
+      {
+       "asset_info": {
+        "asset_source": "aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo",
+        "material_source": "aethelraed_flapper_dress/green.mhmat",
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/clothes/aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo",
+        "mhmat_path": "/home/joepal/makehuman/mpfb/data/clothes/aethelraed_flapper_dress/green.mhmat"
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Human.aethelraed_flapper_dress",
+       "object_type": "Clothes"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "set_asset_material",
+    "protocol_version": 1,
+    "result": {
+     "alternative_material": "aethelraed_flapper_dress/green.mhmat",
+     "applied": true,
+     "asset_object_name": "Human.aethelraed_flapper_dress",
+     "asset_subdir": "clothes",
+     "blocked_by": null,
+     "diffuse_color_from": "Clothes",
+     "found": true,
+     "material_name": "makeskinmaterial",
+     "materials_destroyed": [
+      "Human.aethelraed_flapper_dress"
+     ],
+     "message": "Applied 'green.mhmat' to 'Human.aethelraed_flapper_dress'. 1 material slot(s) were removed from the object first; MPFB pops the slots rather than destroying the materials, so any node groups they used are still in the file. The new material is a MakeSkin material named 'makeskinmaterial', which is what MPFB's own panel builds whatever the asset had before.",
+     "object_type": "Clothes",
+     "performed": true,
+     "previous_alternative_material": null,
+     "ready": true,
+     "resolved_by": "path",
+     "resolved_path": "/home/joepal/makehuman/mpfb/data/clothes/aethelraed_flapper_dress/green.mhmat",
+     "restore_default": false
+    },
+    "status": "ok"
+   },
+   "command": "set_asset_material",
+   "label": "set_asset_material"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": "blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat",
+      "material_type": "enhanced_skin",
+      "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat"
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 2 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "rig_definition_path": "/home/joepal/claude/mpfb2/src/mpfb/data/rigs/rigify/rig.human.json",
+        "rig_type": "rigify.human"
+       },
+       "blender_type": "ARMATURE",
+       "in_current_scene": true,
+       "name": "Human.metarig",
+       "object_type": "Skeleton"
+      },
+      {
+       "asset_info": {
+        "asset_source": "aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo",
+        "material_source": "aethelraed_flapper_dress/green.mhmat",
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/clothes/aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo",
+        "mhmat_path": "/home/joepal/makehuman/mpfb/data/clothes/aethelraed_flapper_dress/green.mhmat"
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Human.aethelraed_flapper_dress",
+       "object_type": "Clothes"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "set_skin",
+    "protocol_version": 1,
+    "result": {
+     "active_body_slot": {
+      "basemesh": "Human.body",
+      "bodyproxy": null
+     },
+     "applied": true,
+     "asset_subdir": "skins",
+     "basemesh_name": "Human",
+     "blocked_by": null,
+     "bodyproxy_name": null,
+     "found": true,
+     "known_skin_types": [
+      "MAKESKIN",
+      "GAMEENGINE",
+      "ENHANCED",
+      "ENHANCED_SSS",
+      "LAYERED"
+     ],
+     "material_identified_as": "enhanced_skin",
+     "material_instances_requested": true,
+     "material_instances_used": true,
+     "material_slots": [
+      {
+       "active_material_index": 0,
+       "object_name": "Human",
+       "slots": [
+        {
+         "material_name": "Human.body",
+         "slot_index": 0
+        },
+        {
+         "material_name": "Human.nipple",
+         "slot_index": 1
+        },
+        {
+         "material_name": "Human.lips",
+         "slot_index": 2
+        },
+        {
+         "material_name": "Human.fingernails",
+         "slot_index": 3
+        },
+        {
+         "material_name": "Human.toenails",
+         "slot_index": 4
+        },
+        {
+         "material_name": "Human.ears",
+         "slot_index": 5
+        },
+        {
+         "material_name": "Human.genitals",
+         "slot_index": 6
+        }
+       ]
+      }
+     ],
+     "material_source": "blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat",
+     "material_source_before": null,
+     "materials_destroyed": [
+      {
+       "materials": [],
+       "object_name": "Human"
+      }
+     ],
+     "message": "Applied a ENHANCED skin to 'Human' from 'blindsaypatten_uniform_skin_texture.mhmat'.",
+     "performed": true,
+     "ready": true,
+     "resolved_by": "fragment",
+     "resolved_path": "/home/joepal/makehuman/mpfb/data/skins/blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat",
+     "scale_assumption": "METER",
+     "settings_file_created": false,
+     "settings_file_path": "/home/joepal/makehuman/mpfb/config/enhanced_settings.default.json",
+     "skin_type_used": "ENHANCED",
+     "subject_name": "Human",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "command": "set_skin",
+   "label": "set_skin"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": "blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat",
+      "material_type": "enhanced_skin",
+      "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat"
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 2 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "rig_definition_path": "/home/joepal/claude/mpfb2/src/mpfb/data/rigs/rigify/rig.human.json",
+        "rig_type": "rigify.human"
+       },
+       "blender_type": "ARMATURE",
+       "in_current_scene": true,
+       "name": "Human.metarig",
+       "object_type": "Skeleton"
+      },
+      {
+       "asset_info": {
+        "asset_source": "aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo",
+        "material_source": "aethelraed_flapper_dress/green.mhmat",
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/clothes/aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo",
+        "mhmat_path": "/home/joepal/makehuman/mpfb/data/clothes/aethelraed_flapper_dress/green.mhmat"
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Human.aethelraed_flapper_dress",
+       "object_type": "Clothes"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "refit_human",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_has_shapekeys": true,
+     "basemesh_name": "Human",
+     "blocked_by": null,
+     "found": true,
+     "mesh_asset_count": 1,
+     "mesh_assets": [
+      "Human.aethelraed_flapper_dress"
+     ],
+     "message": "Refitted 1 mesh asset(s) to basemesh 'Human'. The rig 'Human.metarig' and 0 sub-rig(s) were refitted as well.",
+     "performed": true,
+     "ready": true,
+     "refit_incomplete_reason": null,
+     "refit_performed": true,
+     "rig_name": "Human.metarig",
+     "subject_name": "Human",
+     "subject_resolved_by": "name",
+     "subrig_count": 0,
+     "subrigs": []
+    },
+    "status": "ok"
+   },
+   "command": "refit_human",
+   "label": "refit_human"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": "blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat",
+      "material_type": "enhanced_skin",
+      "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat"
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 1 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "rig_definition_path": "/home/joepal/claude/mpfb2/src/mpfb/data/rigs/rigify/rig.human.json",
+        "rig_type": "rigify.human"
+       },
+       "blender_type": "ARMATURE",
+       "in_current_scene": true,
+       "name": "Human.metarig",
+       "object_type": "Skeleton"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "remove_asset",
+    "protocol_version": 1,
+    "result": {
+     "asset_object_name": "Human.aethelraed_flapper_dress",
+     "asset_source": "aethelraed_flapper_dress/aethelraed_flapper_dress.mhclo",
+     "basemesh_name": "Human",
+     "blocked_by": null,
+     "body_proxy_name": null,
+     "delete_group_name": "Delete.aethelraed_flapper_dress",
+     "found": true,
+     "mask_modifiers_left_behind": [],
+     "mask_modifiers_removed": [
+      {
+       "modifier_name": "Delete.aethelraed_flapper_dress",
+       "object_name": "Human"
+      }
+     ],
+     "mesh_data_orphaned": "flapper_dress_1",
+     "message": "Removed 'Human.aethelraed_flapper_dress' from 'Human'. 1 mask modifier(s) hiding the body under it were taken off. The 'Delete.aethelraed_flapper_dress' vertex group remains on the body: MPFB removes the modifiers but not the groups. It is harmless.",
+     "object_type": "Clothes",
+     "objects_removed": [
+      "Human.aethelraed_flapper_dress"
+     ],
+     "performed": true,
+     "ready": true,
+     "removed": true,
+     "requested_name": "Human.aethelraed_flapper_dress",
+     "subrig_object_name": null,
+     "subrig_removed": false,
+     "vertex_groups_left_behind": [
+      {
+       "object_name": "Human",
+       "vertex_group": "Delete.aethelraed_flapper_dress"
+      }
+     ]
+    },
+    "status": "ok"
+   },
+   "command": "remove_asset",
+   "label": "remove_asset"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "rig_definition_path": null,
+      "rig_type": "rigify_generated.human"
+     },
+     "blender_type": "ARMATURE",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human.rigify' is a MakeHuman Skeleton object. 1 related MakeHuman objects were found.",
+     "name": "Human.rigify",
+     "object_type": "Skeleton",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "material_source": "blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat",
+        "material_type": "enhanced_skin",
+        "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat"
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Human",
+       "object_type": "Basemesh"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": "generated_rig"
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "generate_rigify_rig",
+    "protocol_version": 1,
+    "result": {
+     "active_object_after": "Human.rigify",
+     "basemesh_name": "Human",
+     "blocked_by": null,
+     "found": true,
+     "generated": true,
+     "mesh_assets_present": [],
+     "message": "Generated the Rigify rig 'Human.rigify' from the meta rig 'Human.metarig', and re-parented 0 mesh asset(s) onto it. The meta rig was hidden from the viewport and renders but kept in the scene, so the rig can still be refitted and re-generated. This character had no mesh assets at generation time. Anything attached from now on is fitted to the generated rig, which is the right order.",
+     "meta_rig_action": "hide",
+     "metarig_disposition": "hidden",
+     "metarig_name": "Human.metarig",
+     "metarig_name_after": "Human.metarig",
+     "metarig_renamed": false,
+     "performed": true,
+     "ready": true,
+     "refit_impossible_reason": null,
+     "refit_will_be_possible": true,
+     "rig_name_requested": null,
+     "rig_object_name": "Human.rigify",
+     "selection_restored": false,
+     "subject_name": "Human",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "command": "generate_rigify_rig",
+   "label": "generate_rigify_rig"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "rig_definition_path": null,
+      "rig_type": "rigify_generated.human"
+     },
+     "blender_type": "ARMATURE",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human.rigify' is a MakeHuman Skeleton object. 1 related MakeHuman objects were found.",
+     "name": "Human.rigify",
+     "object_type": "Skeleton",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "material_source": "blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat",
+        "material_type": "enhanced_skin",
+        "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat"
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Human",
+       "object_type": "Basemesh"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": "generated_rig"
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "material_source": "blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat",
+      "material_type": "enhanced_skin",
+      "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat"
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human' is a MakeHuman Basemesh object. 1 related MakeHuman objects were found.",
+     "name": "Human",
+     "object_type": "Basemesh",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "rig_definition_path": null,
+        "rig_type": "rigify_generated.human"
+       },
+       "blender_type": "ARMATURE",
+       "in_current_scene": true,
+       "name": "Human.rigify",
+       "object_type": "Skeleton"
+      }
+     ],
+     "resolved_from": "name",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "command": "get_object_info",
+   "label": "read again get_object_info"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "rig_definition_path": null,
+      "rig_type": "rigify_generated.human"
+     },
+     "blender_type": "ARMATURE",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human.rigify' is a MakeHuman Skeleton object. 1 related MakeHuman objects were found.",
+     "name": "Human.rigify",
+     "object_type": "Skeleton",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "material_source": "blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat",
+        "material_type": "enhanced_skin",
+        "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat"
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Human",
+       "object_type": "Basemesh"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": "generated_rig"
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "get_macro_details",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_in_current_scene": true,
+     "basemesh_name": "Human",
+     "current_macro_shapekeys": [
+      "$md-$as-$fe-$yn",
+      "$md-$as-$ma-$yn",
+      "$md-$ca-$fe-$yn",
+      "$md-$ca-$ma-$yn",
+      "$md-$af-$fe-$yn",
+      "$md-$af-$ma-$yn",
+      "$md-universal-$fe-$yn-$av$mu-$av$wg",
+      "$md-universal-$ma-$yn-$av$mu-$av$wg",
+      "$md-universal-$fe-$yn-max$mu-$av$wg",
+      "$md-universal-$ma-$yn-max$mu-$av$wg"
+     ],
+     "current_macro_shapekeys_decoded": [
+      "macrodetail-asian-female-young",
+      "macrodetail-asian-male-young",
+      "macrodetail-caucasian-female-young",
+      "macrodetail-caucasian-male-young",
+      "macrodetail-african-female-young",
+      "macrodetail-african-male-young",
+      "macrodetail-universal-female-young-averagemuscle-averageweight",
+      "macrodetail-universal-male-young-averagemuscle-averageweight",
+      "macrodetail-universal-female-young-maxmuscle-averageweight",
+      "macrodetail-universal-male-young-maxmuscle-averageweight"
+     ],
+     "default_macro_details": {
+      "age": 0.5,
+      "cupsize": 0.5,
+      "firmness": 0.5,
+      "gender": 0.5,
+      "height": 0.5,
+      "muscle": 0.5,
+      "proportions": 0.5,
+      "race": {
+       "african": 0.33,
+       "asian": 0.33,
+       "caucasian": 0.33
+      },
+      "weight": 0.5
+     },
+     "found": true,
+     "has_shapekeys": true,
+     "is_human_project": true,
+     "macro_details": {
+      "age": 0.5,
+      "cupsize": 0.5,
+      "firmness": 0.5,
+      "gender": 0.30000001192092896,
+      "height": 0.5,
+      "muscle": 0.699999988079071,
+      "proportions": 0.5,
+      "race": {
+       "african": 0.33000001311302185,
+       "asian": 0.33000001311302185,
+       "caucasian": 0.33000001311302185
+      },
+      "weight": 0.5
+     },
+     "macro_drift": false,
+     "macro_target_count": 10,
+     "macro_target_stack": [
+      {
+       "shapekey_name": "$md-$as-$fe-$yn",
+       "target_fragment": "macrodetails/asian-female-young",
+       "weight": 0.22971300912797452
+      },
+      {
+       "shapekey_name": "$md-$as-$ma-$yn",
+       "target_fragment": "macrodetails/asian-male-young",
+       "weight": 0.10028700398504733
+      },
+      {
+       "shapekey_name": "$md-$ca-$fe-$yn",
+       "target_fragment": "macrodetails/caucasian-female-young",
+       "weight": 0.22971300912797452
+      },
+      {
+       "shapekey_name": "$md-$ca-$ma-$yn",
+       "target_fragment": "macrodetails/caucasian-male-young",
+       "weight": 0.10028700398504733
+      },
+      {
+       "shapekey_name": "$md-$af-$fe-$yn",
+       "target_fragment": "macrodetails/african-female-young",
+       "weight": 0.22971300912797452
+      },
+      {
+       "shapekey_name": "$md-$af-$ma-$yn",
+       "target_fragment": "macrodetails/african-male-young",
+       "weight": 0.10028700398504733
+      },
+      {
+       "shapekey_name": "$md-universal-$fe-$yn-$av$mu-$av$wg",
+       "target_fragment": "macrodetails/universal-female-young-averagemuscle-averageweight",
+       "weight": 0.42308958
+      },
+      {
+       "shapekey_name": "$md-universal-$fe-$yn-max$mu-$av$wg",
+       "target_fragment": "macrodetails/universal-female-young-maxmuscle-averageweight",
+       "weight": 0.27301042000000003
+      },
+      {
+       "shapekey_name": "$md-universal-$ma-$yn-$av$mu-$av$wg",
+       "target_fragment": "macrodetails/universal-male-young-averagemuscle-averageweight",
+       "weight": 0.18471042000000001
+      },
+      {
+       "shapekey_name": "$md-universal-$ma-$yn-max$mu-$av$wg",
+       "target_fragment": "macrodetails/universal-male-young-maxmuscle-averageweight",
+       "weight": 0.11918958
+      }
+     ],
+     "message": "Read macro details from basemesh 'Human'. The three race weights sum to 0.99 rather than 1.0. That is legal in MPFB, which treats them as independent, but it scales the phenotype.",
+     "race_normalized": false,
+     "race_sum": 0.99,
+     "subject_name": "Human",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "command": "get_macro_details",
+   "label": "read again get_macro_details"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "rig_definition_path": null,
+      "rig_type": "rigify_generated.human"
+     },
+     "blender_type": "ARMATURE",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human.rigify' is a MakeHuman Skeleton object. 1 related MakeHuman objects were found.",
+     "name": "Human.rigify",
+     "object_type": "Skeleton",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "material_source": "blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat",
+        "material_type": "enhanced_skin",
+        "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat"
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Human",
+       "object_type": "Basemesh"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": "generated_rig"
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "get_character_summary",
+    "protocol_version": 1,
+    "result": {
+     "assets": [],
+     "basemesh_in_current_scene": true,
+     "basemesh_name": "Human",
+     "face": {
+      "applied_expressions": [],
+      "face_units": [],
+      "faceunits01_installed": true,
+      "matches_stack": true,
+      "unexplained_face_units": []
+     },
+     "found": true,
+     "message": "Character 'Human': rig 'Human.rigify', 0 equipped asset(s), 5 modeling categories set.",
+     "phenotype": {
+      "macro_details": {
+       "age": 0.5,
+       "cupsize": 0.5,
+       "firmness": 0.5,
+       "gender": 0.30000001192092896,
+       "height": 0.5,
+       "muscle": 0.699999988079071,
+       "proportions": 0.5,
+       "race": {
+        "african": 0.33000001311302185,
+        "asian": 0.33000001311302185,
+        "caucasian": 0.33000001311302185
+       },
+       "weight": 0.5
+      },
+      "macro_drift": false,
+      "race_normalized": false,
+      "race_sum": 0.99
+     },
+     "rig": {
+      "in_current_scene": true,
+      "name": "Human.rigify",
+      "rig_definition_path": null,
+      "rig_type": "rigify_generated.human",
+      "rigify_role": "generated_rig"
+     },
+     "skin": {
+      "material_source": "blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat",
+      "material_type": "enhanced_skin",
+      "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat"
+     },
+     "subject_in_current_scene": true,
+     "subject_name": "Human",
+     "subject_resolved_by": "name",
+     "targets": {
+      "asymmetries": [
+       {
+        "category": "ear-flap-decr-incr",
+        "difference": 0.3,
+        "left": 0.4,
+        "right": 0.1,
+        "section": "ears"
+       },
+       {
+        "category": "eye-bag-decr-incr",
+        "difference": 0.3,
+        "left": 0.4,
+        "right": 0.1,
+        "section": "eyes"
+       }
+      ],
+      "asymmetry_count": 2,
+      "counts_by_kind": {
+       "detail": 5,
+       "expression": 1,
+       "macro": 10
+      },
+      "modifier_count": 5,
+      "modifiers": [
+       {
+        "category": "ear-flap-decr-incr",
+        "opposed": true,
+        "section": "ears",
+        "side": "left",
+        "value": 0.4
+       },
+       {
+        "category": "ear-flap-decr-incr",
+        "opposed": true,
+        "section": "ears",
+        "side": "right",
+        "value": 0.1
+       },
+       {
+        "category": "eye-bag-decr-incr",
+        "opposed": true,
+        "section": "eyes",
+        "side": "left",
+        "value": 0.4
+       },
+       {
+        "category": "eye-bag-decr-incr",
+        "opposed": true,
+        "section": "eyes",
+        "side": "right",
+        "value": 0.1
+       },
+       {
+        "category": "nose-base-down-up",
+        "opposed": true,
+        "section": "nose",
+        "side": "unsided",
+        "value": 0.25
+       }
+      ],
+      "rollup_truncated": false,
+      "total_count": 5
+     }
+    },
+    "status": "ok"
+   },
+   "command": "get_character_summary",
+   "label": "read again get_character_summary"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "rig_definition_path": null,
+      "rig_type": "rigify_generated.human"
+     },
+     "blender_type": "ARMATURE",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Human.rigify' is a MakeHuman Skeleton object. 1 related MakeHuman objects were found.",
+     "name": "Human.rigify",
+     "object_type": "Skeleton",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "material_source": "blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat",
+        "material_type": "enhanced_skin",
+        "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/blindsaypatten_uniform_skin_texture/blindsaypatten_uniform_skin_texture.mhmat"
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Human",
+       "object_type": "Basemesh"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": "generated_rig"
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "get_target_stack",
+    "protocol_version": 1,
+    "result": {
+     "asymmetries": [
+      {
+       "category": "ear-flap-decr-incr",
+       "difference": 0.3,
+       "left": 0.4,
+       "right": 0.1,
+       "section": "ears"
+      },
+      {
+       "category": "eye-bag-decr-incr",
+       "difference": 0.3,
+       "left": 0.4,
+       "right": 0.1,
+       "section": "eyes"
+      }
+     ],
+     "basemesh_name": "Human",
+     "count": 5,
+     "counts_by_kind": {
+      "detail": 5,
+      "expression": 1,
+      "macro": 10
+     },
+     "counts_by_section": {
+      "(none)": 11,
+      "ears": 2,
+      "eyes": 2,
+      "nose": 1
+     },
+     "found": true,
+     "has_shapekeys": true,
+     "limit": 200,
+     "message": "5 shape key(s) matched on basemesh 'Human', 5 returned. 'modifiers' is the same information rolled up into the categories MPFB's own sliders manipulate, and is what mpfb_set_targets takes; 'targets' entries are addressed by 'shapekey_name'. 10 macro shape key(s) were left out; pass include_macro to see them, or call mpfb_get_macro_details. 1 expression shape key(s) were left out; pass include_expressions to see them.",
+     "modifier_count": 5,
+     "modifiers": [
+      {
+       "category": "ear-flap-decr-incr",
+       "opposed": true,
+       "section": "ears",
+       "side": "left",
+       "value": 0.4
+      },
+      {
+       "category": "ear-flap-decr-incr",
+       "opposed": true,
+       "section": "ears",
+       "side": "right",
+       "value": 0.1
+      },
+      {
+       "category": "eye-bag-decr-incr",
+       "opposed": true,
+       "section": "eyes",
+       "side": "left",
+       "value": 0.4
+      },
+      {
+       "category": "eye-bag-decr-incr",
+       "opposed": true,
+       "section": "eyes",
+       "side": "right",
+       "value": 0.1
+      },
+      {
+       "category": "nose-base-down-up",
+       "opposed": true,
+       "section": "nose",
+       "side": "unsided",
+       "value": 0.25
+      }
+     ],
+     "offset": 0,
+     "subject_name": "Human",
+     "subject_resolved_by": "name",
+     "targets": [
+      {
+       "category": "ear-flap-decr-incr",
+       "decoded_name": "l-ear-flap-incr",
+       "kind": "detail",
+       "listed_in_target_json": true,
+       "polarity": "positive",
+       "section": "ears",
+       "shapekey_name": "l-ear-flap-incr",
+       "side": "left",
+       "value": 0.4,
+       "visible_to_targetservice": true
+      },
+      {
+       "category": "ear-flap-decr-incr",
+       "decoded_name": "r-ear-flap-incr",
+       "kind": "detail",
+       "listed_in_target_json": true,
+       "polarity": "positive",
+       "section": "ears",
+       "shapekey_name": "r-ear-flap-incr",
+       "side": "right",
+       "value": 0.1,
+       "visible_to_targetservice": true
+      },
+      {
+       "category": "eye-bag-decr-incr",
+       "decoded_name": "l-eye-bag-incr",
+       "kind": "detail",
+       "listed_in_target_json": true,
+       "polarity": "positive",
+       "section": "eyes",
+       "shapekey_name": "l-eye-bag-incr",
+       "side": "left",
+       "value": 0.4,
+       "visible_to_targetservice": true
+      },
+      {
+       "category": "eye-bag-decr-incr",
+       "decoded_name": "r-eye-bag-incr",
+       "kind": "detail",
+       "listed_in_target_json": true,
+       "polarity": "positive",
+       "section": "eyes",
+       "shapekey_name": "r-eye-bag-incr",
+       "side": "right",
+       "value": 0.1,
+       "visible_to_targetservice": true
+      },
+      {
+       "category": "nose-base-down-up",
+       "decoded_name": "nose-base-up",
+       "kind": "detail",
+       "listed_in_target_json": true,
+       "polarity": "positive",
+       "section": "nose",
+       "shapekey_name": "nose-base-up",
+       "side": "unsided",
+       "value": 0.25,
+       "visible_to_targetservice": true
+      }
+     ],
+     "total_count": 5,
+     "truncated": false
+    },
+    "status": "ok"
+   },
+   "command": "get_target_stack",
+   "label": "read again get_target_stack"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "asset_source": "adult_female_genitalia_remapped/adult_female_genitalia_remapped.proxy",
+      "material_source": "female_normal/female_normal.mhmat",
+      "material_type": "enhanced_skin",
+      "mhclo_path": "/home/joepal/makehuman/mpfb/data/proxymeshes/adult_female_genitalia_remapped/adult_female_genitalia_remapped.proxy",
+      "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/female_normal/female_normal.mhmat"
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Denise.Denise.adult_female_genitalia_remapped' is a MakeHuman Proxymeshes object. 8 related MakeHuman objects were found.",
+     "name": "Denise.Denise.adult_female_genitalia_remapped",
+     "object_type": "Proxymeshes",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "rig_definition_path": "/home/joepal/claude/mpfb2/src/mpfb/data/rigs/standard/rig.default_no_toes.json",
+        "rig_type": "default_no_toes"
+       },
+       "blender_type": "ARMATURE",
+       "in_current_scene": true,
+       "name": "Denise",
+       "object_type": "Skeleton"
+      },
+      {
+       "asset_info": {
+        "material_source": "female_normal/female_normal.mhmat",
+        "material_type": "enhanced_skin",
+        "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/female_normal/female_normal.mhmat"
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.body",
+       "object_type": "Basemesh"
+      },
+      {
+       "asset_info": {
+        "asset_source": "culturalibre_hair_01/culturalibre_hair_01.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/hair/culturalibre_hair_01/culturalibre_hair_01.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.culturalibre_hair_01",
+       "object_type": "Hair"
+      },
+      {
+       "asset_info": {
+        "asset_source": "eyebrow009/eyebrow009.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/eyebrows/eyebrow009/eyebrow009.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.eyebrow009",
+       "object_type": "Eyebrows"
+      },
+      {
+       "asset_info": {
+        "asset_source": "eyelashes03/eyelashes03.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/eyelashes/eyelashes03/eyelashes03.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.eyelashes03",
+       "object_type": "Eyelashes"
+      },
+      {
+       "asset_info": {
+        "asset_source": "high-poly/high-poly.mhclo",
+        "material_source": null,
+        "material_type": "procedural_eyes",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/eyes/high-poly/high-poly.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.high-poly",
+       "object_type": "Eyes"
+      },
+      {
+       "asset_info": {
+        "asset_source": "teeth_base/teeth_base.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/teeth/teeth_base/teeth_base.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.teeth_base",
+       "object_type": "Teeth"
+      },
+      {
+       "asset_info": {
+        "asset_source": "tongue01/tongue01.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/tongue/tongue01/tongue01.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.tongue01",
+       "object_type": "Tongue"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "create_human_from_preset",
+    "protocol_version": 1,
+    "result": {
+     "active_object_after": "Denise.Denise.adult_female_genitalia_remapped",
+     "basemesh_name": "Denise.body",
+     "blocked_by": null,
+     "config_dir": "/home/joepal/makehuman/mpfb/config",
+     "created": true,
+     "equipped_assets": [
+      {
+       "asset_source": "high-poly/high-poly.mhclo",
+       "kind": "eyes",
+       "object_name": "Denise.high-poly"
+      },
+      {
+       "asset_source": "eyelashes03/eyelashes03.mhclo",
+       "kind": "eyelashes",
+       "object_name": "Denise.eyelashes03"
+      },
+      {
+       "asset_source": "eyebrow009/eyebrow009.mhclo",
+       "kind": "eyebrows",
+       "object_name": "Denise.eyebrow009"
+      },
+      {
+       "asset_source": "tongue01/tongue01.mhclo",
+       "kind": "tongue",
+       "object_name": "Denise.tongue01"
+      },
+      {
+       "asset_source": "teeth_base/teeth_base.mhclo",
+       "kind": "teeth",
+       "object_name": "Denise.teeth_base"
+      },
+      {
+       "asset_source": "culturalibre_hair_01/culturalibre_hair_01.mhclo",
+       "kind": "hair",
+       "object_name": "Denise.culturalibre_hair_01"
+      },
+      {
+       "asset_source": "adult_female_genitalia_remapped/adult_female_genitalia_remapped.proxy",
+       "kind": "proxy",
+       "object_name": "Denise.Denise.adult_female_genitalia_remapped"
+      }
+     ],
+     "found": true,
+     "known_material_instances": [
+      "NEVER",
+      "ENHANCED",
+      "ENHANCEDMS"
+     ],
+     "material_instances_requested": null,
+     "material_instances_service_default": "NEVER",
+     "material_instances_used": "ENHANCED",
+     "message": "Created 'Denise.body' from preset 'Denise'. It carries the rig 'Denise' (default_no_toes). 7 asset(s) were equipped with it. 8 asset(s) the preset names are not installed here and were silently skipped by MPFB: unresolved_assets names them. The character is otherwise complete. The selection was not restored - deserialization activates what it creates, and there was no prior state to return to; active_object_after says what is active now.",
+     "name": "Denise",
+     "objects_created": [
+      "Denise",
+      "Denise.Denise.adult_female_genitalia_remapped",
+      "Denise.body",
+      "Denise.culturalibre_hair_01",
+      "Denise.eyebrow009",
+      "Denise.eyelashes03",
+      "Denise.high-poly",
+      "Denise.teeth_base",
+      "Denise.tongue01"
+     ],
+     "overrides": {
+      "load_clothes": {
+       "preset_value": [
+        "",
+        "culturalibre_hair_01/culturalibre_hair_01.mhclo",
+        "adult_female_genitalia_remapped/adult_female_genitalia_remapped.proxy",
+        "eyebrow009/eyebrow009.mhclo",
+        "eyelashes03/eyelashes03.mhclo",
+        "high-poly/high-poly.mhclo",
+        "punkduck_glasses_modern_form_/punkduck_glasses_modern_form_.mhclo",
+        "teeth_base/teeth_base.mhclo",
+        "tongue01/tongue01.mhclo"
+       ],
+       "requested": null,
+       "used": true
+      },
+      "material_instances": {
+       "preset_value": null,
+       "requested": null,
+       "used": "ENHANCED"
+      },
+      "override_clothes_model": {
+       "preset_value": null,
+       "requested": null,
+       "used": "PRESET"
+      },
+      "override_eyes_model": {
+       "preset_value": "PROCEDURAL_EYES",
+       "requested": null,
+       "used": "PRESET"
+      },
+      "override_rig": {
+       "preset_value": "default_no_toes",
+       "requested": null,
+       "used": "PRESET"
+      },
+      "override_skin_model": {
+       "preset_value": "ENHANCED_SSS",
+       "requested": null,
+       "used": "PRESET"
+      },
+      "scale": {
+       "preset_value": null,
+       "requested": null,
+       "used": 0.1
+      }
+     },
+     "path": "/home/joepal/makehuman/mpfb/config/human.Denise.json",
+     "performed": true,
+     "ready": true,
+     "rig_identified_as": "default_no_toes",
+     "rig_object_name": "Denise",
+     "settings_used": {
+      "detailed_helpers": true,
+      "extra_vertex_groups": true,
+      "feet_on_ground": true,
+      "load_clothes": true,
+      "mask_helpers": true,
+      "material_instances": "ENHANCED",
+      "override_clothes_model": "PRESET",
+      "override_eyes_model": "PRESET",
+      "override_rig": "PRESET",
+      "override_skin_model": "PRESET",
+      "scale": 0.1,
+      "subdiv_levels": 1
+     },
+     "skin_material_identified_as": "enhanced_skin",
+     "unresolved_assets": [
+      {
+       "asset_subdir": "clothes",
+       "fragment": "culturalibre_hair_01/culturalibre_hair_01.mhclo",
+       "kind": "clothes",
+       "resolved_path": null,
+       "skipped": false
+      },
+      {
+       "asset_subdir": "clothes",
+       "fragment": "adult_female_genitalia_remapped/adult_female_genitalia_remapped.proxy",
+       "kind": "clothes",
+       "resolved_path": null,
+       "skipped": false
+      },
+      {
+       "asset_subdir": "clothes",
+       "fragment": "eyebrow009/eyebrow009.mhclo",
+       "kind": "clothes",
+       "resolved_path": null,
+       "skipped": false
+      },
+      {
+       "asset_subdir": "clothes",
+       "fragment": "eyelashes03/eyelashes03.mhclo",
+       "kind": "clothes",
+       "resolved_path": null,
+       "skipped": false
+      },
+      {
+       "asset_subdir": "clothes",
+       "fragment": "high-poly/high-poly.mhclo",
+       "kind": "clothes",
+       "resolved_path": null,
+       "skipped": false
+      },
+      {
+       "asset_subdir": "clothes",
+       "fragment": "punkduck_glasses_modern_form_/punkduck_glasses_modern_form_.mhclo",
+       "kind": "clothes",
+       "resolved_path": null,
+       "skipped": false
+      },
+      {
+       "asset_subdir": "clothes",
+       "fragment": "teeth_base/teeth_base.mhclo",
+       "kind": "clothes",
+       "resolved_path": null,
+       "skipped": false
+      },
+      {
+       "asset_subdir": "clothes",
+       "fragment": "tongue01/tongue01.mhclo",
+       "kind": "clothes",
+       "resolved_path": null,
+       "skipped": false
+      }
+     ]
+    },
+    "status": "ok"
+   },
+   "command": "create_human_from_preset",
+   "label": "create_human_from_preset"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "asset_source": "adult_female_genitalia_remapped/adult_female_genitalia_remapped.proxy",
+      "material_source": "female_normal/female_normal.mhmat",
+      "material_type": "enhanced_skin",
+      "mhclo_path": "/home/joepal/makehuman/mpfb/data/proxymeshes/adult_female_genitalia_remapped/adult_female_genitalia_remapped.proxy",
+      "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/female_normal/female_normal.mhmat"
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Denise.Denise.adult_female_genitalia_remapped' is a MakeHuman Proxymeshes object. 8 related MakeHuman objects were found.",
+     "name": "Denise.Denise.adult_female_genitalia_remapped",
+     "object_type": "Proxymeshes",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "rig_definition_path": "/home/joepal/claude/mpfb2/src/mpfb/data/rigs/standard/rig.default_no_toes.json",
+        "rig_type": "default_no_toes"
+       },
+       "blender_type": "ARMATURE",
+       "in_current_scene": true,
+       "name": "Denise",
+       "object_type": "Skeleton"
+      },
+      {
+       "asset_info": {
+        "material_source": "female_normal/female_normal.mhmat",
+        "material_type": "enhanced_skin",
+        "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/female_normal/female_normal.mhmat"
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.body",
+       "object_type": "Basemesh"
+      },
+      {
+       "asset_info": {
+        "asset_source": "culturalibre_hair_01/culturalibre_hair_01.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/hair/culturalibre_hair_01/culturalibre_hair_01.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.culturalibre_hair_01",
+       "object_type": "Hair"
+      },
+      {
+       "asset_info": {
+        "asset_source": "eyebrow009/eyebrow009.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/eyebrows/eyebrow009/eyebrow009.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.eyebrow009",
+       "object_type": "Eyebrows"
+      },
+      {
+       "asset_info": {
+        "asset_source": "eyelashes03/eyelashes03.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/eyelashes/eyelashes03/eyelashes03.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.eyelashes03",
+       "object_type": "Eyelashes"
+      },
+      {
+       "asset_info": {
+        "asset_source": "high-poly/high-poly.mhclo",
+        "material_source": null,
+        "material_type": "procedural_eyes",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/eyes/high-poly/high-poly.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.high-poly",
+       "object_type": "Eyes"
+      },
+      {
+       "asset_info": {
+        "asset_source": "teeth_base/teeth_base.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/teeth/teeth_base/teeth_base.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.teeth_base",
+       "object_type": "Teeth"
+      },
+      {
+       "asset_info": {
+        "asset_source": "tongue01/tongue01.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/tongue/tongue01/tongue01.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.tongue01",
+       "object_type": "Tongue"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "save_preset",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": "Human",
+     "blocked_by": "preset_exists",
+     "config_dir": "/home/joepal/makehuman/mpfb/config",
+     "found": true,
+     "message": "A preset named 'Denise' already exists, written 2022-11-03T08:38:18+01:00, and overwrite is false, so nothing was written. Pass overwrite=true to replace it, or choose another name - there is no undo for a file across this socket. previous_file carries its size and age.",
+     "name": "Denise",
+     "overwrote": false,
+     "path": "/home/joepal/makehuman/mpfb/config/human.Denise.json",
+     "performed": false,
+     "previous_file": {
+      "exists": true,
+      "modified": "<volatile>",
+      "size_bytes": 15896
+     },
+     "ready": false,
+     "saved": false,
+     "subject_name": "Human",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "command": "save_preset",
+   "label": "save_preset refused"
+  },
+  {
+   "active_after": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": {
+      "asset_source": "adult_female_genitalia_remapped/adult_female_genitalia_remapped.proxy",
+      "material_source": "female_normal/female_normal.mhmat",
+      "material_type": "enhanced_skin",
+      "mhclo_path": "/home/joepal/makehuman/mpfb/data/proxymeshes/adult_female_genitalia_remapped/adult_female_genitalia_remapped.proxy",
+      "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/female_normal/female_normal.mhmat"
+     },
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": true,
+     "message": "'Denise.Denise.adult_female_genitalia_remapped' is a MakeHuman Proxymeshes object. 8 related MakeHuman objects were found.",
+     "name": "Denise.Denise.adult_female_genitalia_remapped",
+     "object_type": "Proxymeshes",
+     "other_related_objects": [],
+     "related_objects": [
+      {
+       "asset_info": {
+        "rig_definition_path": "/home/joepal/claude/mpfb2/src/mpfb/data/rigs/standard/rig.default_no_toes.json",
+        "rig_type": "default_no_toes"
+       },
+       "blender_type": "ARMATURE",
+       "in_current_scene": true,
+       "name": "Denise",
+       "object_type": "Skeleton"
+      },
+      {
+       "asset_info": {
+        "material_source": "female_normal/female_normal.mhmat",
+        "material_type": "enhanced_skin",
+        "mhmat_path": "/home/joepal/makehuman/mpfb/data/skins/female_normal/female_normal.mhmat"
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.body",
+       "object_type": "Basemesh"
+      },
+      {
+       "asset_info": {
+        "asset_source": "culturalibre_hair_01/culturalibre_hair_01.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/hair/culturalibre_hair_01/culturalibre_hair_01.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.culturalibre_hair_01",
+       "object_type": "Hair"
+      },
+      {
+       "asset_info": {
+        "asset_source": "eyebrow009/eyebrow009.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/eyebrows/eyebrow009/eyebrow009.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.eyebrow009",
+       "object_type": "Eyebrows"
+      },
+      {
+       "asset_info": {
+        "asset_source": "eyelashes03/eyelashes03.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/eyelashes/eyelashes03/eyelashes03.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.eyelashes03",
+       "object_type": "Eyelashes"
+      },
+      {
+       "asset_info": {
+        "asset_source": "high-poly/high-poly.mhclo",
+        "material_source": null,
+        "material_type": "procedural_eyes",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/eyes/high-poly/high-poly.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.high-poly",
+       "object_type": "Eyes"
+      },
+      {
+       "asset_info": {
+        "asset_source": "teeth_base/teeth_base.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/teeth/teeth_base/teeth_base.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.teeth_base",
+       "object_type": "Teeth"
+      },
+      {
+       "asset_info": {
+        "asset_source": "tongue01/tongue01.mhclo",
+        "material_source": null,
+        "material_type": "makeskin",
+        "mhclo_path": "/home/joepal/makehuman/mpfb/data/tongue/tongue01/tongue01.mhclo",
+        "mhmat_path": null
+       },
+       "blender_type": "MESH",
+       "in_current_scene": true,
+       "name": "Denise.tongue01",
+       "object_type": "Tongue"
+      }
+     ],
+     "resolved_from": "active_object",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "answer": {
+    "command": "list_objects",
+    "protocol_version": 1,
+    "result": {
+     "count": 12,
+     "known_types": [
+      "Skeleton",
+      "Subrig",
+      "Basemesh",
+      "Proxymeshes",
+      "Clothes",
+      "Eyes",
+      "Eyelashes",
+      "Eyebrows",
+      "Tongue",
+      "Teeth",
+      "Hair"
+     ],
+     "objects": [
+      {
+       "blender_type": "MESH",
+       "name": "Human",
+       "object_type": "Basemesh"
+      },
+      {
+       "blender_type": "ARMATURE",
+       "name": "Human.metarig",
+       "object_type": "Skeleton"
+      },
+      {
+       "blender_type": "ARMATURE",
+       "name": "Human.rigify",
+       "object_type": "Skeleton"
+      },
+      {
+       "blender_type": "MESH",
+       "name": "Denise.body",
+       "object_type": "Basemesh"
+      },
+      {
+       "blender_type": "ARMATURE",
+       "name": "Denise",
+       "object_type": "Skeleton"
+      },
+      {
+       "blender_type": "MESH",
+       "name": "Denise.high-poly",
+       "object_type": "Eyes"
+      },
+      {
+       "blender_type": "MESH",
+       "name": "Denise.eyelashes03",
+       "object_type": "Eyelashes"
+      },
+      {
+       "blender_type": "MESH",
+       "name": "Denise.eyebrow009",
+       "object_type": "Eyebrows"
+      },
+      {
+       "blender_type": "MESH",
+       "name": "Denise.tongue01",
+       "object_type": "Tongue"
+      },
+      {
+       "blender_type": "MESH",
+       "name": "Denise.teeth_base",
+       "object_type": "Teeth"
+      },
+      {
+       "blender_type": "MESH",
+       "name": "Denise.culturalibre_hair_01",
+       "object_type": "Hair"
+      },
+      {
+       "blender_type": "MESH",
+       "name": "Denise.Denise.adult_female_genitalia_remapped",
+       "object_type": "Proxymeshes"
+      }
+     ],
+     "requested_type": null,
+     "type_recognized": true
+    },
+    "status": "ok"
+   },
+   "command": "list_objects",
+   "label": "list_objects"
+  }
+ ],
+ "misses": {
+  "no_basemesh": {
+   "add_asset": {
+    "command": "add_asset",
+    "protocol_version": 1,
+    "result": {
+     "added": false,
+     "asset_object_name": null,
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "found": false,
+     "known_asset_types": [
+      "Proxymeshes",
+      "Eyes",
+      "Eyebrows",
+      "Eyelashes",
+      "Hair",
+      "Teeth",
+      "Tongue",
+      "Clothes"
+     ],
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so there is nothing to equip. Mesh assets attach to a basemesh; call mpfb_get_object_info to see what this object is related to.",
+     "performed": false,
+     "ready": false,
+     "requested_asset_type": "Clothes",
+     "resolved_by": "fragment",
+     "resolved_path": null,
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "add_rig": {
+    "command": "add_rig",
+    "protocol_version": 1,
+    "result": {
+     "added": false,
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "family": "standard",
+     "found": false,
+     "identifier": "default",
+     "known_identifiers": [
+      "cmu_mb",
+      "default",
+      "default_no_toes",
+      "game_engine",
+      "game_engine_with_breast",
+      "mixamo",
+      "mixamo_unity",
+      "openpose"
+     ],
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so there is nothing to rig. Rigs attach to a basemesh; call mpfb_get_object_info to see what this object is related to.",
+     "performed": false,
+     "ready": false,
+     "rig_object_name": null,
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "apply_expressions": {
+    "command": "apply_expressions",
+    "protocol_version": 1,
+    "result": {
+     "applied_expressions": [],
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "changed": false,
+     "discarded_face_units": [],
+     "faceunits01_installed": true,
+     "found": false,
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so there is no face to change.",
+     "mode": "merge",
+     "performed": false,
+     "ready": false,
+     "requested": [],
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "generate_rigify_rig": {
+    "command": "generate_rigify_rig",
+    "protocol_version": 1,
+    "result": {
+     "active_object_after": null,
+     "blocked_by": "no_armature_found",
+     "found": true,
+     "generated": false,
+     "message": "'fr036-cube' has no armature among its nearest relatives, so there is no meta rig to generate from. Add one first with mpfb_add_rig and a 'rigify.*' identifier.",
+     "metarig_disposition": null,
+     "metarig_name": null,
+     "performed": false,
+     "ready": false,
+     "refit_will_be_possible": true,
+     "rig_object_name": null,
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "get_character_summary": {
+    "command": "get_character_summary",
+    "protocol_version": 1,
+    "result": {
+     "assets": [],
+     "basemesh_in_current_scene": null,
+     "basemesh_name": null,
+     "face": null,
+     "found": false,
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so it is not part of a character. Call mpfb_get_object_info to see what it is related to.",
+     "phenotype": null,
+     "rig": null,
+     "skin": null,
+     "subject_in_current_scene": true,
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name",
+     "targets": null
+    },
+    "status": "ok"
+   },
+   "get_expression": {
+    "command": "get_expression",
+    "protocol_version": 1,
+    "result": {
+     "aggregate": {},
+     "applied_expressions": [],
+     "basemesh_name": null,
+     "clamped_face_units": [],
+     "faceunits01_installed": true,
+     "found": false,
+     "matches_stack": null,
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so it has no expression to read.",
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name",
+     "unexplained_face_units": [],
+     "unresolved_count": 0
+    },
+    "status": "ok"
+   },
+   "get_face_units": {
+    "command": "get_face_units",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "face_unit_count": 0,
+     "face_units": [],
+     "faceunits01_installed": true,
+     "found": false,
+     "include_zero": false,
+     "known_face_units": {
+      "brow": [
+       "browInnerUp",
+       "browDownLeft",
+       "browDownRight",
+       "browOuterUpLeft",
+       "browOuterUpRight"
+      ],
+      "cheek": [
+       "cheekPuff",
+       "cheekSquintLeft",
+       "cheekSquintRight"
+      ],
+      "eye": [
+       "eyeBlinkLeft",
+       "eyeBlinkRight",
+       "eyeSquintLeft",
+       "eyeSquintRight",
+       "eyeWideLeft",
+       "eyeWideRight",
+       "eyeLookUpLeft",
+       "eyeLookUpRight",
+       "eyeLookDownLeft",
+       "eyeLookDownRight",
+       "eyeLookInLeft",
+       "eyeLookInRight",
+       "eyeLookOutLeft",
+       "eyeLookOutRight"
+      ],
+      "jaw": [
+       "jawOpen",
+       "jawForward",
+       "jawLeft",
+       "jawRight"
+      ],
+      "mouth": [
+       "mouthClose",
+       "mouthFunnel",
+       "mouthPucker",
+       "mouthLeft",
+       "mouthRight",
+       "mouthSmileLeft",
+       "mouthSmileRight",
+       "mouthFrownLeft",
+       "mouthFrownRight",
+       "mouthDimpleLeft",
+       "mouthDimpleRight",
+       "mouthStretchLeft",
+       "mouthStretchRight",
+       "mouthRollLower",
+       "mouthRollUpper",
+       "mouthShrugLower",
+       "mouthShrugUpper",
+       "mouthPressLeft",
+       "mouthPressRight",
+       "mouthLowerDownLeft",
+       "mouthLowerDownRight",
+       "mouthUpperUpLeft",
+       "mouthUpperUpRight"
+      ],
+      "nose": [
+       "noseSneerLeft",
+       "noseSneerRight"
+      ],
+      "tongue": [
+       "tongueOut"
+      ]
+     },
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so it has no face to read.",
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name",
+     "total_count": 52
+    },
+    "status": "ok"
+   },
+   "get_macro_details": {
+    "command": "get_macro_details",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "found": false,
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so it is not part of a character with macro details. Call mpfb_get_object_info to see what it is related to.",
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "get_object_info": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "asset_info": null,
+     "blender_type": "MESH",
+     "found": true,
+     "in_current_scene": true,
+     "is_makehuman_object": false,
+     "message": "'fr036-cube' carries no MPFB object type: it is a plain Blender object. 0 related MakeHuman objects were found.",
+     "name": "fr036-cube",
+     "object_type": null,
+     "other_related_objects": [],
+     "related_objects": [],
+     "resolved_from": "name",
+     "rigify_role": null
+    },
+    "status": "ok"
+   },
+   "get_target_stack": {
+    "command": "get_target_stack",
+    "protocol_version": 1,
+    "result": {
+     "asymmetries": [],
+     "basemesh_name": null,
+     "count": 0,
+     "counts_by_kind": {},
+     "counts_by_section": {},
+     "found": false,
+     "has_shapekeys": false,
+     "limit": 200,
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so it has no target stack. Call mpfb_get_object_info to see what it is related to.",
+     "modifiers": [],
+     "offset": 0,
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name",
+     "targets": [],
+     "total_count": 0,
+     "truncated": false
+    },
+    "status": "ok"
+   },
+   "refit_human": {
+    "command": "refit_human",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "found": false,
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so there is nothing to refit it to. Call mpfb_get_object_info to see what it is related to.",
+     "performed": false,
+     "ready": false,
+     "refit_performed": false,
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "save_expression": {
+    "command": "save_expression",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "expressions_dir": "/home/joepal/makehuman/mpfb/data/expressions",
+     "found": false,
+     "fragment": "fr036_snapshot_never_written.json",
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so there is no face to save.",
+     "name": "fr036_snapshot_never_written",
+     "overwrote": false,
+     "path": "/home/joepal/makehuman/mpfb/data/expressions/fr036_snapshot_never_written.json",
+     "performed": false,
+     "previous_file": null,
+     "ready": false,
+     "saved": false,
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "save_preset": {
+    "command": "save_preset",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "config_dir": "/home/joepal/makehuman/mpfb/config",
+     "found": false,
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so there is no character to save. Call mpfb_get_object_info to see what this object is related to.",
+     "name": "fr036_snapshot_never_written",
+     "overwrote": false,
+     "path": "/home/joepal/makehuman/mpfb/config/human.fr036_snapshot_never_written.json",
+     "performed": false,
+     "previous_file": null,
+     "ready": false,
+     "saved": false,
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "set_face_units": {
+    "command": "set_face_units",
+    "protocol_version": 1,
+    "result": {
+     "applied": [],
+     "basemesh_name": null,
+     "cleared": [],
+     "could_not_load": [],
+     "found": false,
+     "loaded_from_disk": [],
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so there is no face to compose.",
+     "performed": false,
+     "ready": false,
+     "skipped_absent_at_zero": [],
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name",
+     "unknown_face_units": []
+    },
+    "status": "ok"
+   },
+   "set_macro_details": {
+    "command": "set_macro_details",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "changed": [],
+     "found": false,
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so there are no macro details to change. Call mpfb_get_object_info to see what it is related to.",
+     "performed": false,
+     "ready": false,
+     "recalculated": false,
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "set_skin": {
+    "command": "set_skin",
+    "protocol_version": 1,
+    "result": {
+     "applied": false,
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "bodyproxy_name": null,
+     "found": false,
+     "known_skin_types": [
+      "MAKESKIN",
+      "GAMEENGINE",
+      "ENHANCED",
+      "ENHANCED_SSS",
+      "LAYERED"
+     ],
+     "material_instances_requested": true,
+     "material_instances_used": null,
+     "materials_destroyed": [],
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so there is nothing to give a skin to. A skin is a material on the body; call mpfb_get_object_info to see what this object is related to.",
+     "performed": false,
+     "ready": false,
+     "resolved_by": null,
+     "resolved_path": null,
+     "skin_type_used": null,
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "set_targets": {
+    "command": "set_targets",
+    "protocol_version": 1,
+    "result": {
+     "applied": [],
+     "basemesh_name": null,
+     "found": false,
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so there are no targets to set. Call mpfb_get_object_info to see what it is related to.",
+     "performed": false,
+     "ready": false,
+     "resolution_errors": [],
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "symmetrize_targets": {
+    "command": "symmetrize_targets",
+    "protocol_version": 1,
+    "result": {
+     "already_symmetric": [],
+     "basemesh_name": null,
+     "changed": [],
+     "direction": "left_to_right",
+     "dry_run": true,
+     "found": false,
+     "message": "'fr036-cube' has no MakeHuman basemesh among its nearest relatives, so there is nothing to symmetrize. Call mpfb_get_object_info to see what it is related to.",
+     "performed": false,
+     "ready": false,
+     "skipped": [],
+     "subject_name": "fr036-cube",
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   }
+  },
+  "no_such_name": {
+   "add_asset": {
+    "command": "add_asset",
+    "protocol_version": 1,
+    "result": {
+     "added": false,
+     "asset_object_name": null,
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "found": false,
+     "known_asset_types": [
+      "Proxymeshes",
+      "Eyes",
+      "Eyebrows",
+      "Eyelashes",
+      "Hair",
+      "Teeth",
+      "Tongue",
+      "Clothes"
+     ],
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file, so nothing was equipped. Call mpfb_list_objects to see what the current scene holds.",
+     "performed": false,
+     "ready": false,
+     "requested_asset_type": "Clothes",
+     "resolved_by": "fragment",
+     "resolved_path": null,
+     "subject_name": null,
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "add_rig": {
+    "command": "add_rig",
+    "protocol_version": 1,
+    "result": {
+     "added": false,
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "family": "standard",
+     "found": false,
+     "identifier": "default",
+     "known_identifiers": [
+      "cmu_mb",
+      "default",
+      "default_no_toes",
+      "game_engine",
+      "game_engine_with_breast",
+      "mixamo",
+      "mixamo_unity",
+      "openpose"
+     ],
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file, so no rig was added. Call mpfb_list_objects to see what the current scene holds.",
+     "performed": false,
+     "ready": false,
+     "rig_object_name": null,
+     "subject_name": null,
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "apply_expressions": {
+    "command": "apply_expressions",
+    "protocol_version": 1,
+    "result": {
+     "applied_expressions": [],
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "changed": false,
+     "discarded_face_units": [],
+     "faceunits01_installed": true,
+     "found": false,
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file, so nothing was changed. Call mpfb_list_objects to see what the current scene holds.",
+     "mode": "merge",
+     "performed": false,
+     "ready": false,
+     "requested": [],
+     "subject_name": null,
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "generate_rigify_rig": {
+    "command": "generate_rigify_rig",
+    "protocol_version": 1,
+    "result": {
+     "active_object_after": null,
+     "blocked_by": "subject_not_found",
+     "found": false,
+     "generated": false,
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file, so nothing was generated. Call mpfb_list_objects to see what the current scene holds.",
+     "metarig_disposition": null,
+     "metarig_name": null,
+     "performed": false,
+     "ready": false,
+     "refit_will_be_possible": true,
+     "rig_object_name": null,
+     "subject_name": null,
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "get_character_summary": {
+    "command": "get_character_summary",
+    "protocol_version": 1,
+    "result": {
+     "assets": [],
+     "basemesh_in_current_scene": null,
+     "basemesh_name": null,
+     "face": null,
+     "found": false,
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file. Call mpfb_list_objects to see what the current scene holds.",
+     "phenotype": null,
+     "rig": null,
+     "skin": null,
+     "subject_in_current_scene": null,
+     "subject_name": null,
+     "subject_resolved_by": "name",
+     "targets": null
+    },
+    "status": "ok"
+   },
+   "get_expression": {
+    "command": "get_expression",
+    "protocol_version": 1,
+    "result": {
+     "aggregate": {},
+     "applied_expressions": [],
+     "basemesh_name": null,
+     "clamped_face_units": [],
+     "faceunits01_installed": true,
+     "found": false,
+     "matches_stack": null,
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file. Call mpfb_list_objects to see what the current scene holds.",
+     "subject_name": null,
+     "subject_resolved_by": "name",
+     "unexplained_face_units": [],
+     "unresolved_count": 0
+    },
+    "status": "ok"
+   },
+   "get_face_units": {
+    "command": "get_face_units",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "face_unit_count": 0,
+     "face_units": [],
+     "faceunits01_installed": true,
+     "found": false,
+     "include_zero": false,
+     "known_face_units": {
+      "brow": [
+       "browInnerUp",
+       "browDownLeft",
+       "browDownRight",
+       "browOuterUpLeft",
+       "browOuterUpRight"
+      ],
+      "cheek": [
+       "cheekPuff",
+       "cheekSquintLeft",
+       "cheekSquintRight"
+      ],
+      "eye": [
+       "eyeBlinkLeft",
+       "eyeBlinkRight",
+       "eyeSquintLeft",
+       "eyeSquintRight",
+       "eyeWideLeft",
+       "eyeWideRight",
+       "eyeLookUpLeft",
+       "eyeLookUpRight",
+       "eyeLookDownLeft",
+       "eyeLookDownRight",
+       "eyeLookInLeft",
+       "eyeLookInRight",
+       "eyeLookOutLeft",
+       "eyeLookOutRight"
+      ],
+      "jaw": [
+       "jawOpen",
+       "jawForward",
+       "jawLeft",
+       "jawRight"
+      ],
+      "mouth": [
+       "mouthClose",
+       "mouthFunnel",
+       "mouthPucker",
+       "mouthLeft",
+       "mouthRight",
+       "mouthSmileLeft",
+       "mouthSmileRight",
+       "mouthFrownLeft",
+       "mouthFrownRight",
+       "mouthDimpleLeft",
+       "mouthDimpleRight",
+       "mouthStretchLeft",
+       "mouthStretchRight",
+       "mouthRollLower",
+       "mouthRollUpper",
+       "mouthShrugLower",
+       "mouthShrugUpper",
+       "mouthPressLeft",
+       "mouthPressRight",
+       "mouthLowerDownLeft",
+       "mouthLowerDownRight",
+       "mouthUpperUpLeft",
+       "mouthUpperUpRight"
+      ],
+      "nose": [
+       "noseSneerLeft",
+       "noseSneerRight"
+      ],
+      "tongue": [
+       "tongueOut"
+      ]
+     },
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file. Call mpfb_list_objects to see what the current scene holds.",
+     "subject_name": null,
+     "subject_resolved_by": "name",
+     "total_count": 52
+    },
+    "status": "ok"
+   },
+   "get_macro_details": {
+    "command": "get_macro_details",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "found": false,
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file. Call mpfb_list_objects to see what the current scene holds.",
+     "subject_name": null,
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "get_object_info": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "found": false,
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file. Call mpfb_list_objects to see what the current scene holds.",
+     "name": null,
+     "resolved_from": "name"
+    },
+    "status": "ok"
+   },
+   "get_target_stack": {
+    "command": "get_target_stack",
+    "protocol_version": 1,
+    "result": {
+     "asymmetries": [],
+     "basemesh_name": null,
+     "count": 0,
+     "counts_by_kind": {},
+     "counts_by_section": {},
+     "found": false,
+     "has_shapekeys": false,
+     "limit": 200,
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file. Call mpfb_list_objects to see what the current scene holds.",
+     "modifiers": [],
+     "offset": 0,
+     "subject_name": null,
+     "subject_resolved_by": "name",
+     "targets": [],
+     "total_count": 0,
+     "truncated": false
+    },
+    "status": "ok"
+   },
+   "refit_human": {
+    "command": "refit_human",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "found": false,
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file, so nothing was refitted. Call mpfb_list_objects to see what the current scene holds.",
+     "performed": false,
+     "ready": false,
+     "refit_performed": false,
+     "subject_name": null,
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "save_expression": {
+    "command": "save_expression",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "expressions_dir": "/home/joepal/makehuman/mpfb/data/expressions",
+     "found": false,
+     "fragment": "fr036_snapshot_never_written.json",
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file, so nothing was saved. Call mpfb_list_objects to see what the current scene holds.",
+     "name": "fr036_snapshot_never_written",
+     "overwrote": false,
+     "path": "/home/joepal/makehuman/mpfb/data/expressions/fr036_snapshot_never_written.json",
+     "performed": false,
+     "previous_file": null,
+     "ready": false,
+     "saved": false,
+     "subject_name": null,
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "save_preset": {
+    "command": "save_preset",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "config_dir": "/home/joepal/makehuman/mpfb/config",
+     "found": false,
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file, so nothing was saved. Call mpfb_list_objects to see what the current scene holds.",
+     "name": "fr036_snapshot_never_written",
+     "overwrote": false,
+     "path": "/home/joepal/makehuman/mpfb/config/human.fr036_snapshot_never_written.json",
+     "performed": false,
+     "previous_file": null,
+     "ready": false,
+     "saved": false,
+     "subject_name": null,
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "set_face_units": {
+    "command": "set_face_units",
+    "protocol_version": 1,
+    "result": {
+     "applied": [],
+     "basemesh_name": null,
+     "cleared": [],
+     "could_not_load": [],
+     "found": false,
+     "loaded_from_disk": [],
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file, so nothing was changed. Call mpfb_list_objects to see what the current scene holds.",
+     "performed": false,
+     "ready": false,
+     "skipped_absent_at_zero": [],
+     "subject_name": null,
+     "subject_resolved_by": "name",
+     "unknown_face_units": []
+    },
+    "status": "ok"
+   },
+   "set_macro_details": {
+    "command": "set_macro_details",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "changed": [],
+     "found": false,
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file, so nothing was changed. Call mpfb_list_objects to see what the current scene holds.",
+     "performed": false,
+     "ready": false,
+     "recalculated": false,
+     "subject_name": null,
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "set_skin": {
+    "command": "set_skin",
+    "protocol_version": 1,
+    "result": {
+     "applied": false,
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "bodyproxy_name": null,
+     "found": false,
+     "known_skin_types": [
+      "MAKESKIN",
+      "GAMEENGINE",
+      "ENHANCED",
+      "ENHANCED_SSS",
+      "LAYERED"
+     ],
+     "material_instances_requested": true,
+     "material_instances_used": null,
+     "materials_destroyed": [],
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file, so no skin was applied. Call mpfb_list_objects to see what the current scene holds.",
+     "performed": false,
+     "ready": false,
+     "resolved_by": null,
+     "resolved_path": null,
+     "skin_type_used": null,
+     "subject_name": null,
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "set_targets": {
+    "command": "set_targets",
+    "protocol_version": 1,
+    "result": {
+     "applied": [],
+     "basemesh_name": null,
+     "found": false,
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file, so nothing was changed. Call mpfb_list_objects to see what the current scene holds.",
+     "performed": false,
+     "ready": false,
+     "resolution_errors": [],
+     "subject_name": null,
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   },
+   "symmetrize_targets": {
+    "command": "symmetrize_targets",
+    "protocol_version": 1,
+    "result": {
+     "already_symmetric": [],
+     "basemesh_name": null,
+     "changed": [],
+     "direction": "left_to_right",
+     "dry_run": true,
+     "found": false,
+     "message": "No object named 'fr036-no-such-object' exists in this .blend file, so nothing was changed. Call mpfb_list_objects to see what the current scene holds.",
+     "performed": false,
+     "ready": false,
+     "skipped": [],
+     "subject_name": null,
+     "subject_resolved_by": "name"
+    },
+    "status": "ok"
+   }
+  },
+  "nothing_active": {
+   "add_asset": {
+    "command": "add_asset",
+    "protocol_version": 1,
+    "result": {
+     "added": false,
+     "asset_object_name": null,
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "found": false,
+     "known_asset_types": [
+      "Proxymeshes",
+      "Eyes",
+      "Eyebrows",
+      "Eyelashes",
+      "Hair",
+      "Teeth",
+      "Tongue",
+      "Clothes"
+     ],
+     "message": "No object name was given and no object is active in this Blender session, so nothing was equipped. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "performed": false,
+     "ready": false,
+     "requested_asset_type": "Clothes",
+     "resolved_by": "fragment",
+     "resolved_path": null,
+     "subject_name": null,
+     "subject_resolved_by": "active"
+    },
+    "status": "ok"
+   },
+   "add_rig": {
+    "command": "add_rig",
+    "protocol_version": 1,
+    "result": {
+     "added": false,
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "family": "standard",
+     "found": false,
+     "identifier": "default",
+     "known_identifiers": [
+      "cmu_mb",
+      "default",
+      "default_no_toes",
+      "game_engine",
+      "game_engine_with_breast",
+      "mixamo",
+      "mixamo_unity",
+      "openpose"
+     ],
+     "message": "No object name was given and no object is active in this Blender session, so no rig was added. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "performed": false,
+     "ready": false,
+     "rig_object_name": null,
+     "subject_name": null,
+     "subject_resolved_by": "active"
+    },
+    "status": "ok"
+   },
+   "apply_expressions": {
+    "command": "apply_expressions",
+    "protocol_version": 1,
+    "result": {
+     "applied_expressions": [],
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "changed": false,
+     "discarded_face_units": [],
+     "faceunits01_installed": true,
+     "found": false,
+     "message": "No object name was given and no object is active in this Blender session, so nothing was changed. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "mode": "merge",
+     "performed": false,
+     "ready": false,
+     "requested": [],
+     "subject_name": null,
+     "subject_resolved_by": "active"
+    },
+    "status": "ok"
+   },
+   "generate_rigify_rig": {
+    "command": "generate_rigify_rig",
+    "protocol_version": 1,
+    "result": {
+     "active_object_after": null,
+     "blocked_by": "subject_not_found",
+     "found": false,
+     "generated": false,
+     "message": "No object name was given and no object is active in this Blender session, so nothing was generated. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "metarig_disposition": null,
+     "metarig_name": null,
+     "performed": false,
+     "ready": false,
+     "refit_will_be_possible": true,
+     "rig_object_name": null,
+     "subject_name": null,
+     "subject_resolved_by": "active"
+    },
+    "status": "ok"
+   },
+   "get_character_summary": {
+    "command": "get_character_summary",
+    "protocol_version": 1,
+    "result": {
+     "assets": [],
+     "basemesh_in_current_scene": null,
+     "basemesh_name": null,
+     "face": null,
+     "found": false,
+     "message": "No object name was given and no object is active in this Blender session. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "phenotype": null,
+     "rig": null,
+     "skin": null,
+     "subject_in_current_scene": null,
+     "subject_name": null,
+     "subject_resolved_by": "active",
+     "targets": null
+    },
+    "status": "ok"
+   },
+   "get_expression": {
+    "command": "get_expression",
+    "protocol_version": 1,
+    "result": {
+     "aggregate": {},
+     "applied_expressions": [],
+     "basemesh_name": null,
+     "clamped_face_units": [],
+     "faceunits01_installed": true,
+     "found": false,
+     "matches_stack": null,
+     "message": "No object name was given and no object is active in this Blender session. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "subject_name": null,
+     "subject_resolved_by": "active",
+     "unexplained_face_units": [],
+     "unresolved_count": 0
+    },
+    "status": "ok"
+   },
+   "get_face_units": {
+    "command": "get_face_units",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "face_unit_count": 0,
+     "face_units": [],
+     "faceunits01_installed": true,
+     "found": false,
+     "include_zero": false,
+     "known_face_units": {
+      "brow": [
+       "browInnerUp",
+       "browDownLeft",
+       "browDownRight",
+       "browOuterUpLeft",
+       "browOuterUpRight"
+      ],
+      "cheek": [
+       "cheekPuff",
+       "cheekSquintLeft",
+       "cheekSquintRight"
+      ],
+      "eye": [
+       "eyeBlinkLeft",
+       "eyeBlinkRight",
+       "eyeSquintLeft",
+       "eyeSquintRight",
+       "eyeWideLeft",
+       "eyeWideRight",
+       "eyeLookUpLeft",
+       "eyeLookUpRight",
+       "eyeLookDownLeft",
+       "eyeLookDownRight",
+       "eyeLookInLeft",
+       "eyeLookInRight",
+       "eyeLookOutLeft",
+       "eyeLookOutRight"
+      ],
+      "jaw": [
+       "jawOpen",
+       "jawForward",
+       "jawLeft",
+       "jawRight"
+      ],
+      "mouth": [
+       "mouthClose",
+       "mouthFunnel",
+       "mouthPucker",
+       "mouthLeft",
+       "mouthRight",
+       "mouthSmileLeft",
+       "mouthSmileRight",
+       "mouthFrownLeft",
+       "mouthFrownRight",
+       "mouthDimpleLeft",
+       "mouthDimpleRight",
+       "mouthStretchLeft",
+       "mouthStretchRight",
+       "mouthRollLower",
+       "mouthRollUpper",
+       "mouthShrugLower",
+       "mouthShrugUpper",
+       "mouthPressLeft",
+       "mouthPressRight",
+       "mouthLowerDownLeft",
+       "mouthLowerDownRight",
+       "mouthUpperUpLeft",
+       "mouthUpperUpRight"
+      ],
+      "nose": [
+       "noseSneerLeft",
+       "noseSneerRight"
+      ],
+      "tongue": [
+       "tongueOut"
+      ]
+     },
+     "message": "No object name was given and no object is active in this Blender session. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "subject_name": null,
+     "subject_resolved_by": "active",
+     "total_count": 52
+    },
+    "status": "ok"
+   },
+   "get_macro_details": {
+    "command": "get_macro_details",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "found": false,
+     "message": "No object name was given and no object is active in this Blender session. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "subject_name": null,
+     "subject_resolved_by": "active"
+    },
+    "status": "ok"
+   },
+   "get_object_info": {
+    "command": "get_object_info",
+    "protocol_version": 1,
+    "result": {
+     "found": false,
+     "message": "No object name was given and no object is active in this Blender session, so there is nothing to report on. Select an object, or call mpfb_list_objects and pass one of its names.",
+     "name": null,
+     "resolved_from": "active_object"
+    },
+    "status": "ok"
+   },
+   "get_target_stack": {
+    "command": "get_target_stack",
+    "protocol_version": 1,
+    "result": {
+     "asymmetries": [],
+     "basemesh_name": null,
+     "count": 0,
+     "counts_by_kind": {},
+     "counts_by_section": {},
+     "found": false,
+     "has_shapekeys": false,
+     "limit": 200,
+     "message": "No object name was given and no object is active in this Blender session. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "modifiers": [],
+     "offset": 0,
+     "subject_name": null,
+     "subject_resolved_by": "active",
+     "targets": [],
+     "total_count": 0,
+     "truncated": false
+    },
+    "status": "ok"
+   },
+   "refit_human": {
+    "command": "refit_human",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "found": false,
+     "message": "No object name was given and no object is active in this Blender session, so nothing was refitted. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "performed": false,
+     "ready": false,
+     "refit_performed": false,
+     "subject_name": null,
+     "subject_resolved_by": "active"
+    },
+    "status": "ok"
+   },
+   "save_expression": {
+    "command": "save_expression",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "expressions_dir": "/home/joepal/makehuman/mpfb/data/expressions",
+     "found": false,
+     "fragment": "fr036_snapshot_never_written.json",
+     "message": "No object name was given and no object is active in this Blender session, so nothing was saved. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "name": "fr036_snapshot_never_written",
+     "overwrote": false,
+     "path": "/home/joepal/makehuman/mpfb/data/expressions/fr036_snapshot_never_written.json",
+     "performed": false,
+     "previous_file": null,
+     "ready": false,
+     "saved": false,
+     "subject_name": null,
+     "subject_resolved_by": "active"
+    },
+    "status": "ok"
+   },
+   "save_preset": {
+    "command": "save_preset",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "config_dir": "/home/joepal/makehuman/mpfb/config",
+     "found": false,
+     "message": "No object name was given and no object is active in this Blender session, so nothing was saved. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "name": "fr036_snapshot_never_written",
+     "overwrote": false,
+     "path": "/home/joepal/makehuman/mpfb/config/human.fr036_snapshot_never_written.json",
+     "performed": false,
+     "previous_file": null,
+     "ready": false,
+     "saved": false,
+     "subject_name": null,
+     "subject_resolved_by": "active"
+    },
+    "status": "ok"
+   },
+   "set_face_units": {
+    "command": "set_face_units",
+    "protocol_version": 1,
+    "result": {
+     "applied": [],
+     "basemesh_name": null,
+     "cleared": [],
+     "could_not_load": [],
+     "found": false,
+     "loaded_from_disk": [],
+     "message": "No object name was given and no object is active in this Blender session, so nothing was changed. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "performed": false,
+     "ready": false,
+     "skipped_absent_at_zero": [],
+     "subject_name": null,
+     "subject_resolved_by": "active",
+     "unknown_face_units": []
+    },
+    "status": "ok"
+   },
+   "set_macro_details": {
+    "command": "set_macro_details",
+    "protocol_version": 1,
+    "result": {
+     "basemesh_name": null,
+     "changed": [],
+     "found": false,
+     "message": "No object name was given and no object is active in this Blender session, so nothing was changed. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "performed": false,
+     "ready": false,
+     "recalculated": false,
+     "subject_name": null,
+     "subject_resolved_by": "active"
+    },
+    "status": "ok"
+   },
+   "set_skin": {
+    "command": "set_skin",
+    "protocol_version": 1,
+    "result": {
+     "applied": false,
+     "basemesh_name": null,
+     "blocked_by": "subject_not_found",
+     "bodyproxy_name": null,
+     "found": false,
+     "known_skin_types": [
+      "MAKESKIN",
+      "GAMEENGINE",
+      "ENHANCED",
+      "ENHANCED_SSS",
+      "LAYERED"
+     ],
+     "material_instances_requested": true,
+     "material_instances_used": null,
+     "materials_destroyed": [],
+     "message": "No object name was given and no object is active in this Blender session, so no skin was applied. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "performed": false,
+     "ready": false,
+     "resolved_by": null,
+     "resolved_path": null,
+     "skin_type_used": null,
+     "subject_name": null,
+     "subject_resolved_by": "active"
+    },
+    "status": "ok"
+   },
+   "set_targets": {
+    "command": "set_targets",
+    "protocol_version": 1,
+    "result": {
+     "applied": [],
+     "basemesh_name": null,
+     "found": false,
+     "message": "No object name was given and no object is active in this Blender session, so nothing was changed. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "performed": false,
+     "ready": false,
+     "resolution_errors": [],
+     "subject_name": null,
+     "subject_resolved_by": "active"
+    },
+    "status": "ok"
+   },
+   "symmetrize_targets": {
+    "command": "symmetrize_targets",
+    "protocol_version": 1,
+    "result": {
+     "already_symmetric": [],
+     "basemesh_name": null,
+     "changed": [],
+     "direction": "left_to_right",
+     "dry_run": true,
+     "found": false,
+     "message": "No object name was given and no object is active in this Blender session, so nothing was changed. Select a MakeHuman object, or call mpfb_list_objects and pass one of its names.",
+     "performed": false,
+     "ready": false,
+     "skipped": [],
+     "subject_name": null,
+     "subject_resolved_by": "active"
+    },
+    "status": "ok"
+   }
+  }
+ },
+ "status": {
+  "get_mpfb_status": {
+   "command": "get_mpfb_status",
+   "protocol_version": 1,
+   "result": {
+    "addon_installation_path": "/home/joepal/claude/mpfb2/src/mpfb",
+    "asset_packs": {
+     "count": 118,
+     "names": [
+      "accessories01_cc0",
+      "accessories02_ccby",
+      "animal01",
+      "animal02",
+      "animal03",
+      "animal04",
+      "arms01",
+      "belts01_cc0",
+      "belts02_ccby",
+      "bodyparts01",
+      "bodyparts02",
+      "bodyparts03",
+      "bodyparts04",
+      "bodyparts05",
+      "bodyparts06",
+      "breast01",
+      "breast02",
+      "breast03",
+      "cartoon01",
+      "character01",
+      "character02",
+      "character03",
+      "character04",
+      "cheek01",
+      "chin01",
+      "clothes_materials01",
+      "dress01",
+      "dress02",
+      "dress03",
+      "dress04",
+      "ears01",
+      "equipment01",
+      "equipment01_cc0",
+      "equipment02",
+      "equipment02_ccby",
+      "equipment03",
+      "eye_materials01",
+      "eye_materials02",
+      "eyebrows01",
+      "eyelashes01",
+      "faceunits01",
+      "glasses",
+      "glasses01",
+      "glasses02",
+      "glasses02_ccby",
+      "gloves01",
+      "hair01",
+      "hair02",
+      "hair03",
+      "haireditor",
+      "hands01",
+      "hats01",
+      "hats01_cc0",
+      "hats02",
+      "hats02_cc0",
+      "hats03",
+      "hats04",
+      "jewelry01",
+      "jewelry02",
+      "makehuman_system_assets",
+      "makehuman_system_poses",
+      "masks01",
+      "masks02",
+      "masks03",
+      "neck01",
+      "neck02",
+      "nose01",
+      "pants01",
+      "pants02",
+      "pants03",
+      "poses01",
+      "poses02",
+      "poses03",
+      "poses04",
+      "poses05",
+      "poses06",
+      "poses07",
+      "proxies_anatomy01",
+      "proxies_anatomy02",
+      "proxies_mesh01",
+      "proxies_oddities02",
+      "proxies_partial02",
+      "proxies_special01",
+      "shirts01",
+      "shirts02",
+      "shirts03",
+      "shirts04",
+      "shirts05",
+      "shoes01",
+      "shoes02",
+      "shoes03",
+      "skins01",
+      "skins02",
+      "skins03",
+      "skins_all_ccby",
+      "skirts01",
+      "skirts02",
+      "socks01",
+      "suits01",
+      "suits02",
+      "suits03",
+      "suits04",
+      "suits05",
+      "suits06",
+      "system_clothes_materials01",
+      "system_eye_materials01",
+      "system_eye_materials02",
+      "system_eye_materials03",
+      "system_hair_materials01",
+      "system_hair_materials02",
+      "system_hair_materials03",
+      "underwear01",
+      "underwear02",
+      "underwear03",
+      "underwear04",
+      "various01",
+      "visemes01",
+      "visemes02"
+     ],
+     "system_assets_pack_installed": true
+    },
+    "asset_roots": [
+     "/home/joepal/claude/mpfb2/src/mpfb/data",
+     "/home/joepal/makehuman/mpfb/data"
+    ],
+    "blender": {
+     "meets_mpfb_minimum": true,
+     "mpfb_minimum_version": "4.2.0",
+     "platform": "LINUX",
+     "version": "5.1.0"
+    },
+    "build_info": "FROM_SOURCE",
+    "candidate_modules": [
+     "bl_ext.repo.mpfb"
+    ],
+    "enabled": true,
+    "is_source_dist": true,
+    "message": "MPFB is loaded and initialized.",
+    "package": "bl_ext.repo.mpfb",
+    "paths": {
+     "log_dir": {
+      "configured": true,
+      "path": "/home/joepal/makehuman/mpfb/logs"
+     },
+     "mh_user_data": {
+      "configured": false,
+      "path": null
+     },
+     "mpfb_data": {
+      "configured": true,
+      "path": "/home/joepal/claude/mpfb2/src/mpfb/data"
+     },
+     "second_root": {
+      "configured": false,
+      "path": null
+     },
+     "user_cache": {
+      "configured": true,
+      "path": "/home/joepal/makehuman/mpfb/cache"
+     },
+     "user_config": {
+      "configured": true,
+      "path": "/home/joepal/makehuman/mpfb/config"
+     },
+     "user_data": {
+      "configured": true,
+      "path": "/home/joepal/makehuman/mpfb/data"
+     },
+     "user_home": {
+      "configured": true,
+      "path": "/home/joepal/makehuman/mpfb"
+     }
+    },
+    "rigify_available": true,
+    "state": "ok",
+    "version": "2.0.17"
+   },
+   "status": "ok"
+  },
+  "get_status": {
+   "command": "get_status",
+   "protocol_version": 1,
+   "result": {
+    "blender": {
+     "background": true,
+     "version": "5.1.0"
+    },
+    "bridge_version": "0.3.0",
+    "build_info": "FROM_SOURCE",
+    "candidate_modules": [
+     "bl_ext.repo.mpfb"
+    ],
+    "enabled": true,
+    "message": "MPFB is loaded and initialized.",
+    "min_supported_protocol_version": 1,
+    "package": "bl_ext.repo.mpfb",
+    "protocol_version": 1,
+    "state": "ok",
+    "version": "2.0.17"
+   },
+   "status": "ok"
+  },
+  "list_urls": {
+   "command": "list_urls",
+   "protocol_version": 1,
+   "result": {
+    "package": "bl_ext.repo.mpfb",
+    "reason": null,
+    "skipped_keys": [],
+    "state": "ok",
+    "urls": {
+     "URL_ASSET_PACKS": "http://static.makehumancommunity.org/assets/assetpacks.html",
+     "URL_DOCUMENTATION": "https://static.makehumancommunity.org/mpfb/docs.html",
+     "URL_FAQ": "https://static.makehumancommunity.org/mpfb/faq/index.html",
+     "URL_FORUM": "http://www.makehumancommunity.org/forum/",
+     "URL_GETTING_STARTED_GUIDE": "https://static.makehumancommunity.org/mpfb/docs/getting_started.html",
+     "URL_GETTING_STARTED_VIDEO": "https://www.youtube.com/watch?v=FNeiLDH_lnw",
+     "URL_HOMEPAGE": "http://static.makehumancommunity.org/mpfb.html",
+     "URL_ISSUE_TRACKER": "https://github.com/makehumancommunity/mpfb2/issues",
+     "URL_SOURCE_CODE": "https://github.com/makehumancommunity/mpfb2",
+     "URL_SYSTEM_ASSETS": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html",
+     "URL_VIDEO_CHANNEL": "https://www.youtube.com/@MakeHumanCommunity"
+    },
+    "version": "2.0.17",
+    "weburls_module": "bl_ext.repo.mpfb.ui.weburls",
+    "weburls_read": true
+   },
+   "status": "ok"
+  }
+ }
+}

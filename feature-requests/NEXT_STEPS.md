@@ -12,7 +12,7 @@ records what has already landed and why. When an effort below is finished, move 
 
 ## Basemesh resolver and other code duplications
 
-Formulated as [FR 036](036-subject-resolver-and-duplication/README.md) (Accepted), with the scan
+Formulated as [FR 036](036-subject-resolver-and-duplication/README.md) (In progress), with the scan
 this entry asks for in its [census](036-subject-resolver-and-duplication/census.md). Because the
 architecture's rule for shared code was set before the pivot, the request rewrites that rule first
 and derives the census verdicts from the rewritten version.
