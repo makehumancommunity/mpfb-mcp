@@ -330,7 +330,7 @@ def _blocked(subject, basemesh, subject_resolved_by, params, request, reason, me
         basemesh_name=None if basemesh is None else basemesh.name,
         asset_object_name=None,
         requested_object_type=params["object_type"],
-        resolved_by=request.resolved_by,
+        path_resolved_by=request.resolved_by,
         resolved_path=None,
         message=message,
     )
@@ -687,7 +687,7 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
         requested_object_type=params["object_type"],
         object_type_recorded=mpfb_surface.property_value(
             GeneralObjectProperties, "object_type", asset_object),
-        resolved_by=request.resolved_by,
+        path_resolved_by=request.resolved_by,
         resolved_path=request.resolved_path,
         asset_subdir=request.asset_subdir,
         asset_source=mpfb_surface.property_value(

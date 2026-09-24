@@ -49,7 +49,7 @@ def test_an_unknown_name_is_an_answer_rather_than_an_error():
     # command_failed envelope it cannot.
     assert answer["status"] == "ok", "A miss is a successful answer, got {!r}".format(answer)
     assert answer["result"]["found"] is False
-    assert answer["result"]["resolved_from"] == "name"
+    assert answer["result"]["subject_resolved_by"] == "name"
     assert "NoSuchObjectExistsHere" in answer["result"]["message"]
     assert answer["result"]["name"] is None
 
@@ -154,7 +154,7 @@ def test_the_active_object_is_used_when_no_name_is_given():
         try:
             answer = result(COMMAND, {"name": None})
 
-            assert answer["resolved_from"] == "active_object"
+            assert answer["subject_resolved_by"] == "active"
             assert answer["name"] == character.basemesh.name
         finally:
             bpy.context.view_layer.objects.active = previous

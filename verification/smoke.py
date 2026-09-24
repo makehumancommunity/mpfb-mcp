@@ -209,7 +209,7 @@ def _list_objects(run: _Run) -> dict:
     return run.tools["mpfb_list_objects"]()
 
 
-@_item("mpfb_get_object_info", "found", "resolved_from", "message")
+@_item("mpfb_get_object_info", "found", "subject_resolved_by", "message")
 def _get_object_info(run: _Run) -> dict:
     return run.tools["mpfb_get_object_info"](name=_character(run))
 

@@ -217,7 +217,7 @@ def test_a_fragment_is_resolved_against_the_skins_subdir():
                               "fragment": "young/young.mhmat"})
 
         assert result["applied"] is True, result["message"]
-        assert result["resolved_by"] == "fragment"
+        assert result["path_resolved_by"] == "fragment"
         assert result["resolved_path"] == mhmat
         assert result["asset_subdir"] == "skins"
 

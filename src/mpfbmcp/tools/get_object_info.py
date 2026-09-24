@@ -47,8 +47,8 @@ def register(mcp: FastMCP) -> None:
         subject is a normal answer: `found` is false and `message` says whether
         no such object exists or nothing is active.
 
-        `result` always carries `found`, `resolved_from` ("name" or
-        "active_object") and `message`. When `found` is true it also carries:
+        `result` always carries `found`, `subject_resolved_by` ("name" or
+        "active") and `message`. When `found` is true it also carries:
 
           - `name`: the resolved object's name. Carry this forward rather than
             re-deriving from the active object, which changes as the user

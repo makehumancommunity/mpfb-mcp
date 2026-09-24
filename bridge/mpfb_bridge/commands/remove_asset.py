@@ -159,7 +159,7 @@ def _refusal(services, requested_name, asset, object_type, basemesh, delete_grou
 
     if asset is None:
         return blocked(
-            "not_found",
+            "subject_not_found",
             "No object named '{!s}' exists in this .blend file, so nothing was removed. Call "
             "mpfb_list_objects to see what the current scene holds.".format(requested_name))
     if object_type not in _mesh_asset_types(services):

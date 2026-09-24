@@ -64,7 +64,7 @@ def test_a_garment_is_equipped_and_reported_by_the_name_it_got():
         assert services["ObjectService"].get_object_type(equipped) == "Clothes", \
             "MPFB should have recorded the type that was asked for"
         assert result["object_type_recorded"] == "Clothes"
-        assert result["resolved_by"] == "path"
+        assert result["path_resolved_by"] == "path"
         assert result["resolved_path"] == mhclo
         assert result["objects_created"], "the answer should name what appeared"
 
@@ -86,7 +86,7 @@ def test_a_fragment_is_resolved_against_the_subdir_its_object_type_names():
                               "fragment": "spike/spike.mhclo", "object_type": "Clothes"})
 
         assert result["added"] is True, result["message"]
-        assert result["resolved_by"] == "fragment"
+        assert result["path_resolved_by"] == "fragment"
         assert result["resolved_path"] == mhclo, \
             "the fragment should have resolved to the fixture file, got {!r}".format(
                 result["resolved_path"])

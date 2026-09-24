@@ -90,17 +90,12 @@ def get_object_info(params, resolution):
     # a MakeHuman one.
     blender_object, resolved_by, message = subject_resolution.resolve_subject(
         requested_name, select="an object")
-    # This answer says "active_object" where the seventeen other commands say
-    # "active", under a different key. Renaming either breaks a caller, so the
-    # difference is kept on purpose and recorded in NEXT_STEPS.md
-    # ("resolved_from and subject_resolved_by").
-    resolved_from = "active_object" if resolved_by == "active" else resolved_by
 
     if blender_object is None:
         _LOG.debug("get_object_info: nothing resolved from %r", requested_name)
         return {
             "found": False,
-            "resolved_from": resolved_from,
+            "subject_resolved_by": resolved_by,
             "name": None,
             "message": message,
         }
@@ -116,7 +111,7 @@ def get_object_info(params, resolution):
 
     return {
         "found": True,
-        "resolved_from": resolved_from,
+        "subject_resolved_by": resolved_by,
         "name": blender_object.name,
         "in_current_scene": in_scene,
         "object_type": object_type,

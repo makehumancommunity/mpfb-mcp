@@ -73,7 +73,7 @@ def register(mcp: FastMCP) -> None:
         invisible unless reported.
 
         Refusals come back as `removed: false` (and so `performed: false`) with
-        a `blocked_by` and a sentence: `not_found`, `basemesh_not_found`,
+        a `blocked_by` and a sentence: `subject_not_found`, `basemesh_not_found`,
         `not_object_mode`, `asset_source_missing` - without it the mask
         modifier cannot be identified and removal would be silently partial -
         and `not_a_mesh_asset`, which refuses a basemesh or a skeleton

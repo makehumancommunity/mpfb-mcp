@@ -275,7 +275,7 @@ def _refusal(services, params, request):  # pylint: disable=too-many-return-stat
             "the directory would hide the problem.".format(request.confdir))
     if mpfb_surface.human_object_properties(services) is None:
         return blocked(
-            "properties_unreachable",
+            "properties_unavailable",
             "MPFB's HumanObjectProperties could not be read off the HumanService module, so "
             "whether '{:s}' is an MPFB character cannot be established. Call mpfb_get_status; "
             "this usually means a partially initialized install.".format(request.basemesh.name))

@@ -8,20 +8,6 @@ Completed efforts are no longer listed here — they move to [HISTORY.md](HISTOR
 records what has already landed and why. When an effort below is finished, move it there
 (see the [lifecycle in CLAUDE.md](CLAUDE.md#lifecycle)).
 
-<a id="resolved-from-and-subject-resolved-by"></a>
-
-## `resolved_from` and `subject_resolved_by`
-
-Found by [FR 036](done/036-subject-resolver-and-duplication/README.md)'s census. Seventeen commands
-report how their subject was resolved as `subject_resolved_by: "active" | "name"`;
-`mpfb_get_object_info` reports the same fact as `resolved_from: "active_object" | "name"`. Both now
-come from one resolver, and `get_object_info` maps the value at its call site. FR 036 promised that
-no response field changed, so the difference was recorded rather than fixed. Fixing it means
-renaming a key or a value in an answer callers read, and deciding how to do that without breaking
-them - for instance reporting both keys for a while, with the tool description saying which one is
-going away. Taken up by [FR 037](037-one-word-per-concept/README.md), as one row of a wider
-vocabulary cleanup.
-
 <a id="selection-restore-covers-one-object"></a>
 
 ## Selection restore covers one object

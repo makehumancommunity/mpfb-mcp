@@ -20,10 +20,9 @@ about it, and a promise made eighteen times is kept only if it is written once:
   actually acted on is reported back, never the argument echoed.
 
 It also says **how the subject was resolved**, ``"active"`` or ``"name"``, so
-that no command computes ``subject_resolved_by`` on a line of its own. Seventeen
-commands report it under that key. ``get_object_info`` reports it as
-``resolved_from: "active_object"``, and maps the value at its own call site,
-because renaming a response key breaks a caller (see NEXT_STEPS).
+that no command computes ``subject_resolved_by`` on a line of its own. All
+eighteen report it under that key; ``get_object_info`` said
+``resolved_from: "active_object"`` until FR 037.
 
 **The condition is here; the wording is not**, as in
 [`refit_blocker.py`](refit_blocker.py). The three sentences share their shape,

@@ -134,7 +134,7 @@ def test_restore_default_puts_back_the_mhclos_own_material_and_clears_the_record
             restored = _result({"name": asset_name, "restore_default": True})
 
         assert restored["applied"] is True, restored["message"]
-        assert restored["resolved_by"] == "default"
+        assert restored["path_resolved_by"] == "default"
         assert restored["resolved_path"].endswith("spike.mhmat"), \
             "the MHCLO's own material line should have been followed, got {!r}".format(
                 restored["resolved_path"])

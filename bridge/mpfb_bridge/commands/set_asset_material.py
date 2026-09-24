@@ -267,7 +267,7 @@ def _blocked(params, request, reason, message, **extra):
         asset_object_name=None if asset is None else asset.name,
         object_type=request.object_type,
         asset_subdir=request.asset_subdir,
-        resolved_by=request.resolved_by,
+        path_resolved_by=request.resolved_by,
         resolved_path=None,
         alternative_material=request.previous_alternative_material,
         alternative_material_before=request.previous_alternative_material,
@@ -307,7 +307,7 @@ def _refusal(services, params, request):  # pylint: disable=too-many-return-stat
 
     if asset is None:
         return blocked(
-            "not_found",
+            "subject_not_found",
             "No object named '{!s}' exists in this .blend file, so no material was changed. Call "
             "mpfb_list_objects to see what the current scene holds; this tool wants the asset's "
             "own name, not the character's.".format(params["name"]))
@@ -474,7 +474,7 @@ def set_asset_material(params, resolution):  # pylint: disable=too-many-locals
         asset_object_name=asset.name,
         object_type=request.object_type,
         asset_subdir=request.asset_subdir,
-        resolved_by=request.resolved_by,
+        path_resolved_by=request.resolved_by,
         resolved_path=request.resolved_path,
         restore_default=params["restore_default"],
         alternative_material=alternative_material,

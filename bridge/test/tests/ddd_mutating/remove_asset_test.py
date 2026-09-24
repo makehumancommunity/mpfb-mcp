@@ -154,7 +154,7 @@ def test_an_unknown_name_is_an_answer():
     envelope = dispatch("remove_asset", {"name": "no-such-object-anywhere"})
 
     assert envelope["status"] == "ok"
-    assert envelope["result"]["blocked_by"] == "not_found"
+    assert envelope["result"]["blocked_by"] == "subject_not_found"
     assert envelope["result"]["performed"] is False
 
 

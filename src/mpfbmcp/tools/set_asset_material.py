@@ -122,13 +122,13 @@ def register(mcp: FastMCP) -> None:
         was used and is null when the neutral grey fallback applied.
 
         On `applied: true`, `result` carries `asset_object_name`,
-        `object_type`, `asset_subdir`, `resolved_by`/`resolved_path`,
+        `object_type`, `asset_subdir`, `path_resolved_by`/`resolved_path`,
         `alternative_material` (the fragment now recorded on the object, empty
         when the default was restored) beside `alternative_material_before`,
         `materials_destroyed`, `material_name` and `diffuse_color_from`.
 
         Refusals come back as `applied: false` (and so `performed: false`) with
-        a `blocked_by` and a sentence: `not_found`, `not_an_mpfb_object`,
+        a `blocked_by` and a sentence: `subject_not_found`, `not_an_mpfb_object`,
         `material_not_found`, `not_object_mode`, `asset_source_missing` and
         `default_material_not_found` (both for `restore_default` on an asset
         whose own MHCLO cannot be found or names no material on disk), and

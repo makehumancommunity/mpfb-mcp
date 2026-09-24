@@ -128,7 +128,7 @@ def register(mcp: FastMCP) -> None:
         `mpfb_list_assets` reports both. A `fragment` (`"fedora/fedora.mhclo"`)
         is portable but is resolved by **basename**, so two packs shipping
         `hat.mhclo` resolve to a coin toss - check `resolved_path` when
-        `resolved_by` is `"fragment"`.
+        `path_resolved_by` is `"fragment"`.
 
         `material_type` is `MAKESKIN`, `GAMEENGINE`, `PROCEDURAL_EYES` or
         `NONE`, and is best left unset: it then follows MPFB's settings panel
@@ -149,7 +149,7 @@ def register(mcp: FastMCP) -> None:
         On `added: true`, `result` carries `asset_object_name` - read off the
         created object, since Blender uniquifies a name already in use, and the
         address `mpfb_remove_asset` and `mpfb_set_asset_material` need - plus
-        `basemesh_name`, `resolved_path`/`resolved_by`/`asset_source`,
+        `basemesh_name`, `resolved_path`/`path_resolved_by`/`asset_source`,
         `object_type_recorded`, `material_type_used`,
         `material_created`/`material_name`, `rigged_to` or `parented_to`,
         `subrig_object_name`, `delete_group_name` and

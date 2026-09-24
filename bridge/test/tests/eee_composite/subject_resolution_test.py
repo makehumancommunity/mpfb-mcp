@@ -88,10 +88,8 @@ def _subject_name(command, answer):
     return answer["name"] if command == "get_object_info" else answer["subject_name"]
 
 
-def _resolved_by(command, answer):
-    if command == "get_object_info":
-        # The one answer that says it differently; see the comment at its call site.
-        return {"active_object": "active"}.get(answer["resolved_from"], answer["resolved_from"])
+def _resolved_by(command, answer):  # pylint: disable=unused-argument
+    # One key in all eighteen since FR 037; get_object_info said resolved_from.
     return answer["subject_resolved_by"]
 
 

@@ -222,10 +222,11 @@ paper over:
   through [`shared/subject_resolution.py`](../bridge/mpfb_bridge/shared/subject_resolution.py):
   the view layer's active object or a name looked up in the file, then any member of the family to
   its basemesh the way MPFB's own panels find it, and how the subject was resolved. Each command
-  still phrases its own misses. Seventeen report `subject_resolved_by: "active" | "name"`;
-  `mpfb_get_object_info` reports the same fact as `resolved_from: "active_object" | "name"`, a
-  difference kept because renaming a response key breaks a caller, and recorded in
-  [NEXT_STEPS.md](../feature-requests/NEXT_STEPS.md#resolved-from-and-subject-resolved-by).
+  still phrases its own misses. All eighteen report `subject_resolved_by: "active" | "name"`.
+  `mpfb_get_object_info` said `resolved_from: "active_object"` until
+  [FR 037](../feature-requests/037-one-word-per-concept/README.md) renamed it, which
+  [refusing an undeclared argument](#validate-before-crossing-the-socket) and the protocol version
+  made safe to do without a period of reporting both.
 
 Object addresses are never cacheable. Unlike `mpfb_get_status`'s output they are things later
 mutating tools will act on, so a stale one is worse than a missing one.
@@ -298,7 +299,7 @@ takes them all, requires exactly one, and reports which one resolved and to what
 - **Report the resolution, because it is lossy.** `find_asset_absolute_path()` matches on the
   fragment's *basename*, prefers a candidate whose parent directory also matches, and otherwise
   returns the first hit — so two packs shipping `hat.mhclo` resolve to a coin toss. `resolved_path`
-  is always in the response, beside a `resolved_by` saying which identifier was used. This is the
+  is always in the response, beside a `path_resolved_by` saying which identifier was used. This is the
   acting-tool counterpart of `mpfb_list_assets`' `pack_ambiguous`: the derivation is unsafe in a
   minority of cases, and the caller cannot tell which case they are in unless the tool says.
 - **An identifier hiding as a description is still an identifier.** `add_mhclo_asset()`'s
