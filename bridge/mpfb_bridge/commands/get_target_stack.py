@@ -60,6 +60,7 @@ PARAMS = (
 
 SUMMARY = "Read the shape keys on one character, and the modeling categories they roll up into."
 
+
 def _nothing_found(subject, subject_resolved_by, message, offset, limit):
     return dict(
         found=False,

@@ -48,7 +48,6 @@ __all__ = (
     "BUILTIN_FAMILIES",
     "CUSTOM_PREFIX",
     "FAMILIES",
-    "as_path",
     "builtin_rig_file",
     "builtin_subdir",
     "builtin_weights",
@@ -61,6 +60,8 @@ __all__ = (
 )
 
 import os
+
+from . import mpfb_surface
 
 # One tuple per built-in family: the family name, its subdirectory under
 # <mpfb data>/rigs, and the prefix HumanService.add_builtin_rig() expects in
@@ -78,20 +79,10 @@ CUSTOM_PREFIX = "custom."
 FAMILIES = ("standard", "rigify", "custom")
 
 
-def as_path(path):
-    # Coerce at the point a path enters a response. MPFB's path getters are
-    # annotated as returning str, but LocationService.get_mpfb_root() hands back
-    # a pathlib.Path when called with no sub-path, which fails strict_json and
-    # takes the entire response down with it (commit 631989c).
-    if not path:
-        return None
-    return str(path)
-
-
 def rigs_directory(services):
     """``<mpfb data>/rigs``, or None on an install whose data dir is unknown."""
     LocationService = services["LocationService"]
-    return as_path(LocationService.get_mpfb_data("rigs"))
+    return mpfb_surface.as_path(LocationService.get_mpfb_data("rigs"))
 
 
 def family_of(identifier):

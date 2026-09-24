@@ -70,7 +70,6 @@ __all__ = (
     "MACRODETAILS_DIRECTORY",
     "TARGET_EXTENSIONS",
     "Tables",
-    "as_path",
     "build_sections",
     "build_tables",
     "build_target_index",
@@ -94,6 +93,8 @@ __all__ = (
 import json
 import os
 
+from . import mpfb_surface
+
 # Bundled targets under here are driven by basemesh attributes rather than by
 # loading a target file, which is mpfb_set_macro_details' territory. They are
 # not in target.json and are never reachable as a category.
@@ -103,15 +104,6 @@ MACRODETAILS_DIRECTORY = "macrodetails"
 CUSTOM_SECTION = "custom"
 
 TARGET_EXTENSIONS = (".target.gz", ".target")
-
-
-def as_path(path):
-    # Coerce at the point a path enters the table.
-    # AssetService.find_asset_files_matching_pattern() returns pathlib.Path
-    # objects, and one uncoerced value would fail strict_json on the way out.
-    if not path:
-        return None
-    return str(path)
 
 
 def mpfb_category_name(full_path):
@@ -205,7 +197,7 @@ def scan_user_categories(services):
     """
     LocationService = services["LocationService"]
     try:
-        directory = as_path(LocationService.get_user_data("targets"))
+        directory = mpfb_surface.as_path(LocationService.get_user_data("targets"))
     except Exception:  # pylint: disable=broad-except
         return ([], [])
     if directory is None or not os.path.isdir(directory):
@@ -222,7 +214,7 @@ def scan_user_categories(services):
 def build_sections(services):
     """target.json merged with the synthesized custom and user sections."""
     LocationService = services["LocationService"]
-    system_targets_dir = as_path(LocationService.get_mpfb_data("targets"))
+    system_targets_dir = mpfb_surface.as_path(LocationService.get_mpfb_data("targets"))
     target_json_path = None
     if system_targets_dir is not None:
         # Singular "target.json", inside the "targets" directory. The plural
@@ -288,8 +280,6 @@ def build_sections(services):
             synthesized_category(services, full_path, listed))
 
     return (sections, system_targets_dir, target_json_path, state, scanned_roots)
-
-
 
 
 def category_is_opposed(category):

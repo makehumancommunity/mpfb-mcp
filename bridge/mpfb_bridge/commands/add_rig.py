@@ -64,6 +64,7 @@ import os
 import bpy
 
 from ..log import get_logger
+from ..shared import mpfb_surface
 from ..shared import rig_lookup
 from ..shared import subject_resolution
 from ..shared.performed import with_performed
@@ -197,7 +198,7 @@ def _rig_resolution(services, requested_identifier, requested_family):
         record = rig_lookup.custom_rig_record(custom_records, short_name)
         if record is not None:
             resolution["identifier_exists"] = True
-            resolution["rig_definition_path"] = rig_lookup.as_path(record.get("path"))
+            resolution["rig_definition_path"] = mpfb_surface.as_path(record.get("path"))
             (resolution["weights_available"], resolution["weights_path"],
              resolution["weights_from"]) = rig_lookup.custom_weights(
                  resolution["rig_definition_path"], short_name)

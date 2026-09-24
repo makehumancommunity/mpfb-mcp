@@ -71,12 +71,12 @@ __all__ = (
 )
 
 import os
-import sys
 
 import bpy
 
 from ..log import get_logger
 from ..shared import asset_sections
+from ..shared import mpfb_surface
 from ..shared import subject_resolution
 from ..shared.performed import with_performed
 from ..validation import Param
@@ -131,36 +131,6 @@ PARAMS = (
 )
 
 SUMMARY = "Equip one MHCLO asset - clothes, hair, eyes, a proxy - on a character."
-
-
-def _module_level(services, service_name, attribute):
-    """One name MPFB keeps on a service's module rather than on the service.
-
-    ``GeneralObjectProperties`` is a ``BlenderConfigSet`` on objectservice.py's
-    module and ``ALL_EXTRA_GROUPS`` is the proxy vertex-group table, imported
-    into humanservice.py from entities/socketobject. Both are reached through
-    the module of a service that already resolved, with a fallback - never by
-    importing an MPFB submodule, several of which create directories on import.
-    """
-    module = sys.modules[services[service_name].__module__]
-    return getattr(module, attribute, None)
-
-
-def _property_value(config_set, property_name, blender_object):
-    """One custom property, or ``None`` when it was never set.
-
-    An unset string property reads back as "" rather than None, and "" means
-    "nothing was recorded" - it must not be reported as a fragment.
-    """
-    if config_set is None or blender_object is None:
-        return None
-    try:
-        value = config_set.get_value(property_name, entity_reference=blender_object)
-    except Exception:  # pylint: disable=broad-except
-        return None
-    if not value:
-        return None
-    return str(value)
 
 
 def _default_material_type(object_type):
@@ -339,7 +309,7 @@ def _resolve_arguments(services, params):
 
     request.resolved_path = None
     if params["path"] is not None:
-        request.resolved_path = asset_sections.as_path(params["path"])
+        request.resolved_path = mpfb_surface.as_path(params["path"])
     elif request.asset_subdir is not None:
         # find_asset_absolute_path() matches on *basename*, prefers a candidate
         # whose parent directory also matches, and otherwise returns the first
@@ -347,7 +317,7 @@ def _resolve_arguments(services, params):
         # it chooses is reported, which is the acting-command counterpart of
         # list_assets' pack_ambiguous.
         try:
-            request.resolved_path = asset_sections.as_path(
+            request.resolved_path = mpfb_surface.as_path(
                 services["AssetService"].find_asset_absolute_path(
                     params["fragment"], request.asset_subdir))
         except Exception:  # pylint: disable=broad-except
@@ -469,9 +439,10 @@ def _proxy_extras(services, basemesh, asset_object, general_properties, warnings
         except Exception:  # pylint: disable=broad-except
             scale_factor_copied = False
 
-    all_extra_groups = _module_level(services, "HumanService", "ALL_EXTRA_GROUPS")
+    all_extra_groups = mpfb_surface.module_level(
+        services, "HumanService", "ALL_EXTRA_GROUPS", fallback=None)
     extra_groups_created = []
-    proxy_uuid = _property_value(general_properties, "uuid", asset_object)
+    proxy_uuid = mpfb_surface.property_value(general_properties, "uuid", asset_object)
     if proxy_uuid and all_extra_groups and proxy_uuid in all_extra_groups:
         for vgroup_name in all_extra_groups[proxy_uuid].keys():
             vgroup = asset_object.vertex_groups.new(name=vgroup_name)
@@ -569,7 +540,7 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
     services = resolution.services
     object_service = services["ObjectService"]
     material_service = services["MaterialService"]
-    GeneralObjectProperties = _module_level(services, "ObjectService", "GeneralObjectProperties")
+    GeneralObjectProperties = mpfb_surface.general_object_properties(services)
 
     basemesh, subject, subject_resolved_by, message = subject_resolution.resolve_basemesh(
         services, params["name"],
@@ -728,18 +699,19 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
         basemesh_name=basemesh.name,
         asset_object_name=None if asset_object is None else asset_object.name,
         requested_asset_type=params["asset_type"],
-        object_type_recorded=_property_value(
+        object_type_recorded=mpfb_surface.property_value(
             GeneralObjectProperties, "object_type", asset_object),
         resolved_by=request.resolved_by,
         resolved_path=request.resolved_path,
         asset_subdir=request.asset_subdir,
-        asset_source=_property_value(GeneralObjectProperties, "asset_source", asset_object),
+        asset_source=mpfb_surface.property_value(
+            GeneralObjectProperties, "asset_source", asset_object),
         material_type_used=request.material_type,
         material_type_defaulted=request.material_type_defaulted,
         material_created=material_created,
         material_name=material_name,
         mhclo_names_material=names_material,
-        mhmat_path=asset_sections.as_path(mhmat_path),
+        mhmat_path=mpfb_surface.as_path(mhmat_path),
         rigged_to=(
             existing_rig.name
             if (existing_rig is not None and params["set_up_rigging"]) else None),

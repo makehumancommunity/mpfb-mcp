@@ -51,6 +51,7 @@ import os
 
 from ..log import get_logger
 from ..shared import asset_sections
+from ..shared import mpfb_surface
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
 from ..validation import TYPE_INTEGER
@@ -152,7 +153,7 @@ def _entries_for_section(services, subdir, asset_type, object_type, roots, pack_
             "name": name,
             "label": str(item.get("label") or "") or None,
             "fragment": str(item.get("fragment") or "") or None,
-            "path": asset_sections.as_path(item.get("full_path")),
+            "path": mpfb_surface.as_path(item.get("full_path")),
             "object_type": object_type,
             "asset_subdir": subdir,
             "file_type": asset_type,
@@ -160,7 +161,7 @@ def _entries_for_section(services, subdir, asset_type, object_type, roots, pack_
             "pack_ambiguous": len(claimants) > 1,
             # Deliberately not item["thumb"], which is a Blender preview object
             # rather than anything that survives JSON.
-            "thumb_path": asset_sections.as_path(item.get("thumb_path")),
+            "thumb_path": mpfb_surface.as_path(item.get("thumb_path")),
             # Not reported: every pack claiming this asset. It is what the pack
             # filter below matches against, so that a filter cannot miss an
             # asset whose alphabetically-first claimant is a different pack.

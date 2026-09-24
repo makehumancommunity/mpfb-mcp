@@ -63,7 +63,8 @@ __all__ = (
 
 import json
 import os
-import sys
+
+from . import mpfb_surface
 
 # How far a live shape key value may sit from the stack's aggregate and still
 # count as explained. A shape key stores a 32-bit float, so a value written as
@@ -72,11 +73,6 @@ import sys
 # composed by up to 0.00005. 0.0001 covers both, and is well below any value an
 # agent composes on purpose.
 TOLERANCE = 0.0001
-
-
-def _arkit_faceunits(services):
-    """MPFB's own vocabulary, read off FaceService's module rather than copied."""
-    return sys.modules[services["FaceService"].__module__].ARKIT_FACEUNITS
 
 
 def stack_rows(services, basemesh):
@@ -136,7 +132,7 @@ def raw_sums(services, rows):
     :func:`stack_rows` resolved, without the clamp, so a caller can be told.
     """
     FaceService = services["FaceService"]
-    arkit = _arkit_faceunits(services)
+    arkit = mpfb_surface.required_module_level(services, "FaceService", "ARKIT_FACEUNITS")
     sums = {}
     for row in rows:
         if not row["resolved"]:
@@ -182,7 +178,7 @@ def divergence(services, basemesh, rows=None):
     live = FaceService.read_current_expression(basemesh)
 
     unexplained = []
-    for name in _arkit_faceunits(services):
+    for name in mpfb_surface.required_module_level(services, "FaceService", "ARKIT_FACEUNITS"):
         live_value = float(live.get(name, 0.0))
         from_stack = float(aggregate.get(name, 0.0))
         if abs(live_value - from_stack) > TOLERANCE:

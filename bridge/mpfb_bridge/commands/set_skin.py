@@ -71,12 +71,12 @@ __all__ = (
 )
 
 import os
-import sys
 
 import bpy
 
 from ..log import get_logger
 from ..shared import asset_sections
+from ..shared import mpfb_surface
 from ..shared import subject_resolution
 from ..shared.performed import with_performed
 from ..validation import Param
@@ -121,35 +121,6 @@ PARAMS = (
 )
 
 SUMMARY = "Give a character a skin, in one of MPFB's five material models."
-
-
-def _module_level(services, service_name, attribute):
-    """One name MPFB keeps on a service's module rather than on the service.
-
-    ``material_source`` is a *human* property and ``scale_factor`` a general
-    one, so the two config sets live on different modules. Both are read through
-    the module of a service that has already resolved - never by importing an
-    MPFB submodule.
-    """
-    module = sys.modules[services[service_name].__module__]
-    return getattr(module, attribute, None)
-
-
-def _property_value(config_set, property_name, blender_object):
-    """One custom property, or ``None`` when it was never set.
-
-    An unset string property reads back as "" rather than None, and "" means
-    "nothing was recorded" - it must not be reported as a fragment.
-    """
-    if config_set is None or blender_object is None:
-        return None
-    try:
-        value = config_set.get_value(property_name, entity_reference=blender_object)
-    except Exception:  # pylint: disable=broad-except
-        return None
-    if not value:
-        return None
-    return str(value)
 
 
 def _material_names(blender_object):
@@ -221,7 +192,7 @@ def _scale_assumption_for(services, basemesh):
     wrongly scaled character gets a subtly wrong skin and nothing else in the
     response would explain it.
     """
-    general_properties = _module_level(services, "ObjectService", "GeneralObjectProperties")
+    general_properties = mpfb_surface.general_object_properties(services)
     if general_properties is None or basemesh is None:
         return None
     try:
@@ -245,7 +216,7 @@ def _enhanced_settings_path(services):
     observation rather than a guess about which branch ran.
     """
     try:
-        return asset_sections.as_path(
+        return mpfb_surface.as_path(
             services["LocationService"].get_user_config(ENHANCED_SETTINGS_FILE))
     except Exception:  # pylint: disable=broad-except
         return None
@@ -277,13 +248,13 @@ def _resolve_arguments(services, params):
 
     request.resolved_path = None
     if params["path"] is not None:
-        request.resolved_path = asset_sections.as_path(params["path"])
+        request.resolved_path = mpfb_surface.as_path(params["path"])
     elif params["fragment"] is not None and request.asset_subdir is not None:
         # find_asset_absolute_path() matches on *basename*, prefers a candidate
         # whose parent directory also matches, and otherwise returns the first
         # hit, so whatever it chooses is reported rather than assumed.
         try:
-            request.resolved_path = asset_sections.as_path(
+            request.resolved_path = mpfb_surface.as_path(
                 services["AssetService"].find_asset_absolute_path(
                     params["fragment"], request.asset_subdir))
         except Exception:  # pylint: disable=broad-except
@@ -412,7 +383,7 @@ def set_skin(params, resolution):  # pylint: disable=too-many-locals,too-many-st
     services = resolution.services
     object_service = services["ObjectService"]
     material_service = services["MaterialService"]
-    HumanObjectProperties = _module_level(services, "HumanService", "HumanObjectProperties")
+    HumanObjectProperties = mpfb_surface.human_object_properties(services)
 
     basemesh, subject, subject_resolved_by, message = subject_resolution.resolve_basemesh(
         services, params["name"],
@@ -445,7 +416,8 @@ def set_skin(params, resolution):  # pylint: disable=too-many-locals,too-many-st
         materials_destroyed.append(
             dict(object_name=body_proxy.name, materials=_material_names(body_proxy)))
 
-    material_source_before = _property_value(HumanObjectProperties, "material_source", basemesh)
+    material_source_before = mpfb_surface.property_value(
+        HumanObjectProperties, "material_source", basemesh)
 
     settings_path = _enhanced_settings_path(services)
     settings_file_existed = bool(settings_path is not None and os.path.exists(settings_path))
@@ -504,7 +476,8 @@ def set_skin(params, resolution):  # pylint: disable=too-many-locals,too-many-st
         bodyproxy=_activate_body_slot(body_proxy),
     )
 
-    material_source = _property_value(HumanObjectProperties, "material_source", basemesh)
+    material_source = mpfb_surface.property_value(
+        HumanObjectProperties, "material_source", basemesh)
     settings_file_created = bool(
         settings_path is not None
         and not settings_file_existed

@@ -44,11 +44,11 @@ __all__ = (
 )
 
 import os
-import sys
 
 import bpy
 
 from ..log import get_logger
+from ..shared import mpfb_surface
 from ..shared.performed import with_performed
 from ..validation import Param
 from ..validation import TYPE_STRING
@@ -69,30 +69,9 @@ _MESH_ASSET_TYPES_FALLBACK = (
     "Proxymeshes", "Clothes", "Eyes", "Eyelashes", "Eyebrows", "Tongue", "Teeth", "Hair")
 
 
-def _objectservice_module(services):
-    return sys.modules[services["ObjectService"].__module__]
-
-
 def _mesh_asset_types(services):
-    return getattr(_objectservice_module(services), "_MESH_ASSET_TYPES",
-                   _MESH_ASSET_TYPES_FALLBACK)
-
-
-def _general_object_properties(services):
-    return getattr(_objectservice_module(services), "GeneralObjectProperties", None)
-
-
-def _property_value(config_set, property_name, blender_object):
-    """One custom property, or ``None`` when it was never set (it reads back as "")."""
-    if config_set is None or blender_object is None:
-        return None
-    try:
-        value = config_set.get_value(property_name, entity_reference=blender_object)
-    except Exception:  # pylint: disable=broad-except
-        return None
-    if not value:
-        return None
-    return str(value)
+    return mpfb_surface.module_level(
+        services, "ObjectService", "_MESH_ASSET_TYPES", fallback=_MESH_ASSET_TYPES_FALLBACK)
 
 
 def _delete_group_name_from(asset_source):
@@ -173,7 +152,8 @@ def _blocked(services, requested_name, asset, reason, message, **extra):
         requested_name=requested_name,
         asset_object_name=None if asset is None else asset.name,
         object_type=None if asset is None else (object_service.get_object_type(asset) or None),
-        asset_source=_property_value(_general_object_properties(services), "asset_source", asset),
+        asset_source=mpfb_surface.property_value(
+            mpfb_surface.general_object_properties(services), "asset_source", asset),
         basemesh_name=None,
         message=message,
     )
@@ -260,13 +240,13 @@ def remove_asset(params, resolution):  # pylint: disable=too-many-locals
     """Take one asset off, having established that it is one and that it can be."""
     services = resolution.services
     object_service = services["ObjectService"]
-    general_properties = _general_object_properties(services)
+    general_properties = mpfb_surface.general_object_properties(services)
 
     requested_name = params["name"]
 
     asset = bpy.data.objects.get(requested_name)
     object_type = object_service.get_object_type(asset) if asset is not None else ""
-    asset_source = _property_value(general_properties, "asset_source", asset)
+    asset_source = mpfb_surface.property_value(general_properties, "asset_source", asset)
     delete_group_name = _delete_group_name_from(asset_source)
 
     basemesh = None

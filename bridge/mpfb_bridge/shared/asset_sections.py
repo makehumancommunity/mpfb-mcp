@@ -45,7 +45,6 @@ a third opinion about what MPFB supports.
 __all__ = (
     "FALLBACK_MESH_ASSET_TYPES",
     "FALLBACK_SECTIONS",
-    "as_path",
     "mesh_asset_types",
     "normalize_asset_type",
     "read_sections",
@@ -53,6 +52,7 @@ __all__ = (
 )
 
 import sys
+
 
 # MPFB's ASSET_LIBRARY_SECTIONS, as a literal, used only when it cannot be read
 # off AssetService's module. Each row is (asset_subdir, asset_type,
@@ -78,16 +78,6 @@ FALLBACK_SECTIONS = (
 FALLBACK_MESH_ASSET_TYPES = (
     "Proxymeshes", "Clothes", "Eyes", "Eyelashes", "Eyebrows", "Tongue", "Teeth", "Hair",
 )
-
-
-def as_path(path):
-    # Coerce at the point a path enters the response. The cached items' paths
-    # are str, but several AssetService helpers hand back pathlib.Path, and one
-    # of those in the response fails strict_json and takes the whole answer
-    # down with it.
-    if not path:
-        return None
-    return str(path)
 
 
 def read_sections(services):

@@ -68,9 +68,9 @@ __all__ = (
 
 import json
 import os
-import sys
 
 from ..log import get_logger
+from ..shared import mpfb_surface
 from ..shared import preset_files
 from ..shared import subject_resolution
 from ..shared.performed import with_performed
@@ -115,17 +115,6 @@ UNIDENTIFIED_RIG_TYPES = (None, "unknown", "unkown")
 # The keys serialize_to_json_string() writes that are worth reading back, so the
 # answer says what was saved rather than only that something was.
 BODYPART_KEYS = ("eyes", "eyelashes", "eyebrows", "tongue", "teeth", "hair")
-
-
-def _human_object_properties(services):
-    """MPFB's ``HumanObjectProperties``, or ``None``.
-
-    A ``BlenderConfigSet`` kept at module level rather than in SERVICES, so it
-    is read through the module of a service that has already resolved - never by
-    importing an MPFB submodule.
-    """
-    return getattr(sys.modules[services["HumanService"].__module__],
-                   "HumanObjectProperties", None)
 
 
 def _contents_summary(path):
@@ -210,7 +199,7 @@ def _resolve(services, params):
                 request.rig_identified_as = None
 
     request.is_human_project = None
-    human_properties = _human_object_properties(services)
+    human_properties = mpfb_surface.human_object_properties(services)
     if request.basemesh is not None and human_properties is not None:
         try:
             request.is_human_project = bool(human_properties.get_value(
@@ -268,7 +257,7 @@ def _refusal(services, params, request):  # pylint: disable=too-many-return-stat
             "preset. MPFB creates it when it loads, so this means the install is broken rather "
             "than that nothing has been saved yet. Nothing was created here: a command that made "
             "the directory would hide the problem.".format(request.confdir))
-    if _human_object_properties(services) is None:
+    if mpfb_surface.human_object_properties(services) is None:
         return blocked(
             "properties_unreachable",
             "MPFB's HumanObjectProperties could not be read off the HumanService module, so "

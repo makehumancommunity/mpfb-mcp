@@ -66,12 +66,12 @@ __all__ = (
     "set_macro_details",
 )
 
-import sys
 
 import bpy
 
 from ..log import get_logger
 from ..shared import macro_reading
+from ..shared import mpfb_surface
 from ..shared import subject_resolution
 from ..shared.performed import with_performed
 from ..shared.refit_blocker import rig_refit_is_blocked
@@ -100,18 +100,6 @@ PARAMS = (
 )
 
 SUMMARY = "Write a character's macro phenotype sliders and rebuild the shape from them."
-
-def _human_object_properties(services):
-    """MPFB's ``HumanObjectProperties``, or ``None``.
-
-    A ``BlenderConfigSet`` living on humanservice.py's module rather than a
-    service in ``SERVICES``, so it is reached through the module of a service
-    that already imported it - never by importing an MPFB submodule, several of
-    which create directories on import. Unlike the read-only macro command, this
-    one genuinely needs it: ``TargetService`` has no setter.
-    """
-    humanservice_module = sys.modules[services["HumanService"].__module__]
-    return getattr(humanservice_module, "HumanObjectProperties", None)
 
 
 def _flat_value(macro_details, property_name):
@@ -153,7 +141,7 @@ def _rig_refit_blocker(services, rig):
 
 def _precondition(services, target_service, basemesh):
     """Which of the three states blocks a write, and the sentence for it."""
-    if _human_object_properties(services) is None:
+    if mpfb_surface.human_object_properties(services) is None:
         return ("properties_unavailable",
                 "MPFB's HumanObjectProperties could not be reached, so no macro property can be "
                 "written. Call mpfb_get_status to check how this MPFB is installed.")
@@ -263,7 +251,7 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
                     "macro_details.",
         ), False)
 
-    HumanObjectProperties = _human_object_properties(services)
+    HumanObjectProperties = mpfb_surface.human_object_properties(services)
     details_before = macro_reading.macro_details_of(target_service, basemesh)
     shapekeys_before = _macro_shapekeys_of(target_service, basemesh)
 

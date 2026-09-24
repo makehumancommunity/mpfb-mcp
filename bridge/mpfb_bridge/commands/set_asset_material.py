@@ -73,11 +73,11 @@ __all__ = (
 )
 
 import os
-import sys
 
 import bpy
 
 from ..log import get_logger
+from ..shared import mpfb_surface
 from ..shared.performed import with_performed
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
@@ -109,26 +109,14 @@ PARAMS = (
 SUMMARY = "Apply an alternative material to an equipped asset, or restore its default."
 
 
-def _objectservice_module(services):
-    return sys.modules[services["ObjectService"].__module__]
-
-
-def _humanservice_module(services):
-    return sys.modules[services["HumanService"].__module__]
-
-
-def _general_object_properties(services):
-    return getattr(_objectservice_module(services), "GeneralObjectProperties", None)
-
-
 def _refused_types(services):
     """The three MPFB's own alternative-material panel refuses.
 
     The first two have a skin rather than an asset material - that is
     ``set_skin``'s job - and the third is not a mesh at all.
     """
-    skeleton_types = getattr(
-        _objectservice_module(services), "_SKELETON_TYPES", _SKELETON_TYPES_FALLBACK)
+    skeleton_types = mpfb_surface.module_level(
+        services, "ObjectService", "_SKELETON_TYPES", fallback=_SKELETON_TYPES_FALLBACK)
     return ("Basemesh", "Proxymeshes") + tuple(skeleton_types)
 
 
@@ -140,32 +128,8 @@ def _entities(services):
     read from, and both are read with a fallback of None so a renamed entity
     degrades into a sentence rather than a traceback.
     """
-    module = _humanservice_module(services)
-    return (getattr(module, "MakeSkinMaterial", None), getattr(module, "Mhclo", None))
-
-
-def _as_path(path):
-    """Coerce at the point a path enters the response.
-
-    Several AssetService helpers hand back ``pathlib.Path``, and one of those in
-    the response fails serialization and takes the whole answer down with it.
-    """
-    if not path:
-        return None
-    return str(path)
-
-
-def _property_value(config_set, property_name, blender_object):
-    """One custom property, or ``None`` when it was never set (it reads back as "")."""
-    if config_set is None or blender_object is None:
-        return None
-    try:
-        value = config_set.get_value(property_name, entity_reference=blender_object)
-    except Exception:  # pylint: disable=broad-except
-        return None
-    if not value:
-        return None
-    return str(value)
+    return (mpfb_surface.module_level(services, "HumanService", "MakeSkinMaterial", fallback=None),
+            mpfb_surface.module_level(services, "HumanService", "Mhclo", fallback=None))
 
 
 def _material_names(blender_object):
@@ -189,12 +153,12 @@ def _find_default_material(services, blender_object, asset_subdir):
     quite different situations look alike.
     """
     _makeskin, Mhclo = _entities(services)
-    source = _property_value(
-        _general_object_properties(services), "asset_source", blender_object)
+    source = mpfb_surface.property_value(
+        mpfb_surface.general_object_properties(services), "asset_source", blender_object)
     if not source:
         return (None, "asset_source_missing")
     try:
-        mhclo_path = _as_path(
+        mhclo_path = mpfb_surface.as_path(
             services["AssetService"].find_asset_absolute_path(source, asset_subdir))
     except Exception:  # pylint: disable=broad-except
         mhclo_path = None
@@ -212,7 +176,7 @@ def _find_default_material(services, blender_object, asset_subdir):
     material = getattr(mhclo, "material", None)
     if not material:
         return (None, "mhclo_names_no_material")
-    return (_as_path(material), None)
+    return (mpfb_surface.as_path(material), None)
 
 
 def _apply_mhmat(services, blender_object, mhmat_path):
@@ -279,8 +243,8 @@ def _resolve_arguments(services, params):
     # get_object_info's read of the same property. See the docstring.
     request.asset_subdir = (None if request.object_type is None
                             else str(request.object_type).lower())
-    request.previous_alternative_material = _property_value(
-        _general_object_properties(services), "alternative_material", request.asset)
+    request.previous_alternative_material = mpfb_surface.property_value(
+        mpfb_surface.general_object_properties(services), "alternative_material", request.asset)
 
     request.resolved_path = None
     request.default_material_reason = None
@@ -290,10 +254,10 @@ def _resolve_arguments(services, params):
             request.resolved_path, request.default_material_reason = _find_default_material(
                 services, request.asset, request.asset_subdir)
         elif params["path"] is not None:
-            request.resolved_path = _as_path(params["path"])
+            request.resolved_path = mpfb_surface.as_path(params["path"])
         elif request.asset_subdir is not None:
             try:
-                request.resolved_path = _as_path(
+                request.resolved_path = mpfb_surface.as_path(
                     services["AssetService"].find_asset_absolute_path(
                         params["fragment"], request.asset_subdir))
             except Exception:  # pylint: disable=broad-except
@@ -450,7 +414,7 @@ def set_asset_material(params, resolution):  # pylint: disable=too-many-locals
     """Apply one alternative material, or put the asset's own back."""
     services = resolution.services
     object_service = services["ObjectService"]
-    general_properties = _general_object_properties(services)
+    general_properties = mpfb_surface.general_object_properties(services)
 
     request = _resolve_arguments(services, params)
 
@@ -512,7 +476,7 @@ def set_asset_material(params, resolution):  # pylint: disable=too-many-locals
         except Exception:  # pylint: disable=broad-except
             pass
 
-    alternative_material = _property_value(
+    alternative_material = mpfb_surface.property_value(
         general_properties, "alternative_material", asset)
 
     _LOG.debug("set_asset_material: %r on %r, restore_default=%r",

@@ -55,6 +55,7 @@ import json
 import os
 
 from ..log import get_logger
+from ..shared import mpfb_surface
 from ..shared import rig_lookup
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
@@ -92,7 +93,7 @@ def _read_label_table(services, relative_path):
     move, and a missing label is decoration lost, not an answer lost.
     """
     try:
-        absolute = rig_lookup.as_path(
+        absolute = mpfb_surface.as_path(
             services["LocationService"].get_mpfb_root(relative_path))
         if absolute is None or not os.path.isfile(absolute):
             return dict()
@@ -158,7 +159,7 @@ def _custom_rig_dirs(services):
     seen = []
     for getter in (location_service.get_user_data, location_service.get_second_root):
         try:
-            root = rig_lookup.as_path(getter())
+            root = mpfb_surface.as_path(getter())
         except Exception:  # pylint: disable=broad-except
             root = None
         if root is None:
@@ -180,7 +181,7 @@ def _custom_entries(records):
     entries = []
     for record in records:
         name = str(record.get("name") or "")
-        rig_path = rig_lookup.as_path(record.get("path"))
+        rig_path = mpfb_surface.as_path(record.get("path"))
         if not name or rig_path is None:
             continue
         # add_custom_rig() does not use the fallback table at all: it looks only
@@ -211,7 +212,7 @@ def _unrecognized_custom_files(dirs, records):
     """The ``.json`` files in the user rig directories MPFB did not accept."""
     accepted = []
     for record in records:
-        record_path = rig_lookup.as_path(record.get("path"))
+        record_path = mpfb_surface.as_path(record.get("path"))
         if record_path is not None:
             accepted.append(os.path.normpath(record_path))
     unrecognized = []

@@ -39,9 +39,8 @@ __all__ = (
     "get_face_units",
 )
 
-import sys
-
 from ..log import get_logger
+from ..shared import mpfb_surface
 from ..shared import subject_resolution
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
@@ -63,11 +62,6 @@ PARAMS = (
 )
 
 SUMMARY = "Read the ARKit face units currently applied to a character's face."
-
-
-def _faceservice_module(services):
-    """``ARKIT_FACEUNITS`` and ``FACEUNIT_REGIONS`` are module-level, not on the class."""
-    return sys.modules[services["FaceService"].__module__]
 
 
 def _shapekey_present(target_service, basemesh, face_unit_name):
@@ -96,7 +90,12 @@ def get_face_units(params, resolution):
     services = resolution.services
     face_service = services["FaceService"]
     target_service = services["TargetService"]
-    faceservice_module = _faceservice_module(services)
+    # Required, not read with a fallback: the 52 units are on every answer, and
+    # a stale copy of them presented as MPFB's would be worse than a failure.
+    arkit_faceunits = mpfb_surface.required_module_level(
+        services, "FaceService", "ARKIT_FACEUNITS")
+    faceunit_regions = mpfb_surface.required_module_level(
+        services, "FaceService", "FACEUNIT_REGIONS")
 
     requested_name = params["name"]
     include_zero = params["include_zero"]
@@ -104,7 +103,7 @@ def get_face_units(params, resolution):
 
     installed = bool(face_service.is_faceunits01_installed(force_recheck=refresh))
     known_face_units = {
-        region: list(names) for region, names in faceservice_module.FACEUNIT_REGIONS.items()
+        region: list(names) for region, names in faceunit_regions.items()
     }
 
     basemesh, subject, subject_resolved_by, message = subject_resolution.resolve_basemesh(
@@ -119,7 +118,7 @@ def get_face_units(params, resolution):
             basemesh_name=None,
             face_units=[],
             face_unit_count=0,
-            total_count=len(faceservice_module.ARKIT_FACEUNITS),
+            total_count=len(arkit_faceunits),
             include_zero=include_zero,
             known_face_units=known_face_units,
             faceunits01_installed=installed,
@@ -129,7 +128,7 @@ def get_face_units(params, resolution):
     current = face_service.read_current_expression(basemesh)
 
     entries = []
-    for face_unit_name in faceservice_module.ARKIT_FACEUNITS:
+    for face_unit_name in arkit_faceunits:
         weight = float(current.get(face_unit_name, 0.0))
         if weight == 0.0 and not include_zero:
             continue
@@ -139,7 +138,7 @@ def get_face_units(params, resolution):
             shapekey_present=_shapekey_present(target_service, basemesh, face_unit_name),
         ))
 
-    total = len(faceservice_module.ARKIT_FACEUNITS)
+    total = len(arkit_faceunits)
     _LOG.debug("get_face_units: %d/%d units reported, installed=%r",
                len(entries), total, installed)
 

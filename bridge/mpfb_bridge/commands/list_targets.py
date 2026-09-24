@@ -54,6 +54,7 @@ __all__ = (
 import os
 
 from ..log import get_logger
+from ..shared import mpfb_surface
 from ..shared import target_categories
 from ..validation import Param
 from ..validation import TYPE_INTEGER
@@ -147,7 +148,7 @@ def _find_unindexed_dirs(system_targets_dir, indexed_names):
             continue
         unindexed.append({
             "name": entry,
-            "path": target_categories.as_path(directory),
+            "path": mpfb_surface.as_path(directory),
             "target_count": count,
         })
     return unindexed
@@ -165,7 +166,7 @@ def _user_target_entry(section_name, category):
     return {
         "name": _strip_target_extension(basename),
         "shapekey_name": category.get("shapekey_name"),
-        "path": target_categories.as_path(full_path),
+        "path": mpfb_surface.as_path(full_path),
         "section": section_name,
         "file_type": _target_file_type(basename),
         # False is a real MPFB scan asymmetry rather than anything decided here

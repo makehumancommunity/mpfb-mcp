@@ -62,7 +62,8 @@ __all__ = (
     "read_phenotype",
 )
 
-import sys
+
+from . import mpfb_surface
 
 RACE_NAMES = ("asian", "caucasian", "african")
 
@@ -142,8 +143,7 @@ def _target_stack_entries(target_service, macro_details):
 
 def _is_human_project_of(services, basemesh):
     """MPFB's own flag for "this was built as a character", or ``None``."""
-    humanservice_module = sys.modules[services["HumanService"].__module__]
-    human_properties = getattr(humanservice_module, "HumanObjectProperties", None)
+    human_properties = mpfb_surface.human_object_properties(services)
     if human_properties is None:
         return None
     return bool(human_properties.get_value("is_human_project", entity_reference=basemesh))

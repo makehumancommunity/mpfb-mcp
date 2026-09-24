@@ -51,11 +51,11 @@ __all__ = (
     "get_mpfb_status",
 )
 
-import sys
 
 import bpy
 
 from ..log import get_logger
+from ..shared import mpfb_surface
 
 _LOG = get_logger("commands.getmpfbstatus")
 
@@ -106,15 +106,9 @@ def _services_tier(result, services):
     system_service = services["SystemService"]
 
     # LOWEST_FUNCTIONAL_BLENDER_VERSION is a module-level constant in
-    # systemservice.py, not a member of SystemService and not in SERVICES. The
-    # module is necessarily already imported, since SystemService resolved out
-    # of it, so sys.modules is both the supported route and the cheap one -
-    # never `from ... import`, which stays forbidden for add-on code too.
-    lowest_blender = getattr(
-        sys.modules[system_service.__module__],
-        "LOWEST_FUNCTIONAL_BLENDER_VERSION",
-        None,
-    )
+    # systemservice.py, not a member of SystemService and not in SERVICES.
+    lowest_blender = mpfb_surface.module_level(
+        services, "SystemService", "LOWEST_FUNCTIONAL_BLENDER_VERSION", fallback=None)
 
     # Kept alongside build_info: a build rewrites BUILD_INFO *and* drops test/,
     # so the two disagreeing points at an unusual or partial install.

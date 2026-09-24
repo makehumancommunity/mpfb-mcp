@@ -57,11 +57,11 @@ __all__ = (
 )
 
 import os
-import sys
 
 import bpy
 
 from ..log import get_logger
+from ..shared import mpfb_surface
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
 from ..validation import TYPE_STRING
@@ -80,31 +80,6 @@ PARAMS = (
 SUMMARY = "List the alternative materials that ship beside one equipped asset."
 
 
-def _as_path(path):
-    """Coerce at the point a path enters the response.
-
-    Several AssetService helpers hand back ``pathlib.Path``, and the dispatcher
-    serializes a result before it commits to an answer - so one of those in the
-    response turns the whole call into ``result_not_serializable``.
-    """
-    if not path:
-        return None
-    return str(path)
-
-
-def _property_value(config_set, property_name, blender_object):
-    """One custom property, or None when it was never set (it reads back as "")."""
-    if config_set is None or blender_object is None:
-        return None
-    try:
-        value = config_set.get_value(property_name, entity_reference=blender_object)
-    except Exception:  # pylint: disable=broad-except
-        return None
-    if not value:
-        return None
-    return str(value)
-
-
 def _mpfb_entities(services):
     """``GeneralObjectProperties`` and ``Mhclo``, which are module-level in MPFB.
 
@@ -112,10 +87,8 @@ def _mpfb_entities(services):
     - never by importing an MPFB submodule, several of which create directories
     on import - and both are read with a fallback of ``None``.
     """
-    objectservice_module = sys.modules[services["ObjectService"].__module__]
-    humanservice_module = sys.modules[services["HumanService"].__module__]
-    return (getattr(objectservice_module, "GeneralObjectProperties", None),
-            getattr(humanservice_module, "Mhclo", None))
+    return (mpfb_surface.general_object_properties(services),
+            mpfb_surface.module_level(services, "HumanService", "Mhclo", fallback=None))
 
 
 def _default_material_for(services, mhclo_entity, asset_source, asset_subdir):
@@ -128,7 +101,7 @@ def _default_material_for(services, mhclo_entity, asset_source, asset_subdir):
     if not asset_source:
         return (None, "asset_source_missing")
     try:
-        mhclo_path = _as_path(
+        mhclo_path = mpfb_surface.as_path(
             services["AssetService"].find_asset_absolute_path(asset_source, asset_subdir))
     except Exception:  # pylint: disable=broad-except
         mhclo_path = None
@@ -145,7 +118,7 @@ def _default_material_for(services, mhclo_entity, asset_source, asset_subdir):
     material = getattr(mhclo, "material", None)
     if not material:
         return (None, "mhclo_names_no_material")
-    return (_as_path(material), None)
+    return (mpfb_surface.as_path(material), None)
 
 
 def _fragment_for(services, path, asset_subdir):
@@ -166,7 +139,8 @@ def _search_roots_for(services, asset_subdir):
         roots = services["AssetService"].get_asset_roots(asset_subdir)
     except Exception:  # pylint: disable=broad-except
         return []
-    return [_as_path(root) for root in (roots or []) if _as_path(root) is not None]
+    return [mpfb_surface.as_path(root) for root in (roots or [])
+            if mpfb_surface.as_path(root) is not None]
 
 
 def _not_found(requested_name, cache_invalidated):
@@ -267,8 +241,8 @@ def list_asset_materials(params, resolution):
     # MPFB's own derivation - see this module's docstring for why it is this and
     # not the shared section table.
     asset_subdir = str(object_type).lower()
-    asset_source = _property_value(general_properties, "asset_source", asset)
-    current_alternative_material = _property_value(
+    asset_source = mpfb_surface.property_value(general_properties, "asset_source", asset)
+    current_alternative_material = mpfb_surface.property_value(
         general_properties, "alternative_material", asset)
 
     default_material, default_material_reason = _default_material_for(
@@ -286,7 +260,7 @@ def list_asset_materials(params, resolution):
             found_paths = []
             scan_failed = True
         for found in found_paths or []:
-            path = _as_path(found)
+            path = mpfb_surface.as_path(found)
             if path is None:
                 continue
             materials.append(dict(

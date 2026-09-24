@@ -89,11 +89,11 @@ __all__ = (
 )
 
 import difflib
-import sys
 
 import bpy
 
 from ..log import get_logger
+from ..shared import mpfb_surface
 from ..shared import subject_resolution
 from ..shared.expression_divergence import divergence
 from ..shared.performed import with_performed
@@ -209,7 +209,6 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
     """Resolve the whole batch and the asset pack, then compose - or refuse cleanly."""
     services = resolution.services
     face_service = services["FaceService"]
-    faceservice_module = sys.modules[face_service.__module__]
     target_service = services["TargetService"]
     object_service = services["ObjectService"]
 
@@ -258,7 +257,9 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
             message=blocked_message,
         ), False)
 
-    unknown = _unknown_names(faceservice_module.ARKIT_FACEUNITS, requested)
+    unknown = _unknown_names(
+        mpfb_surface.required_module_level(services, "FaceService", "ARKIT_FACEUNITS"),
+        requested)
     if unknown:
         return with_performed(dict(
             found=True,

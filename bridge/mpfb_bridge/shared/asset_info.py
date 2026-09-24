@@ -58,9 +58,10 @@ __all__ = (
 )
 
 import os
-import sys
 
 import bpy
+
+from . import mpfb_surface
 
 # What to assume when MPFB stops publishing one of its private type
 # vocabularies. Copies rather than guesses, and the fallback rather than the
@@ -76,8 +77,8 @@ class Lookup:
     Assembled once per call rather than at import: MPFB can be disabled and
     re-enabled inside one Blender session, and a services dict cached across
     that is exactly the stale state nobody thinks to suspect. Gathering the four
-    private names here rather than at each use keeps the ``sys.modules`` reach
-    in one place, where the rule about it can be stated once.
+    private names here reads each once per call rather than at every use; how
+    they are read is [`mpfb_surface.py`](mpfb_surface.py)'s.
     """
 
     __slots__ = ("services", "skeleton_types", "mesh_asset_types",
@@ -85,50 +86,14 @@ class Lookup:
 
     def __init__(self, services):
         self.services = services
-        objectservice_module = sys.modules[services["ObjectService"].__module__]
-        humanservice_module = sys.modules[services["HumanService"].__module__]
-
-        self.skeleton_types = getattr(
-            objectservice_module, "_SKELETON_TYPES", _FALLBACK_SKELETON_TYPES)
-        self.mesh_asset_types = getattr(
-            objectservice_module, "_MESH_ASSET_TYPES", _FALLBACK_MESH_ASSET_TYPES)
+        self.skeleton_types = mpfb_surface.module_level(
+            services, "ObjectService", "_SKELETON_TYPES", fallback=_FALLBACK_SKELETON_TYPES)
+        self.mesh_asset_types = mpfb_surface.module_level(
+            services, "ObjectService", "_MESH_ASSET_TYPES", fallback=_FALLBACK_MESH_ASSET_TYPES)
         # GeneralObjectProperties is imported by objectservice.py;
         # HumanObjectProperties is not, and lives on humanservice.py's module.
-        self.general_properties = getattr(
-            objectservice_module, "GeneralObjectProperties", None)
-        self.human_properties = getattr(humanservice_module, "HumanObjectProperties", None)
-
-
-def _property_value(config_set, property_name, blender_object):
-    """One BlenderConfigSet string property, or ``None``.
-
-    These are entities rather than services, so they may be absent if MPFB
-    reorganizes - hence the guard rather than an attribute error deep in the
-    response build. An unset string property reads back as ``""``, which means
-    "nothing was recorded" and must not be reported as a fragment.
-    """
-    if config_set is None or blender_object is None:
-        return None
-    try:
-        value = config_set.get_value(property_name, entity_reference=blender_object)
-    except Exception:  # pylint: disable=broad-except
-        return None
-    if not value:
-        return None
-    return str(value)
-
-
-def _as_path(path):
-    """Coerce at the point a path enters the response.
-
-    MPFB's path getters are annotated as returning ``str``, but
-    ``LocationService.get_mpfb_root()`` has been caught handing back a
-    ``pathlib.Path``, which the dispatcher's serialize-before-answering check
-    would turn into a ``result_not_serializable`` envelope for the whole call.
-    """
-    if not path:
-        return None
-    return str(path)
+        self.general_properties = mpfb_surface.general_object_properties(services)
+        self.human_properties = mpfb_surface.human_object_properties(services)
 
 
 def _rig_definition_path(lookup, rig_type):
@@ -147,7 +112,7 @@ def _rig_definition_path(lookup, rig_type):
         wanted_name = rig_type[len("custom."):]
         for custom_rig in lookup.services["AssetService"].get_custom_rigs():
             if custom_rig.get("name") == wanted_name:
-                return _as_path(custom_rig.get("path"))
+                return mpfb_surface.as_path(custom_rig.get("path"))
         return None
     if rig_type.startswith("rigify_generated."):
         # Rigify built this from a metarig; it was never loaded from a
@@ -155,7 +120,7 @@ def _rig_definition_path(lookup, rig_type):
         return None
     is_rigify = rig_type.startswith("rigify.")
     rig_name = rig_type[len("rigify."):] if is_rigify else rig_type
-    rigs_directory = _as_path(lookup.services["LocationService"].get_mpfb_data("rigs"))
+    rigs_directory = mpfb_surface.as_path(lookup.services["LocationService"].get_mpfb_data("rigs"))
     if rigs_directory is None:
         return None
     candidate = os.path.join(
@@ -194,10 +159,11 @@ def _material_asset_info(lookup, blender_object, object_type):
     silently reports null for an asset that is installed, which is exactly the
     failure the fragment/path pairing exists to make visible.
     """
-    fragment = _property_value(lookup.human_properties, "material_source", blender_object)
+    fragment = mpfb_surface.property_value(
+        lookup.human_properties, "material_source", blender_object)
     asset_subdir = "skins"
     if fragment is None:
-        fragment = _property_value(
+        fragment = mpfb_surface.property_value(
             lookup.general_properties, "alternative_material", blender_object)
         asset_subdir = str(object_type).lower()
     if fragment is None:
@@ -206,7 +172,7 @@ def _material_asset_info(lookup, blender_object, object_type):
         return {"material_source": None, "mhmat_path": None}
     return {
         "material_source": fragment,
-        "mhmat_path": _as_path(
+        "mhmat_path": mpfb_surface.as_path(
             lookup.services["AssetService"].find_asset_absolute_path(fragment, asset_subdir)),
     }
 
@@ -230,7 +196,7 @@ def asset_info_for(lookup, blender_object, object_type):
         }
 
     if object_type in lookup.mesh_asset_types:
-        asset_source = _property_value(
+        asset_source = mpfb_surface.property_value(
             lookup.general_properties, "asset_source", blender_object)
         mhclo_path = None
         if asset_source is not None:
@@ -238,7 +204,7 @@ def asset_info_for(lookup, blender_object, object_type):
             # type and resolves both, for every mesh asset type and not only
             # Clothes. The file it points at may carry a .proxy extension rather
             # than .mhclo, since MPFB imports them all through the same format.
-            mhclo_path = _as_path(
+            mhclo_path = mpfb_surface.as_path(
                 lookup.services["ClothesService"].find_clothes_absolute_path(blender_object))
         info = {
             "asset_source": asset_source,

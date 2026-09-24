@@ -67,11 +67,11 @@ __all__ = (
 
 import json
 import os
-import sys
 
 import bpy
 
 from ..log import get_logger
+from ..shared import mpfb_surface
 from ..shared import preset_files
 from ..shared.performed import with_performed
 from ..validation import Param
@@ -145,20 +145,6 @@ PARAMS = (
 SUMMARY = "Create a new character from a saved preset, with optional overrides."
 
 
-def _general_object_properties(services):
-    """A ``BlenderConfigSet`` kept at module level rather than in SERVICES."""
-    return getattr(sys.modules[services["ObjectService"].__module__],
-                   "GeneralObjectProperties", None)
-
-
-def _as_path(path):
-    # MPFB's path getters are annotated as returning str and do not always do
-    # so; a pathlib.Path fails serialization and takes the response down with it.
-    if not path:
-        return None
-    return str(path)
-
-
 def _resolve_asset(services, fragment, subdir):
     """Where MPFB will look for one asset the preset names, or ``None``.
 
@@ -170,7 +156,7 @@ def _resolve_asset(services, fragment, subdir):
     if not fragment:
         return None
     try:
-        return _as_path(
+        return mpfb_surface.as_path(
             services["AssetService"].find_asset_absolute_path(str(fragment), subdir))
     except Exception:  # pylint: disable=broad-except
         return None
@@ -227,7 +213,7 @@ def _object_record(general_properties, blender_object, kind):
         return None
     record = dict(kind=kind, object_name=str(blender_object.name))
     try:
-        record["asset_source"] = _as_path(general_properties.get_value(
+        record["asset_source"] = mpfb_surface.as_path(general_properties.get_value(
             "asset_source", entity_reference=blender_object))
     except Exception:  # pylint: disable=broad-except
         record["asset_source"] = None
@@ -473,7 +459,7 @@ def create_human_from_preset(params, resolution):  # pylint: disable=too-many-lo
     """Build one character from one preset, and name what a failure left behind."""
     services = resolution.services
     object_service = services["ObjectService"]
-    general_properties = _general_object_properties(services)
+    general_properties = mpfb_surface.general_object_properties(services)
 
     request = _resolve(services, params)
 

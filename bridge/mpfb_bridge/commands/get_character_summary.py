@@ -69,11 +69,11 @@ __all__ = (
     "get_character_summary",
 )
 
-import sys
 
 from ..log import get_logger
 from ..shared import asset_info
 from ..shared import macro_reading
+from ..shared import mpfb_surface
 from ..shared import subject_resolution
 from ..shared import target_categories
 from ..shared import target_rollup
@@ -170,7 +170,8 @@ def _targets(services, basemesh):
 def _face(services, basemesh):
     """The non-zero face units as get_face_units reads them, and the stack as get_expression does."""
     face_service = services["FaceService"]
-    arkit_faceunits = sys.modules[face_service.__module__].ARKIT_FACEUNITS
+    arkit_faceunits = mpfb_surface.required_module_level(
+        services, "FaceService", "ARKIT_FACEUNITS")
     current = face_service.read_current_expression(basemesh)
     face_units = []
     for face_unit_name in arkit_faceunits:
