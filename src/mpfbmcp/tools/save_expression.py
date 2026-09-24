@@ -38,33 +38,13 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
 from mpfbmcp.artifact_names import validated_expression_name
 
 # Tags are a filter vocabulary for a human browsing a library; far more than
 # this is a caller that put the wrong list in the wrong argument.
 MAX_TAGS = 50
-
-
-def _validated_subject(name: object) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if name is None:
-        return None
-    if not isinstance(name, str):
-        raise ValueError("subject must be a string or omitted, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "subject must not be empty or whitespace; omit it to use the active object")
-    return name
-
-
-def _validated_overwrite(overwrite: object) -> bool:
-    if not isinstance(overwrite, bool):
-        # Deliberately not truthiness. This is the flag standing between a
-        # caller and an irreversible file replacement, so `overwrite="false"`
-        # must not read as permission to overwrite.
-        raise ValueError("overwrite must be a bool, got {!r}".format(overwrite))
-    return overwrite
 
 
 def _validated_text(argument: str, value: object) -> str:
@@ -150,8 +130,10 @@ def register(mcp: FastMCP) -> None:
                 # The authoritative check, here rather than in Blender: this
                 # name becomes a path. See mpfbmcp/artifact_names.py.
                 "name": validated_expression_name(name),
-                "subject": _validated_subject(subject),
-                "overwrite": _validated_overwrite(overwrite),
+                "subject": arguments.validated_subject(subject, "subject"),
+                # Not truthiness. This flag stands between a caller and an irreversible file
+                # replacement, so overwrite="false" must not read as permission to overwrite.
+                "overwrite": arguments.validated_flag(overwrite, "overwrite"),
                 "description": _validated_text("description", description),
                 "tags": _validated_tags(tags),
                 "author": _validated_text("author", author),

@@ -42,23 +42,9 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
 from mpfbmcp.artifact_names import validated_preset_name
-
-
-def _validated_optional_text(value: object, argument: str, hint: str) -> str | None:
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        raise ValueError(
-            "{:s} must be a string or omitted, got {!r}".format(argument, value))
-    if not value.strip():
-        # An explicitly empty value and an omitted one arise from different
-        # mistakes, and here the difference decides whether the preset's own
-        # value is used at all - so the empty one is never quietly treated as
-        # the omission.
-        raise ValueError("{:s} must not be empty or whitespace; {:s}".format(argument, hint))
-    return value.strip()
 
 
 def _validated_optional_flag(value: object, argument: str) -> bool | None:
@@ -69,6 +55,17 @@ def _validated_optional_flag(value: object, argument: str) -> bool | None:
         # load_clothes="false" would load the clothes it was asking to skip.
         raise ValueError("{:s} must be a bool or omitted, got {!r}".format(argument, value))
     return value
+
+
+def _stripped_text(value: object, argument: str, hint: str) -> str | None:
+    """:func:`arguments.validated_text`, stripped.
+
+    Stripped here, unlike anywhere else, because each of these decides whether
+    the preset's own value is used at all, and a value with stray whitespace
+    would otherwise be looked up verbatim and miss.
+    """
+    checked = arguments.validated_text(value, argument, hint)
+    return None if checked is None else checked.strip()
 
 
 def _validated_scale(scale: object) -> float | None:
@@ -175,21 +172,21 @@ def register(mcp: FastMCP) -> None:
                 # The authoritative check, here rather than in Blender: this
                 # name becomes a path. See mpfbmcp/artifact_names.py.
                 "name": validated_preset_name(name),
-                "override_rig": _validated_optional_text(
+                "override_rig": _stripped_text(
                     override_rig, "override_rig",
                     "omit it to use the preset's rig, or pass 'NONE' for no rig"),
-                "override_skin_model": _validated_optional_text(
+                "override_skin_model": _stripped_text(
                     override_skin_model, "override_skin_model",
                     "omit it to use the preset's skin model, or pass 'NONE' for no skin"),
-                "override_clothes_model": _validated_optional_text(
+                "override_clothes_model": _stripped_text(
                     override_clothes_model, "override_clothes_model",
                     "omit it to use the preset's clothes material model"),
-                "override_eyes_model": _validated_optional_text(
+                "override_eyes_model": _stripped_text(
                     override_eyes_model, "override_eyes_model",
                     "omit it to use the preset's eye material model"),
                 "load_clothes": _validated_optional_flag(load_clothes, "load_clothes"),
                 "scale": _validated_scale(scale),
-                "material_instances": _validated_optional_text(
+                "material_instances": _stripped_text(
                     material_instances, "material_instances",
                     "omit it for MPFB's preset panel default, ENHANCED"),
             },

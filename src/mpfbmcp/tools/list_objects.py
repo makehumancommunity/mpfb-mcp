@@ -21,23 +21,8 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
-
-
-def _validated_object_type(object_type: object) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if object_type is None:
-        return None
-    if not isinstance(object_type, str):
-        raise ValueError(
-            "object_type must be a string or omitted, got {!r}".format(object_type))
-    if not object_type.strip():
-        # Not merely useless: MPFB matches a type by substring, so an empty
-        # filter would match every type rather than none, and the caller would
-        # get a full listing back from what they meant as a narrow question.
-        raise ValueError(
-            "object_type must not be empty or whitespace; omit it to list every MakeHuman object")
-    return object_type
 
 
 def register(mcp: FastMCP) -> None:
@@ -92,5 +77,9 @@ def register(mcp: FastMCP) -> None:
         # rather than a repr() quietly standing in for one.
         return backend.send(
             "list_objects",
-            params={"object_type": _validated_object_type(object_type)},
+            # An empty filter is not merely useless: MPFB matches a type by
+            # substring, so it would match every type rather than none, and the
+            # caller would get a full listing back from a narrow question.
+            params={"object_type": arguments.validated_text(
+                object_type, "object_type", "omit it to list every MakeHuman object")},
         )

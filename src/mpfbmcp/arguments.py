@@ -1,0 +1,114 @@
+"""
+The shape of a tool's arguments, checked before anything is sent.
+
+Every rule here is one [validate before crossing the socket](../../specifications/tool-interface.md#validate-before-crossing-the-socket)
+states, and each exists because the alternative fails silently: ``True`` is an
+``int``, ``"false"`` is a true value, and an empty string is not the same
+mistake as an omitted argument. They were written once per tool until
+[FR 036](../../feature-requests/done/036-subject-resolver-and-duplication/README.md),
+eighteen times for a subject name and sixteen for a flag, and are written once
+here now. A module beside ``tools/`` rather than inside it, since a module in
+``tools/`` is a tool and has a ``register()``.
+
+**The rule is shared; the wording a tool owns is passed at its call site.** The
+refusal sentences are the ones the copies gave, word for word, and where a tool
+said something of its own - which asset it means and why the name is required,
+what an empty filter should have been instead - that phrase is an argument, so
+a reader of the tool can see it without opening this file. Why truthiness would
+do harm *for a given flag* is a comment at that flag's call site, where it is
+true.
+
+**Shape only, never vocabulary.** Whether a name is an object, a section a
+section, or a fragment a file is answered inside Blender. The two narrow
+exceptions, ``skin_type`` and ``meta_rig_action``, are checked by their own
+tools, since each is one tool's vocabulary.
+
+Nothing here imports anything from this package, so a tool importing it cannot
+pull in the wire or the record.
+"""
+
+from __future__ import annotations
+
+__all__ = (
+    "validated_asset_name",
+    "validated_count",
+    "validated_flag",
+    "validated_subject",
+    "validated_text",
+)
+
+
+def validated_subject(value: object, argument: str = "name") -> str | None:
+    """The optional name of the object a tool is about; ``None`` means the active one.
+
+    An explicitly empty name is refused rather than read as "use the active
+    object": the two come from different mistakes, and quietly answering about
+    whatever happens to be selected, when the caller believed they had named
+    something, is worse than failing here. ``argument`` is ``"subject"`` for the
+    two save tools, whose ``name`` is the file's.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("{:s} must be a string or omitted, got {!r}".format(argument, value))
+    if not value.strip():
+        raise ValueError(
+            "{:s} must not be empty or whitespace; omit it to use the active object".format(
+                argument))
+    return value
+
+
+def validated_asset_name(value: object, what: str, because: str) -> str:
+    """The required ``name`` of an equipped asset, which is never the active object.
+
+    Three tools act on one asset object and will not guess it. ``what`` names the
+    asset in that tool's terms, and ``because`` is the tool's own sentence on why
+    the name is required.
+    """
+    if not isinstance(value, str):
+        raise ValueError("name must be a string, got {!r}".format(value))
+    if not value.strip():
+        raise ValueError(
+            "name must be the Blender object name of {:s}, as mpfb_list_objects or "
+            "mpfb_add_asset reports it. {:s}".format(what, because))
+    return value
+
+
+def validated_flag(value: object, argument: str) -> bool:
+    """A real ``bool``, not merely a truthy value.
+
+    ``"false"`` and ``0`` are how a caller signals a bool it did not manage to
+    build, and ``"false"`` is a true value.
+    """
+    if not isinstance(value, bool):
+        raise ValueError("{:s} must be a bool, got {!r}".format(argument, value))
+    return value
+
+
+def validated_count(value: object, argument: str, maximum: int | None = None) -> int:
+    """A non-negative ``int`` that is not a ``bool``, and at most ``maximum``."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        # bool is a subclass of int, so `limit=True` would otherwise page one
+        # entry at a time rather than fail.
+        raise ValueError("{:s} must be an int, got {!r}".format(argument, value))
+    if value < 0:
+        raise ValueError("{:s} must not be negative, got {!r}".format(argument, value))
+    if maximum is not None and value > maximum:
+        raise ValueError("{:s} must be at most {}, got {!r}".format(argument, maximum, value))
+    return value
+
+
+def validated_text(value: object, argument: str, hint: str) -> str | None:
+    """Optional non-empty text, returned as given; ``hint`` says what to do instead.
+
+    An explicitly empty value and an omitted one arise from different mistakes,
+    so the empty one is never quietly treated as the omission - which matters
+    most where "omitted" means something, such as half of an exactly-one-of rule.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("{:s} must be a string or omitted, got {!r}".format(argument, value))
+    if not value.strip():
+        raise ValueError("{:s} must not be empty or whitespace; {:s}".format(argument, hint))
+    return value

@@ -27,17 +27,8 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
-
-
-def _validated_refresh(refresh: object) -> bool:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if not isinstance(refresh, bool):
-        # Deliberately not truthiness: 0/1 and "false" are how a caller signals
-        # a bool it did not manage to build, and quietly accepting them would
-        # make `refresh="false"` rescan the disk.
-        raise ValueError("refresh must be a bool, got {!r}".format(refresh))
-    return refresh
 
 
 def register(mcp: FastMCP) -> None:
@@ -94,7 +85,8 @@ def register(mcp: FastMCP) -> None:
         # rather than a repr() quietly standing in for one.
         return backend.send(
             "list_presets",
-            params={"refresh": _validated_refresh(refresh)},
+            # Not truthiness: refresh="false" would rescan the disk.
+            params={"refresh": arguments.validated_flag(refresh, "refresh")},
             # Shared with the two tools that act on what this lists: one rule
             # for which names are legal, one construction of the path they
             # address. A preset this tool names must be one those two can open.

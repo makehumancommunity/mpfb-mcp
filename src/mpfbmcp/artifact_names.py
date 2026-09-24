@@ -22,12 +22,12 @@ generalised this module from ``preset_names.py`` rather than copying it: two
 copies of one rule per side of the socket is already justified only by what a
 gap would cost, and a third and fourth would have had no such justification.
 
-A module rather than a helper copied into the tool modules, which is what the
-other small validators here are. The difference is what a disagreement would
-cost: two tool modules that accept different characters would let a preset be
-written under a name that cannot be loaded back, silently, and only for the
-names in the gap between them. The small validators can differ without anything
-happening.
+A module of its own rather than a function in [arguments.py](arguments.py),
+where the other shape rules are, because this one is about what a name becomes:
+a file. And a disagreement would cost more here than anywhere: two tool modules
+that accepted different characters would let a preset be written under a name
+that cannot be loaded back, silently, and only for the names in the gap between
+them.
 
 The rule is deliberately **stricter than MPFB's**, and strict in one direction
 only. ``savenewpresets.py`` rejects an empty name and a name containing a space,

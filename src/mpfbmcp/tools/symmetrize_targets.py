@@ -28,34 +28,10 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
 
 _DIRECTIONS = ("left_to_right", "right_to_left")
-
-
-def _validated_name(name: object) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if name is None:
-        return None
-    if not isinstance(name, str):
-        raise ValueError("name must be a string or omitted, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "name must not be empty or whitespace; omit it to use the active object")
-    return name
-
-
-def _validated_section(section: object) -> str | None:
-    if section is None:
-        return None
-    if not isinstance(section, str):
-        raise ValueError("section must be a string or omitted, got {!r}".format(section))
-    if not section.strip():
-        # An explicitly empty value and an omitted one arise from different
-        # mistakes, so the empty one is never quietly treated as the omission.
-        raise ValueError(
-            "section must not be empty or whitespace; omit it to cover every section")
-    return section
 
 
 def _validated_direction(direction: object) -> str:
@@ -68,13 +44,6 @@ def _validated_direction(direction: object) -> str:
         raise ValueError(
             "direction must be one of {}, got {!r}".format(", ".join(_DIRECTIONS), direction))
     return direction
-
-
-def _validated_flag(argument: str, value: object) -> bool:
-    if not isinstance(value, bool):
-        # Deliberately not truthiness: `dry_run="false"` would otherwise write.
-        raise ValueError("{} must be a bool, got {!r}".format(argument, value))
-    return value
 
 
 def register(mcp: FastMCP) -> None:
@@ -144,11 +113,13 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "symmetrize_targets",
             params={
-                "name": _validated_name(name),
+                "name": arguments.validated_subject(name),
                 "direction": _validated_direction(direction),
-                "section": _validated_section(section),
-                "dry_run": _validated_flag("dry_run", dry_run),
-                "prune": _validated_flag("prune", prune),
-                "refit": _validated_flag("refit", refit),
+                "section": arguments.validated_text(
+                    section, "section", "omit it to cover every section"),
+                # Not truthiness: dry_run="false" would write.
+                "dry_run": arguments.validated_flag(dry_run, "dry_run"),
+                "prune": arguments.validated_flag(prune, "prune"),
+                "refit": arguments.validated_flag(refit, "refit"),
             },
         )

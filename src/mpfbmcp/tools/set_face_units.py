@@ -40,6 +40,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
 
 _ENTRY_KEYS = ("face_unit", "weight")
@@ -47,27 +48,6 @@ _ENTRY_KEYS = ("face_unit", "weight")
 # Generous, but not unbounded: MPFB only has 52 face units, so a caller sending
 # more than this made a mistake worth catching locally.
 MAX_ENTRIES = 200
-
-
-def _validated_name(name: object) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if name is None:
-        return None
-    if not isinstance(name, str):
-        raise ValueError("name must be a string or omitted, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "name must not be empty or whitespace; omit it to use the active object")
-    return name
-
-
-def _validated_flag(argument: str, value: object) -> bool:
-    if not isinstance(value, bool):
-        # Deliberately not truthiness: "false" and 0 are how a caller signals a
-        # bool it did not manage to build, and accepting them quietly would make
-        # `clear_first="false"` zero the whole face.
-        raise ValueError("{} must be a bool, got {!r}".format(argument, value))
-    return value
 
 
 def _validated_face_units(value: object) -> list[dict]:
@@ -182,9 +162,10 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "set_face_units",
             params={
-                "name": _validated_name(name),
+                "name": arguments.validated_subject(name),
                 "face_units": _validated_face_units(face_units),
-                "clear_first": _validated_flag("clear_first", clear_first),
-                "refit": _validated_flag("refit", refit),
+                # Not truthiness: clear_first="false" would zero the whole face.
+                "clear_first": arguments.validated_flag(clear_first, "clear_first"),
+                "refit": arguments.validated_flag(refit, "refit"),
             },
         )

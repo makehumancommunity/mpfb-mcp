@@ -39,36 +39,13 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
 
 # MPFB's own enum, in MPFB's own order. Kept here rather than resolved in
 # Blender because it is a fixed vocabulary in MPFB's source, not a scan of
 # anything - the opposite of the rig identifiers, which are a directory listing.
 _META_RIG_ACTIONS = ("keep", "hide", "delete")
-
-
-def _validated_name(name: object) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if name is None:
-        return None
-    if not isinstance(name, str):
-        raise ValueError("name must be a string or omitted, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "name must not be empty or whitespace; omit it to use the active object")
-    return name
-
-
-def _validated_rig_name(rig_name: object) -> str | None:
-    if rig_name is None:
-        return None
-    if not isinstance(rig_name, str):
-        raise ValueError("rig_name must be a string or omitted, got {!r}".format(rig_name))
-    if not rig_name.strip():
-        raise ValueError(
-            "rig_name must not be empty or whitespace; omit it to let MPFB derive a unique name "
-            "from the meta rig's")
-    return rig_name
 
 
 def _validated_meta_rig_action(action: object) -> str:
@@ -151,8 +128,10 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "generate_rigify_rig",
             params={
-                "name": _validated_name(name),
-                "rig_name": _validated_rig_name(rig_name),
+                "name": arguments.validated_subject(name),
+                "rig_name": arguments.validated_text(
+                    rig_name, "rig_name",
+                    "omit it to let MPFB derive a unique name from the meta rig's"),
                 "meta_rig_action": _validated_meta_rig_action(meta_rig_action),
             },
         )

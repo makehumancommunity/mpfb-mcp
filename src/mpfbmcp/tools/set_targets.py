@@ -37,6 +37,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
 
 _MODIFIER_KEYS = ("section", "category", "value", "side")
@@ -46,27 +47,6 @@ _SIDES = ("left", "right", "unsided")
 # Generous, but not unbounded: a batch is one exec() inside Blender, and a
 # runaway list would be a very long-running call with no way to report progress.
 MAX_ENTRIES = 500
-
-
-def _validated_name(name: object) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if name is None:
-        return None
-    if not isinstance(name, str):
-        raise ValueError("name must be a string or omitted, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "name must not be empty or whitespace; omit it to use the active object")
-    return name
-
-
-def _validated_flag(argument: str, value: object) -> bool:
-    if not isinstance(value, bool):
-        # Deliberately not truthiness: "false" and 0 are how a caller signals a
-        # bool it did not manage to build, and accepting them quietly would make
-        # `refit="false"` pay for a full asset refit.
-        raise ValueError("{} must be a bool, got {!r}".format(argument, value))
-    return value
 
 
 def _validated_number(where: str, value: object, low: float, high: float) -> float:
@@ -228,11 +208,12 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "set_targets",
             params={
-                "name": _validated_name(name),
+                "name": arguments.validated_subject(name),
                 "modifiers": _validated_modifiers(modifiers),
                 "targets": _validated_targets(targets),
-                "symmetry": _validated_flag("symmetry", symmetry),
-                "prune": _validated_flag("prune", prune),
-                "refit": _validated_flag("refit", refit),
+                "symmetry": arguments.validated_flag(symmetry, "symmetry"),
+                "prune": arguments.validated_flag(prune, "prune"),
+                # Not truthiness: refit="false" would pay for a full asset refit.
+                "refit": arguments.validated_flag(refit, "refit"),
             },
         )

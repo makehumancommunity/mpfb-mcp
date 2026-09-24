@@ -36,19 +36,8 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
-
-
-def _validated_name(name: object) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if name is None:
-        return None
-    if not isinstance(name, str):
-        raise ValueError("name must be a string or omitted, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "name must not be empty or whitespace; omit it to use the active object")
-    return name
 
 
 def _validated_identifier(identifier: object) -> str:
@@ -59,15 +48,6 @@ def _validated_identifier(identifier: object) -> str:
         raise ValueError(
             "identifier must name a rig; call mpfb_list_rigs and pass an entry's 'identifier'")
     return identifier
-
-
-def _validated_flag(argument: str, value: object) -> bool:
-    if not isinstance(value, bool):
-        # Deliberately not truthiness: "false" and 0 are how a caller signals a
-        # bool it did not manage to build, and import_weights="false" would
-        # otherwise add a rig the character is parented to but not deformed by.
-        raise ValueError("{:s} must be a bool, got {!r}".format(argument, value))
-    return value
 
 
 def register(mcp: FastMCP) -> None:
@@ -138,9 +118,11 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "add_rig",
             params={
-                "name": _validated_name(name),
+                "name": arguments.validated_subject(name),
                 "identifier": _validated_identifier(identifier),
-                "import_weights": _validated_flag("import_weights", import_weights),
+                # Not truthiness: import_weights="false" would add a rig the character is parented
+                # to but not deformed by.
+                "import_weights": arguments.validated_flag(import_weights, "import_weights"),
             },
             # Shared with mpfb_list_rigs' command, which predicts what this tool
             # then does. One implementation of "which file, whose weights", so

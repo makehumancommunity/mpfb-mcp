@@ -31,19 +31,8 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
-
-
-def _validated_name(name: object) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if name is None:
-        return None
-    if not isinstance(name, str):
-        raise ValueError("name must be a string or omitted, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "name must not be empty or whitespace; omit it to use the active object")
-    return name
 
 
 def register(mcp: FastMCP) -> None:
@@ -90,5 +79,5 @@ def register(mcp: FastMCP) -> None:
         # rather than a repr() quietly standing in for one.
         return backend.send(
             "refit_human",
-            params={"name": _validated_name(name)},
+            params={"name": arguments.validated_subject(name)},
         )

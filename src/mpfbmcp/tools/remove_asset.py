@@ -27,19 +27,8 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
-
-
-def _validated_name(name: object) -> str:
-    """Shape only. Whether the name is an asset is answered inside Blender."""
-    if not isinstance(name, str):
-        raise ValueError("name must be a string, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "name must be the Blender object name of the asset to remove, as mpfb_list_objects "
-            "or mpfb_add_asset reports it. It is required: this tool deletes an object, so it "
-            "will not act on whatever happens to be active.")
-    return name
 
 
 def register(mcp: FastMCP) -> None:
@@ -98,6 +87,9 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "remove_asset",
             params={
-                "name": _validated_name(name),
+                "name": arguments.validated_asset_name(
+                    name, what="the asset to remove",
+                    because=("It is required: this tool deletes an object, so it will not act "
+                             "on whatever happens to be active.")),
             },
         )

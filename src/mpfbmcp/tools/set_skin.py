@@ -46,6 +46,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
 
 # MPFB's five skin models, from ui/apply_assets/assetlibrary/properties/skin_type.json.
@@ -59,32 +60,6 @@ SKIN_TYPES = ("MAKESKIN", "GAMEENGINE", "ENHANCED", "ENHANCED_SSS", "LAYERED")
 # HumanService._set_skin() returns early for a missing MHMAT unless the type is
 # this one.
 NEEDS_NO_FILE = "LAYERED"
-
-
-def _validated_name(name: object) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if name is None:
-        return None
-    if not isinstance(name, str):
-        raise ValueError("name must be a string or omitted, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "name must not be empty or whitespace; omit it to use the active object")
-    return name
-
-
-def _validated_optional_text(value: object, argument: str, hint: str) -> str | None:
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        raise ValueError(
-            "{:s} must be a string or omitted, got {!r}".format(argument, value))
-    if not value.strip():
-        # An explicitly empty value and an omitted one arise from different
-        # mistakes, and here the difference decides whether a file is wanted at
-        # all - so the empty one is never quietly treated as the omission.
-        raise ValueError("{:s} must not be empty or whitespace; {:s}".format(argument, hint))
-    return value
 
 
 def _validated_skin_type(skin_type: object) -> str:
@@ -121,9 +96,9 @@ def _validated_source(
     that has a material to build when handed no file at all, so "neither" is a
     meaningful request there and a mistake everywhere else.
     """
-    checked_path = _validated_optional_text(
+    checked_path = arguments.validated_text(
         path, "path", "pass mpfb_list_assets' 'path' for a skin, or use 'fragment' instead")
-    checked_fragment = _validated_optional_text(
+    checked_fragment = arguments.validated_text(
         fragment, "fragment", "pass mpfb_list_assets' 'fragment' for a skin, or use 'path'")
     if checked_path is not None and checked_fragment is not None:
         raise ValueError(
@@ -136,15 +111,6 @@ def _validated_source(
             "portable identifier resolved against this Blender's asset roots. Only "
             "skin_type='{:s}' can build a material with no MHMAT at all.".format(NEEDS_NO_FILE))
     return (checked_path, checked_fragment)
-
-
-def _validated_flag(argument: str, value: object) -> bool:
-    if not isinstance(value, bool):
-        # Deliberately not truthiness: "false" and 0 are how a caller signals a
-        # bool it did not manage to build, and material_instances="false" would
-        # otherwise create the per-region slots it was asking not to have.
-        raise ValueError("{:s} must be a bool, got {!r}".format(argument, value))
-    return value
 
 
 def register(mcp: FastMCP) -> None:
@@ -231,12 +197,14 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "set_skin",
             params={
-                "name": _validated_name(name),
+                "name": arguments.validated_subject(name),
                 "path": checked_path,
                 "fragment": checked_fragment,
                 "skin_type": checked_skin_type,
-                "material_instances": _validated_flag(
-                    "material_instances", material_instances),
+                # Not truthiness: material_instances="false" would create the per-region slots it
+                # was asking not to have.
+                "material_instances": arguments.validated_flag(
+                    material_instances, "material_instances"),
             },
             # Shared with mpfb_list_assets' command, which reported this skin's
             # fragment under the object_type "Material". The only thing that

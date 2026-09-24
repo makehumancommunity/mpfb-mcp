@@ -48,6 +48,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
 
 _ENTRY_KEYS = ("fragment", "weight")
@@ -59,30 +60,11 @@ MODES = ("merge", "replace")
 MAX_ENTRIES = 100
 
 
-def _validated_name(name: object) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if name is None:
-        return None
-    if not isinstance(name, str):
-        raise ValueError("name must be a string or omitted, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "name must not be empty or whitespace; omit it to use the active object")
-    return name
-
-
 def _validated_mode(mode: object) -> str:
     if mode not in MODES:
         # Checked here as well as in Blender: see the module docstring.
         raise ValueError("mode must be one of {}, got {!r}".format(", ".join(MODES), mode))
     return mode  # type: ignore[return-value]
-
-
-def _validated_refit(refit: object) -> bool:
-    if not isinstance(refit, bool):
-        # Deliberately not truthiness: `refit="false"` is a true value.
-        raise ValueError("refit must be a bool, got {!r}".format(refit))
-    return refit
 
 
 def _validated_expressions(value: object) -> list[dict]:
@@ -182,9 +164,10 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "apply_expressions",
             params={
-                "name": _validated_name(name),
+                "name": arguments.validated_subject(name),
                 "expressions": _validated_expressions(expressions),
                 "mode": _validated_mode(mode),
-                "refit": _validated_refit(refit),
+                # Not truthiness: refit="false" is a true value.
+                "refit": arguments.validated_flag(refit, "refit"),
             },
         )

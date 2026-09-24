@@ -45,29 +45,9 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
 from mpfbmcp.artifact_names import validated_preset_name
-
-
-def _validated_subject(name: object) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if name is None:
-        return None
-    if not isinstance(name, str):
-        raise ValueError("subject must be a string or omitted, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "subject must not be empty or whitespace; omit it to use the active object")
-    return name
-
-
-def _validated_overwrite(overwrite: object) -> bool:
-    if not isinstance(overwrite, bool):
-        # Deliberately not truthiness. This is the flag standing between a
-        # caller and an irreversible file replacement, so `overwrite="false"`
-        # must not read as permission to overwrite.
-        raise ValueError("overwrite must be a bool, got {!r}".format(overwrite))
-    return overwrite
 
 
 def register(mcp: FastMCP) -> None:
@@ -141,8 +121,10 @@ def register(mcp: FastMCP) -> None:
                 # The authoritative check, here rather than in Blender: this
                 # name becomes a path. See mpfbmcp/artifact_names.py.
                 "name": validated_preset_name(name),
-                "subject": _validated_subject(subject),
-                "overwrite": _validated_overwrite(overwrite),
+                "subject": arguments.validated_subject(subject, "subject"),
+                # Not truthiness. This flag stands between a caller and an irreversible file
+                # replacement, so overwrite="false" must not read as permission to overwrite.
+                "overwrite": arguments.validated_flag(overwrite, "overwrite"),
             },
             # preset_files.py so that this tool, the catalogue and the load tool
             # cannot disagree about which names are legal or where the file is;

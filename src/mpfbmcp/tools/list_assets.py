@@ -32,52 +32,13 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
 
 # A page of 1000 entries is already more than an agent can usefully read; the
 # ceiling is here so that an over-broad call is capped rather than answered with
 # the whole library.
 MAX_LIMIT = 1000
-
-
-def _validated_text(value: object, argument: str, hint: str) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        raise ValueError(
-            "{} must be a string or omitted, got {!r}".format(argument, value))
-    if not value.strip():
-        # An explicitly empty value and an omitted one arise from different
-        # mistakes, so the empty one is never quietly treated as the omission.
-        raise ValueError("{} must not be empty or whitespace; {}".format(argument, hint))
-    return value
-
-
-def _validated_count(value: object, argument: str, maximum: int | None) -> int:
-    """Reject a non-int, a bool, a negative, and a limit above the ceiling."""
-    if isinstance(value, bool) or not isinstance(value, int):
-        # bool is a subclass of int, so `limit=True` would otherwise page one
-        # entry at a time rather than fail.
-        raise ValueError(
-            "{} must be an int, got {!r}".format(argument, value))
-    if value < 0:
-        raise ValueError("{} must not be negative, got {!r}".format(argument, value))
-    if maximum is not None and value > maximum:
-        raise ValueError(
-            "{} must be at most {}, got {!r}".format(argument, maximum, value))
-    return value
-
-
-def _validated_refresh(refresh: object) -> bool:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if not isinstance(refresh, bool):
-        # Deliberately not truthiness: 0/1 and "false" are how a caller signals
-        # a bool it did not manage to build, and quietly accepting them would
-        # make `refresh="false"` rescan the entire library.
-        raise ValueError(
-            "refresh must be a bool, got {!r}".format(refresh))
-    return refresh
 
 
 def register(mcp: FastMCP) -> None:
@@ -171,17 +132,18 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "list_assets",
             params={
-                "asset_subdir": _validated_text(
+                "asset_subdir": arguments.validated_text(
                     asset_subdir, "asset_subdir",
                     "omit it to search every asset subdir"),
-                "name_contains": _validated_text(
+                "name_contains": arguments.validated_text(
                     name_contains, "name_contains",
                     "omit it to match every name"),
-                "pack": _validated_text(
+                "pack": arguments.validated_text(
                     pack, "pack", "omit it to match assets from every pack"),
-                "limit": _validated_count(limit, "limit", MAX_LIMIT),
-                "offset": _validated_count(offset, "offset", None),
-                "refresh": _validated_refresh(refresh),
+                "limit": arguments.validated_count(limit, "limit", MAX_LIMIT),
+                "offset": arguments.validated_count(offset, "offset", None),
+                # Not truthiness: refresh="false" would rescan the entire library.
+                "refresh": arguments.validated_flag(refresh, "refresh"),
             },
             # Shared with mpfb_add_asset's command, which is handed the
             # object_type and fragment reported here and has to map them back to

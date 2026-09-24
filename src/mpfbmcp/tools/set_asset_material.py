@@ -37,36 +37,8 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
-
-
-def _validated_name(name: object) -> str:
-    """Shape only. Whether the name is an equipped asset is answered in Blender."""
-    if not isinstance(name, str):
-        raise ValueError("name must be a string, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "name must be the Blender object name of the asset whose material should change, as "
-            "mpfb_list_objects or mpfb_add_asset reports it. It is required: this tool destroys "
-            "that object's material, so it will not act on whatever happens to be active.")
-    return name
-
-
-def _validated_optional_text(value: object, argument: str, hint: str) -> str | None:
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        raise ValueError(
-            "{:s} must be a string or omitted, got {!r}".format(argument, value))
-    if not value.strip():
-        raise ValueError("{:s} must not be empty or whitespace; {:s}".format(argument, hint))
-    return value
-
-
-def _validated_flag(argument: str, value: object) -> bool:
-    if not isinstance(value, bool):
-        raise ValueError("{:s} must be a bool, got {!r}".format(argument, value))
-    return value
 
 
 def _validated_request(
@@ -80,9 +52,9 @@ def _validated_request(
     modifier of the other two: it names no file at all, because the file it wants
     is whatever the asset's own MHCLO points at.
     """
-    checked_path = _validated_optional_text(
+    checked_path = arguments.validated_text(
         path, "path", "pass mpfb_list_asset_materials' 'path', or use 'fragment' instead")
-    checked_fragment = _validated_optional_text(
+    checked_fragment = arguments.validated_text(
         fragment, "fragment", "pass mpfb_list_asset_materials' 'fragment', or use 'path'")
     if checked_path is not None and checked_fragment is not None:
         raise ValueError(
@@ -164,7 +136,7 @@ def register(mcp: FastMCP) -> None:
         MPFB's own panel refuses all three, and the first two have a skin
         rather than an asset material, which is `mpfb_set_skin`'s job.
         """
-        checked_restore = _validated_flag("restore_default", restore_default)
+        checked_restore = arguments.validated_flag(restore_default, "restore_default")
         checked_path, checked_fragment = _validated_request(
             path, fragment, checked_restore)
         # `result` (built in bridge/mpfb_bridge/commands/set_asset_material.py) is plain
@@ -174,7 +146,10 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "set_asset_material",
             params={
-                "name": _validated_name(name),
+                "name": arguments.validated_asset_name(
+                    name, what="the asset whose material should change",
+                    because=("It is required: this tool destroys that object's material, so it "
+                             "will not act on whatever happens to be active.")),
                 "path": checked_path,
                 "fragment": checked_fragment,
                 "restore_default": checked_restore,

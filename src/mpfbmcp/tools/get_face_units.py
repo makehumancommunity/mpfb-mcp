@@ -27,28 +27,8 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
-
-
-def _validated_name(name: object) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if name is None:
-        return None
-    if not isinstance(name, str):
-        raise ValueError("name must be a string or omitted, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "name must not be empty or whitespace; omit it to use the active object")
-    return name
-
-
-def _validated_flag(argument: str, value: object) -> bool:
-    if not isinstance(value, bool):
-        # Deliberately not truthiness: "false" and 0 are how a caller signals a
-        # bool it did not manage to build, and accepting them quietly would make
-        # `refresh="false"` bust a cache it should have left alone.
-        raise ValueError("{} must be a bool, got {!r}".format(argument, value))
-    return value
 
 
 def register(mcp: FastMCP) -> None:
@@ -98,8 +78,9 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "get_face_units",
             params={
-                "name": _validated_name(name),
-                "include_zero": _validated_flag("include_zero", include_zero),
-                "refresh": _validated_flag("refresh", refresh),
+                "name": arguments.validated_subject(name),
+                "include_zero": arguments.validated_flag(include_zero, "include_zero"),
+                # Not truthiness: refresh="false" would bust a cache it should have left alone.
+                "refresh": arguments.validated_flag(refresh, "refresh"),
             },
         )

@@ -37,21 +37,8 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp.reference import docs
-
-
-def _validated_text(value: object, argument: str, hint: str) -> str | None:
-    """Reject the shape, never the vocabulary - the same check every filter here makes."""
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        raise ValueError(
-            "{} must be a string or omitted, got {!r}".format(argument, value))
-    if not value.strip():
-        # An explicitly empty value and an omitted one arise from different
-        # mistakes, so the empty one is never quietly treated as the omission.
-        raise ValueError("{} must not be empty or whitespace; {}".format(argument, hint))
-    return value
 
 
 def register(mcp: FastMCP) -> None:
@@ -104,9 +91,9 @@ def register(mcp: FastMCP) -> None:
         Not capped and not paged: under twenty entries, so no `truncated` or
         `total_count` to check.
         """
-        requested_topic = _validated_text(
+        requested_topic = arguments.validated_text(
             topic, "topic", "omit it to search every topic")
-        requested_keyword = _validated_text(
+        requested_keyword = arguments.validated_text(
             keyword, "keyword", "omit it to match every document")
 
         recognized = (requested_topic is None

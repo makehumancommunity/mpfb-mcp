@@ -27,14 +27,8 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
-
-
-def _validated_refresh(refresh: object) -> bool:
-    if not isinstance(refresh, bool):
-        # Deliberately not truthiness: `refresh="false"` is a true value.
-        raise ValueError("refresh must be a bool, got {!r}".format(refresh))
-    return refresh
 
 
 def register(mcp: FastMCP) -> None:
@@ -72,5 +66,6 @@ def register(mcp: FastMCP) -> None:
         # plain JSON-safe data.
         return backend.send(
             "list_expressions",
-            params={"refresh": _validated_refresh(refresh)},
+            # Not truthiness: refresh="false" is a true value.
+            params={"refresh": arguments.validated_flag(refresh, "refresh")},
         )

@@ -42,34 +42,8 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
-
-
-def _validated_name(name: object) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if name is None:
-        return None
-    if not isinstance(name, str):
-        raise ValueError("name must be a string or omitted, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "name must not be empty or whitespace; omit it to use the active object")
-    return name
-
-
-def _validated_optional_text(value: object, argument: str, hint: str) -> str | None:
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        raise ValueError(
-            "{:s} must be a string or omitted, got {!r}".format(argument, value))
-    if not value.strip():
-        # An explicitly empty value and an omitted one arise from different
-        # mistakes, so the empty one is never quietly treated as the omission -
-        # which matters especially here, where "omitted" is half of the
-        # exactly-one-of rule below.
-        raise ValueError("{:s} must not be empty or whitespace; {:s}".format(argument, hint))
-    return value
 
 
 def _validated_asset_type(asset_type: object) -> str:
@@ -93,9 +67,9 @@ def _validated_source(path: object, fragment: object) -> tuple[str | None, str |
     moved to another machine. Neither is a superset of the other, and taking
     only one of them would make half of every catalogue entry decorative.
     """
-    checked_path = _validated_optional_text(
+    checked_path = arguments.validated_text(
         path, "path", "pass mpfb_list_assets' 'path', or use 'fragment' instead")
-    checked_fragment = _validated_optional_text(
+    checked_fragment = arguments.validated_text(
         fragment, "fragment", "pass mpfb_list_assets' 'fragment', or use 'path' instead")
     if checked_path is not None and checked_fragment is not None:
         raise ValueError(
@@ -107,26 +81,6 @@ def _validated_source(path: object, fragment: object) -> tuple[str | None, str |
             "mpfb_list_assets: 'path' is the absolute file, 'fragment' is the portable "
             "identifier resolved against this Blender's asset roots.")
     return (checked_path, checked_fragment)
-
-
-def _validated_subdiv_levels(value: object) -> int:
-    if isinstance(value, bool) or not isinstance(value, int):
-        # bool is a subclass of int, so subdiv_levels=True would otherwise mean
-        # 1 rather than fail.
-        raise ValueError("subdiv_levels must be an int, got {!r}".format(value))
-    if value < 0:
-        raise ValueError("subdiv_levels must not be negative, got {!r}".format(value))
-    return value
-
-
-def _validated_flag(argument: str, value: object) -> bool:
-    if not isinstance(value, bool):
-        # Deliberately not truthiness: "false" and 0 are how a caller signals a
-        # bool it did not manage to build, and import_weights="false" would
-        # otherwise produce a garment parented to the armature but not deformed
-        # by it.
-        raise ValueError("{:s} must be a bool, got {!r}".format(argument, value))
-    return value
 
 
 def register(mcp: FastMCP) -> None:
@@ -214,19 +168,21 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "add_asset",
             params={
-                "name": _validated_name(name),
+                "name": arguments.validated_subject(name),
                 "path": checked_path,
                 "fragment": checked_fragment,
                 "asset_type": _validated_asset_type(asset_type),
-                "material_type": _validated_optional_text(
+                "material_type": arguments.validated_text(
                     material_type, "material_type",
                     "omit it to take MPFB's own default for this asset type"),
-                "subdiv_levels": _validated_subdiv_levels(subdiv_levels),
-                "set_up_rigging": _validated_flag("set_up_rigging", set_up_rigging),
-                "interpolate_weights": _validated_flag(
-                    "interpolate_weights", interpolate_weights),
-                "import_subrig": _validated_flag("import_subrig", import_subrig),
-                "import_weights": _validated_flag("import_weights", import_weights),
+                "subdiv_levels": arguments.validated_count(subdiv_levels, "subdiv_levels"),
+                "set_up_rigging": arguments.validated_flag(set_up_rigging, "set_up_rigging"),
+                "interpolate_weights": arguments.validated_flag(
+                    interpolate_weights, "interpolate_weights"),
+                "import_subrig": arguments.validated_flag(import_subrig, "import_subrig"),
+                # Not truthiness: import_weights="false" would produce a garment parented to the
+                # armature but not deformed by it.
+                "import_weights": arguments.validated_flag(import_weights, "import_weights"),
             },
             # Shared with mpfb_list_assets' command, which reported the
             # object_type and fragment this call is holding. Mapping the first

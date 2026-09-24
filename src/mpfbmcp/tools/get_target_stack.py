@@ -28,49 +28,13 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
 
 # A dressed, heavily modeled character can carry several hundred shape keys, and
 # the macro stack alone is typically a dozen. The ceiling is here so that an
 # unbounded call is capped rather than answered with the whole stack.
 MAX_LIMIT = 1000
-
-
-def _validated_text(value: object, argument: str, hint: str) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        raise ValueError(
-            "{} must be a string or omitted, got {!r}".format(argument, value))
-    if not value.strip():
-        # An explicitly empty value and an omitted one arise from different
-        # mistakes, so the empty one is never quietly treated as the omission.
-        raise ValueError("{} must not be empty or whitespace; {}".format(argument, hint))
-    return value
-
-
-def _validated_count(value: object, argument: str, maximum: int | None) -> int:
-    """Reject a non-int, a bool, a negative, and a limit above the ceiling."""
-    if isinstance(value, bool) or not isinstance(value, int):
-        # bool is a subclass of int, so `limit=True` would otherwise page one
-        # entry at a time rather than fail.
-        raise ValueError("{} must be an int, got {!r}".format(argument, value))
-    if value < 0:
-        raise ValueError("{} must not be negative, got {!r}".format(argument, value))
-    if maximum is not None and value > maximum:
-        raise ValueError(
-            "{} must be at most {}, got {!r}".format(argument, maximum, value))
-    return value
-
-
-def _validated_flag(argument: str, value: object) -> bool:
-    if not isinstance(value, bool):
-        # Deliberately not truthiness: "false" and 0 are how a caller signals a
-        # bool it did not manage to build, and accepting them quietly would make
-        # `include_macro="false"` return the macro stack anyway.
-        raise ValueError("{} must be a bool, got {!r}".format(argument, value))
-    return value
 
 
 def register(mcp: FastMCP) -> None:
@@ -147,14 +111,14 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "get_target_stack",
             params={
-                "name": _validated_text(
-                    name, "name", "omit it to use the active object"),
-                "include_macro": _validated_flag("include_macro", include_macro),
-                "include_expressions": _validated_flag(
-                    "include_expressions", include_expressions),
-                "name_contains": _validated_text(
+                "name": arguments.validated_subject(name),
+                # Not truthiness: include_macro="false" would return the macro stack anyway.
+                "include_macro": arguments.validated_flag(include_macro, "include_macro"),
+                "include_expressions": arguments.validated_flag(
+                    include_expressions, "include_expressions"),
+                "name_contains": arguments.validated_text(
                     name_contains, "name_contains", "omit it to match every shape key"),
-                "limit": _validated_count(limit, "limit", MAX_LIMIT),
-                "offset": _validated_count(offset, "offset", None),
+                "limit": arguments.validated_count(limit, "limit", MAX_LIMIT),
+                "offset": arguments.validated_count(offset, "offset", None),
             },
         )

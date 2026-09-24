@@ -31,6 +31,7 @@ __all__ = (
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
+from mpfbmcp import arguments
 from mpfbmcp import backend
 
 # The tool's argument name paired with the MPFB property it writes. They differ
@@ -52,18 +53,6 @@ _ARGUMENT_TO_PROPERTY = (
 )
 
 
-def _validated_name(name: object) -> str | None:
-    """Reject locally what would otherwise round-trip to Blender to fail there."""
-    if name is None:
-        return None
-    if not isinstance(name, str):
-        raise ValueError("name must be a string or omitted, got {!r}".format(name))
-    if not name.strip():
-        raise ValueError(
-            "name must not be empty or whitespace; omit it to use the active object")
-    return name
-
-
 def _validated_slider(argument: str, value: object) -> float:
     """MPFB stores these unclamped, so 0.0-1.0 is enforced here or nowhere."""
     if isinstance(value, bool) or not isinstance(value, (int, float)):
@@ -76,15 +65,6 @@ def _validated_slider(argument: str, value: object) -> float:
         raise ValueError(
             "{:s} must be between 0.0 and 1.0, got {!r}".format(argument, value))
     return float(value)
-
-
-def _validated_flag(argument: str, value: object) -> bool:
-    if not isinstance(value, bool):
-        # Deliberately not truthiness: "false" and 0 are how a caller signals a
-        # bool it did not manage to build, and accepting them quietly would make
-        # `refit="false"` pay for a full asset refit.
-        raise ValueError("{:s} must be a bool, got {!r}".format(argument, value))
-    return value
 
 
 def register(mcp: FastMCP) -> None:
@@ -173,9 +153,10 @@ def register(mcp: FastMCP) -> None:
         return backend.send(
             "set_macro_details",
             params={
-                "name": _validated_name(name),
+                "name": arguments.validated_subject(name),
                 "changes": changes,
-                "prune": _validated_flag("prune", prune),
-                "refit": _validated_flag("refit", refit),
+                "prune": arguments.validated_flag(prune, "prune"),
+                # Not truthiness: refit="false" would pay for a full asset refit.
+                "refit": arguments.validated_flag(refit, "refit"),
             },
         )
