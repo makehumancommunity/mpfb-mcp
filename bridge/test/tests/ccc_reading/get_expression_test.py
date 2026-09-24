@@ -124,7 +124,7 @@ def test_a_sum_past_one_is_reported_as_clamped(tmp_path):
             face_service.set_stack_weight(character.basemesh, "jaw.json", 1.0)
             answer = _get(character.basemesh)
 
-    assert answer["clamped_face_units"] == [dict(face_unit="jawOpen", sum=1.3, applied=1.0)]
+    assert answer["clamped_face_units"] == [dict(face_unit="jawOpen", sum=1.3, from_stack=1.0)]
     assert answer["aggregate"]["jawOpen"] == 1.0
     assert answer["matches_stack"] is True
     assert "clamped" in answer["message"]

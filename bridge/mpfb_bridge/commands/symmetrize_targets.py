@@ -13,9 +13,9 @@ behaviour is not a reading of MPFB's.
 from that. ``direction`` is the package's only **required** argument: which half
 of a face is the good one is not something a command can guess, and guessing
 wrong destroys work with no undo across the socket. ``dry_run`` exists for the
-same reason, and it is why ``performed`` is written from the verb *and* the flag
-at the call site - a dry run returns a populated ``changed`` list having written
-nothing, which is the one case where the verb alone would lie.
+same reason, and it is why ``performed`` is written from the list of changes
+*and* the flag at the call site - a dry run returns a populated ``changes`` list
+having written nothing, which is the one case where the list alone would lie.
 
 **The walk is over categories, not over shape key names.** Pairing ``l-foo``
 with ``r-foo`` by string manipulation would be a guess; the ``opposites`` table
@@ -298,7 +298,7 @@ def symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,t
             basemesh_name=None,
             direction=direction,
             dry_run=dry_run,
-            changed=[],
+            changes=[],
             already_symmetric=[],
             skipped=[],
             message=message,
@@ -327,7 +327,7 @@ def symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,t
             section_recognized=section_recognized,
             known_sections=tables.known_sections,
             dry_run=dry_run,
-            changed=[],
+            changes=[],
             already_symmetric=[],
             skipped=[],
             message=blocked_message,
@@ -423,8 +423,8 @@ def symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,t
         known_sections=tables.known_sections,
         dry_run=dry_run,
         prune=prune,
-        changed=changed,
-        changed_count=len(changed),
+        changes=changed,
+        change_count=len(changed),
         already_symmetric=already_symmetric,
         already_symmetric_count=len(already_symmetric),
         skipped=skipped,
@@ -446,7 +446,7 @@ def symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,t
                              refit_incomplete_reason, mesh_assets, rig),
     )
 
-    # The one command whose verb is not enough on its own: a dry run reports the
-    # changes it would make in "changed" and writes none of them. See
-    # shared/performed.py.
-    return with_performed(result, result["changed"] and not result["dry_run"])
+    # The one command whose list of changes is not enough on its own: a dry run
+    # reports the changes it would make in "changes" and writes none of them.
+    # See shared/performed.py.
+    return with_performed(result, result["changes"] and not result["dry_run"])

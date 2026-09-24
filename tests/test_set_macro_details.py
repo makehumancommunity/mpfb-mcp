@@ -50,7 +50,7 @@ class SetMacroDetailsToolTests(unittest.TestCase):
     def test_only_named_sliders_are_sent(self, mock_send_command: mock.Mock) -> None:
         # The distinction a nested macro-detail dict could not express without a
         # sentinel, and the reason the arguments are flat.
-        mock_send_command.return_value = {"status": "ok", "result": {"changed": []}}
+        mock_send_command.return_value = {"status": "ok", "result": {"changes": []}}
 
         self.mpfb_set_macro_details(name="Human", age=0.75)
 
@@ -65,7 +65,7 @@ class SetMacroDetailsToolTests(unittest.TestCase):
             self, mock_send_command: mock.Mock) -> None:
         # The arguments carry the prefix that groups them, matching
         # mpfb_create_human; MPFB stores them without it.
-        mock_send_command.return_value = {"status": "ok", "result": {"changed": []}}
+        mock_send_command.return_value = {"status": "ok", "result": {"changes": []}}
 
         self.mpfb_set_macro_details(race_asian=1.0, race_african=0.0)
 
@@ -77,7 +77,7 @@ class SetMacroDetailsToolTests(unittest.TestCase):
 
     @mock.patch("mpfbmcp.bridge_connection.send_command")
     def test_zero_is_a_value_and_not_an_omission(self, mock_send_command: mock.Mock) -> None:
-        mock_send_command.return_value = {"status": "ok", "result": {"changed": []}}
+        mock_send_command.return_value = {"status": "ok", "result": {"changes": []}}
 
         self.mpfb_set_macro_details(gender=0.0)
 
@@ -87,7 +87,7 @@ class SetMacroDetailsToolTests(unittest.TestCase):
 
     @mock.patch("mpfbmcp.bridge_connection.send_command")
     def test_integers_are_accepted_and_coerced(self, mock_send_command: mock.Mock) -> None:
-        mock_send_command.return_value = {"status": "ok", "result": {"changed": []}}
+        mock_send_command.return_value = {"status": "ok", "result": {"changes": []}}
 
         self.mpfb_set_macro_details(gender=1)
 
@@ -156,7 +156,7 @@ class SetMacroDetailsOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.bridge = self.run_answering_bridge({
             "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
             "set_macro_details": fake_bridge.ok_envelope(
-                "set_macro_details", {"found": True, "changed": [], "performed": False}),
+                "set_macro_details", {"found": True, "changes": [], "performed": False}),
         })
 
     def test_the_tool_sends_the_set_macro_details_command(self) -> None:

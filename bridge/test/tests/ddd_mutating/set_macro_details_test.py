@@ -49,16 +49,16 @@ def test_a_named_slider_is_written_and_the_shape_rebuilt():
 
         assert result["performed"] is True
         assert result["recalculated"] is True
-        assert len(result["changed"]) == 1
-        assert result["changed"][0]["name"] == "gender"
+        assert len(result["changes"]) == 1
+        assert result["changes"][0]["name"] == "gender"
 
         after = target_service.get_macro_info_dict_from_basemesh(character.basemesh)
         assert abs(after["gender"] - 1.0) < 0.0001, \
             "MPFB should have stored the new value, got {!r}".format(after["gender"])
         assert abs(before["gender"] - after["gender"]) > 0.0001, \
             "the fixture should have started somewhere else, or this proves nothing"
-        assert result["changed"][0]["new"] is not None
-        assert abs(result["changed"][0]["new"] - after["gender"]) < 0.0001, \
+        assert result["changes"][0]["new"] is not None
+        assert abs(result["changes"][0]["new"] - after["gender"]) < 0.0001, \
             "the reported new value must be the one MPFB holds"
 
 
@@ -126,7 +126,7 @@ def test_naming_no_slider_changes_nothing_and_says_so():
         assert result["recalculated"] is False
         assert result["performed"] is False, \
             "nothing was recalculated, so performed must be false"
-        assert result["changed"] == []
+        assert result["changes"] == []
         assert result["macro_details"], "the current values are the answer here"
 
 

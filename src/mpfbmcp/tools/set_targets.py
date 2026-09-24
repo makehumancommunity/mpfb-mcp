@@ -191,14 +191,14 @@ def register(mcp: FastMCP) -> None:
         call `mpfb_refit_human` once when the modeling is done.
 
 
-        `result` carries `applied` - one entry per requested change, in request
+        `result` carries `changes` - one entry per requested change, in request
         order, each listing every target file touched with `present_before`,
         `previous_value`, `new_value`, `loaded_from` (set when the target was
         read off disk on this call) and `pruned` - plus `shapekeys_added` and
         `shapekeys_removed`, `refit_performed`, `assets_possibly_stale` and
         `basemesh_name`. An unresolvable subject answers `found: false`, and a
         basemesh in edit mode or without shape keys `ready: false` with
-        `blocked_by`. `performed` is false whenever `applied` is empty, the
+        `blocked_by`. `performed` is false whenever `changes` is empty, the
         all-or-nothing resolution failure included.
         """
         # `result` (built in bridge/mpfb_bridge/commands/set_targets.py) is plain

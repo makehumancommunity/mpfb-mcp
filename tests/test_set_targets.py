@@ -193,7 +193,7 @@ class SetTargetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.bridge = self.run_answering_bridge({
             "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
             "set_targets": fake_bridge.ok_envelope(
-                "set_targets", {"found": True, "applied": [], "performed": False}),
+                "set_targets", {"found": True, "changes": [], "performed": False}),
         })
 
     def test_the_tool_sends_the_set_targets_command(self) -> None:

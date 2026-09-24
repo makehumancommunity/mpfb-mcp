@@ -115,9 +115,16 @@ carried out**. It is false in every refusal (`ready: false`), false when the sub
 resolved (`found: false`), and false when the tool completed successfully without doing anything it
 was asked to do.
 
-The tools kept their own verbs beside it — `added`, `applied`, `removed`, `generated`, `changed`,
-`recalculated`, `refit_performed` — because `added: true` beside `asset_object_name` reads better
-than `performed: true` does, and each response is written around its own verb. What the set of
+Most tools kept their own verbs beside it — `added`, `applied`, `removed`, `generated`, `changed`,
+`recalculated`, `refit_performed`, `saved`, `created` — because `added: true` beside
+`asset_object_name` reads better than `performed: true` does, and each response is written around
+its own verb. **A key that is one tool's verb is never a list, or a number, in another**
+([FR 037](../feature-requests/037-one-word-per-concept/README.md)'s R3): the four batch tools
+(`mpfb_set_macro_details`, `mpfb_set_targets`, `mpfb_symmetrize_targets`,
+`mpfb_set_face_units`) report their per-entry writes as `changes`, with `change_count` where they
+count them, and have no verb beside `performed` at all. Their list used to be called `applied` in
+two of them and `changed` in the other two, which is what `mpfb_set_skin`'s `applied` and
+`mpfb_apply_expressions`' `changed` mean as booleans. What the set of
 verbs cost is a caller working across more than one tool: reaching for the wrong name yields `None`
 rather than an error, so the mistake is silent. [FR 013](../feature-requests/done/013-live-verification/README.md)'s
 harness, written with the source open, guessed wrong on three tools in one session, and each wrong
@@ -126,10 +133,10 @@ guess turned a passing check into what looked like a tool defect. The refusal fi
 what says the problem was the *variation* rather than the naming.
 
 - **The flag is not always the verb**, which is what makes it worth having rather than a rename
-  away. `mpfb_symmetrize_targets` under `dry_run: true` returns a populated `changed` and has
+  away. `mpfb_symmetrize_targets` under `dry_run: true` returns a populated `changes` and has
   written nothing. `mpfb_set_macro_details` called with no slider named returns `ready: true`
   having recalculated nothing, per *do only what was asked* above. `mpfb_set_targets` fails a whole
-  batch on one bad entry and returns `ready: true` with an empty `applied`.
+  batch on one bad entry and returns `ready: true` with an empty `changes`.
 - **Where a verb already means exactly this, the flag is derived from it, not written beside it.**
   `mpfb_refit_human`'s `refit_performed` is that field, and setting `performed` from it is what
   keeps the two from disagreeing about the one case they could: a generated Rigify rig with no meta

@@ -101,7 +101,7 @@ def register(mcp: FastMCP) -> None:
         relative change is one call: read the character with
         `mpfb_get_macro_details`, then pass only what should differ. Passing a
         slider its current value is not the same as omitting it - it is
-        reported in `changed` with `previous == new`.
+        reported in `changes` with `previous == new`.
 
         Sliders are 0.0-1.0, and 0.5 is neutral for all but the three race
         weights, whose neutral is 0.33 each. `age` runs 0.0 = baby, 0.1875 =
@@ -119,7 +119,7 @@ def register(mcp: FastMCP) -> None:
         `assets_possibly_stale`, and call `mpfb_refit_human` once after a
         series of changes rather than paying for a refit per slider.
 
-        `result` carries `changed` (one `{name, previous, new}` per slider
+        `result` carries `changes` (one `{name, previous, new}` per slider
         named), the full `macro_details` after the change, `race_sum`,
         `macro_shapekeys_before`/`_after` with `shapekeys_removed` and
         `shapekeys_added` - all four naming shape keys as the mesh stores them
@@ -127,7 +127,7 @@ def register(mcp: FastMCP) -> None:
         only read - plus `recalculated`, `refit_performed`,
         `assets_possibly_stale` and `basemesh_name`.
 
-        Two situations answer rather than fail, both with `changed: []`: a
+        Two situations answer rather than fail, both with `changes: []`: a
         subject that resolves to no basemesh (`found: false`), and a basemesh
         that is not ready to be modified - left in edit mode, or with no shape
         keys at all (`ready: false`, `blocked_by` naming which). A call that

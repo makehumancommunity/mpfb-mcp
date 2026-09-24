@@ -521,7 +521,7 @@ def set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many
             subject_name=None if subject is None else subject.name,
             subject_resolved_by=subject_resolved_by,
             basemesh_name=None,
-            applied=[],
+            changes=[],
             resolution_errors=[],
             message=message,
         ), False)
@@ -535,7 +535,7 @@ def set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many
             subject_name=subject.name,
             subject_resolved_by=subject_resolved_by,
             basemesh_name=basemesh.name,
-            applied=[],
+            changes=[],
             resolution_errors=[],
             message=blocked_message,
         ), False)
@@ -548,7 +548,7 @@ def set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many
             subject_name=subject.name,
             subject_resolved_by=subject_resolved_by,
             basemesh_name=basemesh.name,
-            applied=[],
+            changes=[],
             resolution_errors=[],
             refit_requested=refit_requested,
             refit_performed=False,
@@ -609,7 +609,7 @@ def set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many
             subject_name=subject.name,
             subject_resolved_by=subject_resolved_by,
             basemesh_name=basemesh.name,
-            applied=[],
+            changes=[],
             resolution_errors=resolution_errors,
             refit_requested=refit_requested,
             refit_performed=False,
@@ -677,7 +677,7 @@ def set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many
         subject_name=subject.name,
         subject_resolved_by=subject_resolved_by,
         basemesh_name=basemesh.name,
-        applied=applied,
+        changes=applied,
         resolution_errors=[],
         prune=prune,
         symmetry=symmetry,
@@ -701,7 +701,8 @@ def set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many
                              mesh_assets, rig, diverging),
     )
 
-    # The verb is "applied", one entry per change, and it is empty in every
-    # branch that wrote nothing - including the all-or-nothing resolution
-    # failure. See shared/performed.py.
-    return with_performed(result, result["applied"])
+    # `changes` holds one entry per change, and it is empty in every branch that
+    # wrote nothing - including the all-or-nothing resolution failure. It is a
+    # list rather than a verb (FR 037, R3), so `performed` is this tool's only
+    # flag. See shared/performed.py.
+    return with_performed(result, result["changes"])

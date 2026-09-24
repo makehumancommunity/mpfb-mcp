@@ -18,7 +18,8 @@ Four inventories, from three sources:
   that imports the package, since the server that ships is the thing measured.
 - **Command parameters**, from each bridge command's ``Param(...)`` calls, so a
   tool argument and the parameter it becomes can be seen side by side.
-- **Response keys and refusal slugs**, from the bridge source by ``ast``: the
+- **Response keys and refusal slugs**, from the bridge source by ``ast`` (and
+  from the two tool modules that build an answer themselves): the
   keyword names of every ``dict(...)`` call, the string keys of every dict
   literal and subscript store, the keywords a refusal helper passes on, and
   every slug-shaped string handed to ``blocked_by`` or to a helper whose name
@@ -248,7 +249,18 @@ def arguments(tools):
 
 # ------------------------------------------------------------ bridge source
 
+# The tool modules that build an answer of their own rather than relaying the
+# bridge's: mpfb_list_docs answers without Blender at all, and mpfb_list_urls
+# merges the bridge's answer with a vendored table. Every other tool module's
+# dicts are parameters on their way to a command, not keys in an answer.
+_TOOLS = os.path.join(_ROOT, "src", "mpfbmcp", "tools")
+_ANSWERING_TOOLS = ("list_docs", "list_urls")
+
+
 def _bridge_modules():
+    for stem in _ANSWERING_TOOLS:
+        with open(os.path.join(_TOOLS, stem + ".py"), encoding="utf-8") as handle:
+            yield "tools/{:s}".format(stem), ast.parse(handle.read())
     for directory, kind in ((_COMMANDS, "commands"), (_SHARED, "shared")):
         for filename in sorted(os.listdir(directory)):
             if not filename.endswith(".py") or filename == "__init__.py":

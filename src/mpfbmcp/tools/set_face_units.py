@@ -144,7 +144,7 @@ def register(mcp: FastMCP) -> None:
         from the stack, and `unexplained_face_units` lists what the next rebuild
         would overwrite. `mpfb_save_expression` keeps a composed face.
 
-        `result` carries `applied` - one entry per unit actually written, with
+        `result` carries `changes` - one entry per unit actually written, with
         `previous_value` and `new_value` - plus `loaded_from_disk` (units whose
         shape key had to be created from a target file on this call),
         `could_not_load` (a unit whose target file was missing even though the

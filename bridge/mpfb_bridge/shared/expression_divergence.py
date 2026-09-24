@@ -189,7 +189,7 @@ def divergence(services, basemesh, rows=None):
     for name, total in sorted(raw_sums(services, rows).items()):
         if total > 1.0 or total < 0.0:
             clamped.append(dict(face_unit=name, sum=_rounded(total),
-                                applied=_rounded(aggregate.get(name, 0.0))))
+                                from_stack=_rounded(aggregate.get(name, 0.0))))
 
     return dict(
         applied_expressions=rows,

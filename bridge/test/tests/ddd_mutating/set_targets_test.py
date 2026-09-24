@@ -5,8 +5,8 @@ Two claims live here and nowhere else, and both are about what MPFB does rather
 than about what this command intends:
 
 - **A batch with one bad entry applies none of it.** Asserted by counting the
-  shape keys on the mesh before and after, not by reading ``applied``: a command
-  that reported an empty ``applied`` while having written half the batch would
+  shape keys on the mesh before and after, not by reading ``changes``: a command
+  that reported an empty ``changes`` while having written half the batch would
   pass a weaker test and would be exactly the defect the two-phase split exists
   to prevent.
 - **A target that is not on the mesh is loaded rather than silently ignored.**
@@ -68,8 +68,8 @@ def test_a_category_modifier_is_resolved_and_written():
 
         assert result["performed"] is True, result["message"]
         assert result["resolution_errors"] == []
-        assert len(result["applied"]) == 1
-        applied = result["applied"][0]
+        assert len(result["changes"]) == 1
+        applied = result["changes"][0]
         assert applied["section"] == "nose"
         assert applied["value"] == 0.4
         assert applied["targets"], "a write should name the targets it touched"
@@ -105,7 +105,7 @@ def test_a_target_not_on_the_mesh_is_loaded_rather_than_silently_ignored():
         after = set(_shapekey_names(character.basemesh))
         assert after - before, \
             "a target absent from the mesh should have been loaded onto it, nothing was added"
-        touched = result["applied"][0]["targets"][0]
+        touched = result["changes"][0]["targets"][0]
         assert touched["present_before"] is False
         assert touched["loaded_from"], "the answer should name the file it read"
 
@@ -114,7 +114,7 @@ def test_one_bad_entry_applies_none_of_the_batch():
     """commands.set_targets with a good entry and an unknown category
 
     The whole point of the two-phase split, and it is asserted against the
-    **mesh** rather than against ``applied``: a command that wrote half the
+    **mesh** rather than against ``changes``: a command that wrote half the
     batch and reported none of it would pass a weaker test.
     """
     services = _services_or_skip()
@@ -132,7 +132,7 @@ def test_one_bad_entry_applies_none_of_the_batch():
                 ],
             })
 
-        assert result["applied"] == [], "nothing at all should have been applied"
+        assert result["changes"] == [], "nothing at all should have been applied"
         assert result["performed"] is False
         assert len(result["resolution_errors"]) == 1
         assert result["resolution_errors"][0]["reason"] == "unknown_category"
@@ -156,7 +156,7 @@ def test_a_sided_category_refuses_to_guess_a_side():
                                "value": 0.3}],
             })
 
-        assert result["applied"] == []
+        assert result["changes"] == []
         assert result["resolution_errors"][0]["reason"] == "side_required"
         assert "coin flip" in result["resolution_errors"][0]["message"]
 
@@ -178,7 +178,7 @@ def test_symmetry_applies_a_sided_category_to_both_sides():
             })
 
         assert result["performed"] is True, result["message"]
-        applied = result["applied"][0]
+        applied = result["changes"][0]
         assert applied["symmetry_applied"] is True
         sides = set(entry["side"] for entry in applied["targets"])
         assert sides == {"left", "right"}, \
@@ -207,7 +207,7 @@ def test_a_missing_target_file_is_a_resolution_error_not_an_ioerror():
         assert envelope["status"] == "ok", \
             "a missing file is an answer, not a command_failed: {!r}".format(envelope)
         result = envelope["result"]
-        assert result["applied"] == []
+        assert result["changes"] == []
         assert result["resolution_errors"][0]["reason"] == "target_file_not_found"
 
 
@@ -219,7 +219,7 @@ def test_naming_nothing_changes_nothing():
 
         assert result["found"] is True
         assert result["ready"] is True
-        assert result["applied"] == []
+        assert result["changes"] == []
         assert result["performed"] is False
 
 

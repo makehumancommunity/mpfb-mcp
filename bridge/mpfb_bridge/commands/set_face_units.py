@@ -35,7 +35,7 @@ reportable outcome (``could_not_load``), never folded into the up-front refusal.
 ``set_expression`` rather than inferred from what changed afterward:**
 
 - Already backed by a shape key: this is an ordinary value write, reported
-  under ``applied``.
+  under ``changes``.
 - Not backed by a shape key and requested at ``0.0``: ``set_expression`` itself
   skips loading a target just to write a zero into it, so the unit is left
   entirely alone - not created, not touched - and reported separately
@@ -229,7 +229,7 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
             subject_name=None if subject is None else subject.name,
             subject_resolved_by=subject_resolved_by,
             basemesh_name=None,
-            applied=[],
+            changes=[],
             loaded_from_disk=[],
             could_not_load=[],
             skipped_absent_at_zero=[],
@@ -247,7 +247,7 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
             subject_name=subject.name,
             subject_resolved_by=subject_resolved_by,
             basemesh_name=basemesh.name,
-            applied=[],
+            changes=[],
             loaded_from_disk=[],
             could_not_load=[],
             skipped_absent_at_zero=[],
@@ -267,7 +267,7 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
             subject_name=subject.name,
             subject_resolved_by=subject_resolved_by,
             basemesh_name=basemesh.name,
-            applied=[],
+            changes=[],
             loaded_from_disk=[],
             could_not_load=[],
             skipped_absent_at_zero=[],
@@ -287,7 +287,7 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
             subject_name=subject.name,
             subject_resolved_by=subject_resolved_by,
             basemesh_name=basemesh.name,
-            applied=[],
+            changes=[],
             loaded_from_disk=[],
             could_not_load=[],
             skipped_absent_at_zero=[],
@@ -371,8 +371,8 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
         basemesh_name=basemesh.name,
         faceunits01_installed=installed,
         clear_first=clear_first,
-        applied=applied_entries,
-        applied_count=len(applied_entries),
+        changes=applied_entries,
+        change_count=len(applied_entries),
         loaded_from_disk=loaded_from_disk,
         could_not_load=could_not_load,
         skipped_absent_at_zero=skipped_absent_at_zero,

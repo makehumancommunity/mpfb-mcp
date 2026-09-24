@@ -220,7 +220,7 @@ def _get_macro_details(run: _Run) -> dict:
     return run.tools["mpfb_get_macro_details"](name=_character(run))
 
 
-@_item("mpfb_set_macro_details", "changed", "macro_details", "race_sum", "basemesh_name")
+@_item("mpfb_set_macro_details", "changes", "macro_details", "race_sum", "basemesh_name")
 def _set_macro_details(run: _Run) -> dict:
     # One slider. A call naming none does nothing, deliberately, and would come
     # back performed: false - which is the right answer and the wrong smoke test.
@@ -233,7 +233,7 @@ def _get_target_stack(run: _Run) -> dict:
     return run.tools["mpfb_get_target_stack"](name=_character(run))
 
 
-@_item("mpfb_set_targets", "applied", "basemesh_name", "shapekeys_added", "shapekeys_removed")
+@_item("mpfb_set_targets", "changes", "basemesh_name", "shapekeys_added", "shapekeys_removed")
 def _set_targets(run: _Run) -> dict:
     section, category = _sided_category(run)
     # One side of a left/right category, so that the symmetrize item below has
@@ -243,7 +243,7 @@ def _set_targets(run: _Run) -> dict:
         modifiers=[dict(section=section, category=category, side="left", value=0.5)])
 
 
-@_item("mpfb_symmetrize_targets", "changed", "already_symmetric", "basemesh_name", "skipped")
+@_item("mpfb_symmetrize_targets", "changes", "already_symmetric", "basemesh_name", "skipped")
 def _symmetrize_targets(run: _Run) -> dict:
     # `direction` is the package's only required argument: which half of a
     # character is the good one is not something a tool can guess.
@@ -256,7 +256,7 @@ def _get_face_units(run: _Run) -> dict:
     return run.tools["mpfb_get_face_units"](name=_character(run))
 
 
-@_item("mpfb_set_face_units", "applied", "basemesh_name", "faceunits01_installed")
+@_item("mpfb_set_face_units", "changes", "basemesh_name", "faceunits01_installed")
 def _set_face_units(run: _Run) -> dict:
     # Degrades honestly rather than failing: this is the first mutating item
     # whose tool refuses when an optional asset pack (faceunits01) is not

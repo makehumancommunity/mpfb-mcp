@@ -149,7 +149,7 @@ def test_a_partially_installed_pack_reports_could_not_load_rather_than_refusing(
         assert result["ready"] is True
         assert result["faceunits01_installed"] is True
         assert result["could_not_load"] == ["mouthLeft"]
-        assert [entry["face_unit"] for entry in result["applied"]] == ["jawOpen"]
+        assert [entry["face_unit"] for entry in result["changes"]] == ["jawOpen"]
         assert result["loaded_from_disk"] == ["jawOpen"]
         assert result["performed"] is True
         assert _shapekey_value(character.basemesh, "!ex-jawOpen") is not None
@@ -170,7 +170,7 @@ def test_a_zero_weight_on_an_absent_shapekey_is_skipped_entirely():
         })
 
         assert result["skipped_absent_at_zero"] == ["jawOpen"]
-        assert result["applied"] == []
+        assert result["changes"] == []
         assert result["loaded_from_disk"] == []
         assert result["performed"] is False, \
             "Nothing was actually written, so this should not read as a change"
@@ -202,8 +202,8 @@ def test_loading_then_reapplying_is_additive_and_clear_first_zeroes_it():
             "refit": False,
         })
         assert second["performed"] is True
-        assert second["applied"] == [] or all(
-            entry["face_unit"] != "jawOpen" for entry in second["applied"]), \
+        assert second["changes"] == [] or all(
+            entry["face_unit"] != "jawOpen" for entry in second["changes"]), \
             "The unmentioned unit should not have been touched"
         assert abs(_shapekey_value(character.basemesh, "!ex-jawOpen") - 0.4) < 1e-6, \
             "set_expression is additive: a unit not mentioned is left alone"
@@ -243,10 +243,10 @@ def test_an_already_present_shapekey_is_reported_under_applied_not_loaded():
 
         assert second["loaded_from_disk"] == [], \
             "The shape key already existed; this should not read as a disk load"
-        applied_names = [entry["face_unit"] for entry in second["applied"]]
+        applied_names = [entry["face_unit"] for entry in second["changes"]]
         assert applied_names == ["jawOpen"]
-        assert abs(second["applied"][0]["previous_value"] - 0.2) < 1e-6
-        assert abs(second["applied"][0]["new_value"] - 0.7) < 1e-6
+        assert abs(second["changes"][0]["previous_value"] - 0.2) < 1e-6
+        assert abs(second["changes"][0]["new_value"] - 0.7) < 1e-6
 
 
 def test_a_write_reports_whether_the_stack_still_explains_the_face(tmp_path):

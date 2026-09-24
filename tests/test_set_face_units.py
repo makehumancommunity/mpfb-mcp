@@ -170,7 +170,7 @@ class SetFaceUnitsOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.bridge = self.run_answering_bridge({
             "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
             "set_face_units": fake_bridge.ok_envelope(
-                "set_face_units", {"found": True, "applied": [], "performed": False}),
+                "set_face_units", {"found": True, "changes": [], "performed": False}),
         })
 
     def test_the_tool_sends_the_set_face_units_command(self) -> None:

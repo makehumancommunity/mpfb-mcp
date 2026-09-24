@@ -186,9 +186,10 @@ def build_server() -> FastMCP:
             "world was not in a fit state, and which way) before concluding a "
             "call went wrong. Every tool that changes a character reports "
             "`performed`, a real boolean, true exactly when something changed; "
-            "each keeps its own verb beside it (`added`, `applied`, `removed`, "
-            "`generated`, `recalculated`, `refit_performed`) for the sentence, "
-            "and the tool says where the two can differ. A capped listing "
+            "most keep a verb beside it (`added`, `applied`, `removed`, "
+            "`generated`, `recalculated`, `refit_performed`), and the batch "
+            "tools list their per-entry writes as `changes`; the tool says where "
+            "the flag and its verb can differ. A capped listing "
             "always reports `truncated`, `total_count`, `offset` and `limit`: "
             "check `truncated` before concluding something is not installed."
         ),

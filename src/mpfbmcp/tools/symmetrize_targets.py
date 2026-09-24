@@ -93,7 +93,7 @@ def register(mcp: FastMCP) -> None:
         clothes and the rig afterwards; read `assets_possibly_stale` and call
         `mpfb_refit_human` when the modeling is done.
 
-        `result` carries `changed` - per category, both sides' values before,
+        `result` carries `changes` - per category, both sides' values before,
         the value after, and every target file touched, with `targets` being
         `null` rather than `[]` under `dry_run: true`, because which files a
         write would touch is only knowable by doing the write - plus
@@ -101,7 +101,7 @@ def register(mcp: FastMCP) -> None:
         whose target file could not be found, since one unreachable target is
         reported rather than abandoning the rest of the body.
 
-        Under `dry_run: true`, `performed` is false even though `changed` has
+        Under `dry_run: true`, `performed` is false even though `changes` has
         entries in it: those are the writes that *would* happen. A subject that
         cannot be resolved (`found: false`) and a basemesh in edit mode or
         without shape keys (`ready: false`) are answers, not errors.

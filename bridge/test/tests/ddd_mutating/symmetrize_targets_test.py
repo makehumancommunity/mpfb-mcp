@@ -9,7 +9,7 @@ two properties that make it safe to offer at all:
   meaningful because everything is measured before anything is written. A
   command that planned as it went would pass a test that only looked at one run.
 - **A dry run writes nothing.** Asserted against the mesh, not against the
-  answer: ``changed`` is *populated* on a dry run, which is exactly the case
+  answer: ``changes`` is *populated* on a dry run, which is exactly the case
   where reading the answer would tell you nothing.
 
 The asymmetry is built through ``set_targets``' own command rather than by
@@ -73,14 +73,14 @@ def test_a_dry_run_reports_changes_and_writes_nothing():
                               "direction": "left_to_right", "dry_run": True})
 
         assert result["dry_run"] is True
-        assert result["changed"], "the character is asymmetric, so something should be planned"
+        assert result["changes"], "the character is asymmetric, so something should be planned"
         assert result["performed"] is False, \
             "a dry run writes nothing, so performed must be false however full changed is"
         assert _shapekey_names(character.basemesh) == before, \
             "a dry run must not have touched the mesh"
         # Null rather than an empty list: which target files a write would touch
         # is only knowable by doing the write.
-        assert result["changed"][0]["targets"] is None
+        assert result["changes"][0]["targets"] is None
 
 
 def test_the_real_run_makes_exactly_the_changes_the_dry_run_named():
@@ -98,14 +98,14 @@ def test_the_real_run_makes_exactly_the_changes_the_dry_run_named():
                               "direction": "left_to_right"})
 
         predicted_categories = [(entry["section"], entry["category"])
-                                for entry in predicted["changed"]]
+                                for entry in predicted["changes"]]
         actual_categories = [(entry["section"], entry["category"])
-                             for entry in actual["changed"]]
+                             for entry in actual["changes"]]
         assert predicted_categories == actual_categories, \
             "the dry run promised {!r} and the real run made {!r}".format(
                 predicted_categories, actual_categories)
         assert actual["performed"] is True
-        for predicted_entry, actual_entry in zip(predicted["changed"], actual["changed"]):
+        for predicted_entry, actual_entry in zip(predicted["changes"], actual["changes"]):
             assert abs(predicted_entry["destination_value_after"]
                        - actual_entry["destination_value_after"]) < 0.0001, \
                 "the dry run's predicted value must be the one the real run produced"
@@ -128,14 +128,14 @@ def test_the_destination_side_ends_up_equal_to_the_source():
             again = _result({"name": character.basemesh.name,
                              "direction": "left_to_right"})
 
-        changed = [entry for entry in result["changed"]
+        changed = [entry for entry in result["changes"]
                    if entry["category"] == _SIDED["category"]]
         assert changed, "the asymmetric category should have been changed: {!r}".format(
             result["message"])
         assert abs(changed[0]["source_value"] - 0.4) < 0.0001
         assert abs(changed[0]["destination_value_after"] - 0.4) < 0.0001
 
-        assert not [entry for entry in again["changed"]
+        assert not [entry for entry in again["changes"]
                     if entry["category"] == _SIDED["category"]], \
             "a second run should find that category already symmetric"
         assert any(entry["category"] == _SIDED["category"]
@@ -158,7 +158,7 @@ def test_an_unsided_category_is_never_walked():
                               "direction": "left_to_right", "dry_run": True})
 
         walked = set(entry["category"] for entry
-                     in result["changed"] + result["already_symmetric"] + result["skipped"])
+                     in result["changes"] + result["already_symmetric"] + result["skipped"])
         assert "chin-triangle" not in walked, \
             "chin-triangle is unsided and must not be walked"
         assert "nose-scale-depth-decr-incr" not in walked, \

@@ -129,7 +129,7 @@ class SymmetrizeTargetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.bridge = self.run_answering_bridge({
             "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
             "symmetrize_targets": fake_bridge.ok_envelope(
-                "symmetrize_targets", {"found": True, "changed": [], "performed": False}),
+                "symmetrize_targets", {"found": True, "changes": [], "performed": False}),
         })
 
     def test_the_tool_sends_the_symmetrize_targets_command(self) -> None:

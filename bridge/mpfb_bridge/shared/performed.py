@@ -10,10 +10,10 @@ argument**: it reads nothing out of MPFB at all. It is one function over a dict
 the command has already finished building, which is what makes it the simplest
 thing in this directory and the one whose being wrong would be most obvious.
 
-Every mutating command keeps its own verb - ``added``, ``applied``, ``removed``,
-``generated``, ``changed``, ``recalculated``, ``refit_performed`` - because
-``added: true`` beside ``asset_object_name`` reads better than ``performed:
-true`` does, and the tool docstrings on the other side of the socket are written
+Most mutating commands keep their own verb - ``added``, ``applied``,
+``removed``, ``generated``, ``changed``, ``recalculated``, ``refit_performed``,
+``saved``, ``created`` - because ``added: true`` beside ``asset_object_name``
+reads better than ``performed: true`` does, and the tool docstrings on the other side of the socket are written
 around it. What the set of verbs costs is a caller writing against more than one
 tool: reaching for the wrong name yields ``None`` rather than an error, so the
 mistake is silent. FR 013's harness, written with the source open, guessed wrong
@@ -42,15 +42,16 @@ def with_performed(result, done):
     ``done`` is the command's own judgement that the character was actually
     changed, and it is deliberately written at the call site because it is not
     always the verb. ``symmetrize_targets`` under ``dry_run`` returns a
-    populated ``changed`` list having written nothing; ``set_macro_details``
+    populated ``changes`` list having written nothing; ``set_macro_details``
     called with no slider named returns ``ready: true`` having recalculated
     nothing; ``generate_rigify_rig`` returns ``ready: true`` when Rigify
     rejected the meta rig. A helper that guessed from the verb would get all
     three wrong.
 
-    Anything truthy is accepted, since several verbs are lists - ``applied``
-    holds one entry per change - and the flag is a real ``bool`` either way,
-    because a caller branching on it should not have to know which.
+    Anything truthy is accepted, since four commands have no verb but a list -
+    ``changes``, one entry per change - and the flag is a real ``bool`` either
+    way, because a caller branching on it should not have to know which. A key
+    that is some command's verb is never a list in another (FR 037, R3).
     """
     result["performed"] = bool(
         done

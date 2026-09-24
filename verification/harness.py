@@ -53,7 +53,9 @@ from mpfbmcp import build_server
 
 # The verb each mutating tool reports beside the uniform ``performed`` flag
 # (FR 014). ``None`` is mpfb_create_human, which has no verb of its own: it
-# creates a character or comes back as an error envelope.
+# creates a character or comes back as an error envelope. Three batch tools
+# have no verb either, only their list of per-entry writes, ``changes``
+# (FR 037, R3), which is what the flag is audited against for them.
 #
 # This is not a second opinion about what "performed" means - the commands
 # decide that, on the far side of the socket. It is the audit that would catch
@@ -66,9 +68,9 @@ MUTATING_VERBS = {
     "mpfb_save_preset": "saved",
     "mpfb_set_macro_details": "recalculated",
     "mpfb_refit_human": "refit_performed",
-    "mpfb_set_targets": "applied",
-    "mpfb_symmetrize_targets": "changed",
-    "mpfb_set_face_units": "applied",
+    "mpfb_set_targets": "changes",
+    "mpfb_symmetrize_targets": "changes",
+    "mpfb_set_face_units": "changes",
     "mpfb_save_expression": "saved",
     "mpfb_apply_expressions": "changed",
     "mpfb_add_rig": "added",
