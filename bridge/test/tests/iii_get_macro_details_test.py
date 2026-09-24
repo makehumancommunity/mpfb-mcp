@@ -25,6 +25,14 @@ so they sum to 0.99 and **every** default character trips this command's
 ``test_mpfbs_own_default_character_is_not_race_normalized``, which records it
 rather than repairing it.
 
+``macro_drift`` ([FR 034](../../../feature-requests/034-character-summary/README.md))
+is checked in both directions, since a comparison is only worth reporting if it
+fires on neither too much nor too little: false on a character MPFB just built,
+including one built at the sliders' extremes, where zero-weight targets are the
+case most likely to make the name lists differ on a healthy mesh; and true
+after a slider is moved without a recalculation, which usually changes only
+weights and not names.
+
 **Nothing here recalculates.** A command whose caller believes it read-only
 must not repair what it finds, so the test that matters most is the one
 asserting the shape keys are the same after the call as before it.
@@ -128,6 +136,51 @@ def test_a_freshly_built_character_is_not_reported_as_drifted():
         assert "drifted apart" not in answer["message"], \
             "A character MPFB just built should not be reported as drifted: {!r}".format(
                 answer["message"])
+
+
+EXTREME_PHENOTYPE = {
+    "gender": 1.0, "age": 1.0, "muscle": 0.0, "weight": 1.0, "proportions": 0.0,
+    "height": 1.0, "cupsize": 0.0, "firmness": 1.0,
+    "race": {"asian": 1.0, "caucasian": 0.0, "african": 0.0},
+}
+
+
+def test_macro_drift_is_false_on_a_freshly_built_character():
+    """shared.macro_reading: names and weights both agree on a healthy mesh"""
+    with Character() as character:
+        answer = result(COMMAND, {"name": character.basemesh.name})
+        assert answer["macro_drift"] is False, answer["message"]
+
+
+def test_macro_drift_is_false_at_the_sliders_extremes():
+    """Zero-weight targets are where the two name lists could part company"""
+    services = services_or_skip()
+    macro_detail_dict = services["TargetService"].get_default_macro_info_dict()
+    macro_detail_dict.update(EXTREME_PHENOTYPE)
+    with Character(macro_detail_dict=macro_detail_dict) as character:
+        answer = result(COMMAND, {"name": character.basemesh.name})
+        assert answer["macro_details"]["gender"] == 1.0, "the extreme phenotype was not built"
+        assert answer["macro_drift"] is False, (
+            answer["macro_target_stack"], answer["current_macro_shapekeys"])
+
+
+def test_a_slider_moved_without_recalculation_is_macro_drift():
+    """The commonest drift changes weights, not names - and must still be reported"""
+    import sys  # pylint: disable=import-outside-toplevel
+
+    services = services_or_skip()
+    with Character() as character:
+        human_properties = sys.modules[
+            services["HumanService"].__module__].HumanObjectProperties
+        names_before = result(COMMAND, {"name": character.basemesh.name})[
+            "current_macro_shapekeys"]
+        human_properties.set_value("gender", 0.6, entity_reference=character.basemesh)
+
+        answer = result(COMMAND, {"name": character.basemesh.name})
+
+        assert answer["current_macro_shapekeys"] == names_before, \
+            "nothing was recalculated, so the shape keys on the mesh are the ones built"
+        assert answer["macro_drift"] is True, answer["macro_target_stack"]
 
 
 def test_the_decoded_names_are_reported_beside_the_encoded_ones():

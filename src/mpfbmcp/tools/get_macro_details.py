@@ -93,7 +93,8 @@ def register(mcp: FastMCP) -> None:
             vocabulary as `macro_target_stack`'s `shapekey_name`, so the two
             can be compared directly. If they disagree, the properties were
             changed without a recalculation and `mpfb_set_macro_details` will
-            repair it. `current_macro_shapekeys_decoded` is the same list in
+            repair it. `macro_drift` is that comparison made for you, weights
+            included. `current_macro_shapekeys_decoded` is the same list in
             MPFB's readable form, for reading rather than comparing.
           - `has_shapekeys` and `is_human_project`: a mesh tagged as a basemesh
             but never built by MPFB reads back a full set of macro properties
