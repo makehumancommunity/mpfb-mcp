@@ -4,11 +4,12 @@ What a preset or a saved expression may be called, checked before anything is se
 The two arguments in this package that become a **path**. ``mpfb_save_preset``
 and ``mpfb_create_human_from_preset`` take ``preset_name`` and resolve it to
 ``<user config>/human.<preset_name>.json``; ``mpfb_save_expression`` takes
-``expression_name`` and writes ``<user data>/expressions/<expression_name>.json``. A name carrying ``/``, ``\\`` or
-``..`` would address a file outside the directory MPFB owns - and on the saving
-side it would *write* one. That is a shape rather than a vocabulary, it is
-entirely knowable on this side of the socket, and the consequence of getting it
-wrong is a file somewhere nobody will look for it. So it is checked here, per
+``expression_name`` and writes ``<user data>/expressions/<expression_name>.json``.
+A name carrying ``/``, ``\\`` or ``..`` would address a file outside the
+directory MPFB owns - and on the saving side it would *write* one. That is a
+shape rather than a vocabulary, it is entirely knowable on this side of the
+socket, and the consequence of getting it wrong is a file somewhere nobody will
+look for it. So it is checked here, per
 [validate before crossing the socket](../../specifications/tool-interface.md#validate-before-crossing-the-socket).
 
 **One rule for both artifacts, with the noun as an argument.** The pattern, the

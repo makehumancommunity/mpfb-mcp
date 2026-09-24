@@ -268,7 +268,7 @@ rename refuse each other at the handshake with "upgrade X", rather than per comm
 `invalid_params` that reads like a caller's mistake. There is no period in which both spellings are
 accepted: an undeclared argument is refused by name on the mpfb-mcp side
 ([tool-interface.md](tool-interface.md#validate-before-crossing-the-socket)), which is what such a
-period would otherwise be for. [FR 037](../feature-requests/037-one-word-per-concept/README.md)
+period would otherwise be for. [FR 037](../feature-requests/done/037-one-word-per-concept/README.md)
 raised both to 2.
 
 **Both halves of the handshake exist**: the bridge's, above, and the client's, in

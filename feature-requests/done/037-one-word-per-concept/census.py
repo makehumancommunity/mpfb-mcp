@@ -38,9 +38,9 @@ lists everything outstanding; at the end it must exit 0.
 
 Inside the repository's venv, since the argument inventory imports the package::
 
-    python3 feature-requests/037-one-word-per-concept/census.py
-    python3 feature-requests/037-one-word-per-concept/census.py --section keys
-    python3 feature-requests/037-one-word-per-concept/census.py --check
+    python3 feature-requests/done/037-one-word-per-concept/census.py
+    python3 feature-requests/done/037-one-word-per-concept/census.py --section keys
+    python3 feature-requests/done/037-one-word-per-concept/census.py --check
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ __all__ = (
 )
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_ROOT = os.path.normpath(os.path.join(_HERE, "..", ".."))
+_ROOT = os.path.normpath(os.path.join(_HERE, "..", "..", ".."))
 _COMMANDS = os.path.join(_ROOT, "bridge", "mpfb_bridge", "commands")
 _SHARED = os.path.join(_ROOT, "bridge", "mpfb_bridge", "shared")
 

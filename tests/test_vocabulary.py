@@ -7,7 +7,7 @@ Built on ``mpfbmcp.build_server()``, as ``tests/test_description_budget.py`` is,
 so that a newly registered tool is inside these rules rather than outside them.
 None of it needs a Blender.
 
-[FR 037](../feature-requests/037-one-word-per-concept/README.md) found that the
+[FR 037](../feature-requests/done/037-one-word-per-concept/README.md) found that the
 MCP layer drops an argument it does not know: ``mpfb_list_docs`` called with
 ``topc`` answered with every document. A caller is a language model that
 generalizes one tool's spellings to the next, so a wrong guess, a misspelling

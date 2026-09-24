@@ -108,7 +108,7 @@ default. The tool never sees such a key, so the check is made once for every too
 error like any other shape refusal. A spelling retired by a rename is listed per tool in
 `arguments.py`'s `RETIRED_ARGUMENTS`, and its refusal also names what it became. That, rather than
 a period in which both spellings are accepted, is what makes a rename safe for a caller that still
-uses the old one ([FR 037](../feature-requests/037-one-word-per-concept/README.md)).
+uses the old one ([FR 037](../feature-requests/done/037-one-word-per-concept/README.md)).
 
 The same holds for the *shape* of a string argument: reject a non-string, or an empty or
 whitespace-only one, and never quietly treat an explicitly empty value as an omitted one, since
@@ -139,7 +139,7 @@ check.
 
 **A vocabulary this package defines is not an exception at all.** `mode` (`"merge"` or
 `"replace"`), in `mpfb_apply_expressions` and, since
-[FR 037](../feature-requests/037-one-word-per-concept/README.md), in `mpfb_set_face_units`
+[FR 037](../feature-requests/done/037-one-word-per-concept/README.md), in `mpfb_set_face_units`
 where it replaced a `clear_first` bool, is checked locally, and
 [FR 027](../feature-requests/done/027-expression-library/README.md) planned it as a third case of
 the exception above - but no MPFB function ever receives it. It selects between two ways the command
@@ -224,7 +224,7 @@ paper over:
   its basemesh the way MPFB's own panels find it, and how the subject was resolved. Each command
   still phrases its own misses. All eighteen report `subject_resolved_by: "active" | "name"`.
   `mpfb_get_object_info` said `resolved_from: "active_object"` until
-  [FR 037](../feature-requests/037-one-word-per-concept/README.md) renamed it, which
+  [FR 037](../feature-requests/done/037-one-word-per-concept/README.md) renamed it, which
   [refusing an undeclared argument](#validate-before-crossing-the-socket) and the protocol version
   made safe to do without a period of reporting both.
 
@@ -324,7 +324,7 @@ takes them all, requires exactly one, and reports which one resolved and to what
 is a language model that generalizes one tool's names to the next, and none of the divergences
 this section removes failed when it generalized wrongly: a misspelled argument used to be dropped
 silently, and a key read under another tool's name comes back `None`.
-[FR 037](../feature-requests/037-one-word-per-concept/README.md) took a census of every argument,
+[FR 037](../feature-requests/done/037-one-word-per-concept/README.md) took a census of every argument,
 answer key, refusal slug and backticked description term and renamed what diverged; this is what
 it settled, and each exception below is listed with its reason so that the next census confirms it
 rather than reopening it.

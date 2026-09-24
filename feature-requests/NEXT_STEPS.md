@@ -47,6 +47,19 @@ way. FastMCP reports either as a tool error, so nothing is sent, but the sentenc
 nothing it can act on. The fix is a type check before the range check; its refusal sentences then
 belong in a unit test, which is where FR 036 found none.
 
+<a id="an-unresolved-subject-has-no-blocked-by-in-five-tools"></a>
+
+## An unresolved subject has no `blocked_by` in five mutating tools
+
+Found by [FR 037](done/037-one-word-per-concept/README.md)'s census. When the subject cannot be
+resolved, nine mutating tools answer `found: false`, `ready: false` and
+`blocked_by: "subject_not_found"`, while `mpfb_refit_human`, `mpfb_set_macro_details`,
+`mpfb_set_targets`, `mpfb_symmetrize_targets` and `mpfb_set_face_units` answer `found: false` and
+`ready: false` with no `blocked_by` key at all. It is a missing key rather than a second spelling,
+so adding it changes those answers' shape, which FR 037 set out not to do. The fix is the key in
+five commands, a line in each description's refusal list, and `eee_composite/subject_resolution_test.py`
+asserting the slug for every mutating command it already asks.
+
 <a id="direct-tests-of-the-bridges-shared-modules"></a>
 
 ## Direct tests of the bridge's shared modules

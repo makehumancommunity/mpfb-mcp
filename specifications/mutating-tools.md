@@ -119,7 +119,7 @@ Most tools kept their own verbs beside it — `added`, `applied`, `removed`, `ge
 `recalculated`, `refit_performed`, `saved`, `created` — because `added: true` beside
 `asset_object_name` reads better than `performed: true` does, and each response is written around
 its own verb. **A key that is one tool's verb is never a list, or a number, in another**
-([FR 037](../feature-requests/037-one-word-per-concept/README.md)'s R3): the four batch tools
+([FR 037](../feature-requests/done/037-one-word-per-concept/README.md)'s R3): the four batch tools
 (`mpfb_set_macro_details`, `mpfb_set_targets`, `mpfb_symmetrize_targets`,
 `mpfb_set_face_units`) report their per-entry writes as `changes`, with `change_count` where they
 count them, and have no verb beside `performed` at all. Their list used to be called `applied` in

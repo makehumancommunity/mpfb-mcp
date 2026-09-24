@@ -1,0 +1,51 @@
+[x] mpfb_add_asset: retired 'asset_type' is refused naming 'object_type'
+[x] mpfb_create_human_from_preset: retired 'material_instances' is refused naming 'material_instances_policy'
+[x] mpfb_create_human_from_preset: retired 'name' is refused naming 'preset_name'
+[x] mpfb_create_human_from_preset: retired 'override_clothes_model' is refused naming 'override_clothes_material_type'
+[x] mpfb_create_human_from_preset: retired 'override_eyes_model' is refused naming 'override_eyes_material_type'
+[x] mpfb_create_human_from_preset: retired 'override_skin_model' is refused naming 'override_skin_type'
+[x] mpfb_generate_rigify_rig: retired 'rig_name' is refused naming 'generated_rig_name'
+[x] mpfb_save_expression: retired 'subject' is refused naming 'name'
+[x] mpfb_save_preset: retired 'subject' is refused naming 'name'
+[x] mpfb_set_face_units: retired 'clear_first' is refused naming 'mode'
+[x] mpfb_set_face_units: a face unit's retired 'weight' names 'value'
+[x] mpfb_create_human
+[x] mpfb_get_object_info
+[x] mpfb_get_object_info: subject_resolved_by is 'name'
+[x] mpfb_list_objects echo
+[x] mpfb_list_assets echo
+[x] mpfb_set_macro_details
+[x] mpfb_set_macro_details changes[0]
+[x] mpfb_set_macro_details assets_possibly_stale
+[x] mpfb_set_targets
+[x] mpfb_symmetrize_targets
+[x] mpfb_set_face_units
+[x] mpfb_set_face_units changes[0]
+[x] mpfb_get_face_units face_units[0]
+[x] mpfb_save_expression: a name that is no object points at expression_name
+[x] mpfb_save_expression
+[x] mpfb_add_rig
+[x] mpfb_add_rig already_rigged
+[x] mpfb_get_object_info asset_info of a rig
+[x] mpfb_generate_rigify_rig not_a_metarig names rig_identified_as per skeleton
+[x] mpfb_refit_human
+[x] mpfb_add_asset: an unknown object_type is unknown_object_type
+[x] mpfb_add_asset
+[x] mpfb_set_asset_material
+[x] mpfb_set_asset_material: an unknown name is subject_not_found
+[x] mpfb_remove_asset: an unknown name is subject_not_found
+[x] mpfb_set_skin answered
+[x] mpfb_set_skin
+[x] mpfb_get_character_summary
+[x] mpfb_get_character_summary rig
+[x] mpfb_get_character_summary skin
+[x] mpfb_get_character_summary equipped_assets[0]
+[x] mpfb_remove_asset
+[x] mpfb_save_preset: a name that is no object points at preset_name
+[x] mpfb_save_preset
+[x] mpfb_create_human_from_preset
+[x] mpfb_create_human_from_preset: overrides keyed by the new argument names
+[x] mpfb_create_human_from_preset: settings_used keeps MPFB's own keys
+[x] mpfb_generate_rigify_rig
+[x] mpfb_generate_rigify_rig echoes generated_rig_name
+--- FR 037 live check: 50 passed, 0 failed

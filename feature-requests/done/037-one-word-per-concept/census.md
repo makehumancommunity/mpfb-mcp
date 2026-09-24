@@ -1,5 +1,16 @@
 # FR 037 census: every name on the tool surface, judged
 
+**Outcome.** Every rename below landed, one commit per group, and `census.py --check` reports
+62 renames and 0 outstanding. Run again at the end, the census finds 65 argument names (the same
+count, differently spelled), 448 answer keys, 52 refusal slugs (two fewer: `not_found` and
+`properties_unreachable` merged into the spellings they duplicated) and 643 backticked terms, and
+no argument name with two JSON types. [live_check.py](live_check.py) called every renamed argument
+once against a headless Blender 5.1 with MPFB 2.0.17 and passed all 50 of its checks
+([live_check_result.txt](live_check_result.txt)). Two things changed in the census itself while the
+effort ran, and both are recorded where they apply below: it now also reads the two tool modules
+that build an answer on this side of the socket, and one rename had to be marked as leaving its old
+spelling behind, because a census of keys cannot see nesting.
+
 The input to [FR 037](README.md), taken on 2026-09-24 at `38c0514` by running
 [census.py](census.py) and by reading the code behind every divergence it showed. The census found
 **65 argument names** over the 32 tools, **439 keys** in the bridge's answers (an over-count,
@@ -250,6 +261,19 @@ Counted over the 32 descriptions plus the server instructions (`desc`) and `spec
 | Eyes, hair, teeth and the rest | *body part* 7, *bodypart* 1 | *body part*, and `bodyparts` only as the preset file's key |
 | The topology replacement | *proxy* 21 / 7, *body proxy* 4 / 1, *topology proxy* 3 / 1 | *body proxy*, as `bodyproxy_name` spells it |
 | Any of the three | *mesh asset* 4 / 4 | *mesh asset*: a garment, a body part or the body proxy, each equipped from an MHCLO |
+
+## Found while the renames landed
+
+- **Two tools build an answer without the bridge**, `mpfb_list_docs` entirely and `mpfb_list_urls`
+  by merging, and the first census did not read them. It does now; neither diverges.
+- **`name` stays in `create_human_from_preset`'s answer, one level down.** The top-level echo of
+  the preset became `preset_name` (R1), and the `equipped_assets` records gained `name` (the mesh
+  assets rule). `RENAMES` marks the first `old_stays` for that command.
+- **R7 changed how `overrides` is read**, from one spelling for argument and setting to a table
+  between them, and no test pinned it. The preset command's bridge test now does.
+- **The face units' `weight` was also an entry key the tool validates itself**, not an argument,
+  so it is refused with its replacement by the tool's own per-entry check rather than by
+  `RETIRED_ARGUMENTS`.
 
 ## Out of scope
 

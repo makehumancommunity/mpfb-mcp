@@ -533,3 +533,46 @@ exits 0 with eleven names left, each kept with a recorded reason. Four findings 
 [selection restore covering one object](NEXT_STEPS.md#selection-restore-covers-one-object),
 [twenty-nine test helpers reaching FastMCP's private `_tool_manager`](NEXT_STEPS.md#one-helper-for-the-tool-under-test),
 and [`mpfb_create_human` refusing a non-number with a `TypeError`](NEXT_STEPS.md#create-human-typeerror).
+
+## [FR 037](done/037-one-word-per-concept/README.md) — one word per concept across the tool surface
+
+The rule "a field that means the same thing in two tools is spelled the same way in both" held
+for `found`, `ready`, `blocked_by` and the paging keys, and not across the whole surface: `name`
+was the character in most tools and the file in three, `applied` was a success flag in two tools
+and a list of writes in two others, `material_instances` was a bool in one tool and a three-value
+policy in another. And the MCP layer dropped an argument it did not know, so every rename would
+have turned the old spelling into a silent no-op.
+
+**Refusing an undeclared argument landed first.** `build_server()` now builds a `FastMCP` subclass
+whose `call_tool` refuses an argument the called tool does not declare, in the bridge's wording,
+and names the replacement of a spelling in `arguments.RETIRED_ARGUMENTS`. A tool never sees such a
+key, so this is the one shape rule no tool calls. `tests/test_vocabulary.py` checks it for all
+thirty-two, through a real in-memory MCP client too. That is what made a straight rename safe, with
+no period of reporting both spellings: `PROTOCOL_VERSION` and `MIN_SUPPORTED_PROTOCOL_VERSION` went
+to 2 on both sides, so a client and a bridge on either side of the rename refuse each other at the
+handshake.
+
+**A census came next** (`census.py`, `census.md`): every argument from `build_server()`, every
+answer key and refusal slug the bridge writes, every backticked description term, and a verdict
+for each divergence. It found more than the request's tables: `rig_name` in seven answers rather
+than two, two echoes shorter than their argument, a bare `resolved_by` beside
+`subject_resolved_by`, two slugs for one condition, and `assets` meaning both the library and a
+character's equipment. 62 renames landed in eleven commits, one rule each, across both sides of the
+socket: `preset_name`/`expression_name` with `name` as the character (R1); `rig_object_name`,
+`basemesh_name`, `generated_rig_name` (R2); `changes` for a batch tool's writes (R3);
+`*_identified_as` (R4); `previous_value`/`new_value` and `<field>_before`/`_after` (R5);
+`object_type`, `mode`, and echoes named after their argument (R6); `material_instances_policy` and
+`override_skin_type`/`override_*_material_type` over MPFB's spelling (R7); `value` for a face unit;
+`subject_resolved_by` everywhere, `path_resolved_by`, `subject_not_found`; and `equipped_assets`.
+The three open questions were settled with the user before the first rename.
+
+**The glossary is a section of tool-interface.md**: the spellings, the words the descriptions use
+(phenotype, modeling targets, mesh asset as garment, body part or body proxy), and every deliberate
+exception with its reason. R7 is a section of mpfb-integration.md. The `resolved_from` entry FR 036
+opened in NEXT_STEPS.md is closed.
+
+Unit suite 446 → 459, bridge suite 389 → 390, smoke run 34 in 1.5 s after every group, and
+`live_check.py` called every renamed argument once against a headless Blender and passed all 50
+checks. The description budget was not raised: 81,231 B → 81,396 B, inside both ceilings. One
+finding went to NEXT_STEPS.md:
+[five mutating tools answer an unresolved subject with no `blocked_by`](NEXT_STEPS.md#an-unresolved-subject-has-no-blocked-by-in-five-tools).

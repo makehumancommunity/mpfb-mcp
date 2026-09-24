@@ -107,7 +107,7 @@ Two things keep MPFB's spelling on purpose, because they *are* MPFB's rather tha
 MPFB itself reads or wrote, reported as it is (`mpfb_create_human_from_preset`'s `settings_used`,
 `mpfb_save_preset`'s `contents`), and MPFB's own vocabularies, such as its object types and skin
 types. Renaming either would make a value impossible to look up in MPFB.
-[FR 037](../feature-requests/037-one-word-per-concept/README.md) established this.
+[FR 037](../feature-requests/done/037-one-word-per-concept/README.md) established this.
 
 ## Where MPFB's own code paths disagree, mpfb-mcp picks one and names it
 

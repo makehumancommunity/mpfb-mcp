@@ -30,7 +30,7 @@ See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
 - `mpfb_list_objects` — which MakeHuman objects are in the current scene?
 - `mpfb_get_object_info` — what is this object, what was it made from, and what belongs with it?
 - `mpfb_get_macro_details` — what is this character's phenotype?
-- `mpfb_get_target_stack` — which detail morphs are on this character, and how strong?
+- `mpfb_get_target_stack` — which modeling targets are on this character, and how strong?
 - `mpfb_get_face_units` — what is this character's face doing, in ARKit face units?
 - `mpfb_get_expression` — which saved expressions is this character wearing, and do they explain
   its face?
@@ -38,7 +38,7 @@ See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
 **Catalogues** — what could be added, each entry named the way the acting tool will want it:
 
 - `mpfb_list_rigs` — which armatures could be attached?
-- `mpfb_list_assets` — which clothes, body parts, proxies and skins are installed?
+- `mpfb_list_assets` — which garments, body parts, body proxies and skins are installed?
 - `mpfb_list_targets` — which modeling targets could be set?
 - `mpfb_list_asset_materials` — which other materials ship beside this equipped asset?
 - `mpfb_list_presets` — which characters have been saved?
@@ -54,7 +54,7 @@ See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
 
 - `mpfb_create_human` — wraps MPFB's `HumanService.create_human()`.
 - `mpfb_set_macro_details` — change a character's phenotype in place.
-- `mpfb_set_targets` — set detail morphs, batched.
+- `mpfb_set_targets` — set modeling targets, batched.
 - `mpfb_symmetrize_targets` — copy one side of a character onto the other.
 - `mpfb_set_face_units` — compose a character's face from ARKit face units. Transient: not saved
   by a preset, and overwritten by the next expression applied.
@@ -72,7 +72,7 @@ See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
   only tools here that write a file, and nothing in Blender can undo it, so both saving tools
   refuse to overwrite unless told to.
 
-**Order matters and MPFB reports no error when it is wrong**: add the rig before the clothes, and
+**Order matters and MPFB reports no error when it is wrong**: add the rig before the garments, and
 generate a Rigify rig after them. The tools report the violation they can see rather than
 enforcing it.
 

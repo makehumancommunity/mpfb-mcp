@@ -8,7 +8,7 @@ attach one. Its three identifiers - the absolute ``path``, the portable
 now, decorative. ``object_type`` is what ``add_mhclo_asset()`` calls
 ``asset_type``; the argument takes the catalogue's name for it rather than
 MPFB's, so that one value has one name across the tools
-([FR 037](../../../feature-requests/037-one-word-per-concept/README.md), R6).
+([FR 037](../../../feature-requests/done/037-one-word-per-concept/README.md), R6).
 
 Two of ``HumanService.add_mhclo_asset()``'s arguments are the ones that get
 characters wrong, and both are handled here rather than passed through:

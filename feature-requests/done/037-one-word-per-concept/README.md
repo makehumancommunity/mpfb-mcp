@@ -1,10 +1,10 @@
 # One word per concept across the tool surface
 
-**Status:** In progress
+**Status:** Done
 
 The specifications already have the rule: "A field that means the same thing in two tools is
 spelled the same way in both"
-([responses.md](../../specifications/responses.md#response-shape)). The rule holds for `found`,
+([responses.md](../../../specifications/responses.md#response-shape)). The rule holds for `found`,
 `ready`, `blocked_by`, `performed`, the paging keys and the `requested_X` / `X_recognized` /
 `known_Xs` echo. It does not hold across the whole surface. Thirty-six efforts named each tool
 locally, and a read of all thirty-two descriptions and input schemas found two kinds of
@@ -28,7 +28,7 @@ headroom left.
 
 Checking what a rename would cost turned up one more fact. **The MCP layer ignores an argument
 it does not know.** A call to `mpfb_list_docs` with `topc` misspelled returns every document,
-not a refusal. The bridge refuses an unknown key ([validation.py](../../bridge/mpfb_bridge/validation.py)),
+not a refusal. The bridge refuses an unknown key ([validation.py](../../../bridge/mpfb_bridge/validation.py)),
 but FastMCP drops the key before the bridge ever sees it. Every rename in this request would turn
 the old spelling into exactly that kind of silent no-op.
 
@@ -49,8 +49,8 @@ mechanically is checked by a test.
 **Secondary:** the sentences that exist only to explain a naming difference are deleted, and the
 description ceiling is lowered by what they free.
 
-**Secondary:** the [`resolved_from` / `subject_resolved_by`](../NEXT_STEPS.md#resolved-from-and-subject-resolved-by)
-entry in NEXT_STEPS.md is closed.
+**Secondary:** the `resolved_from` / `subject_resolved_by` entry in NEXT_STEPS.md, opened by
+[FR 036](../036-subject-resolver-and-duplication/README.md), is closed.
 
 **Not a goal:** changing what any tool does. Renaming tools, even where the prose says
 "character" and the tool name says `human`. Changing MPFB's own vocabularies (object types, skin
@@ -66,7 +66,7 @@ types, the `$md-` and `!ex-` prefixes) or the keys of MPFB's own files read back
    are the starting point, taken from reading the descriptions. They are not the census. Where the
    census finds more, it goes in the tables. Where it contradicts them, the census wins.
 2. **The glossary is written into the specifications.** It is a new section of
-   [tool-interface.md](../../specifications/tool-interface.md). It covers the argument and
+   [tool-interface.md](../../../specifications/tool-interface.md). It covers the argument and
    response spellings in the rules below, and the prose terms in requirement 7. Each deliberate
    exception is listed with its reason.
 3. **The collisions are removed.** Every row of [Collisions](#collisions) is resolved.
@@ -92,9 +92,9 @@ types, the `$md-` and `!ex-` prefixes) or the keys of MPFB's own files read back
    - one term for the per-category sliders and raw morphs, which are currently called *detail
      targets*, *modeling targets* and *detail morphs*;
    - one term each for *garment*, *body part*, *proxy* and *mesh asset*, and their relationship.
-8. **Nothing that was true becomes false elsewhere.** The root [CLAUDE.md](../../CLAUDE.md)'s
+8. **Nothing that was true becomes false elsewhere.** The root [CLAUDE.md](../../../CLAUDE.md)'s
    tool table, the specifications, module docstrings and the smoke items use the new spellings.
-   [HISTORY.md](../HISTORY.md) and the `done/` requests are not rewritten. They record what was
+   [HISTORY.md](../../HISTORY.md) and the `done/` requests are not rewritten. They record what was
    true when they were written.
 
 ### The rules the renames follow
@@ -107,12 +107,12 @@ types, the `$md-` and `!ex-` prefixes) or the keys of MPFB's own files read back
   `mpfb_list_rigs`, and an asset has a `name` in `mpfb_list_assets`. Hence `rig_object_name` and
   `asset_object_name`.
 - **R3. A tool's own success verb stays** beside `performed`, as
-  [mutating-tools.md](../../specifications/mutating-tools.md#the-flag-a-caller-branches-on-is-called-performed)
+  [mutating-tools.md](../../../specifications/mutating-tools.md#the-flag-a-caller-branches-on-is-called-performed)
   requires. A key that is some tool's verb is never a list in another tool. The per-entry list of
   writes is `changes`. The bool "did anything move" is `changed`.
 - **R4. An identification is `<thing>_identified_as`.** It is not `<thing>_type`, which is
   reserved for the enum a caller passes. The two vocabularies are different sets, as
-  [tool-interface.md](../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added)
+  [tool-interface.md](../../../specifications/tool-interface.md#how-tools-name-things-that-can-be-added)
   already says.
 - **R5. A value before and after a write** is `previous_value` / `new_value` inside a per-entry
   record, and `<field>_before` / `<field>_after` for a whole field.
@@ -123,7 +123,7 @@ types, the `$md-` and `!ex-` prefixes) or the keys of MPFB's own files read back
   lose their bearings. MPFB is not consistent with itself: it uses `material_instances` both as a
   bool and as a string, and calls the material model `material_type` in one function and
   `material_model` in another. Mirroring it would bring those inconsistencies into these tools.
-  This rule goes into [mpfb-integration.md](../../specifications/mpfb-integration.md), beside the
+  This rule goes into [mpfb-integration.md](../../../specifications/mpfb-integration.md), beside the
   existing rules for coping with MPFB.
 
 ### Collisions
@@ -184,7 +184,7 @@ These go into the glossary as deliberate exceptions, so the next census confirms
 - **Robustness at the boundary.** Requirement 5 is what makes the renames safe. Without it, a
   caller still using `clear_first` gets an additive face and no error.
 - **The description budget does not grow.** The ceilings in
-  [test_description_budget.py](../../tests/test_description_budget.py) are not raised. Longer
+  [test_description_budget.py](../../../tests/test_description_budget.py) are not raised. Longer
   argument names cost schema bytes. The deleted explanations free description bytes. If the total
   falls, the ceiling is lowered to match, as that test's docstring asks.
 - **One rename is one commit, across both sides of the socket.** A commit that renames a key in a
@@ -195,7 +195,7 @@ These go into the glossary as deliberate exceptions, so the next census confirms
 
 - **Where requirement 5 goes.** FastMCP (mcp 1.29, pinned `<2`) builds each tool's argument model
   from the function signature, and that model ignores extra keys. `build_server()` in
-  [__init__.py](../../src/mpfbmcp/__init__.py) already post-processes every registered tool once
+  [__init__.py](../../../src/mpfbmcp/__init__.py) already post-processes every registered tool once
   (it dedents the descriptions), so forbidding extra keys belongs there, in one place, and not in
   thirty-two tool modules. Check how the refusal reaches the client. It must be a tool error with
   the argument named, not a protocol-level failure the client hides. Check too that no MCP client
@@ -209,7 +209,7 @@ These go into the glossary as deliberate exceptions, so the next census confirms
   - both test harnesses;
   - the smoke item;
   - the specifications that quote the key.
-  [test_verification_smoke.py](../../tests/test_verification_smoke.py) catches a smoke item that
+  [test_verification_smoke.py](../../../tests/test_verification_smoke.py) catches a smoke item that
   names a key the description no longer does.
 - **`mpfb_get_character_summary` has to rename in the same commit** as the detailed tool whose
   fields it carries. Its bridge test asserts that every shared field equals the detailed command's
@@ -220,21 +220,21 @@ These go into the glossary as deliberate exceptions, so the next census confirms
   that name) rather than an unknown-argument refusal. The refusal for a `name` that resolves to
   nothing should mention `preset_name` in these two tools.
 - **`asset_info`'s keys are also the specification's example** in
-  [responses.md](../../specifications/responses.md#how-tools-report-the-asset-behind-an-object).
+  [responses.md](../../../specifications/responses.md#how-tools-report-the-asset-behind-an-object).
   Renaming `material_type` and `rig_type` there changes the example too.
 
 ## Affected specifications
 
-- [tool-interface.md](../../specifications/tool-interface.md): the glossary (new section), the
+- [tool-interface.md](../../../specifications/tool-interface.md): the glossary (new section), the
   argument-refusal rule, and the addressing section's note on `resolved_from`.
-- [responses.md](../../specifications/responses.md): the "spelled the same way in both" rule
+- [responses.md](../../../specifications/responses.md): the "spelled the same way in both" rule
   points at the glossary, and the `asset_info` example is renamed.
-- [mutating-tools.md](../../specifications/mutating-tools.md): R3 (a verb is never a list), and any
+- [mutating-tools.md](../../../specifications/mutating-tools.md): R3 (a verb is never a list), and any
   key it quotes.
-- [architecture.md](../../specifications/architecture.md#the-wire): the protocol version bump.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md): R7, where MPFB's spelling
+- [architecture.md](../../../specifications/architecture.md#the-wire): the protocol version bump.
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md): R7, where MPFB's spelling
   disagrees with the glossary.
-- [testing.md](../../specifications/testing.md), if the vocabulary test sets a precedent worth
+- [testing.md](../../../specifications/testing.md), if the vocabulary test sets a precedent worth
   stating.
 
 ## Tests
@@ -254,10 +254,48 @@ These go into the glossary as deliberate exceptions, so the next census confirms
 - **The existing tests are renamed with their keys**, on both harnesses. Few should change beyond
   spelling. A test that needs more than a spelling change is a sign that the rename changed
   behavior.
-- **Live verification is the smoke run** ([verification/](../../verification/README.md)), plus a
+- **Live verification is the smoke run** ([verification/](../../../verification/README.md)), plus a
   script in this subdir that calls every renamed argument once against a running Blender and
   asserts every renamed key is present and every retired one is absent. The bridge's unit tests
   already run against a real MPFB, but only a live run proves that both halves agree.
+
+## Verification
+
+One commit per group, in this order: the undeclared-argument refusal (requirement 5, before any
+rename), the census, R1 with the protocol bump, R2, R3, R4, R5, R6, R7, a face unit's `value`, how
+something was resolved and what was not found, the mesh assets, and the glossary with the prose.
+After each rename commit, all of the following ran and passed:
+
+- **Unit suite**: 446 at the start, 459 at the end. The new ones are `tests/test_vocabulary.py`,
+  the refusal sentences in `tests/test_arguments.py`, the `mode` and retired-`weight` checks in
+  `tests/test_set_face_units.py`.
+- **Bridge suite**, pytest in a headless Blender 5.1 with MPFB 2.0.17: 389 at the start, 390 at the
+  end (`save_preset_test`'s check that a preset passed as `name` is pointed at `preset_name`). Every
+  other change was a spelling, which is what the Tests section asked for; the two exceptions are
+  `eee_composite/subject_resolution_test.py`, which now allows the save tools their one extra
+  sentence, and new assertions on the preset tool's `overrides` and `equipped_assets` records.
+- **Census**: [census.py](census.py) `--check` fell from 190 outstanding places to 0 as the groups
+  landed. [census.md](census.md) opens with what the final run found.
+- **Smoke run** ([verification/](../../../verification/README.md)): 34 of 34 after every group. The
+  first run after R1 failed at the handshake with "Upgrade mpfb-mcp", which was stale bytecode from
+  a baseline comparison rather than a defect, and is the handshake doing what requirement 6 asked.
+- **Live check** ([live_check.py](live_check.py)): every renamed argument called once through a
+  real MCP client session against a headless Blender, every renamed key asserted present and every
+  retired one absent, and every retired argument refused with its replacement named. 50 of 50
+  ([live_check_result.txt](live_check_result.txt)).
+- **Lint**: pylint on `src/` and on `bridge/` with the bridge's `.pylintrc`, diffed against the
+  starting commit. No new finding beyond `consider-using-f-string`, which the `.format()`
+  convention produces everywhere.
+
+**The description budget**: descriptions went from 69,095 B to 69,143 B and schemas from 12,136 B
+to 12,253 B, 81,396 B against 81,231 B at the start. Neither ceiling was raised, and neither was
+lowered, since the total did not fall: the renames deleted the sentences that explained a naming
+difference, and the longer argument names and the glossary's prose terms spent a little more than
+that.
+
+**Found and left for later**: five mutating tools answer an unresolved subject with no `blocked_by`
+at all, which is a missing key rather than a second spelling
+([NEXT_STEPS](../../NEXT_STEPS.md#an-unresolved-subject-has-no-blocked-by-in-five-tools)).
 
 ## Open questions
 
@@ -271,9 +309,10 @@ number under two names.
 
 ## References
 
-- [FR 036](../done/036-subject-resolver-and-duplication/README.md), whose census is the model for
+- [FR 036](../036-subject-resolver-and-duplication/README.md), whose census is the model for
   this one and which recorded `resolved_from` rather than fixing it.
-- [NEXT_STEPS: `resolved_from` and `subject_resolved_by`](../NEXT_STEPS.md#resolved-from-and-subject-resolved-by).
+- The NEXT_STEPS entry "`resolved_from` and `subject_resolved_by`", which this request closed and
+  removed; [HISTORY.md](../../HISTORY.md)'s FR 036 entry still links to where it was.
 - MPFB's `HumanService.add_mhclo_asset()`, `set_character_skin()`, the `material_instances`
   handling in `HumanService` deserialization, and `MaterialService.identify_material()`, in
   `../mpfb2/src/mpfb/services/`.

@@ -429,3 +429,18 @@ accordingly, and two of them are load-bearing rather than routine:
 
 The same principle applies to any future component that does not cross the socket: if it can be
 tested properly, it must be.
+
+**The tool surface as a whole is one of them.** What a client downloads and what the server does
+with a call before any tool runs are both on this side, so two tests measure *the server
+`build_server()` builds* rather than a list of their own, which is what keeps a newly registered
+tool inside their rules rather than outside them:
+[test_description_budget.py](../tests/test_description_budget.py) holds the bytes to a ceiling, and
+[test_vocabulary.py](../tests/test_vocabulary.py) holds the argument vocabulary to
+[the glossary](tool-interface.md#the-glossary) — every tool refuses an undeclared argument, through
+a real in-memory MCP client session as well as by calling the server; the retired spellings table
+agrees with what each tool declares; and no argument name carries two JSON types. **Answer keys
+are not held by a permanent test**: they are built bridge-side as dicts, and a list of forbidden
+spellings over that source would also match internal dictionaries. An effort that renames them
+checks them with a census of its own, as
+[FR 037](../feature-requests/done/037-one-word-per-concept/README.md)'s `census.py --check` did, and
+with a live script that asserts each renamed key present and each retired one absent.

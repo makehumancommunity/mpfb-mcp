@@ -25,7 +25,7 @@ tool function runs, so the check is made once for every tool, by the server
 ``RETIRED_ARGUMENTS`` is what makes a rename safe - a caller still using the old
 spelling is told the new one, rather than getting the default the old spelling
 used to override
-([FR 037](../../feature-requests/037-one-word-per-concept/README.md)).
+([FR 037](../../feature-requests/done/037-one-word-per-concept/README.md)).
 
 **Shape only, never vocabulary.** Whether a name is an object, a section a
 section, or a fragment a file is answered inside Blender. The two narrow
