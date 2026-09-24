@@ -99,6 +99,17 @@ what an empty filter should have been instead — and why truthiness would do ha
 flag is a comment at that flag's call site. A rule one tool alone needs, or whose body differs per
 tool, stays in that tool's module.
 
+**An argument a tool does not declare is refused**, naming the argument and listing the ones the
+tool accepts — the same form as the bridge's refusal of an unknown parameter. FastMCP's argument
+model ignores a key it has no field for, so without this `mpfb_list_docs` called with `topc`
+answered with every document, and a renamed argument's old spelling reached its tool as the
+default. The tool never sees such a key, so the check is made once for every tool, by the server
+`build_server()` builds, before the call is handed to FastMCP, and it reaches the client as a tool
+error like any other shape refusal. A spelling retired by a rename is listed per tool in
+`arguments.py`'s `RETIRED_ARGUMENTS`, and its refusal also names what it became. That, rather than
+a period in which both spellings are accepted, is what makes a rename safe for a caller that still
+uses the old one ([FR 037](../feature-requests/037-one-word-per-concept/README.md)).
+
 The same holds for the *shape* of a string argument: reject a non-string, or an empty or
 whitespace-only one, and never quietly treat an explicitly empty value as an omitted one, since
 the two arise from different mistakes. But validate only the shape, never the **vocabulary**. A

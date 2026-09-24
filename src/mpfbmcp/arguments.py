@@ -18,6 +18,15 @@ a reader of the tool can see it without opening this file. Why truthiness would
 do harm *for a given flag* is a comment at that flag's call site, where it is
 true.
 
+**An argument a tool does not declare is refused**, by ``refuse_undeclared()``.
+It is the one rule here no tool calls: FastMCP drops an unknown key before the
+tool function runs, so the check is made once for every tool, by the server
+``build_server()`` builds, against the arguments as they arrived.
+``RETIRED_ARGUMENTS`` is what makes a rename safe - a caller still using the old
+spelling is told the new one, rather than getting the default the old spelling
+used to override
+([FR 037](../../feature-requests/037-one-word-per-concept/README.md)).
+
 **Shape only, never vocabulary.** Whether a name is an object, a section a
 section, or a fragment a file is answered inside Blender. The two narrow
 exceptions, ``skin_type`` and ``meta_rig_action``, are checked by their own
@@ -30,6 +39,8 @@ pull in the wire or the record.
 from __future__ import annotations
 
 __all__ = (
+    "RETIRED_ARGUMENTS",
+    "refuse_undeclared",
     "validated_asset_name",
     "validated_count",
     "validated_flag",
@@ -112,3 +123,33 @@ def validated_text(value: object, argument: str, hint: str) -> str | None:
     if not value.strip():
         raise ValueError("{:s} must not be empty or whitespace; {:s}".format(argument, hint))
     return value
+
+
+# A spelling a tool no longer takes, per tool, and the one that replaced it.
+# Per tool rather than one set: a spelling retired from one tool can still be
+# declared by another, where it means something else. An entry stays for as long
+# as a caller might still send the old spelling, which in a proof of concept with
+# no released users is until nobody remembers it.
+RETIRED_ARGUMENTS: dict[str, dict[str, str]] = {}
+
+
+def refuse_undeclared(tool: str, declared: object, supplied: object) -> None:
+    """Refuse any argument in ``supplied`` that ``tool``'s signature does not declare.
+
+    Worded as the bridge words an unknown parameter, and for the same reason: a
+    misspelled ``topc`` that is quietly dropped is a call that succeeds with the
+    default instead, which is the hardest failure there is to see from the caller's
+    side. A spelling in ``RETIRED_ARGUMENTS`` is named with what it became.
+    """
+    accepted = sorted(declared)
+    unknown = sorted(key for key in supplied if key not in accepted)
+    if not unknown:
+        return
+    retired = RETIRED_ARGUMENTS.get(tool, {})
+    raise ValueError("Unknown argument{:s} {:s}. This tool accepts {:s}.".format(
+        "" if len(unknown) == 1 else "s",
+        ", ".join(
+            "{!r} (now called {!r})".format(key, retired[key]) if key in retired
+            else repr(key)
+            for key in unknown),
+        ", ".join(accepted) if accepted else "no arguments"))

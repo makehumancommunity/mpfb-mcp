@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 """
-Tests for mpfbmcp.arguments, the shape validators every tool calls.
+Tests for mpfbmcp.arguments, the shape validators every tool calls, and the
+refusal of an argument no tool declares.
 
 Entirely on this side of the socket, so tested here and directly, under
 [the exception for what is entirely on this side](../specifications/testing.md#the-exception-what-is-entirely-on-this-side-of-the-socket).
@@ -23,6 +24,7 @@ from __future__ import annotations
 __all__ = ()
 
 import unittest
+from unittest import mock
 
 from mpfbmcp import arguments
 
@@ -126,6 +128,42 @@ class ValidatedTextTests(unittest.TestCase):
             arguments.validated_text("", "section", "omit it to cover every section")
         self.assertEqual(str(raised.exception),
                          "section must not be empty or whitespace; omit it to cover every section")
+
+
+class RefuseUndeclaredTests(unittest.TestCase):
+    def test_declared_arguments_pass(self) -> None:
+        arguments.refuse_undeclared("mpfb_list_docs", {"topic", "keyword"}, {"topic": "x"})
+        arguments.refuse_undeclared("mpfb_get_status", frozenset(), {})
+
+    def test_one_unknown_is_named_beside_what_is_accepted(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            arguments.refuse_undeclared("mpfb_list_docs", {"topic", "keyword"}, {"topc": "x"})
+        self.assertEqual(str(raised.exception),
+                         "Unknown argument 'topc'. This tool accepts keyword, topic.")
+
+    def test_several_unknowns_are_sorted_and_plural(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            arguments.refuse_undeclared("mpfb_get_status", frozenset(), {"x": 1, "a": 2})
+        self.assertEqual(str(raised.exception),
+                         "Unknown arguments 'a', 'x'. This tool accepts no arguments.")
+
+    def test_a_retired_spelling_names_its_replacement(self) -> None:
+        retired = {"mpfb_set_face_units": {"clear_first": "mode"}}
+        with mock.patch.dict(arguments.RETIRED_ARGUMENTS, retired):
+            with self.assertRaises(ValueError) as raised:
+                arguments.refuse_undeclared(
+                    "mpfb_set_face_units", {"name", "mode"}, {"clear_first": True, "x": 1})
+        self.assertEqual(str(raised.exception),
+                         "Unknown arguments 'clear_first' (now called 'mode'), 'x'. "
+                         "This tool accepts mode, name.")
+
+    def test_a_spelling_retired_from_another_tool_is_only_unknown(self) -> None:
+        retired = {"mpfb_set_face_units": {"clear_first": "mode"}}
+        with mock.patch.dict(arguments.RETIRED_ARGUMENTS, retired):
+            with self.assertRaises(ValueError) as raised:
+                arguments.refuse_undeclared("mpfb_list_docs", {"topic"}, {"clear_first": True})
+        self.assertEqual(str(raised.exception),
+                         "Unknown argument 'clear_first'. This tool accepts topic.")
 
 
 if __name__ == "__main__":

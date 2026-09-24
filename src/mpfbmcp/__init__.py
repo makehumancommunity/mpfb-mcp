@@ -22,8 +22,61 @@ __all__ = (
 )
 
 import inspect
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
+from mcp.server.fastmcp.exceptions import ToolError  # pylint: disable=import-error,no-name-in-module
+
+from mpfbmcp import arguments as arguments_module
+
+
+class _Server(FastMCP):
+    """FastMCP, refusing an argument the called tool does not declare.
+
+    FastMCP validates a call through a model built from the tool's signature,
+    and that model ignores a key it has no field for: ``topc`` misspelled
+    reaches ``mpfb_list_docs`` as no filter at all, and a renamed argument's old
+    spelling would reach its tool as the default. The check cannot live in a
+    tool, which never sees the key, so it lives here, the one place every call
+    passes through with its arguments as they arrived. ``call_tool`` is the
+    public method FastMCP hands its protocol handler, bound at construction,
+    which is why this is a subclass rather than a patch applied afterwards.
+
+    The refusal is raised as a ``ToolError`` worded the way FastMCP words any
+    other failure inside a tool, so the client sees an ``isError`` result naming
+    the argument, exactly as it sees every other shape refusal - not a protocol
+    error it might hide. MCP's own ``_meta`` travels beside ``arguments`` in the
+    request, never inside it, so no client has a key of its own to lose here.
+    """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        # Filled by build_server() once every tool is registered. A tool missing
+        # from it is not checked; tests/test_vocabulary.py is what fails if that
+        # is ever all of them.
+        self.declared_arguments: dict[str, frozenset[str]] = {}
+
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+        declared = self.declared_arguments.get(name)
+        if declared is not None:
+            try:
+                arguments_module.refuse_undeclared(name, declared, arguments or {})
+            except ValueError as error:
+                raise ToolError("Error executing tool {:s}: {!s}".format(name, error)) from error
+        return await super().call_tool(name, arguments)
+
+
+def _registered_tools(mcp: FastMCP) -> list:
+    """Every registered tool, from the one place this package reaches into FastMCP.
+
+    Guarded rather than assumed: if a future mcp release moves the tool manager,
+    this is empty, the descriptions arrive indented and no argument is refused -
+    and ``tests/test_description_budget.py`` and ``tests/test_vocabulary.py`` are
+    what fail, rather than a user's server at startup.
+    """
+    manager = getattr(mcp, "_tool_manager", None)
+    list_tools = getattr(manager, "list_tools", None)
+    return [] if list_tools is None else list(list_tools())
 
 
 def _shipped_without_source_indentation(mcp: FastMCP) -> None:
@@ -35,18 +88,8 @@ def _shipped_without_source_indentation(mcp: FastMCP) -> None:
     the twenty-five, of whitespace an MCP client downloads before any work happens.
     ``inspect.cleandoc`` is what ``help()`` shows and what the docstrings are
     written to look like.
-
-    Guarded rather than assumed, because it is the one place in this package
-    that reaches into FastMCP's tool manager. If a future mcp release moves it,
-    descriptions merely arrive indented again - and
-    ``tests/test_description_budget.py`` is what fails, rather than a user's
-    server at startup.
     """
-    manager = getattr(mcp, "_tool_manager", None)
-    list_tools = getattr(manager, "list_tools", None)
-    if list_tools is None:
-        return
-    for tool in list_tools():
+    for tool in _registered_tools(mcp):
         if tool.description:
             tool.description = inspect.cleandoc(tool.description)
 
@@ -60,7 +103,7 @@ def build_server() -> FastMCP:
     server rather than a list of its own is what keeps a newly registered tool
     inside the budget rather than outside it.
     """
-    mcp = FastMCP(
+    mcp = _Server(
         "mpfb-mcp",
         instructions=(
             "Tools for creating MakeHuman characters via the MPFB Blender add-on. "
@@ -196,6 +239,9 @@ def build_server() -> FastMCP:
     symmetrize_targets.register(mcp)
 
     _shipped_without_source_indentation(mcp)
+    mcp.declared_arguments = {
+        tool.name: frozenset(tool.parameters.get("properties", {}))
+        for tool in _registered_tools(mcp)}
     return mcp
 
 
