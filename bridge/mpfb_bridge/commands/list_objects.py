@@ -21,7 +21,7 @@ them are quirks worth naming, because each is a thing a reimplementation would
   answer than failing the call.
 - Matching is MPFB's own, a case-insensitive **substring** test rather than
   equality: ``"rig"`` matches ``Subrig`` and ``"mesh"`` matches both
-  ``Basemesh`` and ``Proxymeshes``. ``type_recognized`` is answered the same
+  ``Basemesh`` and ``Proxymeshes``. ``object_type_recognized`` is answered the same
   way, or a caller would be told ``"rig"`` is unknown while the filter happily
   matched with it.
 - ``get_object_type()`` answers ``""`` rather than ``None`` for an object
@@ -35,7 +35,7 @@ not. The dispatcher's parameter contract is about *shape*, and "not empty" is a
 rule with an MPFB reason behind it - an empty filter substring-matches every
 type rather than none - which mpfb-mcp's own tool applies before anything
 reaches a transport. A hand-written client that sends one gets this command's
-behaviour unmediated: every MakeHuman object, with ``type_recognized`` false
+behaviour unmediated: every MakeHuman object, with ``object_type_recognized`` false
 beside the list saying why the answer is broader than the question.
 """
 
@@ -149,7 +149,7 @@ def list_objects(params, resolution):
     return {
         "objects": objects,
         "count": len(objects),
-        "requested_type": requested_type,
-        "type_recognized": _type_is_recognized(requested_type, all_types),
-        "known_types": all_types,
+        "requested_object_type": requested_type,
+        "object_type_recognized": _type_is_recognized(requested_type, all_types),
+        "known_object_types": all_types,
     }

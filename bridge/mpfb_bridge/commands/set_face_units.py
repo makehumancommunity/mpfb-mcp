@@ -47,7 +47,7 @@ reportable outcome (``could_not_load``), never folded into the up-front refusal.
   ``could_not_load``, which is the partial-install case the up-front probe
   cannot catch.
 
-``clear_first`` runs ``FaceService.clear_expression()`` before any of the above
+``mode: "replace"`` runs ``FaceService.clear_expression()`` before any of the above
 is measured, which is why the presence check happens after it: a call that
 clears and then re-requests the same units at their old values should not see
 them as "already present with the old value" versus "cleared".
@@ -104,6 +104,11 @@ from ..validation import TYPE_STRING
 
 _LOG = get_logger("commands.setfaceunits")
 
+# The same two words as apply_expressions' MODES, and with the same meaning:
+# add to what is there, or make it exactly this (FR 037, R6). Declared here
+# rather than imported from that command, since a command is not a library.
+MODES = ("merge", "replace")
+
 PARAMS = (
     Param("name", TYPE_STRING, default=None, nullable=True,
           description="Any object in the character's family. Omit or pass null to use "
@@ -112,10 +117,10 @@ PARAMS = (
           description="One object per face unit: {'face_unit', 'weight'} with weight in "
                       "0.0-1.0. Every name is checked against ARKIT_FACEUNITS before anything "
                       "is written; one unrecognised name refuses the whole call."),
-    Param("clear_first", TYPE_BOOLEAN, default=False,
-          description="Zero every ARKit face unit before applying this call's entries. "
-                      "FaceService.set_expression is additive by default: a unit not "
-                      "mentioned is left untouched."),
+    Param("mode", TYPE_STRING, default="merge", choices=MODES,
+          description="'merge' leaves a unit not mentioned untouched, as "
+                      "FaceService.set_expression does; 'replace' zeroes every ARKit face unit "
+                      "before applying this call's entries."),
     Param("refit", TYPE_BOOLEAN, default=True,
           description="Re-fit clothes and the rig afterwards. True, unlike every other "
                       "refitting command here and unlike the composer panel: composing across "
@@ -213,7 +218,7 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
 
     requested_name = params["name"]
     requested = list(params["face_units"])
-    clear_first = params["clear_first"]
+    clear_first = params["mode"] == "replace"
     refit_requested = params["refit"]
 
     basemesh, subject, subject_resolved_by, message = subject_resolution.resolve_basemesh(
@@ -233,7 +238,7 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
             loaded_from_disk=[],
             could_not_load=[],
             skipped_absent_at_zero=[],
-            cleared=[],
+            removed_by_replace=[],
             unknown_face_units=[],
             message=message,
         ), False)
@@ -251,7 +256,7 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
             loaded_from_disk=[],
             could_not_load=[],
             skipped_absent_at_zero=[],
-            cleared=[],
+            removed_by_replace=[],
             unknown_face_units=[],
             message=blocked_message,
         ), False)
@@ -291,7 +296,7 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
             loaded_from_disk=[],
             could_not_load=[],
             skipped_absent_at_zero=[],
-            cleared=[],
+            removed_by_replace=[],
             unknown_face_units=[],
             message="The faceunits01 asset pack does not appear to be installed, so nothing "
                     "was changed. Every ARKit face-unit target file would be missing.",
@@ -370,13 +375,13 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
         subject_resolved_by=subject_resolved_by,
         basemesh_name=basemesh.name,
         faceunits01_installed=installed,
-        clear_first=clear_first,
+        mode=params["mode"],
         changes=applied_entries,
         change_count=len(applied_entries),
         loaded_from_disk=loaded_from_disk,
         could_not_load=could_not_load,
         skipped_absent_at_zero=skipped_absent_at_zero,
-        cleared=cleared,
+        removed_by_replace=cleared,
         unknown_face_units=[],
         matches_stack=compared["matches_stack"],
         unexplained_face_units=compared["unexplained_face_units"],

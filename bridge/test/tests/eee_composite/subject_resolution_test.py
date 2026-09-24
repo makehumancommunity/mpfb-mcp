@@ -67,7 +67,7 @@ def _calls(subject):
         "save_preset": dict(preset_name="bridge_test_never_written", name=subject),
         "add_rig": dict(name=subject, identifier="default"),
         "generate_rigify_rig": dict(name=subject),
-        "add_asset": dict(name=subject, fragment="none/none.mhclo", asset_type="Clothes"),
+        "add_asset": dict(name=subject, fragment="none/none.mhclo", object_type="Clothes"),
         "set_skin": dict(name=subject),
     }
 

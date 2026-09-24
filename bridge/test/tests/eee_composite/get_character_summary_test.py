@@ -71,7 +71,7 @@ def _dress(services, character, root):
     write_loadable_mhclo(os.path.join(str(root), "clothes", "spike", "spike.mhclo"))
     with redirected_locations(services, user_data=str(root)):
         equipped = result("add_asset", {
-            "name": name, "fragment": "spike/spike.mhclo", "asset_type": "Clothes"})
+            "name": name, "fragment": "spike/spike.mhclo", "object_type": "Clothes"})
     assert equipped["added"] is True, equipped["message"]
 
     skinned = result("set_skin", {"name": name, "skin_type": "LAYERED"})

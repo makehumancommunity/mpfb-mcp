@@ -34,8 +34,8 @@ ceiling, so the next drift is a failing test rather than a discovery.
   standing. Why
   MPFB's label collision happens explains; *check `total_count` before concluding an asset is
   absent* instructs.
-- **Surprising facts are instruction, and they stay in full.** That `asset_type` is required
-  because MPFB's own default mislabels six of eight types, that `skin_type` follows the settings
+- **Surprising facts are instruction, and they stay in full.** That `mpfb_add_asset`'s `object_type`
+  is required because MPFB's own default mislabels six of eight types, that `skin_type` follows the settings
   panel rather than the function signature, that exactly one of `path` and `fragment` may be
   given: each of these changes what a caller passes, and each is needed *because* the answer is
   surprising. Trimming is for rationale, never for these.
@@ -137,8 +137,10 @@ response still reports the valid values; the local check only means a typo never
 third case needs the same argument: naming the enum is not enough, the damage must precede the
 check.
 
-**A vocabulary this package defines is not an exception at all.** `mpfb_apply_expressions`' `mode`
-(`"merge"` or `"replace"`) is checked locally, and
+**A vocabulary this package defines is not an exception at all.** `mode` (`"merge"` or
+`"replace"`), in `mpfb_apply_expressions` and, since
+[FR 037](../feature-requests/037-one-word-per-concept/README.md), in `mpfb_set_face_units`
+where it replaced a `clear_first` bool, is checked locally, and
 [FR 027](../feature-requests/done/027-expression-library/README.md) planned it as a third case of
 the exception above - but no MPFB function ever receives it. It selects between two ways the command
 builds the stack, so it cannot drift from anything MPFB or the user's disk holds, and the reason not
@@ -266,7 +268,7 @@ naming something that already exists. A *catalogue* tool — one listing what co
 - **An absent entry must be explainable.** Report the directories that were actually scanned (not
   every configured data root — MPFB does not look in all of them for everything), anything a scan
   silently refused, and any precondition that makes a whole family unusable. This is the same
-  quality attribute as `mpfb_list_objects`' `type_recognized`: an agent that reads a short list as
+  quality attribute as `mpfb_list_objects`' `object_type_recognized`: an agent that reads a short list as
   the whole truth will conclude rather than investigate.
 - **A catalogue vocabulary and an identification vocabulary are not the same set**, even when they
   overlap. `RigService.identify_rig()` reports `rigify_generated.*` and `unknown`, neither of which
@@ -303,7 +305,8 @@ takes them all, requires exactly one, and reports which one resolved and to what
   `asset_type` takes exactly the `object_type` the catalogue reports, and defaults to `"Clothes"` —
   so hair added without it *becomes* clothes, permanently and silently. Where a defaulted argument
   changes what the character *is*, the tool requires it rather than inheriting the default, and says
-  in its docstring that it diverges from MPFB's own signature for that reason.
+  in its docstring that it diverges from MPFB's own signature for that reason. `mpfb_add_asset`
+  takes it under the catalogue's name, `object_type`, rather than MPFB's.
 - **Where what the tool writes *is* one of the identifiers, it takes that one only.**
   `mpfb_apply_expressions` takes `fragment` and not `path`, although `mpfb_list_expressions` reports
   both. The tool does not load a file; it writes a stack row, and a stack row is a fragment. A path

@@ -4,8 +4,11 @@ The ``mpfb_add_asset`` tool: put an MHCLO asset on a character.
 The acting counterpart to ``mpfb_list_assets``, which has named every garment,
 proxy, eye, hair and tooth on the machine since FR 005 while nothing could
 attach one. Its three identifiers - the absolute ``path``, the portable
-``fragment`` and the ``object_type`` that doubles as an ``asset_type`` - existed
-for this tool and were, until now, decorative.
+``fragment`` and the ``object_type`` - existed for this tool and were, until
+now, decorative. ``object_type`` is what ``add_mhclo_asset()`` calls
+``asset_type``; the argument takes the catalogue's name for it rather than
+MPFB's, so that one value has one name across the tools
+([FR 037](../../../feature-requests/037-one-word-per-concept/README.md), R6).
 
 Two of ``HumanService.add_mhclo_asset()``'s arguments are the ones that get
 characters wrong, and both are handled here rather than passed through:
@@ -46,17 +49,17 @@ from mpfbmcp import arguments
 from mpfbmcp import backend
 
 
-def _validated_asset_type(asset_type: object) -> str:
+def _validated_object_type(object_type: object) -> str:
     """Shape only. The vocabulary is MPFB's own section table, read in Blender."""
-    if not isinstance(asset_type, str):
-        raise ValueError("asset_type must be a string, got {!r}".format(asset_type))
-    if not asset_type.strip():
+    if not isinstance(object_type, str):
+        raise ValueError("object_type must be a string, got {!r}".format(object_type))
+    if not object_type.strip():
         raise ValueError(
-            "asset_type is required and must name what this asset is: call mpfb_list_assets and "
+            "object_type is required and must name what this asset is: call mpfb_list_assets and "
             "pass the entry's 'object_type' (Clothes, Proxymeshes, Eyes, Eyebrows, Eyelashes, "
             "Hair, Teeth or Tongue). MPFB's own default of 'Clothes' would silently mislabel a "
             "body part, so this tool has no default.")
-    return asset_type
+    return object_type
 
 
 def _validated_source(path: object, fragment: object) -> tuple[str | None, str | None]:
@@ -94,7 +97,7 @@ def register(mcp: FastMCP) -> None:
         )
     )
     def mpfb_add_asset(
-        asset_type: str,
+        object_type: str,
         name: str | None = None,
         path: str | None = None,
         fragment: str | None = None,
@@ -114,7 +117,7 @@ def register(mcp: FastMCP) -> None:
         retroactively. The asset is attached either way, and `rigged_to` names
         the armature or is null with `parented_to` naming the basemesh.
 
-        `asset_type` is **required**, and is exactly the `object_type`
+        `object_type` is **required**, and is exactly what
         `mpfb_list_assets` reports for the entry: `Clothes`, `Proxymeshes`,
         `Eyes`, `Eyebrows`, `Eyelashes`, `Hair`, `Teeth` or `Tongue`. MPFB's
         own function defaults it to `"Clothes"`, which mislabels a body part
@@ -157,7 +160,7 @@ def register(mcp: FastMCP) -> None:
 
         Refusals come back as `added: false` (and so `performed: false`) with a
         `blocked_by` and a sentence: `subject_not_found`, `asset_not_found`,
-        `unknown_asset_type` (with `known_asset_types`),
+        `unknown_object_type` (with `known_object_types`),
         `invalid_material_type`, `no_asset_subdir` and `not_object_mode`.
         """
         checked_path, checked_fragment = _validated_source(path, fragment)
@@ -171,7 +174,7 @@ def register(mcp: FastMCP) -> None:
                 "name": arguments.validated_subject(name),
                 "path": checked_path,
                 "fragment": checked_fragment,
-                "asset_type": _validated_asset_type(asset_type),
+                "object_type": _validated_object_type(object_type),
                 "material_type": arguments.validated_text(
                     material_type, "material_type",
                     "omit it to take MPFB's own default for this asset type"),

@@ -73,8 +73,8 @@ def test_the_section_table_is_mpfbs_own(library):
     assert answer["section_table_from_mpfb"] is True, \
         "the answer should say it read MPFB's table rather than the local copy"
     published = [str(section["asset_subdir"]) for section in module.ASSET_LIBRARY_SECTIONS]
-    assert answer["known_subdirs"] == published, \
-        "known_subdirs should be MPFB's list in MPFB's order"
+    assert answer["known_asset_subdirs"] == published, \
+        "known_asset_subdirs should be MPFB's list in MPFB's order"
 
 
 def test_the_assets_in_the_tree_are_found_with_both_of_their_identifiers(library):
@@ -89,16 +89,16 @@ def test_the_assets_in_the_tree_are_found_with_both_of_their_identifiers(library
     assert not os.path.isabs(entry["fragment"]), \
         "a fragment is portable, so it is relative rather than this machine's path"
     assert entry["object_type"] == "Clothes", \
-        "the object_type is what add_asset's asset_type takes"
+        "the object_type is what add_asset's object_type takes"
     assert entry["asset_subdir"] == "clothes"
 
 
 def test_an_unknown_subdir_is_flagged_rather_than_silently_empty(library):
-    """subdir_recognized, and why the filter is exact rather than a substring"""
+    """asset_subdir_recognized, and why the filter is exact rather than a substring"""
     answer = result(COMMAND, {"asset_subdir": "clothing"})
 
     assert answer["assets"] == []
-    assert answer["subdir_recognized"] is False, \
+    assert answer["asset_subdir_recognized"] is False, \
         "a misspelled subdir must be distinguishable from an empty one"
     assert "No asset subdir called" in answer["message"]
     assert "clothing" in answer["message"]
@@ -106,8 +106,8 @@ def test_an_unknown_subdir_is_flagged_rather_than_silently_empty(library):
     # And the exactness itself: "clothes" is a subdir, "cloth" is not, even
     # though the second is a substring of the first. Unlike list_objects' type
     # filter there is no MPFB matcher to mirror here.
-    assert result(COMMAND, {"asset_subdir": "cloth"})["subdir_recognized"] is False
-    assert result(COMMAND, {"asset_subdir": "CLOTHES"})["subdir_recognized"] is True, \
+    assert result(COMMAND, {"asset_subdir": "cloth"})["asset_subdir_recognized"] is False
+    assert result(COMMAND, {"asset_subdir": "CLOTHES"})["asset_subdir_recognized"] is True, \
         "exact, but case-insensitive"
 
 
@@ -116,7 +116,7 @@ def test_a_subdir_that_exists_and_holds_nothing_stays_recognised(library):
     answer = result(COMMAND, {"asset_subdir": "poses"})
 
     assert answer["assets"] == []
-    assert answer["subdir_recognized"] is True, \
+    assert answer["asset_subdir_recognized"] is True, \
         "'poses' is a section MPFB knows, so empty means the library, not the spelling"
 
 
@@ -171,11 +171,11 @@ def test_the_per_subdir_counts_ignore_the_filters_and_the_cap(library):
                               "limit": 1})
 
     assert answer["count"] == 1
-    # counts_by_subdir is what the library holds, not what survived the filter,
+    # counts_by_asset_subdir is what the library holds, not what survived the filter,
     # so a caller can tell "one match" from "one asset installed".
-    assert answer["counts_by_subdir"]["clothes"] >= 1
-    assert "clothes" in answer["counts_by_subdir"]
-    assert "hair" not in answer["counts_by_subdir"], \
+    assert answer["counts_by_asset_subdir"]["clothes"] >= 1
+    assert "clothes" in answer["counts_by_asset_subdir"]
+    assert "hair" not in answer["counts_by_asset_subdir"], \
         "the counts cover the subdirs actually scanned, and only clothes was"
 
 

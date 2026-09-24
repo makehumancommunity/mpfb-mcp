@@ -54,7 +54,7 @@ def _dressed(services, character, root):
         envelope = dispatch("add_asset", {
             "name": character.basemesh.name,
             "fragment": "spike/spike.mhclo",
-            "asset_type": "Clothes",
+            "object_type": "Clothes",
         })
     assert envelope["status"] == "ok", "the fixture equip should have succeeded: {!r}".format(
         envelope)

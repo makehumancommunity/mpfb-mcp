@@ -108,7 +108,7 @@ filtered response must never be readable as a complete one.**
 - **Order deterministically before paging.** The underlying listing usually comes from a directory
   walk, whose order is filesystem-dependent. Sorting after paging, or not at all, makes two pages of
   one query silently skip and repeat entries.
-- **A filtered call still reports what it filtered out of.** `counts_by_subdir` is what turns an
+- **A filtered call still reports what it filtered out of.** `counts_by_asset_subdir` is what turns an
   over-broad call from merely truncated into informative: it says where the entries are, so the
   caller can pick a narrower filter for the next call rather than paging blindly through everything.
 - **Say in the docstring which field to check before concluding something is absent.** The failure

@@ -197,7 +197,7 @@ def _message(requested_subdir, subdir_recognized, requested_pack, pack_pattern,
              pack_recognized, matched, page):
     parts = []
     if requested_subdir is not None and not subdir_recognized:
-        parts.append("No asset subdir called '{:s}'. See 'known_subdirs'.".format(
+        parts.append("No asset subdir called '{:s}'. See 'known_asset_subdirs'.".format(
             str(requested_subdir)))
     elif pack_pattern is not None and not pack_recognized:
         parts.append("No installed asset pack name contains '{:s}'. See 'known_packs'.".format(
@@ -283,10 +283,10 @@ def list_assets(params, resolution):  # pylint: disable=too-many-locals
         "truncated": len(matched) > len(page),
         "offset": offset,
         "limit": limit,
-        "counts_by_subdir": counts_by_subdir,
-        "requested_subdir": requested_subdir,
-        "subdir_recognized": subdir_recognized,
-        "known_subdirs": known_subdirs,
+        "counts_by_asset_subdir": counts_by_subdir,
+        "requested_asset_subdir": requested_subdir,
+        "asset_subdir_recognized": subdir_recognized,
+        "known_asset_subdirs": known_subdirs,
         "section_table_from_mpfb": sections_from_mpfb,
         "requested_pack": requested_pack,
         "pack_recognized": pack_recognized,

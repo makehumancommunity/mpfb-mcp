@@ -81,7 +81,7 @@ class ListObjectsToolTests(unittest.TestCase):
 
     def test_unrecognized_filter_is_not_rejected_locally(self) -> None:
         # The vocabulary is MPFB's, and duplicating it here would let it drift.
-        # A misspelling is answered by type_recognized, from inside Blender.
+        # A misspelling is answered by object_type_recognized, from inside Blender.
         with mock.patch("mpfbmcp.bridge_connection.send_command") as mock_send_command:
             mock_send_command.return_value = {"status": "ok", "result": {"count": 0}}
             self.mpfb_list_objects("Basemseh")

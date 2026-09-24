@@ -41,7 +41,6 @@ from __future__ import annotations
 
 __all__ = (
     "MAX_ENTRIES",
-    "MODES",
     "register",
 )
 
@@ -53,18 +52,9 @@ from mpfbmcp import backend
 
 _ENTRY_KEYS = ("fragment", "weight")
 
-MODES = ("merge", "replace")
-
 # Generous, but not unbounded: an expressions library is tens of files, so a
 # caller sending more than this made a mistake worth catching locally.
 MAX_ENTRIES = 100
-
-
-def _validated_mode(mode: object) -> str:
-    if mode not in MODES:
-        # Checked here as well as in Blender: see the module docstring.
-        raise ValueError("mode must be one of {}, got {!r}".format(", ".join(MODES), mode))
-    return mode  # type: ignore[return-value]
 
 
 def _validated_expressions(value: object) -> list[dict]:
@@ -166,7 +156,8 @@ def register(mcp: FastMCP) -> None:
             params={
                 "name": arguments.validated_subject(name),
                 "expressions": _validated_expressions(expressions),
-                "mode": _validated_mode(mode),
+                # Checked here as well as in Blender: see the module docstring.
+                "mode": arguments.validated_mode(mode),
                 # Not truthiness: refit="false" is a true value.
                 "refit": arguments.validated_flag(refit, "refit"),
             },

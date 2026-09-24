@@ -38,14 +38,14 @@ def _result(params=None):
     return _fixture_result("remove_asset", params)
 
 
-def _equip(services, character, root, asset_type="Clothes"):
+def _equip(services, character, root, object_type="Clothes"):
     """One garment on this character, through add_asset's own command."""
     write_loadable_mhclo(os.path.join(str(root), "clothes", "spike", "spike.mhclo"))
     with redirected_locations(services, user_data=str(root)):
         envelope = dispatch("add_asset", {
             "name": character.basemesh.name,
             "fragment": "spike/spike.mhclo",
-            "asset_type": asset_type,
+            "object_type": object_type,
         })
     assert envelope["status"] == "ok", "the fixture equip should have succeeded: {!r}".format(
         envelope)

@@ -191,7 +191,7 @@ def _list_rigs(run: _Run) -> dict:
 
 
 @_item("mpfb_list_assets", "assets", "count", "total_count", "truncated", "offset", "limit",
-       "counts_by_subdir")
+       "counts_by_asset_subdir")
 def _list_assets(run: _Run) -> dict:
     return run.tools["mpfb_list_assets"]()
 
@@ -203,8 +203,8 @@ def _create_human(run: _Run) -> dict:
     return envelope
 
 
-@_item("mpfb_list_objects", "objects", "count", "requested_type", "type_recognized",
-       "known_types")
+@_item("mpfb_list_objects", "objects", "count", "requested_object_type", "object_type_recognized",
+       "known_object_types")
 def _list_objects(run: _Run) -> dict:
     return run.tools["mpfb_list_objects"]()
 
@@ -322,10 +322,10 @@ def _add_asset(run: _Run) -> dict:
     asset = fixtures.first_asset(run.tools, "clothes")
     if asset is None:
         raise Skipped("this install has no asset under 'clothes'")
-    # `asset_type` is required and is exactly the catalogue's `object_type`;
-    # MPFB's own "Clothes" default is wrong for six of the eight types.
+    # `object_type` is required and is exactly the catalogue's; MPFB's own
+    # "Clothes" default is wrong for six of the eight types.
     envelope = run.tools["mpfb_add_asset"](
-        name=_character(run), fragment=asset["fragment"], asset_type=asset["object_type"])
+        name=_character(run), fragment=asset["fragment"], object_type=asset["object_type"])
     if envelope.get("status") == "ok":
         run.asset_object = envelope["result"].get("asset_object_name")
     return envelope

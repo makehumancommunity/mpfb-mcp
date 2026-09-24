@@ -39,11 +39,13 @@ pull in the wire or the record.
 from __future__ import annotations
 
 __all__ = (
+    "MODES",
     "RETIRED_ARGUMENTS",
     "refuse_undeclared",
     "validated_asset_name",
     "validated_count",
     "validated_flag",
+    "validated_mode",
     "validated_subject",
     "validated_text",
 )
@@ -109,6 +111,19 @@ def validated_count(value: object, argument: str, maximum: int | None = None) ->
     return value
 
 
+# Adding to what is there, or making it exactly this. This package's own
+# vocabulary, not MPFB's - no MPFB function sees it - so it is a shape like any
+# other and cannot drift. Two tools offer the choice (FR 037, R6), which is why
+# it is here rather than in either of them.
+MODES = ("merge", "replace")
+
+
+def validated_mode(value: object) -> str:
+    """``"merge"`` or ``"replace"``; there is no reading of an unknown one that is safe to guess."""
+    if value not in MODES:
+        raise ValueError("mode must be one of {}, got {!r}".format(", ".join(MODES), value))
+    return value  # type: ignore[return-value]
+
 def validated_text(value: object, argument: str, hint: str) -> str | None:
     """Optional non-empty text, returned as given; ``hint`` says what to do instead.
 
@@ -139,6 +154,11 @@ RETIRED_ARGUMENTS: dict[str, dict[str, str]] = {
     # R2: the argument names an object that does not exist yet, as a basename
     # Rigify may uniquify; rig_object_name reports what it became.
     "mpfb_generate_rigify_rig": {"rig_name": "generated_rig_name"},
+    # R6: MPFB's type string is object_type everywhere, as the catalogue
+    # reports it, rather than add_mhclo_asset()'s own name for it.
+    "mpfb_add_asset": {"asset_type": "object_type"},
+    # R6: adding versus replacing is `mode` in both tools that offer the choice.
+    "mpfb_set_face_units": {"clear_first": "mode"},
     "mpfb_save_expression": {"subject": "name"},
     "mpfb_save_preset": {"subject": "name"},
 }

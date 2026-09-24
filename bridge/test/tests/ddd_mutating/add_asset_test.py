@@ -8,7 +8,7 @@ reading of MPFB's source as the code under test:
 
 - **the asset is really on the character**, named as the answer names it, with
   the ``object_type`` MPFB recorded;
-- **the vocabulary checks are real refusals**, and ``asset_type`` is required
+- **the vocabulary checks are real refusals**, and ``object_type`` is required
   because MPFB's own ``"Clothes"`` default mislabels six of the eight types
   silently;
 - **the warnings fire on the states that produce them** - no rig at attachment
@@ -54,7 +54,7 @@ def test_a_garment_is_equipped_and_reported_by_the_name_it_got():
     with _Character() as character:
         with redirected_locations(services, user_data=root):
             result = _result({"name": character.basemesh.name,
-                              "path": mhclo, "asset_type": "Clothes"})
+                              "path": mhclo, "object_type": "Clothes"})
 
         assert result["performed"] is True, result["message"]
         assert result["added"] is True
@@ -69,7 +69,7 @@ def test_a_garment_is_equipped_and_reported_by_the_name_it_got():
         assert result["objects_created"], "the answer should name what appeared"
 
 
-def test_a_fragment_is_resolved_against_the_subdir_its_asset_type_names():
+def test_a_fragment_is_resolved_against_the_subdir_its_object_type_names():
     """commands.add_asset with a portable fragment rather than a path
 
     The half of the catalogue contract this command is the consumer of:
@@ -83,7 +83,7 @@ def test_a_fragment_is_resolved_against_the_subdir_its_asset_type_names():
     with _Character() as character:
         with redirected_locations(services, user_data=root):
             result = _result({"name": character.basemesh.name,
-                              "fragment": "spike/spike.mhclo", "asset_type": "Clothes"})
+                              "fragment": "spike/spike.mhclo", "object_type": "Clothes"})
 
         assert result["added"] is True, result["message"]
         assert result["resolved_by"] == "fragment"
@@ -93,7 +93,7 @@ def test_a_fragment_is_resolved_against_the_subdir_its_asset_type_names():
         assert result["asset_subdir"] == "clothes"
 
 
-def test_an_unknown_asset_type_is_an_answer_with_the_vocabulary_beside_it():
+def test_an_unknown_object_type_is_an_answer_with_the_vocabulary_beside_it():
     """commands.add_asset with a type MPFB's section table does not hold"""
     services = _services_or_skip()
     root = os.path.join(bpy.app.tempdir, "add-asset-badtype")
@@ -101,15 +101,15 @@ def test_an_unknown_asset_type_is_an_answer_with_the_vocabulary_beside_it():
     with _Character() as character:
         with redirected_locations(services, user_data=root):
             envelope = dispatch("add_asset", {"name": character.basemesh.name,
-                                              "path": mhclo, "asset_type": "Trousers"})
+                                              "path": mhclo, "object_type": "Trousers"})
 
         assert envelope["status"] == "ok", \
             "an unknown type is an answer, not a failure: {!r}".format(envelope)
         result = envelope["result"]
         assert result["added"] is False
-        assert result["blocked_by"] == "unknown_asset_type"
-        assert result["known_asset_types"], "the refusal must say what MPFB accepts"
-        assert "Clothes" in result["known_asset_types"]
+        assert result["blocked_by"] == "unknown_object_type"
+        assert result["known_object_types"], "the refusal must say what MPFB accepts"
+        assert "Clothes" in result["known_object_types"]
 
 
 def test_a_path_naming_no_file_is_an_answer():
@@ -117,7 +117,7 @@ def test_a_path_naming_no_file_is_an_answer():
     _services_or_skip()
     with _Character() as character:
         result = _result({"name": character.basemesh.name,
-                          "path": "/no/such/asset/anywhere.mhclo", "asset_type": "Clothes"})
+                          "path": "/no/such/asset/anywhere.mhclo", "object_type": "Clothes"})
 
         assert result["added"] is False
         assert result["blocked_by"] == "asset_not_found"
@@ -132,11 +132,11 @@ def test_a_fragment_resolving_to_nothing_is_an_answer():
     with _Character() as character:
         with redirected_locations(services, user_data=root):
             result = _result({"name": character.basemesh.name,
-                              "fragment": "nowhere/nothing.mhclo", "asset_type": "Clothes"})
+                              "fragment": "nowhere/nothing.mhclo", "object_type": "Clothes"})
 
         assert result["added"] is False
         assert result["blocked_by"] == "asset_not_found"
-        assert "asset_type" in result["message"], \
+        assert "object_type" in result["message"], \
             "the sentence should say that a fragment is resolved per subdir"
 
 
@@ -153,7 +153,7 @@ def test_an_unrigged_character_gets_a_parented_asset_and_a_warning():
     with _Character() as character:
         with redirected_locations(services, user_data=root):
             result = _result({"name": character.basemesh.name,
-                              "path": mhclo, "asset_type": "Clothes"})
+                              "path": mhclo, "object_type": "Clothes"})
 
         assert result["added"] is True
         assert result["rigged_to"] is None
@@ -174,7 +174,7 @@ def test_a_rigged_character_gets_a_rigged_asset():
 
         with redirected_locations(services, user_data=root):
             result = _result({"name": character.basemesh.name,
-                              "path": mhclo, "asset_type": "Clothes"})
+                              "path": mhclo, "object_type": "Clothes"})
 
         assert result["added"] is True, result["message"]
         assert result["rigged_to"] == rig.name
@@ -194,7 +194,7 @@ def test_missing_weights_beside_the_asset_are_reported():
     with _Character() as character:
         with redirected_locations(services, user_data=root):
             result = _result({"name": character.basemesh.name,
-                              "path": mhclo, "asset_type": "Clothes"})
+                              "path": mhclo, "object_type": "Clothes"})
 
         assert result["weights_files_beside_asset"] == []
         assert any(".mhw" in warning for warning in result["warnings"])
@@ -213,7 +213,7 @@ def test_an_mhclo_with_no_material_line_is_warned_about():
     with _Character() as character:
         with redirected_locations(services, user_data=root):
             result = _result({"name": character.basemesh.name,
-                              "path": mhclo, "asset_type": "Clothes"})
+                              "path": mhclo, "object_type": "Clothes"})
 
         assert result["added"] is True
         assert result["mhclo_names_material"] is False
@@ -232,7 +232,7 @@ def test_subdiv_levels_zero_adds_no_modifier():
     with _Character() as character:
         with redirected_locations(services, user_data=root):
             result = _result({"name": character.basemesh.name, "path": mhclo,
-                              "asset_type": "Clothes", "subdiv_levels": 0})
+                              "object_type": "Clothes", "subdiv_levels": 0})
 
         assert result["added"] is True
         assert result["subdiv_modifier_added"] is False
@@ -251,14 +251,14 @@ def test_the_callers_selection_and_active_object_are_restored():
         character.basemesh.select_set(False)
 
         with redirected_locations(services, user_data=root):
-            _result({"name": character.basemesh.name, "path": mhclo, "asset_type": "Clothes"})
+            _result({"name": character.basemesh.name, "path": mhclo, "object_type": "Clothes"})
 
         assert bpy.context.view_layer.objects.active is bystander
         assert character.basemesh.select_get() is False
 
 
-def test_the_asset_type_is_required_by_the_contract():
-    """commands.add_asset with no asset_type at all
+def test_the_object_type_is_required_by_the_contract():
+    """commands.add_asset with no object_type at all
 
     Required, and deliberately: MPFB's own default of "Clothes" is wrong for six
     of the eight types and mislabels a body part with no error anywhere.
@@ -268,14 +268,14 @@ def test_the_asset_type_is_required_by_the_contract():
 
     assert envelope["status"] == "error"
     assert envelope["error"] == "invalid_params"
-    assert "asset_type" in envelope["message"]
+    assert "object_type" in envelope["message"]
 
 
 def test_mpfb_being_unavailable_refuses_rather_than_half_equipping():
     """commands.add_asset against a Blender with no usable MPFB"""
     for state in ("absent", "not_initialized"):
         with supplied_resolution(state):
-            envelope = dispatch("add_asset", {"path": "/a.mhclo", "asset_type": "Clothes"})
+            envelope = dispatch("add_asset", {"path": "/a.mhclo", "object_type": "Clothes"})
 
         assert envelope["status"] == "error"
         assert envelope["error"] == "mpfb_unavailable"

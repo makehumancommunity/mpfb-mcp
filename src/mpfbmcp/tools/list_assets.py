@@ -10,7 +10,7 @@ The library is large - thousands of files on an install with the community packs
 - so this is a filtering tool rather than a listing one, and its answer is
 capped. That makes the response a subset by design, which is the one thing it
 must never be mistaken for the library itself; ``truncated``, ``total_count``,
-``subdir_recognized`` and ``pack_recognized`` all exist for that.
+``asset_subdir_recognized`` and ``pack_recognized`` all exist for that.
 
 What the tool description no longer carries lives one link away: the two
 costs of MPFB's asset cache are
@@ -79,7 +79,7 @@ def register(mcp: FastMCP) -> None:
             `"eyebrows"`, `"eyelashes"`, `"teeth"`, `"tongue"`,
             `"proxymeshes"`, `"skins"`, `"poses"`, `"ink_layers"`, matched
             exactly and case-insensitively. Omit it to search every subdir,
-            then read `counts_by_subdir` to pick a narrower one.
+            then read `counts_by_asset_subdir` to pick a narrower one.
           - `name_contains` - case-insensitive substring of the asset's name or
             label.
           - `pack` - substring of an installed pack's name, so `"hair03"` finds
@@ -96,11 +96,12 @@ def register(mcp: FastMCP) -> None:
             extension), `label` (MPFB's display text), `fragment`, `path`,
             `object_type`, `asset_subdir`, `file_type`, `pack`,
             `pack_ambiguous` and `thumb_path`.
-          - `counts_by_subdir`: how many assets each scanned subdir holds,
-            ignoring `name_contains`, `pack` and the cap.
-          - `requested_subdir`/`subdir_recognized`/`known_subdirs` and
-            `requested_pack`/`pack_recognized`/`known_packs`, so a misspelling
-            is distinguishable from an empty subdir or pack.
+          - `counts_by_asset_subdir`: how many assets each scanned subdir
+            holds, ignoring `name_contains`, `pack` and the cap.
+          - `requested_asset_subdir`/`asset_subdir_recognized`/
+            `known_asset_subdirs` and `requested_pack`/`pack_recognized`/
+            `known_packs`, so a misspelling is distinguishable from an empty
+            subdir or pack.
           - `asset_roots_searched`: per subdir, the directories actually
             scanned. A configured data root that does not hold that subdir is
             not searched, which is the usual explanation for "I installed it
@@ -110,13 +111,12 @@ def register(mcp: FastMCP) -> None:
         **How to name an asset when applying it.** Pass an entry's `path`
         (absolute) or its `fragment` (`"fedora/fedora.mhclo"`, what MPFB
         records on the resulting object and what survives a move to another
-        machine) to `mpfb_add_asset`, together with its `object_type`, which is
-        exactly that tool's required `asset_type`. Assets in `skins` are
-        materials rather than meshes and go to `mpfb_set_skin` instead. A
-        fragment is **not** a path; handing one to a file-opening tool fails
-        confusingly. For `skins`, `poses` and `ink_layers` the `object_type`
-        (`"Material"`, `"Pose"`, `"Other"`) says what the asset is rather than
-        naming an argument.
+        machine) to `mpfb_add_asset`, together with its `object_type`. Assets
+        in `skins` are materials rather than meshes and go to `mpfb_set_skin`
+        instead. A fragment is **not** a path; handing one to a file-opening
+        tool fails confusingly. For `skins`, `poses` and `ink_layers` the
+        `object_type` (`"Material"`, `"Pose"`, `"Other"`) says what the asset
+        is rather than naming an argument.
 
         **`pack` is derived from a directory-name convention, not recorded by
         MPFB.** `pack: null` is ordinary for a hand-installed asset, and

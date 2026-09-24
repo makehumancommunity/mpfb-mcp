@@ -98,7 +98,7 @@ def register(mcp: FastMCP) -> None:
         annotations=ToolAnnotations(
             title="Set Face Units",
             readOnlyHint=False,
-            # clear_first zeroes every unit not named in this call, and a
+            # mode "replace" zeroes every unit not named in this call, and a
             # composed face survives nothing anyway (see the module docstring).
             destructiveHint=True,
             idempotentHint=True,
@@ -107,7 +107,7 @@ def register(mcp: FastMCP) -> None:
     )
     def mpfb_set_face_units(name: str | None = None,
                             face_units: list[dict] | None = None,
-                            clear_first: bool = False,
+                            mode: str = "merge",
                             refit: bool = True) -> dict[str, object]:
         """
         Compose a MakeHuman character's face from ARKit face units - the same
@@ -127,11 +127,11 @@ def register(mcp: FastMCP) -> None:
         every target file would then be missing - check
         `mpfb_get_face_units`' `faceunits01_installed` first if unsure.
 
-        **This is additive by default**, matching MPFB: a face unit not
-        mentioned in `face_units` is left exactly as it was. `clear_first`
-        (default false) zeroes every one of the 52 units before applying this
-        call's entries, which is the difference between "smile a bit more" and
-        "make this face and nothing else".
+        **`mode` is `"merge"` by default**, matching MPFB: a face unit not
+        mentioned in `face_units` is left exactly as it was. `"replace"` zeroes
+        every one of the 52 units before applying this call's entries, which is
+        the difference between "smile a bit more" and "make this face and
+        nothing else"; `removed_by_replace` names what it zeroed.
 
         `refit` (default **true**, unlike every other refitting tool here:
         composing is normally one call) re-fits clothes and the rig afterwards.
@@ -164,8 +164,9 @@ def register(mcp: FastMCP) -> None:
             params={
                 "name": arguments.validated_subject(name),
                 "face_units": _validated_face_units(face_units),
-                # Not truthiness: clear_first="false" would zero the whole face.
-                "clear_first": arguments.validated_flag(clear_first, "clear_first"),
+                # Checked here as well as in Blender: "replace" zeroes the whole face,
+                # and no misspelling of either word is safe to guess at.
+                "mode": arguments.validated_mode(mode),
                 "refit": arguments.validated_flag(refit, "refit"),
             },
         )

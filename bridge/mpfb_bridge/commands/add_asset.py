@@ -17,8 +17,9 @@ back into the asset subdir needed to resolve the second is MPFB's section table.
 
 Three things are worth naming.
 
-**``asset_type`` is normalised, and the normalisation hides a mismatch.**
-``add_mhclo_asset()`` stores ``str(asset_type).lower().capitalize()``, so
+**``object_type`` is normalised, and the normalisation hides a mismatch.** It is
+``add_mhclo_asset()``'s ``asset_type``, which that function stores as
+``str(asset_type).lower().capitalize()``, so
 ``eyes``, ``Eyes`` and ``EYES`` all become ``Eyes`` - and the asset *subdir*
 name happens to work as well as the object type for every current section. The
 value is validated against MPFB's own table anyway and the recorded form is
@@ -111,8 +112,8 @@ PARAMS = (
                       "'fragment', never both."),
     Param("fragment", TYPE_STRING, default=None, nullable=True,
           description="The portable '<pack>/<file>.mhclo' fragment list_assets reports. Resolved "
-                      "against this Blender's asset roots for the subdir 'asset_type' implies."),
-    Param("asset_type", TYPE_STRING, required=True,
+                      "against this Blender's asset roots for the subdir 'object_type' implies."),
+    Param("object_type", TYPE_STRING, required=True,
           description="MPFB's object type for this asset - 'Clothes', 'Eyes', 'Hair', "
                       "'Proxymeshes'... Required: MPFB's own 'Clothes' default is wrong for six "
                       "of the eight types and mislabels a body part silently."),
@@ -279,11 +280,11 @@ def _resolve_arguments(services, params):
 
     request.sections, request.sections_from_mpfb = asset_sections.read_sections(services)
     request.known_asset_types = asset_sections.mesh_asset_types(services, request.sections)
-    request.normalized_asset_type = asset_sections.normalize_asset_type(params["asset_type"])
+    request.normalized_asset_type = asset_sections.normalize_asset_type(params["object_type"])
 
     request.asset_type_recognized = False
     for candidate in request.known_asset_types:
-        if candidate.lower() == str(params["asset_type"]).strip().lower():
+        if candidate.lower() == str(params["object_type"]).strip().lower():
             request.normalized_asset_type = candidate
             request.asset_type_recognized = True
 
@@ -328,7 +329,7 @@ def _blocked(subject, basemesh, subject_resolved_by, params, request, reason, me
         subject_resolved_by=subject_resolved_by,
         basemesh_name=None if basemesh is None else basemesh.name,
         asset_object_name=None,
-        requested_asset_type=params["asset_type"],
+        requested_object_type=params["object_type"],
         resolved_by=request.resolved_by,
         resolved_path=None,
         message=message,
@@ -345,16 +346,16 @@ def _refusal(subject, basemesh, subject_resolved_by, params, request, message):
 
     if basemesh is None:
         return blocked("subject_not_found", message,
-                       known_asset_types=request.known_asset_types)
+                       known_object_types=request.known_asset_types)
     if not request.asset_type_recognized:
         return blocked(
-            "unknown_asset_type",
+            "unknown_object_type",
             "'{!s}' is not an MHCLO asset type MPFB knows, so nothing was equipped. "
-            "known_asset_types lists what this Blender accepts; each is the 'object_type' "
+            "known_object_types lists what this Blender accepts; each is the 'object_type' "
             "mpfb_list_assets reports for an entry. Skins, poses and ink layers are in that "
             "catalogue but are not mesh assets and cannot be added with this tool.".format(
-                params["asset_type"]),
-            known_asset_types=request.known_asset_types,
+                params["object_type"]),
+            known_object_types=request.known_asset_types,
             section_table_from_mpfb=request.sections_from_mpfb)
     if request.material_type not in request.allowed_material_types:
         return blocked(
@@ -363,7 +364,7 @@ def _refusal(subject, basemesh, subject_resolved_by, params, request, message):
             "PROCEDURAL_EYES builds MPFB's eye node tree and is meaningful only for Eyes; the "
             "others apply to every type. Omit material_type to take MPFB's own default for this "
             "asset type.".format(params["material_type"], request.normalized_asset_type),
-            asset_type=request.normalized_asset_type,
+            object_type=request.normalized_asset_type,
             allowed_material_types=request.allowed_material_types)
     if request.asset_subdir is None:
         # Only reachable through the fallback table, or through an MPFB whose
@@ -374,7 +375,7 @@ def _refusal(subject, basemesh, subject_resolved_by, params, request, message):
             "MPFB's asset library table names no asset subdir for the type '{:s}', so a fragment "
             "cannot be resolved to a file. Pass the absolute 'path' mpfb_list_assets reports "
             "instead.".format(request.normalized_asset_type),
-            asset_type=request.normalized_asset_type,
+            object_type=request.normalized_asset_type,
             section_table_from_mpfb=request.sections_from_mpfb)
     if request.resolved_path is None or not os.path.isfile(request.resolved_path):
         if params["path"] is not None:
@@ -387,7 +388,7 @@ def _refusal(subject, basemesh, subject_resolved_by, params, request, message):
                 "The fragment '{!s}' resolved to no file under this Blender's '{!s}' asset roots, "
                 "so nothing was equipped. The asset may not be installed here, or the fragment "
                 "may belong to a different asset type - fragments are resolved per subdir, and "
-                "the subdir comes from asset_type.".format(
+                "the subdir comes from object_type.".format(
                     params["fragment"], request.asset_subdir))
         return blocked("asset_not_found", not_found_message,
                        asset_subdir=request.asset_subdir,
@@ -683,7 +684,7 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
         subject_resolved_by=subject_resolved_by,
         basemesh_name=basemesh.name,
         asset_object_name=None if asset_object is None else asset_object.name,
-        requested_asset_type=params["asset_type"],
+        requested_object_type=params["object_type"],
         object_type_recorded=mpfb_surface.property_value(
             GeneralObjectProperties, "object_type", asset_object),
         resolved_by=request.resolved_by,

@@ -8,8 +8,8 @@ what an object was made from.
 
 The type vocabulary is not duplicated on this side of the socket. A hardcoded
 list here would drift silently from MPFB's own, and this one is user-facing
-guidance an agent will act on, so both ``known_types`` and ``type_recognized``
-are answered from inside Blender instead.
+guidance an agent will act on, so both ``known_object_types`` and
+``object_type_recognized`` are answered from inside Blender instead.
 """
 
 from __future__ import annotations
@@ -60,12 +60,13 @@ def register(mcp: FastMCP) -> None:
         `result` carries `objects`, one entry per match with `name` (the
         Blender object name, which is how every other tool addresses it),
         `object_type` (MPFB's type) and `blender_type` ("MESH", "ARMATURE",
-        ...); `count`; `requested_type`, the filter as given or null;
-        `type_recognized`, whether it matched a type MPFB knows - **check this
-        before concluding anything from an empty list**, since "no basemeshes
-        in this scene" and "you asked for `Basemseh`" are otherwise the same
-        answer; and `known_types`, MPFB's full type vocabulary read from MPFB
-        itself, so a misspelling can be corrected from this same response.
+        ...); `count`; `requested_object_type`, the filter as given or null;
+        `object_type_recognized`, whether it matched a type MPFB knows -
+        **check this before concluding anything from an empty list**, since
+        "no basemeshes in this scene" and "you asked for `Basemseh`" are
+        otherwise the same answer; and `known_object_types`, MPFB's full type
+        vocabulary read from MPFB itself, so a misspelling can be corrected
+        from this same response.
 
         The result is an address other tools will act on. Re-call rather than
         cache: loading another .blend, or the user deleting an object,

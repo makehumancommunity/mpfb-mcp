@@ -53,7 +53,7 @@ class ArgumentValidationTests(unittest.TestCase):
             send_command.return_value = {"status": "ok", "result": {}}
             self.tool()
         self.assertEqual(send_command.call_args[0][1], {
-            "name": None, "face_units": [], "clear_first": False, "refit": True})
+            "name": None, "face_units": [], "mode": "merge", "refit": True})
 
     def test_entries_are_normalized_before_they_cross_the_socket(self):
         with mock.patch.object(bridge_connection, "send_command") as send_command:
@@ -70,14 +70,29 @@ class ArgumentValidationTests(unittest.TestCase):
                         self.tool(name=bad)
                 send_command.assert_not_called()
 
-    def test_flags_must_be_real_bools(self):
-        for argument in ("clear_first", "refit"):
-            for bad in ("false", "true", 0, 1, None):
-                with self.subTest(argument=argument, value=bad):
-                    with mock.patch.object(bridge_connection, "send_command") as send_command:
-                        with self.assertRaises(ValueError):
-                            self.tool(**{argument: bad})
-                    send_command.assert_not_called()
+    def test_refit_must_be_a_real_bool(self):
+        for bad in ("false", "true", 0, 1, None):
+            with self.subTest(value=bad):
+                with mock.patch.object(bridge_connection, "send_command") as send_command:
+                    with self.assertRaises(ValueError):
+                        self.tool(refit=bad)
+                send_command.assert_not_called()
+
+    def test_mode_is_merge_or_replace_and_nothing_else(self):
+        # "replace" zeroes the whole face, so a near-miss must not be guessed at;
+        # and a leftover clear_first=True from before FR 037 is not a mode.
+        for bad in ("Replace", "clear", True, "", None):
+            with self.subTest(value=bad):
+                with mock.patch.object(bridge_connection, "send_command") as send_command:
+                    with self.assertRaises(ValueError):
+                        self.tool(mode=bad)
+                send_command.assert_not_called()
+        for good in ("merge", "replace"):
+            with self.subTest(value=good):
+                with mock.patch.object(bridge_connection, "send_command") as send_command:
+                    send_command.return_value = {"status": "ok", "result": {}}
+                    self.tool(mode=good)
+                self.assertEqual(send_command.call_args[0][1]["mode"], good)
 
     def test_face_units_must_be_a_list_of_objects(self):
         for bad in ("jawOpen", {"face_unit": "jawOpen"}, 3, [1], ["x"], [None]):
@@ -179,7 +194,7 @@ class SetFaceUnitsOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.assertEqual(self.bridge.commands()[-1], "set_face_units")
         params = self.bridge.decoded_requests()[-1]["params"]
         self.assertEqual(params["face_units"], [{"face_unit": "jawOpen", "weight": 0.4}])
-        self.assertEqual(params["clear_first"], False)
+        self.assertEqual(params["mode"], "merge")
         self.assertEqual(params["refit"], True)
 
     def test_refit_defaults_to_true_unlike_every_other_refitting_tool(self) -> None:

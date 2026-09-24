@@ -13,7 +13,7 @@ install (which ships every ARKit target under
 ``~/makehuman/mpfb/data/targets/faceunits/`` on this machine, confirmed by
 ``ccc_reading/get_face_units_test.py``), a real weight is loaded from disk, a real
 shape key lands on the mesh, and a second call proves the additive default and
-``clear_first`` against each other.
+``mode: "replace"`` against each other.
 
 ``FaceService.is_faceunits01_installed()`` caches in a module global nothing
 else invalidates, so every test that manipulates the data roots calls it with
@@ -178,7 +178,7 @@ def test_a_zero_weight_on_an_absent_shapekey_is_skipped_entirely():
             "A zero-weight unit with no shape key yet should not have created one"
 
 
-def test_loading_then_reapplying_is_additive_and_clear_first_zeroes_it():
+def test_loading_then_reapplying_is_additive_and_replace_zeroes_it():
     services = _services_or_skip()
     if not services["FaceService"].is_faceunits01_installed():
         import pytest
@@ -208,16 +208,17 @@ def test_loading_then_reapplying_is_additive_and_clear_first_zeroes_it():
         assert abs(_shapekey_value(character.basemesh, "!ex-jawOpen") - 0.4) < 1e-6, \
             "set_expression is additive: a unit not mentioned is left alone"
 
-        # clear_first zeroes both of the above, then applies exactly what is
+        # mode "replace" zeroes both of the above, then applies exactly what is
         # asked for on this call.
         third = _result({
             "name": character.basemesh.name,
             "face_units": [{"face_unit": "jawOpen", "weight": 0.1}],
-            "clear_first": True,
+            "mode": "replace",
             "refit": False,
         })
         assert third["performed"] is True
-        assert set(third["cleared"]) == {"jawOpen", "mouthSmileLeft"}
+        assert set(third["removed_by_replace"]) == {"jawOpen", "mouthSmileLeft"}
+        assert third["mode"] == "replace"
         assert abs(_shapekey_value(character.basemesh, "!ex-jawOpen") - 0.1) < 1e-6
         assert abs(_shapekey_value(character.basemesh, "!ex-mouthSmileLeft")) < 1e-6
 
@@ -299,7 +300,7 @@ def test_a_refit_puts_the_selection_back(tmp_path):
             face_service.is_faceunits01_installed(force_recheck=True)
             try:
                 equipped = _fixture_result("add_asset", {
-                    "name": character.basemesh.name, "path": mhclo, "asset_type": "Clothes"})
+                    "name": character.basemesh.name, "path": mhclo, "object_type": "Clothes"})
                 assert equipped["performed"] is True, equipped["message"]
                 bystander = bpy.data.objects.new("fr027_bystander", None)
                 bpy.context.scene.collection.objects.link(bystander)

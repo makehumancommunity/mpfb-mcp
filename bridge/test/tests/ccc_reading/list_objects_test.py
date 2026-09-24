@@ -69,9 +69,9 @@ def test_a_scene_with_no_makehuman_objects_answers_none_of_them():
     assert result["objects"] == [], "count and objects should agree"
     # The pairing that makes an empty list trustworthy: nothing was filtered
     # out by a name MPFB does not know, because nothing was asked for.
-    assert result["requested_type"] is None, "An omitted filter should come back as null"
-    assert result["type_recognized"] is True, "No filter is not an unrecognised one"
-    assert result["known_types"], "The vocabulary should be reported even when nothing matched"
+    assert result["requested_object_type"] is None, "An omitted filter should come back as null"
+    assert result["object_type_recognized"] is True, "No filter is not an unrecognised one"
+    assert result["known_object_types"], "The vocabulary should be reported even when nothing matched"
 
 
 def test_a_basemesh_is_listed_with_both_of_its_types():
@@ -115,11 +115,11 @@ def test_an_unrecognised_type_is_flagged_beside_the_empty_list():
     with _Character():
         result = _result({"object_type": "Basemseh"})
 
-        # The pairing is the whole point: without type_recognized, a misspelling
+        # The pairing is the whole point: without object_type_recognized, a misspelling
         # is indistinguishable from a scene that genuinely has no basemeshes.
         assert result["objects"] == [], "A misspelled type should match nothing"
-        assert result["requested_type"] == "Basemseh", "The filter should be echoed back"
-        assert result["type_recognized"] is False, \
+        assert result["requested_object_type"] == "Basemseh", "The filter should be echoed back"
+        assert result["object_type_recognized"] is False, \
             "A type MPFB does not know should be flagged as such"
 
 
@@ -129,7 +129,7 @@ def test_a_recognised_type_matching_nothing_stays_recognised():
         result = _result({"object_type": "Eyebrows"})
 
         assert result["objects"] == [], "A bare character has no eyebrows"
-        assert result["type_recognized"] is True, \
+        assert result["object_type_recognized"] is True, \
             "'Eyebrows' is a type MPFB knows, so an empty list means the scene, not the spelling"
 
 
@@ -180,8 +180,8 @@ def test_the_vocabulary_is_mpfbs_own_and_not_this_addons_copy():
     assert hasattr(module, "_ALL_TYPES"), \
         "MPFB no longer publishes _ALL_TYPES; the fallback is now the only answer"
 
-    assert _result()["known_types"] == list(module._ALL_TYPES), \
-        "known_types should be MPFB's list, not a copy that can drift from it"
+    assert _result()["known_object_types"] == list(module._ALL_TYPES), \
+        "known_object_types should be MPFB's list, not a copy that can drift from it"
 
 
 def test_the_fallback_vocabulary_is_used_when_mpfb_stops_publishing_one():
@@ -199,7 +199,7 @@ def test_the_fallback_vocabulary_is_used_when_mpfb_stops_publishing_one():
 
     # Reporting last year's type list is a better answer than failing the call,
     # which is the whole reason there is a fallback.
-    assert result["known_types"] == list(fallback), \
+    assert result["known_object_types"] == list(fallback), \
         "A missing _ALL_TYPES should fall back rather than fail the call"
 
 
