@@ -199,6 +199,7 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
         return with_performed(dict(
             found=False,
             ready=False,
+            blocked_by="subject_not_found",
             subject_name=None if subject is None else subject.name,
             subject_resolved_by=subject_resolved_by,
             basemesh_name=None,

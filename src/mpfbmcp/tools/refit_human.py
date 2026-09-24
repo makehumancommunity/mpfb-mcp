@@ -71,7 +71,7 @@ def register(mcp: FastMCP) -> None:
         `refit_incomplete_reason` then says so, and the fix - regenerating with
         the meta rig kept - is the user's to make in Blender. A basemesh left
         in edit mode answers with `ready: false`, and an unresolvable subject
-        with `found: false`.
+        with `found: false` and `blocked_by: "subject_not_found"`.
         """
         # `result` (built in bridge/mpfb_bridge/commands/refit_human.py) is plain
         # JSON-safe data. The bridge serializes a result before it commits to an

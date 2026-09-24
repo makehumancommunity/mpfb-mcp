@@ -20,6 +20,10 @@ The three misses are the three sentences:
 
 For each, every command must report the same ``found``, subject name and
 ``subject_resolved_by``, and a message that begins with the shared sentence.
+Every *mutating* command - the ones whose answer carries ``performed`` - must
+also refuse with ``blocked_by: "subject_not_found"`` and ``performed: false``:
+five of the fourteen used to answer with no slug at all
+([FR 038](../../../../feature-requests/done/038-subject-not-found-everywhere/README.md)).
 What follows the shared part is each command's own, and is deliberately not
 compared.
 
@@ -88,6 +92,14 @@ def _subject_name(command, answer):
     return answer["name"] if command == "get_object_info" else answer["subject_name"]
 
 
+def _refused_if_mutating(command, answer):
+    """A mutating command's miss carries the slug a caller branches on."""
+    if "performed" not in answer:
+        return
+    assert answer.get("blocked_by") == "subject_not_found", (command, answer.get("blocked_by"))
+    assert answer["performed"] is False, command
+
+
 def _resolved_by(command, answer):  # pylint: disable=unused-argument
     # One key in all eighteen since FR 037; get_object_info said resolved_from.
     return answer["subject_resolved_by"]
@@ -113,6 +125,7 @@ def test_nothing_active(tmp_path):
         answers = _answers(tmp_path, None)
     for command, answer in answers.items():
         assert answer["found"] is False, command
+        _refused_if_mutating(command, answer)
         assert _subject_name(command, answer) is None, command
         assert _resolved_by(command, answer) == "active", command
         assert answer["message"].startswith(
@@ -140,6 +153,7 @@ def test_a_name_that_does_not_exist(tmp_path):
     answers = _answers(tmp_path, NO_SUCH)
     for command, answer in answers.items():
         assert answer["found"] is False, command
+        _refused_if_mutating(command, answer)
         assert _subject_name(command, answer) is None, command
         assert _resolved_by(command, answer) == "name", command
         message = answer["message"]
@@ -171,6 +185,7 @@ def test_an_object_with_no_basemesh(tmp_path):
                 "{:s} stops at the subject, and the cube is one".format(command)
             continue
         assert answer["found"] is False, command
+        _refused_if_mutating(command, answer)
         assert answer["basemesh_name"] is None, command
         assert answer["message"].startswith(
             "'{:s}' has no MakeHuman basemesh among its nearest relatives, so ".format(CUBE)), \

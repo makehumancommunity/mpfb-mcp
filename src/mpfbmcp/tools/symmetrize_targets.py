@@ -103,8 +103,9 @@ def register(mcp: FastMCP) -> None:
 
         Under `dry_run: true`, `performed` is false even though `changes` has
         entries in it: those are the writes that *would* happen. A subject that
-        cannot be resolved (`found: false`) and a basemesh in edit mode or
-        without shape keys (`ready: false`) are answers, not errors.
+        cannot be resolved (`found: false`, `subject_not_found`) and a basemesh
+        in edit mode or without shape keys (`ready: false`) are answers, not
+        errors.
         """
         # `result` (built in bridge/mpfb_bridge/commands/symmetrize_targets.py) is plain
         # JSON-safe data. The bridge serializes a result before it commits to an

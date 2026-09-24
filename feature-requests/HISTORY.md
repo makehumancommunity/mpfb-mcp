@@ -574,5 +574,16 @@ opened in NEXT_STEPS.md is closed.
 Unit suite 446 → 459, bridge suite 389 → 390, smoke run 34 in 1.5 s after every group, and
 `live_check.py` called every renamed argument once against a headless Blender and passed all 50
 checks. The description budget was not raised: 81,231 B → 81,396 B, inside both ceilings. One
-finding went to NEXT_STEPS.md:
-[five mutating tools answer an unresolved subject with no `blocked_by`](NEXT_STEPS.md#an-unresolved-subject-has-no-blocked-by-in-five-tools).
+finding went to NEXT_STEPS.md, five mutating tools answering an unresolved subject with no
+`blocked_by`, and [FR 038](done/038-subject-not-found-everywhere/README.md) fixed it.
+
+## [FR 038](done/038-subject-not-found-everywhere/README.md) — an unresolved subject is `subject_not_found` in every mutating tool
+
+Found by FR 037's census. Nine mutating tools refused an unresolved subject with
+`blocked_by: "subject_not_found"`, and five answered `found: false` and `ready: false` with no
+`blocked_by` at all: `mpfb_refit_human`, `mpfb_set_macro_details`, `mpfb_set_targets`,
+`mpfb_symmetrize_targets` and `mpfb_set_face_units`. They now carry the slug, and their
+descriptions name it. `eee_composite/subject_resolution_test.py` asks it of every command whose
+answer carries `performed`, in all three miss states, and fails without the fix. An added key
+breaks no caller, so the protocol version stayed at 2. Unit suite 459, bridge suite 390, smoke run
+34 of 34.

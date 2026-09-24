@@ -281,4 +281,5 @@ Counted over the 32 descriptions plus the server instructions (`desc`) and `spec
   `refit_human`, `set_macro_details`, `set_targets`, `symmetrize_targets` and `set_face_units`.
   They return `found: false`, `ready: false` and no slug, while the other nine mutating tools add
   `blocked_by: "subject_not_found"`. That is a missing key, not a second spelling, so adding it
-  changes a response's shape and is not a rename. It goes to NEXT_STEPS.
+  changes a response's shape and is not a rename. It went to NEXT_STEPS, and
+  [FR 038](../038-subject-not-found-everywhere/README.md) fixed it.

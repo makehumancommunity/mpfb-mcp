@@ -128,9 +128,10 @@ def register(mcp: FastMCP) -> None:
         `assets_possibly_stale` and `basemesh_name`.
 
         Two situations answer rather than fail, both with `changes: []`: a
-        subject that resolves to no basemesh (`found: false`), and a basemesh
-        that is not ready to be modified - left in edit mode, or with no shape
-        keys at all (`ready: false`, `blocked_by` naming which). A call that
+        subject that resolves to no basemesh (`found: false`,
+        `subject_not_found`), and a basemesh that is not ready to be modified -
+        left in edit mode, or with no shape keys at all (`ready: false`,
+        `blocked_by` naming which). A call that
         names no slider also does nothing, deliberately, rather than paying for
         a shape rebuild that would change nothing; it comes back `performed:
         false`.

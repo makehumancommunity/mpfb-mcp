@@ -294,8 +294,8 @@ difference, and the longer argument names and the glossary's prose terms spent a
 that.
 
 **Found and left for later**: five mutating tools answer an unresolved subject with no `blocked_by`
-at all, which is a missing key rather than a second spelling
-([NEXT_STEPS](../../NEXT_STEPS.md#an-unresolved-subject-has-no-blocked-by-in-five-tools)).
+at all, which is a missing key rather than a second spelling. It was queued in NEXT_STEPS.md and
+fixed by [FR 038](../038-subject-not-found-everywhere/README.md).
 
 ## Open questions
 

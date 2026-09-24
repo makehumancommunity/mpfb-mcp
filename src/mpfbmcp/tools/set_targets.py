@@ -196,9 +196,9 @@ def register(mcp: FastMCP) -> None:
         `previous_value`, `new_value`, `loaded_from` (set when the target was
         read off disk on this call) and `pruned` - plus `shapekeys_added` and
         `shapekeys_removed`, `refit_performed`, `assets_possibly_stale` and
-        `basemesh_name`. An unresolvable subject answers `found: false`, and a
-        basemesh in edit mode or without shape keys `ready: false` with
-        `blocked_by`. `performed` is false whenever `changes` is empty, the
+        `basemesh_name`. An unresolvable subject answers `found: false` with
+        `blocked_by: "subject_not_found"`, and a basemesh in edit mode or
+        without shape keys `ready: false` with `blocked_by`. `performed` is false whenever `changes` is empty, the
         all-or-nothing resolution failure included.
         """
         # `result` (built in bridge/mpfb_bridge/commands/set_targets.py) is plain

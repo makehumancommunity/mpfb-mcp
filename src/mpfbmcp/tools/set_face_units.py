@@ -165,8 +165,8 @@ def register(mcp: FastMCP) -> None:
         `skipped_absent_at_zero` (a unit requested at `0.0` with no shape key
         yet, which is left alone rather than created). `basemesh_name` names
         the object actually changed. A subject that cannot be resolved
-        (`found: false`) and a basemesh in edit mode (`ready: false`) are
-        answers, not errors.
+        (`found: false`, `subject_not_found`) and a basemesh in edit mode
+        (`ready: false`) are answers, not errors.
         """
         # `result` (built in bridge/mpfb_bridge/commands/set_face_units.py) is plain
         # JSON-safe data. The bridge serializes a result before it commits to an

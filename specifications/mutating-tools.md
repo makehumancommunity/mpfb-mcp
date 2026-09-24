@@ -78,7 +78,11 @@ Requiring the caller to know that would make every mutating tool need a lookup s
   re-parents the character onto it — so "already generated" and "that is not a meta rig" are
   different answers that a single lookup could not tell apart.
 - **Failing to resolve is an answer**, `found: false` with a sentence, exactly as for the read-only
-  tools.
+  tools. A mutating tool also says `ready: false` and `blocked_by: "subject_not_found"`, so that a
+  caller branching on `blocked_by` sees every refusal it can get, this one included. Five tools
+  answered without the slug until [FR 038](../feature-requests/done/038-subject-not-found-everywhere/README.md),
+  and `eee_composite/subject_resolution_test.py` now asks it of every command whose answer carries
+  `performed`.
 
 ## A mutating tool reports before and after
 
