@@ -11,8 +11,8 @@ bridge on a spare port, points ``MPFB_BRIDGE_PORT`` at it, and calls the tools
 the way an MCP client would. The characters it builds live in that throwaway
 Blender and die with it; it writes no file outside it.
 
-    PYTHONPATH=. python3 feature-requests/034-character-summary/live_check.py
-    PYTHONPATH=. python3 feature-requests/034-character-summary/live_check.py --snapshot OUT.json
+    PYTHONPATH=. python3 feature-requests/done/034-character-summary/live_check.py
+    PYTHONPATH=. python3 feature-requests/done/034-character-summary/live_check.py --snapshot OUT.json
 
 **It builds the worst case the request names**: every macro slider moved, a
 Rigify rig generated after the garments were attached, all eight mesh asset
@@ -49,7 +49,8 @@ import subprocess
 import sys
 import time
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__)))))
 sys.path.insert(0, REPO_ROOT)
 
 BLENDER = os.environ.get("BLENDER_EXE", "/home/joepal/system/blender-5.1.0-linux-x64/blender")

@@ -8,16 +8,6 @@ Completed efforts are no longer listed here — they move to [HISTORY.md](HISTOR
 records what has already landed and why. When an effort below is finished, move it there
 (see the [lifecycle in CLAUDE.md](CLAUDE.md#lifecycle)).
 
-## Character summary
-
-**Scoped as [FR 034](034-character-summary/README.md) (Accepted).** It was ordered after
-[FR 027](done/027-expression-library/README.md), which has landed; its expression section reads
-through `shared/expression_divergence.py`'s `stack_rows()` and `divergence()`.
-`mpfb_get_character_summary` answers in one call what currently takes five or six: phenotype, rig,
-equipped assets, skin, the target rollup, and the face (face units and the expression stack). Each
-section is read by the same implementation as its detailed tool, which means moving the reading
-code of `get_macro_details`, `get_object_info` and `get_target_stack` into `bridge/.../shared/`.
-
 <a id="one-basemesh-resolver"></a>
 
 ## One basemesh resolver
@@ -25,11 +15,18 @@ code of `get_macro_details`, `get_object_info` and `get_target_stack` into `brid
 Eighteen bridge commands resolve "any object in the character's family, or the active one" to a
 basemesh through `ObjectService.find_object_of_type_amongst_nearest_relatives(subject, "Basemesh")`,
 each inside a wrapper of its own (`_resolve`, `_resolve_basemesh`), and the copies are not the same
-code even with their messages stripped. [FR 034](034-character-summary/README.md) moves the
-`get_macro_details` copy into `shared/macro_reading.py` and leaves the other seventeen alone. This
-effort would decide whether they should all share one resolver, whether the variations between them
-are deliberate (some mutating commands may rightly resolve differently), and would record the
-differences it finds either way.
+code even with their messages stripped. [FR 034](done/034-character-summary/README.md) moved the
+`get_macro_details` copy into `shared/macro_reading.py` as `resolve_basemesh()`, where
+`get_character_summary` uses it too, and left the other seventeen alone. This effort would decide
+whether they should all share that one, whether the variations between them are deliberate (some
+mutating commands may rightly resolve differently), and would record the differences it finds
+either way.
+
+The same effort is the natural place for the one **reading** FR 034 left duplicated:
+`set_macro_details` keeps its own `_as_float`, `_macro_details_of`, `_race_sum_of` and race-sum
+tolerance, and reports `macro_details` and `race_sum` from them - so its answer and
+`mpfb_get_macro_details`' can drift apart in exactly the way `shared/macro_reading.py` exists to
+prevent. It was out of FR 034's scope because the summary does not read through it.
 
 ## Visemes and lip sync
 

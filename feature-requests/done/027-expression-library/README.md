@@ -426,7 +426,7 @@ from seven to eight. `set_face_units.py` is the command most likely to grow a co
 it currently has none; the bridge test in [Tests](#tests) that runs all three over one character is
 what catches that.
 
-**[FR 034](../../034-character-summary/README.md) is ordered after this request and reads through it.**
+**[FR 034](../034-character-summary/README.md) is ordered after this request and reads through it.**
 `mpfb_get_character_summary` reports `applied_expressions`, `matches_stack` and
 `unexplained_face_units` by calling the same implementation `get_expression` does, so keep the
 stack read (the `{fragment, weight, resolved}` rows) callable apart from the command: either in

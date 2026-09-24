@@ -385,3 +385,53 @@ Verified by [`live_check.py`](done/027-expression-library/live_check.py) (23 che
 real tools over the socket to a headless Blender), 42 new bridge tests (349 in all), 42 new unit
 tests (423) and four smoke items; the smoke run is 33 items in 1.5 s, and now leaves a second file
 outside the `.blend`, which [verification/README.md](../verification/README.md) names.
+
+## [FR 034](done/034-character-summary/README.md) — `mpfb_get_character_summary`
+
+One call that tells an agent enough about one character to plan a change — phenotype, rig,
+equipped assets, skin, target rollup, face — replacing the five or six an agent used to make.
+Thirty-two tools, thirty-one commands. **The effort was mostly an extraction**: the request's rule
+was that the summary is never a second opinion, so the reading code of `get_macro_details`,
+`get_object_info` and `get_target_stack` moved into `shared/macro_reading.py`, `asset_info.py` and
+`target_rollup.py` (ten shared modules become thirteen), one command per commit, and the summary
+reads every section through those and FR 027's `expression_divergence.py`. The basemesh resolver
+moved with the macro reading, because the summary promises to resolve its subject as
+`mpfb_get_macro_details` does; the other seventeen copies were left, and `set_macro_details`' own
+copy of the phenotype reading was found and queued beside them in
+[NEXT_STEPS.md](NEXT_STEPS.md#one-basemesh-resolver).
+
+**Each move was proven by a snapshot diff, not only by the bridge tests.** The live check's
+`--snapshot` writes every detailed command's answer on its worst-case character — under three
+argument sets for `get_target_stack`, and the misses — to one sorted JSON file; taken before the
+first move and after each, the three diffs were two added `macro_drift` lines and then nothing.
+[testing.md](../specifications/testing.md#two-patterns-for-a-claim-about-more-than-one-command) now
+names that, and the agreement test (dispatch the summary beside each detailed command, assert every
+shared field equal), as patterns.
+
+Decisions worth finding later. **`macro_drift` compares weights as well as names**: moving a slider
+without a recalculation usually changes only weights, so the names-only comparison the request
+described would have missed the commonest drift; it is false at the sliders' extremes and on
+preset-loaded characters, and was added to `mpfb_get_macro_details` so the summary still reports
+nothing a detailed tool does not. **The rig is MPFB's own answer** —
+`find_object_of_type_amongst_nearest_relatives(basemesh, "Skeleton")` — never a garment's subrig.
+**`skin.material_type` is MPFB's `identify_material()` name** (`enhanced_skin`, `layered_skin`), not
+`mpfb_set_skin`'s `skin_type` vocabulary as the request assumed.
+
+**The request's 8 KB target could not be met uncapped.** On the worst case — every macro moved, a
+generated Rigify rig, all eight asset types, 41 categories set with every sided one lopsided, an
+expression and two composed units — `get_target_stack`'s rollup alone was 61 modifiers and 20
+asymmetries, about 8.8 KB. As the request prescribed for that case, the rollup is capped, at 25 and
+8: the entries furthest from zero, in the detailed tool's own order so a capped list is a sub-list,
+with `modifier_count`, `asymmetry_count` and an always-present `rollup_truncated` — not `truncated`,
+which `get_target_stack` already uses for its paging. The summary contract is now
+[a section of responses.md](../specifications/responses.md#a-summary-is-never-a-second-opinion).
+Measured on the wire: **7,440 B**, and **14 ms** against **20.6 ms** for the six calls it replaces.
+The request's premise of ~250 ms per round trip belonged to the deleted generated-code path; on the
+bridge a round trip is a millisecond or less, so the saving is mostly in what an agent reads, not in
+latency.
+
+Verified by [`live_check.py`](done/034-character-summary/live_check.py) (57 checks, over the socket
+to a headless Blender) and, for the timer-driven path the headless runs cannot reach, the same
+comparisons against the two preset-built characters in a windowed Blender (46 checks, about 4.6 KB
+each). Ten new bridge tests (359 in all), five new unit tests (428) and one smoke item; the smoke run
+is 34 items in 1.5 s.

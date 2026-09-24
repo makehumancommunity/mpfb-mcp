@@ -1,16 +1,16 @@
 # `mpfb_get_character_summary`: one character, one answer
 
-**Status:** Accepted
+**Status:** Done
 
 Before an agent changes a character it has to know what the character already is: its
 phenotype, whether it has a rig and which kind, what it is wearing, what skin it has, which
 detail morphs are on it, and what its face is doing. Today that is **five or six calls** —
 `mpfb_get_macro_details`, `mpfb_get_object_info` on the basemesh, `mpfb_get_target_stack`,
-`mpfb_get_face_units`, `mpfb_get_expression` ([FR 027](../done/027-expression-library/README.md)),
+`mpfb_get_face_units`, `mpfb_get_expression` ([FR 027](../027-expression-library/README.md)),
 and usually `mpfb_list_objects` first to find a name. That is five or six
 round trips at roughly 250 ms each, and five or six answers written for different questions, most of
 whose bytes the agent did not need.
-[vision.md](../../specifications/vision.md#target-tool-catalog) names the missing tool and sets one
+[vision.md](../../../specifications/vision.md#target-tool-catalog) names the missing tool and sets one
 condition on it: its macro half must come from **the same read `mpfb_get_macro_details` uses**, not
 a second implementation that can diverge.
 
@@ -20,8 +20,8 @@ reads "no rig" here and "rig `default`" from `mpfb_get_object_info` has been han
 it cannot resolve, and will act on whichever it read last. So each section of the summary is
 produced by the implementation its detailed tool already uses, which in the bridge means lifting that
 implementation out of the detailed command into
-[bridge/mpfb_bridge/shared/](../../bridge/mpfb_bridge/shared). That is the
-[duplication that must not drift](../../specifications/architecture.md#shared-modules-and-what-warrants-one)
+[bridge/mpfb_bridge/shared/](../../../bridge/mpfb_bridge/shared). That is the
+[duplication that must not drift](../../../specifications/architecture.md#shared-modules-and-what-warrants-one)
 case, three or four times over.
 
 It follows from this that **the summary reports no fact a detailed tool does not.** It selects and
@@ -34,7 +34,7 @@ populated that a detailed tool would not also populate.
 
 **Ordered after FR 027, which has landed.** Its `face` section carries FR 027's expression stack,
 read through `stack_rows()` and `divergence()` in
-[`shared/expression_divergence.py`](../../bridge/mpfb_bridge/shared/expression_divergence.py), which
+[`shared/expression_divergence.py`](../../../bridge/mpfb_bridge/shared/expression_divergence.py), which
 FR 027 put there with this request in mind.
 
 ## Goals
@@ -59,12 +59,12 @@ and never in disagreement with the detailed tool for any of those facts.
    the active object — resolved exactly as `mpfb_get_macro_details` resolves it, and reporting
    `subject_name`, `subject_resolved_by` and `basemesh_name` the same way.
 2. Failing to resolve a basemesh is a **successful answer** with `found: false` and a sentence, per
-   [preconditions are answers](../../specifications/mutating-tools.md#preconditions-are-answers)
-   and the introspection promise in [vision.md](../../specifications/vision.md#target-tool-catalog).
+   [preconditions are answers](../../../specifications/mutating-tools.md#preconditions-are-answers)
+   and the introspection promise in [vision.md](../../../specifications/vision.md#target-tool-catalog).
    Every section key is present on a miss, `null` or empty, so a caller does not branch on key
    presence.
 3. Every object named anywhere in the answer carries `in_current_scene`, per
-   [how a tool addresses an object](../../specifications/tool-interface.md#how-a-tool-addresses-an-object).
+   [how a tool addresses an object](../../../specifications/tool-interface.md#how-a-tool-addresses-an-object).
 
 ### Sections
 
@@ -125,7 +125,7 @@ caller that learned a field from one tool can read it in the other.
   expression applied must fit comfortably in an agent's working context: the target is **under
   8 KB** of JSON, measured on the live check's worst-case character and recorded in HISTORY. If the
   `targets` rollup exceeds that on a real character, cap it with `total_count`/`truncated` per
-  [how tools bound a large answer](../../specifications/responses.md#how-tools-bound-a-large-answer)
+  [how tools bound a large answer](../../../specifications/responses.md#how-tools-bound-a-large-answer)
   rather than dropping entries silently.
 - **One round trip, and not much slower than the slowest detailed tool.** The point is latency. A
   summary that costs as much as the calls it replaces has not replaced them.
@@ -161,7 +161,7 @@ wrong and it moves too.
 Each extraction must leave its source command's answer **unchanged**, including every quirk its
 docstring says is reproduced rather than tidied up — and the docstrings that explain those quirks
 move with the code, since the shared module is now where a reader stands when they need them. The
-commands' bridge tests in [bridge/test/tests/](../../bridge/test/tests) are the proof: run them
+commands' bridge tests in [bridge/test/tests/](../../../bridge/test/tests) are the proof: run them
 before and after each move, **one command per commit**. The one intended change to an existing
 answer is `mpfb_get_macro_details` gaining `macro_drift` (requirement 4).
 
@@ -181,26 +181,26 @@ answer is `mpfb_get_macro_details` gaining `macro_drift` (requirement 4).
   summary uses the one `get_macro_details` uses, since requirement 1 promises that tool's
   resolution, and **moves it into `macro_reading.py` with the rest of that command's reading** —
   that much is needed for requirement 1 to be true by construction. Consolidating the other seventeen
-  is [a separate entry in NEXT_STEPS.md](../NEXT_STEPS.md#one-basemesh-resolver) and is not done
+  is [a separate entry in NEXT_STEPS.md](../../NEXT_STEPS.md#one-basemesh-resolver) and is not done
   here.
 - **The count of shared modules** goes from FR 027's ten to thirteen. The list in
-  [architecture.md](../../specifications/architecture.md#shared-modules-and-what-warrants-one) says
+  [architecture.md](../../../specifications/architecture.md#shared-modules-and-what-warrants-one) says
   what warrants each; these three share one warrant, which is worth stating once rather than three
   times.
 
 ## Affected specifications
 
-- [vision.md](../../specifications/vision.md#target-tool-catalog) — the tool moves from "still
+- [vision.md](../../../specifications/vision.md#target-tool-catalog) — the tool moves from "still
   missing" to the Introspection count, and the tool and command totals each go up by one on top of
   FR 027's four. The name there was `mpfb_get_human_summary` and was changed to this request's name
   when it was scoped.
-- [architecture.md](../../specifications/architecture.md#shared-modules-and-what-warrants-one) — the
+- [architecture.md](../../../specifications/architecture.md#shared-modules-and-what-warrants-one) — the
   shared-module list gains three entries and a new warrant: **a summary and its detailed tool are
   one implementation.**
-- [responses.md](../../specifications/responses.md) — a new section on the summary contract: a
+- [responses.md](../../../specifications/responses.md) — a new section on the summary contract: a
   summary shares its detailed tool's field names, never disagrees with it, reports nothing the
   detailed tool does not, and names it.
-- [testing.md](../../specifications/testing.md) — only if the agreement test below establishes a
+- [testing.md](../../../specifications/testing.md) — only if the agreement test below establishes a
   pattern worth naming.
 
 ## Tests
@@ -219,10 +219,66 @@ answer is `mpfb_get_macro_details` gaining `macro_drift` (requirement 4).
   (full macro set, a Rigify rig generated, eight asset types, a non-default skin, a few dozen targets,
   an expression and a face unit), calls the summary and each detailed tool, compares them field by
   field, and records the answer size and the latency against the total of the calls it replaces.
-  Plus **one smoke item** in [verification/](../../verification/) and its
+  Plus **one smoke item** in [verification/](../../../verification/) and its
   `tests/test_verification_smoke.py` entry.
 - `tests/test_description_budget.py` ceilings move by what the description costs, and the commit
   says why.
+
+## Verification status
+
+All of it ran, against Blender 5.1.0 with MPFB 2.0.17 from source.
+
+- **[`live_check.py`](live_check.py)**, in this subdir: 57 checks, through the **real tools over the
+  real socket** to a headless Blender the script starts itself. It builds the worst case named in
+  [Tests](#tests) — every macro moved, a Rigify rig generated after all eight mesh asset types were
+  attached, an `ENHANCED` skin, 41 modeling categories with every sided one lopsided, `Wink.json`
+  at 0.8 and two units composed on top — then a bare basemesh and a miss, and compares every field
+  the summary shares with `mpfb_get_macro_details`, `mpfb_get_object_info` (basemesh and rig),
+  `mpfb_get_target_stack`, `mpfb_get_face_units` and `mpfb_get_expression`. All passed. Worst case:
+  **7,440 B** on the wire, **14.0 ms** best of three, against **20.6 ms** for the six calls it
+  replaces (0.7 + 8.4 + 6.3 + 4.9 + 0.1 + 0.2).
+- **`live_check.py --snapshot`**, before the first extraction and after each of the three: the
+  detailed commands' answers on the same character, diffed. The first move added the two
+  `macro_drift` lines (worst case and bare) and nothing else; the second and third, nothing.
+- **The windowed half.** The headless runs cannot reach the timer-driven path, so the same
+  comparisons ran against the two preset-built characters in the developer's GUI Blender, over its
+  own bridge server: 46 checks, all passed, about 4.6 KB per answer; `macro_drift` false on both.
+  Nothing in that scene was changed, and the server was stopped again afterwards.
+- **Bridge tests**: `uuu_get_character_summary_test.py` (7), and three for `macro_drift` in
+  `iii_get_macro_details_test.py`. **359** in all, green, and green after each extraction.
+- **Unit tests**: `tests/test_get_character_summary.py` (5), **428** in all, green; the description
+  ceiling raised to 69,600 and the schema ceiling to 12,300, reasons in
+  `tests/test_description_budget.py`.
+- **One smoke item**, placed just before the preset save so it reads the fullest character the run
+  builds; the run is 34 items, all passing, in 1.5 s.
+
+### What landed differently from the text above, and why
+
+- **The rollup is capped**, which [Non-functional requirements](#non-functional-requirements)
+  allowed for: uncapped, the worst case's rollup alone was about 8.8 KB. 25 modifiers and 8
+  asymmetries, the ones furthest from zero, in `mpfb_get_target_stack`'s order. The flag is
+  `rollup_truncated`, not `total_count`/`truncated` as the requirement put it, because
+  `mpfb_get_target_stack` already uses both names for its shape-key paging and
+  the same-names rule under [Sections](#sections) forbids one name meaning two things; the totals are
+  `modifier_count` (that tool's own name) and `asymmetry_count`.
+- **`macro_drift` compares weights as well as names.** Requirement 4 described it as the comparison
+  of the two shape-key lists, but moving one slider without a recalculation usually changes no name,
+  only weights, so a names-only flag would miss the commonest drift. Its bridge tests pin it false at
+  the sliders' extremes and true after exactly that slider move.
+- **`skin.material_type` is MPFB's `identify_material()` name** (`enhanced_skin`, `layered_skin`,
+  `makeskin`...), which is what `mpfb_get_object_info` reports; requirement 7 assumed the
+  `mpfb_set_skin` vocabulary.
+- **The rig is `find_object_of_type_amongst_nearest_relatives(basemesh, "Skeleton")`**, MPFB's own
+  answer, which requirement 5 left open.
+- **`subject_in_current_scene` and `basemesh_in_current_scene`** were added for requirement 3.
+- **`target_rollup.py` is new**, rather than an extension of `modifier_reading.py`: the rollup
+  needs the per-shape-key entries and counts too, which are not a slider reading.
+- **`set_macro_details` keeps a copy of the phenotype reading.** Found during the extraction and
+  out of scope, since the summary does not read through it; queued beside
+  [the basemesh resolver](../../NEXT_STEPS.md#one-basemesh-resolver).
+- **The latency premise is out of date.** The ~250 ms per round trip in the background was the
+  generated-code path's; on the bridge the saving is a few milliseconds, and the case for the tool
+  rests on the answer being one small read rather than six long ones.
 
 ## Decisions taken while scoping
 
@@ -247,15 +303,15 @@ answer is `mpfb_get_macro_details` gaining `macro_drift` (requirement 4).
 
 ## References
 
-- [vision.md — What is still missing](../../specifications/vision.md#target-tool-catalog)
-- [FR 027](../done/027-expression-library/README.md) — `mpfb_get_expression`, `expression_divergence.py`,
+- [vision.md — What is still missing](../../../specifications/vision.md#target-tool-catalog)
+- [FR 027](../027-expression-library/README.md) — `mpfb_get_expression`, `expression_divergence.py`,
   and the definitions of `matches_stack` and `unexplained_face_units`.
 - Commands whose reading is extracted:
-  [get_macro_details.py](../../bridge/mpfb_bridge/commands/get_macro_details.py),
-  [get_object_info.py](../../bridge/mpfb_bridge/commands/get_object_info.py),
-  [get_target_stack.py](../../bridge/mpfb_bridge/commands/get_target_stack.py); and read without
-  extraction: [get_face_units.py](../../bridge/mpfb_bridge/commands/get_face_units.py).
-- [shared/modifier_reading.py](../../bridge/mpfb_bridge/shared/modifier_reading.py) — the
+  [get_macro_details.py](../../../bridge/mpfb_bridge/commands/get_macro_details.py),
+  [get_object_info.py](../../../bridge/mpfb_bridge/commands/get_object_info.py),
+  [get_target_stack.py](../../../bridge/mpfb_bridge/commands/get_target_stack.py); and read without
+  extraction: [get_face_units.py](../../../bridge/mpfb_bridge/commands/get_face_units.py).
+- [shared/modifier_reading.py](../../../bridge/mpfb_bridge/shared/modifier_reading.py) — the
   snapshot-or-live lookup argument the target rollup must respect.
-- [FR 030](../done/030-backend-seam/README.md) — `mpfb_list_objects` as the template for a read
+- [FR 030](../030-backend-seam/README.md) — `mpfb_list_objects` as the template for a read
   tool on the bridge.
