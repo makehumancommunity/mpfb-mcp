@@ -56,6 +56,7 @@ import bpy
 from ..log import get_logger
 from ..shared import subject_resolution
 from ..shared import target_categories
+from ..shared import target_rollup
 from ..shared.modifier_reading import modifier_reading
 from ..shared.performed import with_performed
 from ..shared.refit_blocker import rig_refit_is_blocked
@@ -91,51 +92,6 @@ SUMMARY = "Copy one side of a character's detail modeling onto the other."
 EPSILON = 0.0001
 
 
-def _encoded(target_service, name):
-    try:
-        return str(target_service.encode_shapekey_name(name))
-    except Exception:  # pylint: disable=broad-except
-        return str(name)
-
-
-def _key_blocks_of(basemesh):
-    keys = basemesh.data.shape_keys
-    if keys is None or keys.key_blocks is None:
-        return []
-    return list(keys.key_blocks)
-
-
-def _present_name(target_service, basemesh, target_name):
-    """The name this target is stored under on the mesh, or ``None``.
-
-    ``has_target()`` answers the same question, but a caller that only knows
-    "yes" cannot then write: ``set_target_value()`` matches the raw name only,
-    while ``has_target()`` also matches the encoded one.
-    """
-    if not target_name:
-        return None
-    names = set(str(block.name) for block in _key_blocks_of(basemesh))
-    if str(target_name) in names:
-        return str(target_name)
-    encoded_name = _encoded(target_service, target_name)
-    if encoded_name in names:
-        return encoded_name
-    return None
-
-
-def _value_of(basemesh, stored_name):
-    if not stored_name:
-        return None
-    for block in _key_blocks_of(basemesh):
-        if str(block.name) == stored_name:
-            return float(block.value)
-    return None
-
-
-def _shapekey_names(basemesh):
-    return [str(block.name) for block in _key_blocks_of(basemesh)]
-
-
 def _modifier_value(target_service, basemesh, category, side):
     """One category's slider reading, taken from the mesh as it stands.
 
@@ -145,15 +101,7 @@ def _modifier_value(target_service, basemesh, category, side):
     this command reads a category again after writing to it and a snapshot taken
     beforehand would report the value it just replaced.
     """
-    def present(target_name):
-        return _present_name(target_service, basemesh, target_name) is not None
-
-    def current_value(target_name):
-        stored = _present_name(target_service, basemesh, target_name)
-        if stored is None:
-            return 0.0
-        return _value_of(basemesh, stored)
-
+    present, current_value = target_rollup.live_lookup(target_service, basemesh)
     return modifier_reading(category, side, present, current_value)
 
 
@@ -165,29 +113,29 @@ def _write_side(target_service, tables, basemesh, section_name, category, side, 
         negative = target_categories.target_names_for(category, side, "negative")
 
         if value < EPSILON:
-            stored = _present_name(target_service, basemesh, positive)
+            stored = target_rollup.present_name(target_service, basemesh, positive)
             if stored is not None:
-                previous = _value_of(basemesh, stored)
+                previous = target_rollup.stored_value(basemesh, stored)
                 target_service.set_target_value(
                     basemesh, stored, 0.0, delete_target_on_zero=prune)
                 touched.append({
                     "target": positive, "polarity": "positive",
                     "previous_value": previous,
-                    "new_value": _value_of(
-                        basemesh, _present_name(target_service, basemesh, positive)),
+                    "new_value": target_rollup.stored_value(
+                        basemesh, target_rollup.present_name(target_service, basemesh, positive)),
                     "loaded_from": None,
                 })
         if value > -EPSILON:
-            stored = _present_name(target_service, basemesh, negative)
+            stored = target_rollup.present_name(target_service, basemesh, negative)
             if stored is not None:
-                previous = _value_of(basemesh, stored)
+                previous = target_rollup.stored_value(basemesh, stored)
                 target_service.set_target_value(
                     basemesh, stored, 0.0, delete_target_on_zero=prune)
                 touched.append({
                     "target": negative, "polarity": "negative",
                     "previous_value": previous,
-                    "new_value": _value_of(
-                        basemesh, _present_name(target_service, basemesh, negative)),
+                    "new_value": target_rollup.stored_value(
+                        basemesh, target_rollup.present_name(target_service, basemesh, negative)),
                     "loaded_from": None,
                 })
 
@@ -201,7 +149,7 @@ def _write_side(target_service, tables, basemesh, section_name, category, side, 
                    target_categories.target_names_for(category, side, "positive"), value)]
 
     for polarity, target_name, weight in wanted:
-        stored = _present_name(target_service, basemesh, target_name)
+        stored = target_rollup.present_name(target_service, basemesh, target_name)
         if stored is None:
             path, _resolved_by = target_categories.resolve_target_path(
                 tables, section_name, category, target_name)
@@ -209,19 +157,19 @@ def _write_side(target_service, tables, basemesh, section_name, category, side, 
             touched.append({
                 "target": target_name, "polarity": polarity,
                 "previous_value": None,
-                "new_value": _value_of(
-                    basemesh, _present_name(target_service, basemesh, target_name)),
+                "new_value": target_rollup.stored_value(
+                    basemesh, target_rollup.present_name(target_service, basemesh, target_name)),
                 "loaded_from": path,
             })
         else:
-            previous = _value_of(basemesh, stored)
+            previous = target_rollup.stored_value(basemesh, stored)
             target_service.set_target_value(
                 basemesh, stored, weight, delete_target_on_zero=prune)
             touched.append({
                 "target": target_name, "polarity": polarity,
                 "previous_value": previous,
-                "new_value": _value_of(
-                    basemesh, _present_name(target_service, basemesh, target_name)),
+                "new_value": target_rollup.stored_value(
+                    basemesh, target_rollup.present_name(target_service, basemesh, target_name)),
                 "loaded_from": None,
             })
     return touched
@@ -245,7 +193,7 @@ def _loadable(target_service, tables, basemesh, section_name, category, side, va
     for target_name in wanted:
         if not target_name:
             return False
-        if _present_name(target_service, basemesh, target_name) is not None:
+        if target_rollup.present_name(target_service, basemesh, target_name) is not None:
             continue
         path, _resolved_by = target_categories.resolve_target_path(
             tables, section_name, category, target_name)
@@ -424,7 +372,7 @@ def symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,t
     refit_incomplete_reason = None
     refit_performed = False
     rig = object_service.find_object_of_type_amongst_nearest_relatives(basemesh, "Skeleton")
-    shapekeys_before = _shapekey_names(basemesh)
+    shapekeys_before = target_rollup.shapekey_names(basemesh)
     shapekeys_after = list(shapekeys_before)
 
     if dry_run:
@@ -460,7 +408,7 @@ def symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,t
             if not basemesh_was_selected:
                 basemesh.select_set(False)
             bpy.context.view_layer.objects.active = previous_active
-        shapekeys_after = _shapekey_names(basemesh)
+        shapekeys_after = target_rollup.shapekey_names(basemesh)
 
     mesh_assets = [asset.name for asset in object_service.find_related_mesh_assets(basemesh)]
 

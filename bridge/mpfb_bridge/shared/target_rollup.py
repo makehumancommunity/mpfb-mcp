@@ -36,6 +36,17 @@ and answered from by :func:`value_lookup`. ``modifier_reading`` takes the
 lookup as an argument because ``symmetrize_targets`` writes between readings
 and must read live; a read-only command must not, or its two views would be two
 reads rather than two views of one.
+
+**Where a target lives on the mesh is one rule, for both kinds of lookup**
+([FR 036](../../../feature-requests/done/036-subject-resolver-and-duplication/README.md)).
+A target name longer than 60 characters is stored under
+``TargetService.encode_shapekey_name()``'s encoded form, so a target is looked
+for under its raw name first and its encoded one second. :func:`value_lookup`
+applies that to a snapshot; :func:`present_name`, :func:`stored_value` and
+:func:`live_lookup` apply it to the mesh as it stands, for ``set_targets`` and
+``symmetrize_targets``, which write between readings. Both constructors of the
+pair ``modifier_reading()`` takes are here, so a long-named target cannot be
+present in ``get_target_stack`` and absent in ``symmetrize_targets``.
 """
 
 __all__ = (
@@ -44,9 +55,13 @@ __all__ = (
     "MACRO_PREFIX",
     "build_modifiers",
     "counts_of",
+    "live_lookup",
     "matching",
+    "present_name",
     "shapekey_entries",
+    "shapekey_names",
     "shapekey_values",
+    "stored_value",
     "value_lookup",
 )
 
@@ -74,19 +89,80 @@ def _decoded(target_service, name):
         return str(name)
 
 
+def _key_blocks_of(basemesh):
+    keys = basemesh.data.shape_keys
+    if keys is None or keys.key_blocks is None:
+        return []
+    return list(keys.key_blocks)
+
+
+def _stored_name(target_service, names, target_name):
+    """The name ``target_name`` is stored under among ``names``, or ``None``.
+
+    The raw name first, then the encoded one. This is the whole rule; every
+    lookup in this module asks it.
+    """
+    if not target_name:
+        return None
+    if str(target_name) in names:
+        return str(target_name)
+    encoded_name = _encoded(target_service, target_name)
+    if encoded_name in names:
+        return encoded_name
+    return None
+
+
 def shapekey_values(basemesh):
     """Every shape key on the mesh, in order, as ``(name, value)`` pairs.
 
     Read straight off ``key_blocks`` - see this module's docstring for why not
     through ``TargetService``.
     """
-    pairs = []
-    keys = basemesh.data.shape_keys
-    if keys is None or keys.key_blocks is None:
-        return pairs
-    for block in keys.key_blocks:
-        pairs.append((str(block.name), float(block.value)))
-    return pairs
+    return [(str(block.name), float(block.value)) for block in _key_blocks_of(basemesh)]
+
+
+def shapekey_names(basemesh):
+    """Every shape key name on the mesh, in order, read live."""
+    return [str(block.name) for block in _key_blocks_of(basemesh)]
+
+
+def present_name(target_service, basemesh, target_name):
+    """The name this target is actually stored under on the mesh, or ``None``.
+
+    ``has_target()`` answers the yes/no question the same way, but a caller that
+    only knows "yes" cannot then write, because ``set_target_value()`` matches
+    the raw name only and would silently do nothing for an encoded one.
+    """
+    return _stored_name(target_service, set(shapekey_names(basemesh)), target_name)
+
+
+def stored_value(basemesh, stored_name):
+    """The live value of the shape key stored as ``stored_name``, or ``None``."""
+    if not stored_name:
+        return None
+    for block in _key_blocks_of(basemesh):
+        if str(block.name) == stored_name:
+            return float(block.value)
+    return None
+
+
+def live_lookup(target_service, basemesh):
+    """The pair ``modifier_reading()`` takes, going to ``key_blocks`` on every question.
+
+    For a command that reads a category again after writing to it, where a
+    snapshot taken beforehand would report the value it just replaced. A target
+    that is not on the mesh reads as 0.0, as in :func:`value_lookup`.
+    """
+    def present(target_name):
+        return present_name(target_service, basemesh, target_name) is not None
+
+    def value_of(target_name):
+        stored = present_name(target_service, basemesh, target_name)
+        if stored is None:
+            return 0.0
+        return stored_value(basemesh, stored)
+
+    return (present, value_of)
 
 
 def _kind_of(target_service, shapekey_name, known_to_target_json):
@@ -109,29 +185,22 @@ def _kind_of(target_service, shapekey_name, known_to_target_json):
 def value_lookup(target_service, values):
     """A ``has_target()``/``get_target_value()`` pair over an already-read stack.
 
-    ``has_target()`` checks the encoded name as well as the given one, while
-    ``get_target_value()`` matches the raw name only - so the two are reproduced
-    separately rather than collapsed into one helper that would paper over the
-    difference.
+    MPFB's own pair disagrees: ``has_target()`` checks the encoded name as well
+    as the given one, while ``get_target_value()`` matches the raw name only, so
+    a long-named target would read as present and valued 0.0. Both halves here
+    ask :func:`_stored_name` instead, and agree. (Until FR 036 this docstring
+    said the difference was reproduced; the code never did reproduce it.)
     """
     by_name = dict(values)
 
     def present(target_name):
-        if not target_name:
-            return False
-        if target_name in by_name:
-            return True
-        return _encoded(target_service, target_name) in by_name
+        return _stored_name(target_service, by_name, target_name) is not None
 
     def value_of(target_name):
-        if not target_name:
+        stored = _stored_name(target_service, by_name, target_name)
+        if stored is None:
             return 0.0
-        if target_name in by_name:
-            return by_name[target_name]
-        encoded_name = _encoded(target_service, target_name)
-        if encoded_name in by_name:
-            return by_name[encoded_name]
-        return 0.0
+        return by_name[stored]
 
     return (present, value_of)
 

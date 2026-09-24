@@ -78,6 +78,7 @@ import bpy
 from ..log import get_logger
 from ..shared import subject_resolution
 from ..shared import target_categories
+from ..shared import target_rollup
 from ..shared.performed import with_performed
 from ..shared.refit_blocker import rig_refit_is_blocked
 from ..validation import Param
@@ -112,51 +113,6 @@ SUMMARY = "Set detail morph targets on a character, as one all-or-nothing batch.
 
 # MPFB's own threshold, from _set_opposed_modifier_value() and prune_shapekeys().
 EPSILON = 0.0001
-
-
-def _encoded(target_service, name):
-    try:
-        return str(target_service.encode_shapekey_name(name))
-    except Exception:  # pylint: disable=broad-except
-        return str(name)
-
-
-def _key_blocks_of(basemesh):
-    keys = basemesh.data.shape_keys
-    if keys is None or keys.key_blocks is None:
-        return []
-    return list(keys.key_blocks)
-
-
-def _present_name(target_service, basemesh, target_name):
-    """The name this target is actually stored under on the mesh, or ``None``.
-
-    ``has_target()`` answers the yes/no question the same way, but a caller that
-    only knows "yes" cannot then write, because ``set_target_value()`` matches
-    the raw name only and would silently do nothing for an encoded one.
-    """
-    if not target_name:
-        return None
-    names = set(str(block.name) for block in _key_blocks_of(basemesh))
-    if str(target_name) in names:
-        return str(target_name)
-    encoded_name = _encoded(target_service, target_name)
-    if encoded_name in names:
-        return encoded_name
-    return None
-
-
-def _value_of(basemesh, stored_name):
-    if not stored_name:
-        return None
-    for block in _key_blocks_of(basemesh):
-        if str(block.name) == stored_name:
-            return float(block.value)
-    return None
-
-
-def _shapekey_names(basemesh):
-    return [str(block.name) for block in _key_blocks_of(basemesh)]
 
 
 def _touch_record(target_name, side, polarity, previous_value, present_before,
@@ -338,7 +294,7 @@ def _resolve_raw_target(services, tables, target_service, index, entry, basemesh
     shapekey_name = str(entry.get("shapekey_name"))
     value = float(entry.get("value"))
 
-    stored = _present_name(target_service, basemesh, shapekey_name)
+    stored = target_rollup.present_name(target_service, basemesh, shapekey_name)
     if stored is not None:
         return ({
             "index": index,
@@ -409,41 +365,44 @@ def _apply_modifier(target_service, basemesh, resolved, prune):
             # first - both of them when the value is at zero - and only then set
             # or load the selected one.
             if value < EPSILON:
-                stored = _present_name(target_service, basemesh, positive)
+                stored = target_rollup.present_name(target_service, basemesh, positive)
                 if stored is not None:
-                    previous = _value_of(basemesh, stored)
+                    previous = target_rollup.stored_value(basemesh, stored)
                     _write_value(target_service, basemesh, stored, 0.0, prune)
                     touched.append(_touch_record(
                         positive, side, "positive", previous, True,
-                        _value_of(basemesh, _present_name(target_service, basemesh, positive)),
+                        target_rollup.stored_value(
+                            basemesh, target_rollup.present_name(target_service, basemesh, positive)),
                         None, prune))
             if value > -EPSILON:
-                stored = _present_name(target_service, basemesh, negative)
+                stored = target_rollup.present_name(target_service, basemesh, negative)
                 if stored is not None:
-                    previous = _value_of(basemesh, stored)
+                    previous = target_rollup.stored_value(basemesh, stored)
                     _write_value(target_service, basemesh, stored, 0.0, prune)
                     touched.append(_touch_record(
                         negative, side, "negative", previous, True,
-                        _value_of(basemesh, _present_name(target_service, basemesh, negative)),
+                        target_rollup.stored_value(
+                            basemesh, target_rollup.present_name(target_service, basemesh, negative)),
                         None, prune))
 
         for wanted in step["wanted"]:
             target_name = wanted["target"]
             weight = wanted["weight"]
-            stored = _present_name(target_service, basemesh, target_name)
+            stored = target_rollup.present_name(target_service, basemesh, target_name)
             if stored is None:
                 _load_value(target_service, basemesh, wanted["path"], weight, target_name)
                 touched.append(_touch_record(
                     target_name, side, wanted["polarity"], None, False,
-                    _value_of(basemesh, _present_name(target_service, basemesh, target_name)),
+                    target_rollup.stored_value(
+                        basemesh, target_rollup.present_name(target_service, basemesh, target_name)),
                     wanted["path"], False))
             else:
-                previous = _value_of(basemesh, stored)
+                previous = target_rollup.stored_value(basemesh, stored)
                 _write_value(target_service, basemesh, stored, weight, prune)
-                after_name = _present_name(target_service, basemesh, target_name)
+                after_name = target_rollup.present_name(target_service, basemesh, target_name)
                 touched.append(_touch_record(
                     target_name, side, wanted["polarity"], previous, True,
-                    _value_of(basemesh, after_name), None,
+                    target_rollup.stored_value(basemesh, after_name), None,
                     prune and after_name is None))
     return touched
 
@@ -451,19 +410,20 @@ def _apply_modifier(target_service, basemesh, resolved, prune):
 def _apply_raw_target(target_service, basemesh, resolved, prune):
     shapekey_name = resolved["shapekey_name"]
     value = resolved["value"]
-    stored = _present_name(target_service, basemesh, shapekey_name)
+    stored = target_rollup.present_name(target_service, basemesh, shapekey_name)
     if stored is None:
         _load_value(target_service, basemesh, resolved["path"], value, shapekey_name)
         return [_touch_record(
             shapekey_name, None, None, None, False,
-            _value_of(basemesh, _present_name(target_service, basemesh, shapekey_name)),
+            target_rollup.stored_value(
+                basemesh, target_rollup.present_name(target_service, basemesh, shapekey_name)),
             resolved["path"], False)]
-    previous = _value_of(basemesh, stored)
+    previous = target_rollup.stored_value(basemesh, stored)
     _write_value(target_service, basemesh, stored, value, prune)
-    after_name = _present_name(target_service, basemesh, shapekey_name)
+    after_name = target_rollup.present_name(target_service, basemesh, shapekey_name)
     return [_touch_record(
         shapekey_name, None, None, previous, True,
-        _value_of(basemesh, after_name), None, prune and after_name is None)]
+        target_rollup.stored_value(basemesh, after_name), None, prune and after_name is None)]
 
 
 def _rig_refit_blocker(services, rig):
@@ -506,7 +466,7 @@ def _unreachable_targets(target_service, basemesh, resolved):
         for wanted in step["wanted"]:
             if wanted["path"] is not None:
                 continue
-            if _present_name(target_service, basemesh, wanted["target"]) is not None:
+            if target_rollup.present_name(target_service, basemesh, wanted["target"]) is not None:
                 # Already on the mesh, so nothing has to be read.
                 continue
             unreachable.append(wanted["target"])
@@ -661,7 +621,7 @@ def set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many
                         len(requested_modifiers) + len(requested_targets)),
         ), False)
 
-    shapekeys_before = _shapekey_names(basemesh)
+    shapekeys_before = target_rollup.shapekey_names(basemesh)
 
     # MPFB's own slider callback activates the basemesh before writing, and the
     # refit below reaches bpy.ops through ClothesService. Put back what was
@@ -711,7 +671,7 @@ def set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many
             basemesh.select_set(False)
         bpy.context.view_layer.objects.active = previous_active
 
-    shapekeys_after = _shapekey_names(basemesh)
+    shapekeys_after = target_rollup.shapekey_names(basemesh)
     mesh_assets = [asset.name for asset in object_service.find_related_mesh_assets(basemesh)]
     diverging = [entry for entry in applied if entry.get("name_diverges_from_catalogue")]
 

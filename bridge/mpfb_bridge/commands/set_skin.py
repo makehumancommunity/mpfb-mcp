@@ -417,7 +417,8 @@ def set_skin(params, resolution):  # pylint: disable=too-many-locals,too-many-st
     basemesh, subject, subject_resolved_by, message = subject_resolution.resolve_basemesh(
         services, params["name"],
         not_done="no skin was applied",
-        not_a_character="there is nothing to give a skin to, since a skin is a material on the body")
+        not_a_character=("there is nothing to give a skin to, since a skin is a material on "
+                         "the body"))
     request = _resolve_arguments(services, params)
 
     refused = _refusal(subject, basemesh, subject_resolved_by, params, request, message)
