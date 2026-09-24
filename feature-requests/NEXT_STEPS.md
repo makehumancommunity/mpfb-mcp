@@ -12,6 +12,11 @@ records what has already landed and why. When an effort below is finished, move 
 
 ## Basemesh resolver and other code duplications
 
+Formulated as [FR 036](036-subject-resolver-and-duplication/README.md) (Accepted), with the scan
+this entry asks for in its [census](036-subject-resolver-and-duplication/census.md). Because the
+architecture's rule for shared code was set before the pivot, the request rewrites that rule first
+and derives the census verdicts from the rewritten version.
+
 Eighteen bridge commands resolve "any object in the character's family, or the active one" to a
 basemesh through `ObjectService.find_object_of_type_amongst_nearest_relatives(subject, "Basemesh")`,
 each inside a wrapper of its own (`_resolve`, `_resolve_basemesh`), and the copies are not the same
