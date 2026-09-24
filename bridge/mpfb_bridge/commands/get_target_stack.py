@@ -6,36 +6,20 @@ Changes nothing. In particular it never calls ``reapply_macro_details()`` or
 drifted apart is **reported** as drifted rather than quietly repaired by a
 command the caller believed to be read-only.
 
-**The shape keys are read from ``key_blocks`` directly rather than through
-``TargetService.get_target_stack()``**, which excludes any shape key whose
-lowercased name *contains* ``"basis"`` - not merely equals it. A user target
-called ``basis-nose-widen`` is therefore invisible to ``has_target()``,
-``get_target_value()`` and every write MPFB can perform on it. Suppressing it
-here as well would hide a real shape key that is really deforming the mesh; so
-it is listed, with ``visible_to_targetservice`` saying that MPFB cannot address
-it. Every *write* still goes through ``TargetService``, or the read and the
-write halves would disagree about what exists.
+**How the stack is read, and how it rolls up, is in
+[`shared/target_rollup.py`](../shared/target_rollup.py)**: why the shape keys
+come off ``key_blocks`` rather than through ``TargetService``, and the two
+views of one snapshot this answer carries - ``targets``, one entry per shape
+key, and ``modifiers``, the categories MPFB's sliders manipulate. It moved
+there so that ``get_character_summary`` reports this command's rollup for its
+default arguments without a second reading
+([FR 034](../../../feature-requests/034-character-summary/README.md)).
 
-The answer has **two views of the same facts**. ``targets`` is one entry per
-shape key, which is what ``set_targets``' raw ``targets`` list addresses.
-``modifiers`` rolls those up into the ``target.json`` categories MPFB's own
-sliders manipulate, computed the way ``_get_opposed_modifier_value()`` computes
-them - by [`shared/modifier_reading.py`](../shared/modifier_reading.py), so
-``symmetrize_targets`` cannot read a category differently - which is the view
-that round-trips back into ``set_targets``' ``modifiers`` list and the view that
-matches what the user sees in the panel. ``symmetrize_targets`` has not
-migrated, so for now that agreement is kept by
-``tests/test_fragment_drift.py`` rather than by the two sharing a module.
-
-The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
-arrived here from the generated program this command replaced, where it had
-been established against a real install; a reimplementation that fixed one
-would be changing what the tool answers under cover of a migration.
-, including the asymmetry that looks like an oversight: ``targets`` is
-filtered, paged and capped while ``modifiers`` is none of those. The rollup is
-small by construction - only a category with a non-zero reading appears - and it
-is what a caller writes back, so cutting it would hand back something that is
-not a description of the character.
+The asymmetry between the two views looks like an oversight and is a decision:
+``targets`` is filtered, paged and capped while ``modifiers`` is none of those.
+The rollup is small by construction - only a category with a non-zero reading
+appears - and it is what a caller writes back, so cutting it would hand back
+something that is not a description of the character.
 """
 
 __all__ = (
@@ -48,7 +32,7 @@ import bpy
 
 from ..log import get_logger
 from ..shared import target_categories
-from ..shared.modifier_reading import modifier_reading
+from ..shared import target_rollup
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
 from ..validation import TYPE_INTEGER
@@ -76,127 +60,6 @@ PARAMS = (
 )
 
 SUMMARY = "Read the shape keys on one character, and the modeling categories they roll up into."
-
-MACRO_PREFIX = "$md"
-EXPRESSION_PREFIX = "!ex-"
-
-# MPFB's own threshold, from _set_opposed_modifier_value() and prune_shapekeys().
-EPSILON = 0.0001
-
-
-def _encoded(target_service, name):
-    try:
-        return str(target_service.encode_shapekey_name(name))
-    except Exception:  # pylint: disable=broad-except
-        return str(name)
-
-
-def _decoded(target_service, name):
-    try:
-        return str(target_service.decode_shapekey_name(name))
-    except Exception:  # pylint: disable=broad-except
-        return str(name)
-
-
-def _shapekey_values(basemesh):
-    """Every shape key on the mesh, in order, as ``(name, value)`` pairs.
-
-    Read straight off ``key_blocks`` - see this module's docstring for why not
-    through ``TargetService``.
-    """
-    pairs = []
-    keys = basemesh.data.shape_keys
-    if keys is None or keys.key_blocks is None:
-        return pairs
-    for block in keys.key_blocks:
-        pairs.append((str(block.name), float(block.value)))
-    return pairs
-
-
-def _kind_of(target_service, shapekey_name, known_to_target_json):
-    if shapekey_name.lower() == "basis":
-        return "basis"
-    if shapekey_name.startswith(MACRO_PREFIX):
-        return "macro"
-    if shapekey_name.startswith(EXPRESSION_PREFIX):
-        return "expression"
-    if known_to_target_json:
-        return "detail"
-    try:
-        if target_service.shapekey_is_target(shapekey_name):
-            return "detail"
-    except Exception:  # pylint: disable=broad-except
-        pass
-    return "unknown"
-
-
-def _value_lookup(target_service, values):
-    """A ``has_target()``/``get_target_value()`` pair over an already-read stack.
-
-    ``has_target()`` checks the encoded name as well as the given one, while
-    ``get_target_value()`` matches the raw name only - so the two are reproduced
-    separately rather than collapsed into one helper that would paper over the
-    difference.
-    """
-    by_name = dict(values)
-
-    def present(target_name):
-        if not target_name:
-            return False
-        if target_name in by_name:
-            return True
-        return _encoded(target_service, target_name) in by_name
-
-    def value_of(target_name):
-        if not target_name:
-            return 0.0
-        if target_name in by_name:
-            return by_name[target_name]
-        encoded_name = _encoded(target_service, target_name)
-        if encoded_name in by_name:
-            return by_name[encoded_name]
-        return 0.0
-
-    return (present, value_of)
-
-
-def _sides_of(category):
-    if category.get("has_left_and_right"):
-        return ("left", "right")
-    return ("unsided",)
-
-
-def _build_modifiers(tables, present, value_of):
-    """Every category with a non-zero reading, plus the sided ones that differ."""
-    modifiers = []
-    asymmetries = []
-    for section_name in tables.known_sections:
-        section = tables.sections[section_name]
-        for category in section["categories"]:
-            readings = dict()
-            for side in _sides_of(category):
-                readings[side] = modifier_reading(category, side, present, value_of)
-            for side in _sides_of(category):
-                if abs(readings[side]) > EPSILON:
-                    modifiers.append({
-                        "section": section_name,
-                        "category": str(category["name"]),
-                        "side": side,
-                        "value": round(readings[side], 6),
-                        "opposed": target_categories.category_is_opposed(category),
-                    })
-            if category.get("has_left_and_right"):
-                difference = readings["left"] - readings["right"]
-                if abs(difference) > EPSILON:
-                    asymmetries.append({
-                        "section": section_name,
-                        "category": str(category["name"]),
-                        "left": round(readings["left"], 6),
-                        "right": round(readings["right"], 6),
-                        "difference": round(difference, 6),
-                    })
-    return (modifiers, asymmetries)
-
 
 def _resolve_basemesh(services, requested_name):
     """The basemesh, the object asked about, and the sentence to say on a miss."""
@@ -227,29 +90,6 @@ def _resolve_basemesh(services, requested_name):
                 "target stack. Call mpfb_get_object_info to see what it is related "
                 "to.".format(subject.name))
     return (basemesh, subject, None)
-
-
-def _entry_for(target_service, tables, shapekey_name, value):
-    """One shape key, placed in the category table where the table knows it."""
-    placement = tables.index.get(shapekey_name)
-    return {
-        "shapekey_name": shapekey_name,
-        "decoded_name": _decoded(target_service, shapekey_name),
-        "value": round(value, 6),
-        "kind": _kind_of(target_service, shapekey_name, placement is not None),
-        "section": None if placement is None else placement["section"],
-        "category": None if placement is None else placement["category"],
-        "side": None if placement is None else placement["side"],
-        "polarity": None if placement is None else placement["polarity"],
-        # True only for a category the bundled index really names: a synthesized
-        # user category is a modifier MPFB's panel shows but target.json has
-        # never heard of.
-        "listed_in_target_json": placement is not None and not placement["synthesized"],
-        # False means MPFB itself cannot see this shape key: its
-        # get_target_stack() excludes any name *containing* "basis", so every
-        # write and every value read through TargetService misses it.
-        "visible_to_targetservice": "basis" not in shapekey_name.lower(),
-    }
 
 
 def _nothing_found(subject, subject_resolved_by, message, offset, limit):
@@ -319,49 +159,18 @@ def get_target_stack(params, resolution):  # pylint: disable=too-many-locals
         return _nothing_found(subject, subject_resolved_by, message, offset, limit)
 
     tables = target_categories.build_tables(services)
-    values = _shapekey_values(basemesh)
-    present, value_of = _value_lookup(target_service, values)
+    values = target_rollup.shapekey_values(basemesh)
+    present, value_of = target_rollup.value_lookup(target_service, values)
 
-    entries = []
-    for shapekey_name, value in values:
-        entry = _entry_for(target_service, tables, shapekey_name, value)
-        if entry["kind"] == "basis":
-            # Blender's own rest shape, not a target, and never addressable.
-            continue
-        entries.append(entry)
-
-    # Counted over everything on the mesh, before any filter or cap, so a
-    # filtered answer still says what it was filtered out of.
-    counts_by_kind = dict()
-    counts_by_section = dict()
-    for entry in entries:
-        counts_by_kind[entry["kind"]] = counts_by_kind.get(entry["kind"], 0) + 1
-        section_key = entry["section"] or "(none)"
-        counts_by_section[section_key] = counts_by_section.get(section_key, 0) + 1
-
-    matched = []
-    for entry in entries:
-        if entry["kind"] == "macro" and not include_macro:
-            continue
-        if entry["kind"] == "expression" and not include_expressions:
-            continue
-        if needle is not None:
-            haystacks = [entry["shapekey_name"].lower(), entry["decoded_name"].lower()]
-            if not any(needle in haystack for haystack in haystacks):
-                continue
-        matched.append(entry)
-
-    # Sorted before paging: key_blocks order is insertion order, so two pages of
-    # one query would otherwise skip and repeat entries as the stack changes.
-    matched.sort(key=lambda entry: (
-        entry["kind"], entry["section"] or "", entry["category"] or "",
-        entry["shapekey_name"]))
+    entries = target_rollup.shapekey_entries(target_service, tables, values)
+    counts_by_kind, counts_by_section = target_rollup.counts_of(entries)
+    matched = target_rollup.matching(entries, include_macro, include_expressions, needle)
 
     total_count = len(matched)
     paged = matched[offset:offset + limit]
     count = len(paged)
 
-    modifiers, asymmetries = _build_modifiers(tables, present, value_of)
+    modifiers, asymmetries = target_rollup.build_modifiers(tables, present, value_of)
     invisible = [entry["shapekey_name"] for entry in entries
                  if not entry["visible_to_targetservice"]]
 

@@ -260,6 +260,7 @@ def asset_info_for(lookup, blender_object, object_type):
 
 
 def in_current_scene(blender_object):
+    """Whether ``blender_object`` is linked into the current scene, which ``list_objects`` searches."""
     return blender_object.name in bpy.context.scene.objects
 
 
