@@ -221,7 +221,9 @@ def _asset_expectations(services, human_info, load_clothes):
 def _object_record(general_properties, blender_object, kind):
     if blender_object is None:
         return None
-    record = dict(kind=kind, object_name=str(blender_object.name))
+    # `name`, as in every other record *of* an object; `object_name` is for a
+    # record about something *on* one, such as a material or a vertex group.
+    record = dict(kind=kind, name=str(blender_object.name))
     try:
         record["asset_source"] = mpfb_surface.as_path(general_properties.get_value(
             "asset_source", entity_reference=blender_object))

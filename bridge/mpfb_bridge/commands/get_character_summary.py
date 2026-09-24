@@ -16,9 +16,9 @@ names:
   ``get_macro_details``. The subject is resolved by
   [`subject_resolution.py`](../shared/subject_resolution.py), as every
   command's is, so it resolves exactly as that command's does.
-- ``rig``, ``assets`` and ``skin`` - [`asset_info.py`](../shared/asset_info.py),
+- ``rig``, ``equipped_assets`` and ``skin`` - [`asset_info.py`](../shared/asset_info.py),
   as ``get_object_info``: the rig's entry is the one ``get_object_info`` gives
-  the rig among the basemesh's relatives, the assets are those relatives, and
+  the rig among the basemesh's relatives, the equipped assets are those relatives, and
   the skin is the basemesh's own ``asset_info``.
 - ``targets`` - [`target_rollup.py`](../shared/target_rollup.py), as
   ``get_target_stack`` answers for its **default** arguments.
@@ -229,7 +229,7 @@ def get_character_summary(params, resolution):
             basemesh_in_current_scene=None,
             phenotype=None,
             rig=None,
-            assets=[],
+            equipped_assets=[],
             skin=None,
             targets=None,
             face=None,
@@ -258,7 +258,7 @@ def get_character_summary(params, resolution):
         basemesh_in_current_scene=asset_info.in_current_scene(basemesh),
         phenotype=phenotype,
         rig=rig,
-        assets=assets,
+        equipped_assets=assets,
         skin=skin,
         targets=targets,
         face=face,

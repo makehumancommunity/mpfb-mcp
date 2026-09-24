@@ -143,7 +143,7 @@ def register(mcp: FastMCP) -> None:
 
         On `created: true` (and so `performed: true`), `result` carries
         `basemesh_name`, `rig_object_name` and `rig_identified_as`,
-        `equipped_assets` (kind, object name and asset source per item),
+        `equipped_assets` (`kind`, `name` and `asset_source` per item),
         `skin_material_identified_as`, `settings_used` (MPFB's own settings
         dict, in MPFB's own key names), `objects_created` and
         `active_object_after` - **the selection is not restored**, because

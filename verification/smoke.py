@@ -384,7 +384,8 @@ def _remove_asset(run: _Run) -> dict:
     return run.tools["mpfb_remove_asset"](name=_asset_object(run))
 
 
-@_item("mpfb_get_character_summary", "phenotype", "rig", "assets", "skin", "targets", "face")
+@_item("mpfb_get_character_summary", "phenotype", "rig", "equipped_assets", "skin", "targets",
+       "face")
 def _get_character_summary(run: _Run) -> dict:
     # Here rather than beside the other readers, so that what it summarizes is
     # the character every item above built: rigged, skinned, morphed, with an

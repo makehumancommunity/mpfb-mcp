@@ -125,9 +125,14 @@ RENAMES: list[dict] = (
                old_stays=True)
     + _renames("argument", "R1", ["mpfb_save_expression"], [("name", "expression_name")],
                old_stays=True)
-    + _renames("argument", "R1", ["mpfb_create_human_from_preset"], [("name", "preset_name")])
-    + _renames("key", "R1", _commands("save_preset", "create_human_from_preset"),
-               [("name", "preset_name")])
+    # create_human_from_preset's answer no longer echoes the preset as `name`,
+    # but its equipped_assets records now carry `name` (census.md, "The mesh
+    # assets on a character"), and a census of keys cannot see nesting.
+    + _renames("argument", "R1", ["mpfb_create_human_from_preset"], [("name", "preset_name")],
+               prose_stays=True)
+    + _renames("key", "R1", _commands("save_preset"), [("name", "preset_name")])
+    + _renames("key", "R1", _commands("create_human_from_preset"), [("name", "preset_name")],
+               old_stays=True)
     + _renames("key", "R1", _commands("save_expression"), [("name", "expression_name")])
     # R2
     + _renames("key", "R2", _commands("create_human"), [("object_name", "basemesh_name")])

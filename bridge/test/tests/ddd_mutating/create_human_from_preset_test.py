@@ -107,6 +107,11 @@ def test_a_saved_preset_loads_back_as_a_new_character():
             rebuilt = bpy.data.objects[result["basemesh_name"]]
             assert rebuilt is not character.basemesh, "a *new* character, not the old one"
 
+            # A record *of* an object names it `name` (FR 037), as list_objects does.
+            for record in result["equipped_assets"]:
+                assert set(record) == {"kind", "name", "asset_source"}, record
+                assert record["name"] in bpy.data.objects
+
             stored = services["TargetService"].get_macro_info_dict_from_basemesh(rebuilt)
             assert abs(stored["gender"] - 1.0) < 0.0001, \
                 "the phenotype should have survived the round trip, got {!r}".format(
@@ -162,6 +167,16 @@ def test_the_settings_used_are_mpfbs_own_defaults_with_overrides_written_in():
         # The two MPFB's defaults omit, added rather than assumed to be there.
         assert settings["override_rig"] == "PRESET"
         assert settings["override_skin_model"] == "PRESET"
+        # `overrides` is keyed by this command's arguments, which FR 037 named by
+        # the glossary, while settings_used keeps MPFB's keys: `used` has to be
+        # read across that mapping, not by the argument's own name.
+        overrides = result["overrides"]
+        assert set(overrides) == {
+            "override_rig", "override_skin_type", "override_clothes_material_type",
+            "override_eyes_material_type", "load_clothes", "scale", "material_instances_policy"}
+        assert overrides["override_skin_type"]["used"] == settings["override_skin_model"]
+        assert overrides["material_instances_policy"]["used"] == settings["material_instances"]
+        assert overrides["load_clothes"]["used"] is False
 
 
 def test_material_instances_policy_follows_mpfbs_panel_rather_than_the_service_default():

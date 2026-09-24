@@ -44,7 +44,7 @@ from .._fixtures import write_loadable_mhclo
 
 COMMAND = "get_character_summary"
 
-SECTIONS = ("phenotype", "rig", "assets", "skin", "targets", "face")
+SECTIONS = ("phenotype", "rig", "equipped_assets", "skin", "targets", "face")
 
 # Four categories MPFB itself ships in target.json, two of them sided, so the
 # rollup has entries and asymmetries to report. Values chosen distinct in
@@ -118,7 +118,7 @@ def _assert_agreement(name):
                                                 "material_source")))
         expected_assets.append(row)
     expected_assets.sort(key=lambda row: (row["object_type"], row["name"]))
-    assert summary["assets"] == expected_assets
+    assert summary["equipped_assets"] == expected_assets
 
     skeletons = [entry["name"] for entry in info["related_objects"]
                  if entry["object_type"] == "Skeleton"]
@@ -166,7 +166,7 @@ def test_every_shared_field_agrees_with_its_detailed_command(tmp_path):
     assert inside["subject_name"] == garment
     assert inside["basemesh_name"] == basemesh_name
     assert inside["rig"]["rig_identified_as"] == "default"
-    assert [row["name"] for row in inside["assets"]] == [garment]
+    assert [row["name"] for row in inside["equipped_assets"]] == [garment]
     # Inside the fixture the stack explains everything but the composed unit;
     # outside it, the saved file is out of reach and explains nothing.
     assert inside["face"]["applied_expressions"] == [
@@ -186,7 +186,7 @@ def test_a_bare_basemesh_has_empty_sections_not_missing_ones():
         summary = _assert_agreement(character.basemesh.name)
 
     assert summary["rig"] is None
-    assert summary["assets"] == []
+    assert summary["equipped_assets"] == []
     assert summary["targets"]["modifiers"] == []
     assert summary["face"]["face_units"] == []
     assert summary["face"]["matches_stack"] is True
@@ -263,8 +263,8 @@ def test_a_miss_is_an_answer_with_every_section_present():
     for answer in (absent, unrelated):
         for section in SECTIONS:
             assert section in answer, section
-        assert answer["assets"] == []
-        assert all(answer[section] is None for section in SECTIONS if section != "assets")
+        assert answer["equipped_assets"] == []
+        assert all(answer[section] is None for section in SECTIONS if section != "equipped_assets")
 
 
 def test_the_command_is_refused_rather_than_answered_when_mpfb_is_absent():

@@ -70,7 +70,7 @@ class GetCharacterSummaryOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.bridge = self.run_answering_bridge({
             "get_status": fake_bridge.ok_envelope("get_status", fake_bridge.status_result()),
             "get_character_summary": fake_bridge.ok_envelope(
-                "get_character_summary", {"found": True, "rig": None, "assets": []}),
+                "get_character_summary", {"found": True, "rig": None, "equipped_assets": []}),
         })
 
     def test_the_tool_sends_the_get_character_summary_command(self) -> None:
@@ -78,7 +78,7 @@ class GetCharacterSummaryOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
         self.assertEqual(self.bridge.commands()[-1], "get_character_summary")
         self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {"name": "Human"})
-        self.assertEqual(response["result"], {"found": True, "rig": None, "assets": []})
+        self.assertEqual(response["result"], {"found": True, "rig": None, "equipped_assets": []})
 
     def test_a_bridge_error_envelope_reaches_the_caller_intact(self) -> None:
         self.bridge.responder = lambda request: (

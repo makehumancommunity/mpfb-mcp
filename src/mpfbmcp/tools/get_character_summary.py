@@ -56,7 +56,7 @@ def register(mcp: FastMCP) -> None:
           - `phenotype` - `mpfb_get_macro_details`.
           - `rig` - `mpfb_get_object_info` on the rig; `null` when there is
             none. `rigify_role` says whether it is a meta rig or generated.
-          - `assets` - `mpfb_get_object_info`'s related objects: every
+          - `equipped_assets` - `mpfb_get_object_info`'s related objects: every
             equipped garment, body part and proxy, by type then name. Not
             capped.
           - `skin` - `mpfb_get_object_info` on the basemesh.
