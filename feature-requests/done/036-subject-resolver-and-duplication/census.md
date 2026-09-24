@@ -1,5 +1,11 @@
 # FR 036 census: what is written more than once
 
+**Outcome.** Run again at the end of the effort, the census reports 11 names defined in more than
+one module, down from 39, and every one of them is in `census.py`'s `KEPT` table with a pointer to
+the section below that says why; `census.py --check` exits 0. By shape, one subject resolver is
+left and one selection restore, both in `shared/`, and every `sys.modules` reach in `commands/`
+goes through `shared/mpfb_surface.py`.
+
 The input to [FR 036](README.md), taken on 2026-09-24 at `7449d36` by running
 [census.py](census.py) over `bridge/mpfb_bridge/commands/`, `bridge/mpfb_bridge/shared/` and
 `src/mpfbmcp/tools/`, and by reading every group it reported. A second pass over both test
@@ -11,7 +17,7 @@ which a census by name cannot see. The subject resolver is both kinds at once.
 
 Each group gets one of five verdicts. They are derived from the rule as
 [the README restates it](README.md#the-rule-restated), and not from the current text of
-[architecture.md](../../specifications/architecture.md#shared-modules-and-what-warrants-one). The
+[architecture.md](../../../specifications/architecture.md#shared-modules-and-what-warrants-one). The
 current text puts the burden on sharing, and that burden was set when a shared fragment was pasted
 into every program that used it. If review changes the restated rule, these verdicts are derived
 again before any code moves.
@@ -32,8 +38,8 @@ again before any code moves.
 | [Subject resolution](#subject-resolution) | 16 local + 1 shared, used by 18 commands | 14 `_resolve`/`_resolve_basemesh`, 2 inline in `_Request` builders (`save_preset`, `save_expression`), `get_object_info._resolve` and `generate_rigify_rig._resolve` (subject only), `shared/macro_reading.resolve_basemesh` | Every tool that takes a subject promises the same rules for it: the view layer and not `bpy.context`, the file and not the scene, any object in the family. It also says how the subject was resolved. |
 | [The phenotype reading in `set_macro_details`](#the-phenotype-reading-in-set_macro_details) | 3 functions + 1 constant, twice | `set_macro_details` and `shared/macro_reading.py` | `set_macro_details` reports `macro_details` and `race_sum` after a write. `mpfb_get_macro_details` reports the same fields from a separate copy of the same code. |
 | [Where a target lives on the mesh](#where-a-target-lives-on-the-mesh) | 5 functions twice, and the name rule a third time | `set_targets`, `symmetrize_targets` (byte-identical); `target_rollup._encoded` and `value_lookup` | Whether a target is on the mesh under its raw name or under its encoded one is a single rule. `mpfb_get_target_stack` and `mpfb_symmetrize_targets` must agree about it, which is the `modifier_reading.py` case. |
-| [MPFB's unpublished surface](#mpfbs-unpublished-surface) | 18 `sys.modules` reaches in 15 modules, 6 helper names; `_property_value` ×6; `_as_path`/`as_path` ×7 | see below | Each copy carries a rule from [architecture.md](../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish). A copy that breaks it does not fail. It quietly takes the fallback and answers with less. |
-| [The caller's selection, restored](#the-callers-selection-restored) | 10 `finally` blocks | ten of the sixteen mutating commands. The two creators, the two savers, `remove_asset` and `generate_rigify_rig` have none | [mutating-tools.md](../../specifications/mutating-tools.md#where-these-rules-are-enforced) states it as a rule for every mutating command. Today ten copies enforce it. |
+| [MPFB's unpublished surface](#mpfbs-unpublished-surface) | 18 `sys.modules` reaches in 15 modules, 6 helper names; `_property_value` ×6; `_as_path`/`as_path` ×7 | see below | Each copy carries a rule from [architecture.md](../../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish). A copy that breaks it does not fail. It quietly takes the fallback and answers with less. |
+| [The caller's selection, restored](#the-callers-selection-restored) | 10 `finally` blocks | ten of the sixteen mutating commands. The two creators, the two savers, `remove_asset` and `generate_rigify_rig` have none | [mutating-tools.md](../../../specifications/mutating-tools.md#where-these-rules-are-enforced) states it as a rule for every mutating command. Today ten copies enforce it. |
 
 ### Subject resolution
 
@@ -65,7 +71,7 @@ Two differences are more than wording:
   seventeen were left. In fact eighteen resolve a *subject*, and sixteen of those go on to a
   basemesh: fourteen locally and two through `macro_reading`. `get_object_info` and
   `generate_rigify_rig` stop at the subject. `generate_rigify_rig` then narrows to a `Skeleton`,
-  as [mutating-tools.md](../../specifications/mutating-tools.md#how-a-mutating-tool-takes-its-subject)
+  as [mutating-tools.md](../../../specifications/mutating-tools.md#how-a-mutating-tool-takes-its-subject)
   describes. That leaves sixteen copies to replace, not seventeen.
 
 **Nothing in the census suggests any command resolves differently on purpose.** The
@@ -98,7 +104,7 @@ stripped. `_present_name` looks for the raw name first and then for the name
 encoded. `target_rollup.value_lookup()` applies the same raw-then-encoded rule to a snapshot, and
 `target_rollup._encoded` is the third copy of `_encoded`.
 
-This is the case [architecture.md](../../specifications/architecture.md#shared-modules-and-what-warrants-one)
+This is the case [architecture.md](../../../specifications/architecture.md#shared-modules-and-what-warrants-one)
 states for `modifier_reading.py`: "what is shared is the rule; the pair of lookups is passed in".
 The rule currently exists once for the snapshot and twice for the live mesh. If the two forms
 drifted, a long-named target would be present in `mpfb_get_target_stack` and absent in
@@ -106,7 +112,7 @@ drifted, a long-named target would be present in `mpfb_get_target_stack` and abs
 
 ### MPFB's unpublished surface
 
-[Reading module-level names MPFB does not publish](../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish)
+[Reading module-level names MPFB does not publish](../../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish)
 sets three rules: read through a service's module and never import one fresh, always with a
 fallback, and choose the service whose module actually imports the name. Fifteen modules
 implement those rules themselves, 18 times. Six of them use a helper, and there are six helper
@@ -140,7 +146,7 @@ response:
   It turns an unset `BlenderConfigSet` string (`""`) into `None`. If a copy drifted, one tool
   would report `asset_source: ""` and another `None` for the same object. That is the
   kind of contradiction the
-  [summary rule](../../specifications/responses.md#a-summary-is-never-a-second-opinion) rules out,
+  [summary rule](../../../specifications/responses.md#a-summary-is-never-a-second-opinion) rules out,
   here between two tools of which neither is a summary.
 - **`_as_path` / `as_path`**, seven byte-identical copies. Three of them are *public* exports of
   three different shared modules: `asset_sections`, `rig_lookup` and `target_categories`. It
@@ -181,9 +187,10 @@ could not make two tools disagree. That argument answers rule 1 and says nothing
 
 | Group | Copies | Why it stays |
 |-------|--------|--------------|
-| `_blocked`, `_refusal` | 9, 8 | [architecture.md](../../specifications/architecture.md#shared-modules-and-what-warrants-one) calls these "one convention applied six times, differing only in which of that tool's own fields each nulls out". There are nine now, and the reasoning holds for all nine. It never depended on code generation. |
+| `_blocked`, `_refusal` | 9, 8 | [architecture.md](../../../specifications/architecture.md#shared-modules-and-what-warrants-one) calls these "one convention applied six times, differing only in which of that tool's own fields each nulls out". There are nine now, and the reasoning holds for all nine. It never depended on code generation. |
 | `_message_for`, `_message`, `_precondition`, `_resolve_arguments`, `_entry` | 20, 6, 4, 3, 2 | One name for a role each command plays. Every body is different. |
-| `_rig_refit_blocker` | 6, one shape | This is rule 4: [refit_blocker.py](../../bridge/mpfb_bridge/shared/refit_blocker.py) says "the condition is here; the wording is not". The census confirms that every copy asks the shared predicate. |
+| `_resolve` | 3 | What is left of the name once the subject resolvers were gone: `create_human_from_preset`, `save_preset` and `save_expression` each build a `_Request` of everything that must be true before a byte is written. The two save commands resolve their subject *through* the shared resolver inside it. One role, three bodies. |
+| `_rig_refit_blocker` | 6, one shape | This is rule 4: [refit_blocker.py](../../../bridge/mpfb_bridge/shared/refit_blocker.py) says "the condition is here; the wording is not". The census confirms that every copy asks the shared predicate. |
 | The refit sequence (rig lookup, blocker, `refit()`, `refit_performed`) | 6, inline | Five lines around the shared predicate, interleaved with the command's own writes. This is closer to a convention than a helper, and the part whose drift would mislead a caller is already shared. |
 
 ## Kept, with a reason
@@ -191,6 +198,27 @@ could not make two tools disagree. That argument answers rule 1 and says nothing
 | Group | Copies | Why it stays |
 |-------|--------|--------------|
 | `_shapekey_present` | 2 | These are not copies. The name is shared by two different functions: `get_face_units`' version returns a bool and `set_face_units`' returns a value. Renaming one would stop it appearing in the census, and that rename is worth doing if it reads better. |
+| `_validated_source` | 2 | `add_asset`'s and `set_skin`'s exactly-one-of rule for `path` and `fragment`. Both now build on `arguments.validated_text()`, and what is left differs on purpose: `set_skin` accepts neither for `LAYERED`, the one skin type with a material to build from no file, and every sentence names that tool's own catalogue entry. Rule 3. |
+| `get_mpfb_status._str_path` | 1, by shape | Looks like `as_path` and is not: it keeps `""` where `as_path()` drops it, and `_path_entry()` beside it tells an unset path from an empty one by that. Folding it in would change an answer. |
+| `create_human_from_preset._validated_optional_flag` | 1, by shape | "A bool or omitted" is a rule of its own, and no other tool has it. It becomes shared when a second tool needs it. |
+
+## What the implementation found beyond the census
+
+The census searched by name, and the effort found copies that a name census cannot see. Each was
+folded into the shared form it turned out to be, and `tool_refusals.py` confirmed that no sentence
+moved:
+
+- **Five validators under other names.** `apply_expressions._validated_refit` was
+  `validated_flag()`; `add_asset._validated_subdiv_levels` was `validated_count()` with no ceiling;
+  and `generate_rigify_rig._validated_rig_name`, `list_objects._validated_object_type` and
+  `symmetrize_targets._validated_section` were `validated_text()` with a hint. `get_target_stack`
+  validated its subject `name` with its text validator, whose hint happened to produce the subject
+  sentences exactly.
+- **A docstring that described code nobody wrote.** `target_rollup.value_lookup()` said its two
+  halves reproduced MPFB's disagreement between `has_target()` and `get_target_value()`. Both
+  halves had always looked for the encoded name too. The docstring now says what the code does.
+- **Five more sentences than requirement 3 named**, decided by the user during implementation;
+  see [the README](README.md#functional-requirements), requirement 3.
 
 ## Out of scope
 
@@ -200,5 +228,5 @@ could not make two tools disagree. That argument answers rule 1 and says nothing
   attribute in one place instead of 29. The census did not search `tests/`, so this is left to a
   test-harness effort. It goes to NEXT_STEPS.
 - **`bridge/test/tests/`: `_result` ×17**, one per module, each unwrapping a dispatch envelope for
-  its own command. [FR 035](../done/035-bridge-test-layers/README.md) has since moved every one of
+  its own command. [FR 035](../035-bridge-test-layers/README.md) has since moved every one of
   these files into its layers. Any consolidation would belong to the same test-harness effort.

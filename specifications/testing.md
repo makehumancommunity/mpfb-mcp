@@ -111,13 +111,22 @@ worth reusing:
   `eee_composite/expression_divergence_test.py` is the same shape for three commands). A copy of a
   reading grown inside one command passes that command's own tests; only asking both catches it.
   When the fixtures cannot make every section interesting at once, ask in each state that makes
-  one interesting, rather than weakening the comparison.
+  one interesting, rather than weakening the comparison. **The pattern scales past two.**
+  [FR 036](../feature-requests/done/036-subject-resolver-and-duplication/README.md)'s
+  `eee_composite/subject_resolution_test.py` dispatches all eighteen commands that take a subject in
+  each of three miss states and asserts they agree on `found`, the subject, how it was resolved and
+  the start of the sentence. It also asserts that the eighteen are exactly the commands declaring an
+  optional `name` or a `subject`, so a nineteenth cannot join without being asked.
 - **"This refactor changes no answer" is tested by a snapshot diff.** The request's live check
   took a `--snapshot` of every affected command's answer — on its worst-case character, under
   several argument sets, including the misses — to one JSON file with sorted keys, before the
   first move and after each one. A `diff` of two snapshots is empty or names exactly the intended
   change, which is a sharper instrument than the bridge tests, since those assert what someone
-  thought to assert. It lives in the request's own subdir and moves to `done/` with it.
+  thought to assert. It lives in the request's own subdir and moves to `done/` with it. **The
+  tool side has its own form of it.** A move of the shape validators changes no bridge answer and
+  can still reword a refusal the unit tests never read, so FR 036's `tool_refusals.py` called every
+  tool with every bad value per argument, `backend.send` replaced by a `BaseException` no tool can
+  swallow, and diffed the sentences before and after.
 
 ## Two harnesses, split at the directory boundary
 
@@ -135,8 +144,9 @@ assumes every earlier layer passed. The harness runs pytest with `-x`, so the fi
 the run, and the layering is right if and only if a failure in one layer makes a failure in a later
 one uninteresting: a fault in the transport should be reported once, not as thirty symptoms in
 thirty command modules. The layers, in run order, are `aaa_addon/` (the add-on itself, with no MPFB
-subject), `bbb_shared/` (direct tests of `mpfb_bridge/shared/` — **reserved and not yet created**,
-since every shared module is today tested only through the commands that use it), `ccc_reading/`
+subject), `bbb_shared/` (direct tests of `mpfb_bridge/shared/`, called without dispatch — created
+by FR 036 for the four modules it added; the thirteen older ones are still tested only through the
+commands that use them, see [NEXT_STEPS.md](../feature-requests/NEXT_STEPS.md#direct-tests-of-the-bridges-shared-modules)), `ccc_reading/`
 (one module per read-only command), `ddd_mutating/` (one per command that changes a `.blend`) and
 `eee_composite/` (a claim about several commands at once, which means nothing asserted about one).
 Modules inside a layer are unprefixed and named `<subject>_test.py` — for a command module, the

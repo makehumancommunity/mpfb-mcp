@@ -181,7 +181,7 @@ answer is `mpfb_get_macro_details` gaining `macro_drift` (requirement 4).
   summary uses the one `get_macro_details` uses, since requirement 1 promises that tool's
   resolution, and **moves it into `macro_reading.py` with the rest of that command's reading** —
   that much is needed for requirement 1 to be true by construction. Consolidating the other seventeen
-  is [a separate entry in NEXT_STEPS.md](../../NEXT_STEPS.md#one-basemesh-resolver) and is not done
+  is [a separate entry in NEXT_STEPS.md](../../HISTORY.md#one-basemesh-resolver) and is not done
   here.
 - **The count of shared modules** goes from FR 027's ten to thirteen. The list in
   [architecture.md](../../../specifications/architecture.md#shared-modules-and-what-warrants-one) says
@@ -275,7 +275,7 @@ All of it ran, against Blender 5.1.0 with MPFB 2.0.17 from source.
   needs the per-shape-key entries and counts too, which are not a slider reading.
 - **`set_macro_details` keeps a copy of the phenotype reading.** Found during the extraction and
   out of scope, since the summary does not read through it; queued beside
-  [the basemesh resolver](../../NEXT_STEPS.md#one-basemesh-resolver).
+  [the basemesh resolver](../../HISTORY.md#one-basemesh-resolver).
 - **The latency premise is out of date.** The ~250 ms per round trip in the background was the
   generated-code path's; on the bridge the saving is a few milliseconds, and the case for the tool
   rests on the answer being one small read rather than six long ones.

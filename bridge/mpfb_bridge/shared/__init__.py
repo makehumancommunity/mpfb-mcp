@@ -9,58 +9,57 @@ the wire**. There is no handler, no ``PARAMS``, no entry in ``COMMANDS``, and
 nothing here is dispatched. A command imports one of these the way it imports
 ``os``.
 
-**Why a directory rather than an import between commands.** Each module here is
-a thing two or more commands have to agree about, where disagreeing is a defect
-a caller cannot see: ``list_rigs`` predicts which file ``add_rig`` will load,
-``list_assets`` reports the vocabulary ``add_asset`` resolves with, all three
-preset commands build ``<user config>/human.<name>.json`` the same way, and all
-six refitting commands decide the same way whether a refit would silently leave
-the rig behind. One implementation is the only way to guarantee agreement;
-``add_rig`` importing ``list_rigs`` would make the catalogue depend on the
-acting command and put a scan behind a handler.
+**Why a directory rather than an import between commands.** Each module here
+is something two or more commands have to agree about, or one concept they
+would otherwise each write for themselves: ``list_rigs`` predicts which file
+``add_rig`` will load, all three preset commands build
+``<user config>/human.<name>.json`` the same way, all eighteen commands that
+take a subject resolve it the same way, and all six refitting commands decide
+the same way whether a refit would silently leave the rig behind. One
+implementation is the only way to guarantee agreement; ``add_rig`` importing
+``list_rigs`` would make the catalogue depend on the acting command and put a
+scan behind a handler.
 
-**That is why these functions take a leading ``services`` argument rather than
-binding MPFB at import.** An add-on module that resolved MPFB at import time
-would hold a services dict across a disable and re-enable, which is exactly the
-stale state nobody thinks to suspect - :func:`mpfb_resolution.resolve` is called
-per dispatch for that reason. ``target_categories`` takes a ``tables`` argument
-for the same class of reason at a different timescale: its scan must be per
-call, or a target installed since Blender started would be invisible.
+**What belongs here is decided by a rule, not a count**
+([architecture.md](../../../specifications/architecture.md#shared-modules-and-what-warrants-one)).
+Code whose drift would mislead a caller is always shared. An identical helper
+that can be named as one concept is shared too, since an import costs nothing:
+that is what ``blender_data`` is. A convention whose body differs per command -
+``_blocked``, ``_refusal``, ``_message_for`` - is not. And where the condition is
+shared, the wording stays with each command, as ``refit_blocker`` established
+and ``subject_resolution`` follows. The modules are named for their concept;
+there is no ``utils`` here, and a helper with no natural home stays duplicated
+until it has one.
+
+**Most functions here take a leading ``services`` argument rather than binding
+MPFB at import.** An add-on module that resolved MPFB at import time would hold
+a services dict across a disable and re-enable, which is exactly the stale state
+nobody thinks to suspect - :func:`mpfb_resolution.resolve` is called per
+dispatch for that reason. ``target_categories`` takes a ``tables`` argument for
+the same class of reason at a different timescale: its scan must be per call,
+or a target installed since Blender started would be invisible. ``asset_info``
+takes a ``Lookup`` built from ``services`` once per call.
+
+The modules that read nothing out of MPFB's services take no ``services`` at
+all: ``performed`` is one function over a dict the command has already finished
+building, ``artifact_names`` works on a name and a path, ``expression_panel``
+takes MPFB's root package name, ``selection`` and ``blender_data`` read plain
+Blender state, and ``subject_resolution``'s subject step reads the view layer
+and ``bpy.data`` - only its basemesh step takes ``services``.
 
 **These modules carry lint findings on purpose**, and the reason has changed
 since they were written. pylint has things to say about them - a missing
 docstring, an ``open()`` with no ``encoding``, an unused loop variable - and
 each is inherited character for character from MPFB's own source, which these
 bodies are written to be readable beside. Fixing one silently moves this code
-away from the thing it reproduces. They are ordinary findings now that nothing
-compares these files against a second copy, so fix one *deliberately* and say
-in the commit which MPFB behaviour the new spelling still reproduces.
+away from the thing it reproduces. Fix one *deliberately*, and say in the
+commit which MPFB behaviour the new spelling still reproduces.
 
-**Thirteen modules**, and the count is not a coincidence: they are the
-thirteen concepts more than one command needed. ``preset_files``,
-``rig_lookup``, ``asset_sections``, ``target_categories`` and
-``modifier_reading`` arrived with FR 031's read-only commands; ``performed``
-and ``refit_blocker`` with FR 032's mutating ones. Each of those seven mirrors
-a shared fragment from the generated-code path that FR 033 deleted, name for
-name, which is why the names are what they are. FR 027 added three with no
-such ancestry: ``artifact_names``, the name rule ``preset_files`` used to hold
-alone, now shared with saved expressions; ``expression_divergence``, the one
-comparison of stack and face three commands report; and ``expression_panel``,
-how two commands reach MPFB's expressions-library UI module. FR 034 added the
-last three, which share one warrant - a summary and its detailed command are
-one implementation: ``macro_reading``, ``asset_info`` and ``target_rollup``,
-each the reading of one detailed command moved out so that
-``get_character_summary`` reports a subset of its answer without a second
-reading.
-
-``performed``, ``artifact_names`` and ``expression_panel`` are the exceptions
-to the ``services`` rule above: none reads anything out of MPFB's services, so
-none takes a services dict. ``performed`` is one function over a dict the
-command has already finished building, ``artifact_names`` works on a name and a
-path, and ``expression_panel`` takes MPFB's root package name. ``asset_info``
-bends the rule rather than breaking it: its functions take a ``Lookup`` built
-from ``services`` once per call, because it also reads four module-level names
-MPFB does not publish as services.
+How the modules got here is in
+[HISTORY.md](../../../feature-requests/HISTORY.md): seven mirror a shared fragment
+of the generated-code path FR 033 deleted, three arrived with the expression
+library, three with the character summary, and four with
+[FR 036](../../../feature-requests/done/036-subject-resolver-and-duplication/README.md).
 """
 
 __all__ = ()

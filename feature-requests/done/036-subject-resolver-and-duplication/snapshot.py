@@ -11,7 +11,7 @@ difference that matters for this request: it talks to the bridge through
 code on both sides of the socket, and a bridge-side snapshot taken through the
 tools would change whenever the tool side did. This one sees only the commands.
 
-    PYTHONPATH=src python3 feature-requests/036-subject-resolver-and-duplication/snapshot.py OUT.json
+    PYTHONPATH=src python3 feature-requests/done/036-subject-resolver-and-duplication/snapshot.py OUT.json
 
 It starts a headless Blender with the bridge on a spare port, using the Blender
 named in local_environment.md, and **before the bridge starts** makes the one
@@ -44,7 +44,8 @@ import subprocess
 import sys
 import time
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__)))))
 sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
 
 BLENDER = os.environ.get("BLENDER_EXE", "/home/joepal/system/blender-5.1.0-linux-x64/blender")

@@ -397,8 +397,8 @@ was that the summary is never a second opinion, so the reading code of `get_macr
 reads every section through those and FR 027's `expression_divergence.py`. The basemesh resolver
 moved with the macro reading, because the summary promises to resolve its subject as
 `mpfb_get_macro_details` does; the other seventeen copies were left, and `set_macro_details`' own
-copy of the phenotype reading was found and queued beside them in
-[NEXT_STEPS.md](NEXT_STEPS.md#one-basemesh-resolver).
+copy of the phenotype reading was found and queued beside them; both landed with
+[FR 036](#one-basemesh-resolver).
 
 **Each move was proven by a snapshot diff, not only by the bridge tests.** The live check's
 `--snapshot` writes every detailed command's answer on its worst-case character — under three
@@ -466,3 +466,70 @@ IDs ahead of the next. `TEST_MODULE=tests/ddd_mutating` ran 166 and
 `TEST_MODULE=tests/ccc_reading/list_rigs_test.py` 11. No test was added or removed; the 428 unit
 tests changed only in docstrings. Direct tests for the thirteen shared modules are queued in
 [NEXT_STEPS.md](NEXT_STEPS.md#direct-tests-of-the-bridges-shared-modules).
+
+<a id="one-basemesh-resolver"></a>
+
+## [FR 036](done/036-subject-resolver-and-duplication/README.md) — one subject resolver, and the rule for what else to share
+
+Sixteen commands resolved their subject with a local copy of one function, and two more through
+the copy FR 034 had moved into `macro_reading.py`. The copies had one body and drifting wording:
+five of them had stopped pointing a caller at `mpfb_get_object_info`, and nobody could find a
+reason. The NEXT_STEPS entry also asked for a scan for other duplication. The
+[census](done/036-subject-resolver-and-duplication/census.md) found 39 function names defined in
+more than one module, and judging them exposed a problem with the rule rather than with the code.
+**The architecture's restraint on sharing** ("two commands sharing a five-line helper are not a
+reason") had been set when a shared fragment was source pasted into every generated program. That
+cost bytes on the wire and put traceback line numbers in the wrong place. The pivot made sharing an
+ordinary `import`, but the migration carried the restraint across unchanged, and it was still
+backed by a census of programs FR 033 had deleted.
+
+So the request rewrote the rule first
+([architecture.md](../specifications/architecture.md#shared-modules-and-what-warrants-one)). Code
+whose drift would mislead a caller is always shared. An identical helper that can be named as one
+concept is shared too, and the burden is on keeping a copy. A convention whose body differs per
+tool is not shared. And the wording stays at the call site. The census verdicts were derived from
+that, and the effort did what they said, in seven commits with a proof each:
+
+- **`shared/subject_resolution.py`**, for all eighteen commands that take a subject. Each command
+  passes its own phrases. Nothing raises, so each command's refusal order is unchanged.
+  `get_object_info` keeps its `resolved_from: "active_object"` by mapping at its call site.
+- **`set_macro_details` reads through `macro_reading.py`**, so what it reports after a write is
+  what `mpfb_get_macro_details` reads next.
+- **One rule for where a target is stored** (raw name, then encoded), in `target_rollup.py`,
+  asked by both the snapshot lookup and a new live one that replaced two byte-identical copies.
+- **`shared/mpfb_surface.py`**, for all eighteen `sys.modules` reaches and six helper names. Its
+  `fallback` has no default, so every call site states what it degrades to. The two property sets
+  get accessors, because reading them off the wrong module fails silently. The four `FaceService`
+  reads that had no fallback by accident now have none on purpose: `required_module_level()` raises
+  a sentence rather than an `AttributeError`. `property_value()`, `as_path()` and `dotted()`
+  replaced six, seven and three copies.
+- **`shared/selection.py`**, a context manager in place of ten `finally` blocks. The gap it keeps
+  (other objects an operator selected stay selected) is asserted by a test and queued.
+- **`shared/blender_data.py`**, for object names, vertex groups and material slots.
+- **`src/mpfbmcp/arguments.py`**, for the tool-side shape validators, which had been copied into
+  every tool module under several names. Five of them were missed by the census's name search and
+  found while folding the others in.
+
+**One decision was the user's.** The shared sentence could not reproduce five existing miss
+sentences word for word without a parameter per exception, so the user chose one shape. `add_asset`,
+`add_rig` and `set_skin` fold their explanation into the phrase, four commands say "it" rather than
+"this object", and `get_object_info`'s first miss dropped a clause its second never had. With
+requirement 3's five, the snapshot diff named exactly those ten sentences, and every later group's
+diff was empty. On the tool side, `tool_refusals.py` recorded 1,907 outcomes before and after, and
+they were byte-identical.
+
+The shared modules went from thirteen to seventeen. Their ancestry, which `shared/__init__.py` used
+to carry and now points here for, is this. `preset_files`, `rig_lookup`, `asset_sections`,
+`target_categories` and `modifier_reading` (FR 031) and `performed` and `refit_blocker` (FR 032)
+each mirror a fragment of the deleted generated-code path, name for name. `artifact_names`,
+`expression_divergence` and `expression_panel` came with FR 027. `macro_reading`, `asset_info` and
+`target_rollup` came with FR 034. And these four came with FR 036. `bridge/test/tests/bbb_shared/`,
+reserved by FR 035, now exists, with direct tests of the four. `eee_composite/subject_resolution_test.py`
+asks all eighteen commands about the same three misses.
+
+Bridge suite 359 → 389, unit suite 428 → 446, smoke run 34 in 1.5 s, and `census.py --check`
+exits 0 with eleven names left, each kept with a recorded reason. Four findings went to NEXT_STEPS.md:
+[the `resolved_from` vocabulary](NEXT_STEPS.md#resolved-from-and-subject-resolved-by),
+[selection restore covering one object](NEXT_STEPS.md#selection-restore-covers-one-object),
+[twenty-nine test helpers reaching FastMCP's private `_tool_manager`](NEXT_STEPS.md#one-helper-for-the-tool-under-test),
+and [`mpfb_create_human` refusing a non-number with a `TypeError`](NEXT_STEPS.md#create-human-typeerror).

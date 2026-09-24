@@ -179,7 +179,7 @@ only docstrings under `tests/` are edited. Run it anyway. No smoke item is added
 Landed as specified, with the proposed directory names. Thirty-eight `git mv`s; three new
 `__init__.py` files carrying each layer's obligations; imports one dot deeper; prose and paths
 updated everywhere requirement 6 names, plus `_fixtures.py`, the bridge modules' own docstrings and
-[FR 036](../../036-subject-resolver-and-duplication/README.md), which had been written against this
+[FR 036](../036-subject-resolver-and-duplication/README.md), which had been written against this
 layout and now points at it.
 
 **Verification.** [`compare_runs.py`](compare_runs.py) against a log saved before the first move and

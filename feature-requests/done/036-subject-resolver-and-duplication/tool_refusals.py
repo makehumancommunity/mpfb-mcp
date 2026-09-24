@@ -23,7 +23,7 @@ itself a finding the diff should show if it changes.
 Run it before the tool-side commit and again after it. The two files must be
 identical. It needs no Blender.
 
-    PYTHONPATH=src python3 feature-requests/036-subject-resolver-and-duplication/tool_refusals.py OUT.json
+    PYTHONPATH=src python3 feature-requests/done/036-subject-resolver-and-duplication/tool_refusals.py OUT.json
 """
 
 from __future__ import annotations
@@ -33,7 +33,8 @@ import json
 import os
 import sys
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__)))))
 sys.path.insert(0, os.path.join(REPO_ROOT, "src"))
 
 # Every shape a validator on this side is meant to reject, and a few it is not.

@@ -90,6 +90,15 @@ while mpfb-mcp cannot skip checking because that is what turns a silent wrong an
 argument error. The division of labour is the same on both sides of both sockets — **shape here,
 vocabulary there**.
 
+**The shape rules live in one module on this side**, [`src/mpfbmcp/arguments.py`](../src/mpfbmcp/arguments.py):
+an optional subject name, a required asset name, a real `bool`, a non-negative count that is not a
+`bool`, and optional non-empty text. Every tool calls them and none keeps a copy
+([FR 036](../feature-requests/done/036-subject-resolver-and-duplication/README.md)). The wording a
+tool owns is passed at its call site — which asset a required name means and why it is required,
+what an empty filter should have been instead — and why truthiness would do harm for a particular
+flag is a comment at that flag's call site. A rule one tool alone needs, or whose body differs per
+tool, stays in that tool's module.
+
 The same holds for the *shape* of a string argument: reject a non-string, or an empty or
 whitespace-only one, and never quietly treat an explicitly empty value as an omitted one, since
 the two arise from different mistakes. But validate only the shape, never the **vocabulary**. A
@@ -195,6 +204,14 @@ paper over:
   failure. A response should say which way its subject was resolved, because the two have very
   different lifetimes: a name stays valid until the object is renamed or deleted, while an
   active-object answer is stale the moment the user clicks elsewhere.
+- **All of this is read in one place.** The eighteen commands that take a subject resolve it
+  through [`shared/subject_resolution.py`](../bridge/mpfb_bridge/shared/subject_resolution.py):
+  the view layer's active object or a name looked up in the file, then any member of the family to
+  its basemesh the way MPFB's own panels find it, and how the subject was resolved. Each command
+  still phrases its own misses. Seventeen report `subject_resolved_by: "active" | "name"`;
+  `mpfb_get_object_info` reports the same fact as `resolved_from: "active_object" | "name"`, a
+  difference kept because renaming a response key breaks a caller, and recorded in
+  [NEXT_STEPS.md](../feature-requests/NEXT_STEPS.md#resolved-from-and-subject-resolved-by).
 
 Object addresses are never cacheable. Unlike `mpfb_get_status`'s output they are things later
 mutating tools will act on, so a stale one is worse than a missing one.

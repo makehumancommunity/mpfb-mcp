@@ -484,6 +484,27 @@ read. These are reachable, under three rules:
   a stale local copy of the type vocabulary is a better answer than a failed call.
 - **Never as a substitute for a service.** If what is wanted is in `SERVICES`, take it from there.
 
+**All three live in one function**, `module_level()` in
+[`bridge/mpfb_bridge/shared/mpfb_surface.py`](../bridge/mpfb_bridge/shared/mpfb_surface.py), and
+every such read in `commands/` and `shared/` goes through it
+([FR 036](../feature-requests/done/036-subject-resolver-and-duplication/README.md)). Its
+`fallback` has no default, so every call site states what it degrades to. The two property sets,
+which fifteen call sites read, have accessors of their own there —
+`general_object_properties()` and `human_object_properties()` — because the third rule is the one
+a copy breaks silently: `HumanObjectProperties` is on `HumanService`'s module and not on
+`ObjectService`'s, and a read from the wrong one takes the fallback and raises nothing.
+`bbb_shared/mpfb_surface_test.py` asserts that fact against a real install.
+
+**One exception to the second rule, decided rather than inherited.** `FaceService`'s
+`ARKIT_FACEUNITS` and `FACEUNIT_REGIONS` are read with no fallback, through
+`required_module_level()`, by `get_face_units`, `set_face_units`, `get_character_summary` and
+`shared/expression_divergence.py`. A face command without MPFB's vocabulary has nothing it could
+answer, and a fallback would be a stale copy of that vocabulary presented as MPFB's. A missing name
+raises `MissingFromMpfb` naming the module and the name, which dispatch reports as
+`command_failed` — the outcome those reads always had, with a sentence where an `AttributeError`
+used to be. FR 036's census found the four had no fallback by accident; the decision is that they
+keep none on purpose.
+
 These reads may be done **once, at the point MPFB is resolved**, rather than on every call — a
 genuine simplification of being an add-on, since code sent into Blender per call had no way to
 remember anything between them. The three rules are unchanged; only their frequency is. What may
@@ -551,10 +572,37 @@ in it is reachable from the wire** — no handler, no `PARAMS`, no entry in `COM
 what lets [commands/table.py](../bridge/mpfb_bridge/commands/table.py) go on being the one file a
 sceptic reads to know everything this add-on can be asked to do.
 
-There are thirteen, and the warrant for each is the same shape: **duplication that must not drift,
-not size.** Three copies of a hundred-line scan of the user's target directories are three chances
-for two commands to disagree about what is installed, and that disagreement is worse than either
-behaviour on its own. Two commands sharing a five-line helper are not a reason to reach for this.
+**What sharing costs, now.** A shared module is an ordinary import. It costs nothing on the wire,
+and the linter, pyright and tracebacks all work across it. What it does cost is indirection,
+because a reader opens a second file, and coupling, because one edit reaches every caller. Those
+costs are real, but they are small next to what sharing cost when a fragment was pasted into every
+program that used it: bytes on the wire
+([FR 017](../feature-requests/done/017-category-table-cost/README.md)), a confused linter and
+traceback line numbers in the wrong place
+([FR 002](../feature-requests/done/002-codegen-structure/README.md)). That is when the old
+restraint — "two commands sharing a five-line helper are not a reason" — was set, and the pivot
+made it obsolete without anyone restating it until
+[FR 036](../feature-requests/done/036-subject-resolver-and-duplication/README.md). The rule is
+now four parts, and it applies on both sides of the socket:
+
+1. **Code whose drift would mislead a caller is always shared**, whatever its size. The bullets
+   below are that warrant, case by case.
+2. **An identical helper that can be named as one concept is shared** when a natural home for it
+   exists, or can be created and named for that concept. Being identical *is* a reason. The burden
+   is on keeping a copy, and a kept copy is recorded with its reason.
+   [`blender_data.py`](../bridge/mpfb_bridge/shared/blender_data.py) — every object name in the
+   file, one object's vertex groups, its material slots — is this rule and nothing more, and on this
+   side of the socket so is [`src/mpfbmcp/arguments.py`](../src/mpfbmcp/arguments.py), the shape
+   validators every tool calls. A shared module is named for its concept; there is no `utils.py`,
+   and a helper with no natural home stays duplicated until it has one.
+3. **A convention whose body differs per tool is not shared.** `_blocked`, `_refusal` and
+   `_message_for` are one idea applied per command, differing in which of that command's own fields
+   each fills. A mechanism to generate "this tool's null response" would be larger than the copies
+   and would hide the fields each tool owns. This never depended on code generation.
+4. **The wording stays at the call site.** Where the condition is shared, each caller still
+   phrases its own answer, as `refit_blocker.py` established below, and passes the phrases that
+   differ as arguments — never through a table keyed by tool name, which would put a command's
+   sentences out of its reader's sight.
 
 - **Where a catalogue predicts what an acting command will do, the prediction and the action are
   one implementation.** `rig_lookup.py` is the case: `mpfb_list_rigs` reports, per rig, which
@@ -571,12 +619,33 @@ behaviour on its own. Two commands sharing a five-line helper are not a reason t
   `AssetService.find_asset_absolute_path()` takes a subdir rather than a type. Two copies of that
   table disagreeing would not produce a wrong answer — it would produce "not installed" for an
   asset the catalogue had just listed, which is the one failure a caller cannot diagnose.
-- **A convention thirteen commands must agree about is the same case as a table three must.**
-  `performed.py` is the smallest by far — one function, reading nothing out of MPFB — and it
+- **A convention every mutating command must agree about is the same case as a table three must.**
+  `performed.py` is one of the smallest — one function, reading nothing out of MPFB — and it
   clears the bar on consequence rather than size: the whole reason the
   [`performed` flag](mutating-tools.md#the-flag-a-caller-branches-on-is-called-performed) exists is
-  that thirteen tools disagreed about what to call it, so thirteen implementations of it would be
-  the original problem in a new spelling.
+  that thirteen tools disagreed about what to call it, so an implementation per command, sixteen
+  today, would be the original problem in a new spelling.
+- **A convention eighteen commands must follow identically is the `performed.py` case, twice.**
+  `subject_resolution.py` resolves the object a command is about — the view layer's active object
+  or a name looked up in the file, then any member of the family to its basemesh — and says how it
+  was resolved, for all eighteen commands that take a subject
+  ([how a tool addresses an object](tool-interface.md#how-a-tool-addresses-an-object)).
+  `selection.py` puts the caller's active object and the borrowed object's selection back, for the
+  ten mutating commands that activate something
+  ([where these rules are enforced](mutating-tools.md#where-these-rules-are-enforced)). Sixteen
+  copies of the first had one body and drifting wording; five of them had stopped pointing the
+  caller at `mpfb_get_object_info`, with no reason anyone could find. Neither module raises or
+  short-circuits, so each command keeps the order in which it reports its refusals, and each passes
+  in its own phrases (rule 4). `eee_composite/subject_resolution_test.py` asks all eighteen about
+  the same three misses.
+- **A rule that fails silently is shared, so that it is followed in one place.**
+  `mpfb_surface.py` reads the names MPFB keeps on a service's module under
+  [the three rules](#reading-module-level-names-mpfb-does-not-publish); the third, which service's
+  module actually holds the name, is the one a copy breaks without raising, since a read from the
+  wrong module takes the fallback and answers with less. Eighteen reaches in fifteen modules, under
+  six helper names, now go through it, together with the two coercions a value read off that
+  surface needs before it enters an answer (an unset property as `None`, a `pathlib.Path` as a
+  `str`), which six and seven commands had each written for themselves.
 - **Where two commands report and act on one number, the number has one implementation.**
   `modifier_reading.py` is that case. A modeling category's slider value is computed from one or
   two shape keys, and an opposed category's negative target reads back *negated*;
@@ -585,7 +654,11 @@ behaviour on its own. Two commands sharing a five-line helper are not a reason t
   like a character that is symmetric in one and asymmetric in the other, with nothing in either
   answer to say which to believe. What is shared is the rule; the pair of lookups is passed in,
   because one command answers from a snapshot read once and the other from `key_blocks` on every
-  question, since it writes between readings.
+  question, since it writes between readings. **Where a target is stored among those shape keys is
+  one rule too** — its raw name first, then `TargetService.encode_shapekey_name()`'s encoded form,
+  since a name over 60 characters is stored encoded — and both constructors of that pair live in
+  `target_rollup.py` and ask it, so a long-named target cannot be present in
+  `mpfb_get_target_stack` and absent in `mpfb_symmetrize_targets`.
 - **`expression_divergence.py` is the same case for the face.** Whether the applied-expressions
   stack explains the live face is a comparison MPFB makes nowhere, and three commands report it:
   `mpfb_get_expression`, which exists to answer it; `mpfb_apply_expressions`, which names the
@@ -602,12 +675,13 @@ behaviour on its own. Two commands sharing a five-line helper are not a reason t
   the same names **without a second reading**. The failure it prevents is the one a summary is
   most prone to: an agent that reads "no rig" in the summary and "rig `default`" from
   `mpfb_get_object_info` has been handed a contradiction it cannot resolve, and acts on whichever
-  it read last. The basemesh resolution moved into `macro_reading.py` with the rest, because the
-  summary promises to resolve its subject exactly as `mpfb_get_macro_details` does and one function
-  is the only way that stays true; the other resolvers were not consolidated (see
-  [NEXT_STEPS.md](../feature-requests/NEXT_STEPS.md#one-basemesh-resolver)). The face-unit read was
-  **not** moved: `get_face_units` reads straight off `FaceService` and the non-zero filter is one
-  line, which is below the bar. `bridge/test/tests/eee_composite/get_character_summary_test.py`
+  it read last. The same warrant covers a setter's report of what it wrote: `mpfb_set_macro_details`
+  reports `macro_details` and `race_sum` after a write through `macro_reading.py` too, so they are
+  what `mpfb_get_macro_details` would read on the next call. The subject is resolved by
+  `subject_resolution.py`, like every command's, which is what the summary's promise to resolve its
+  subject exactly as `mpfb_get_macro_details` does now rests on. The face-unit read was **not**
+  moved: `get_face_units` reads straight off `FaceService` and the non-zero filter is one line,
+  which is a convention rather than a concept. `bridge/test/tests/eee_composite/get_character_summary_test.py`
   dispatches the summary beside each detailed command on one character and asserts every shared
   field equal — the test that keeps them agreeing after the reason is forgotten.
 - **A shared module may share the condition and leave the wording alone.** `refit_blocker.py` is
@@ -648,25 +722,28 @@ behaviour on its own. Two commands sharing a five-line helper are not a reason t
   the module is found, what a miss means and what `panel_synced` reports must not differ between
   them, and the rules for reaching the module belong in one place a reader can check.
 
-**Being identical is not by itself a reason to merge.** A census of every function defined at
-module level in more than one of the programs these commands replaced — docstrings stripped,
-normalised through `ast.unparse` — found nineteen such names, of which sixteen were byte-identical
-and had not drifted at all. Only the ones above were made shared. `blocked()`'s six variants were
-left alone deliberately: they are one convention applied six times, differing only in which of that
-tool's own fields each nulls out, and a mechanism for "this tool's null response" would be larger
-than the six copies.
+**The evidence for the rule is FR 036's census**, not the census of generated programs that
+stood here before: those programs were deleted by
+[FR 033](../feature-requests/done/033-retire-the-generated-code-path/README.md), and a rule backed
+by evidence nobody can re-run is harder to revisit than one backed by none.
+[census.md](../feature-requests/done/036-subject-resolver-and-duplication/census.md) judged every
+function name defined in more than one module of `commands/`, `shared/` and `tools/` — thirty-nine
+of them, plus the patterns a census by name cannot see — and its script,
+[census.py](../feature-requests/done/036-subject-resolver-and-duplication/census.py), is the
+check: `--check` fails on any duplicate that is neither shared nor listed in its `KEPT` table with
+a pointer to the reason. Eleven names remain, all conventions under rule 3 or kept with a recorded
+reason. Run it again when the next scan is due, and a kept copy is confirmed rather than reopened.
 
-**What the bootstrap used to bind above a fragment is a parameter here.** A shared module is
-*handed* `services`, because a module that resolved MPFB at import would hold a services dict
-across a disable and re-enable — the stale state `mpfb_resolution.resolve()` is called per dispatch
-to avoid. `target_categories.py` takes a `tables` record for the freshness reason above.
-`asset_info.py` takes a `Lookup` built from `services` once per call instead, because it also reads
-four module-level names MPFB does not publish as services (two type vocabularies, two property
-sets), and gathering them in one object keeps that `sys.modules` reach in one place.
-Three take neither, because they read nothing out of MPFB's services: `performed.py` works on a
-dict the command has finished building, `artifact_names.py` on a name and a path, and
-`expression_panel.py` on MPFB's root package name, since the module it reaches is addressed by
-where MPFB lives rather than by anything a service knows.
+**Why most shared modules are handed `services`.** A module that resolved MPFB at import would hold
+a services dict across a disable and re-enable — the stale state `mpfb_resolution.resolve()` is
+called per dispatch to avoid. `target_categories.py` takes a `tables` record for the freshness
+reason above. `asset_info.py` takes a `Lookup` built from `services` once per call, which reads its
+four module-level names through `mpfb_surface.py` once rather than at every use. Five take
+neither, because they read nothing out of MPFB's services: `performed.py` works on a dict the
+command has finished building, `artifact_names.py` on a name and a path, `expression_panel.py` on
+MPFB's root package name, and `selection.py` and `blender_data.py` on plain Blender state.
+`subject_resolution.py` is half of each: its subject step reads only the view layer and `bpy.data`,
+and only its basemesh step takes `services`.
 
 ## One module per tool
 

@@ -35,8 +35,8 @@ what the effort did; what is left at the end should be exactly what
 
 ## Running
 
-    python3 feature-requests/036-subject-resolver-and-duplication/census.py
-    python3 feature-requests/036-subject-resolver-and-duplication/census.py --check
+    python3 feature-requests/done/036-subject-resolver-and-duplication/census.py
+    python3 feature-requests/done/036-subject-resolver-and-duplication/census.py --check
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ __all__ = (
 )
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
-_ROOT = os.path.normpath(os.path.join(_HERE, "..", ".."))
+_ROOT = os.path.normpath(os.path.join(_HERE, "..", "..", ".."))
 
 _SEARCHED = (
     os.path.join("bridge", "mpfb_bridge", "commands"),
@@ -72,6 +72,17 @@ _CONVENTIONAL = frozenset(("register",))
 # judged it belongs in neither this table nor a shared module. ``--check``
 # fails on any group of copies that is neither.
 KEPT = {
+    "_blocked": "census.md#kept-a-convention",
+    "_entry": "census.md#kept-a-convention",
+    "_message": "census.md#kept-a-convention",
+    "_message_for": "census.md#kept-a-convention",
+    "_precondition": "census.md#kept-a-convention",
+    "_refusal": "census.md#kept-a-convention",
+    "_resolve": "census.md#kept-a-convention",
+    "_resolve_arguments": "census.md#kept-a-convention",
+    "_rig_refit_blocker": "census.md#kept-a-convention",
+    "_shapekey_present": "census.md#kept-with-a-reason",
+    "_validated_source": "census.md#kept-with-a-reason",
 }
 
 

@@ -18,26 +18,29 @@ does not reach at all.
 ## Where these rules are enforced
 
 A reader looking for the enforcement should not have to guess, and the answer is not the same for
-all of them. "The far side" is the thirteen mutating commands in `bridge/mpfb_bridge/commands/`;
+all of them. "The far side" is the sixteen mutating commands in `bridge/mpfb_bridge/commands/`;
 "the near side" is the tool module, which runs before anything is sent.
 
-**No rule in this document changed when those commands were written.**
+**No rule in this document changed when those commands were written**, nor when
+[FR 036](../feature-requests/done/036-subject-resolver-and-duplication/README.md) moved the parts
+they share into shared modules — that effort's before-and-after snapshot of every command was
+empty apart from ten deliberately reworded miss sentences.
 [FR 032](../feature-requests/done/032-creation-and-modification-migrated/README.md) worked under
 reproduction-over-improvement, which is stricter for a mutating tool than anywhere else, because
 breaking it has side effects on somebody's `.blend` rather than a different-looking answer.
 
 | Rule | Enforced by |
 |------|-------------|
-| Any object in the family is a valid subject | The **far side**, in both copies. Resolution needs MPFB's relationship walk |
+| Any object in the family is a valid subject | A **shared module**, [`bridge/mpfb_bridge/shared/subject_resolution.py`](../bridge/mpfb_bridge/shared/subject_resolution.py), used by every command that takes a subject. Resolution needs MPFB's relationship walk |
 | A precondition is an answer, not an exception | The **far side**. Every `blocked_by` branch runs before the mutating call |
 | `performed` means the same thing everywhere | A **shared module**, [`bridge/mpfb_bridge/shared/performed.py`](../bridge/mpfb_bridge/shared/performed.py), imported by every mutating command |
 | The before/after report | The **far side**, which is the only place that can observe both |
-| The caller's selection is restored | The **far side**, in a `finally`, around every `refit()` and every operator call. `mpfb_generate_rigify_rig` reports `active_object_after` instead |
+| The caller's selection is restored | A **shared module**: `with selection.restored(...)`, from [`bridge/mpfb_bridge/shared/selection.py`](../bridge/mpfb_bridge/shared/selection.py), around every `refit()` and every operator call. It puts back the active object and the borrowed object's own selection, and **not** the selection of other objects an operator selected, such as a new armature ([NEXT_STEPS](../feature-requests/NEXT_STEPS.md#selection-restore-covers-one-object)). `mpfb_generate_rigify_rig` reports `active_object_after` instead |
 | A batch resolves before it writes | The **far side**. It is a property of the *code*, and nothing below the socket would enforce it |
 | A name that becomes a path is a name and never a path | **Both sides, deliberately.** `artifact_names.py` before anything is sent, `shared/artifact_names.py` as the last statement before `open()` - one rule for presets and saved expressions |
 | `overwrite: False`, and the absolute path in every answer | The **far side** |
 | Refuse to write where the result cannot be found | The **far side**, which alone can walk MPFB's roots |
-| Argument shape and range | The **near side**, before anything is sent — see [Validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket) |
+| Argument shape and range | The **near side**, before anything is sent, mostly through [`src/mpfbmcp/arguments.py`](../src/mpfbmcp/arguments.py) — see [Validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket) |
 
 **One rule is enforced by neither and is worth naming as such.** Nothing makes a *failure*
 atomic. `mpfb_create_human_from_preset` builds a character in stages and a mid-way failure leaves

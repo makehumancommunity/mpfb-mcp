@@ -8,33 +8,57 @@ Completed efforts are no longer listed here — they move to [HISTORY.md](HISTOR
 records what has already landed and why. When an effort below is finished, move it there
 (see the [lifecycle in CLAUDE.md](CLAUDE.md#lifecycle)).
 
-<a id="one-basemesh-resolver"></a>
+<a id="resolved-from-and-subject-resolved-by"></a>
 
-## Basemesh resolver and other code duplications
+## `resolved_from` and `subject_resolved_by`
 
-Formulated as [FR 036](036-subject-resolver-and-duplication/README.md) (In progress), with the scan
-this entry asks for in its [census](036-subject-resolver-and-duplication/census.md). Because the
-architecture's rule for shared code was set before the pivot, the request rewrites that rule first
-and derives the census verdicts from the rewritten version.
+Found by [FR 036](done/036-subject-resolver-and-duplication/README.md)'s census. Seventeen commands
+report how their subject was resolved as `subject_resolved_by: "active" | "name"`;
+`mpfb_get_object_info` reports the same fact as `resolved_from: "active_object" | "name"`. Both now
+come from one resolver, and `get_object_info` maps the value at its call site. FR 036 promised that
+no response field changed, so the difference was recorded rather than fixed. Fixing it means
+renaming a key or a value in an answer callers read, and deciding how to do that without breaking
+them - for instance reporting both keys for a while, with the tool description saying which one is
+going away.
 
-Eighteen bridge commands resolve "any object in the character's family, or the active one" to a
-basemesh through `ObjectService.find_object_of_type_amongst_nearest_relatives(subject, "Basemesh")`,
-each inside a wrapper of its own (`_resolve`, `_resolve_basemesh`), and the copies are not the same
-code even with their messages stripped. [FR 034](done/034-character-summary/README.md) moved the
-`get_macro_details` copy into `shared/macro_reading.py` as `resolve_basemesh()`, where
-`get_character_summary` uses it too, and left the other seventeen alone. This effort would decide
-whether they should all share that one, whether the variations between them are deliberate (some
-mutating commands may rightly resolve differently), and would record the differences it finds
-either way.
+<a id="selection-restore-covers-one-object"></a>
 
-The same effort is the natural place for the one **reading** FR 034 left duplicated:
-`set_macro_details` keeps its own `_as_float`, `_macro_details_of`, `_race_sum_of` and race-sum
-tolerance, and reports `macro_details` and `race_sum` from them - so its answer and
-`mpfb_get_macro_details`' can drift apart in exactly the way `shared/macro_reading.py` exists to
-prevent. It was out of FR 034's scope because the summary does not read through it.
+## Selection restore covers one object
 
-When formulating a feature request for this, a scan should be done for other code duplications
-which could or should be abstracted to shared modules. 
+Found by FR 036's census and asserted, as a gap, by `bbb_shared/selection_test.py`. The ten
+mutating commands that activate something put back the active object and the *borrowed* object's
+own selection, through `shared/selection.py`. An operator that selects *other* objects - a new
+armature from `mpfb_add_rig`, an imported garment from `mpfb_add_asset` - leaves them selected, so
+the user's selection after the call is not the one they had. Closing it means snapshotting every
+object's selection on the way in, which changes what several commands leave behind and is a
+behaviour change to announce, not a refactoring. `mpfb_generate_rigify_rig` is a separate case
+already: it reports `active_object_after` because it cannot restore.
+
+<a id="one-helper-for-the-tool-under-test"></a>
+
+## One helper for the tool under test
+
+Found by FR 036's census, which did not search `tests/`. Twenty-nine functions in `tests/` reach
+into FastMCP's private `mcp._tool_manager._tools` to get the callable behind a tool
+(`_tool_callable` twenty times, `_register_and_get_tool` nine), and every copy differs only in
+which tool it names. Under the rule for shared code
+([rule 2](../specifications/architecture.md#shared-modules-and-what-warrants-one)) that is plainly
+one concept, and one helper would also put the reach into a *private* attribute of a pinned
+dependency in one place rather than twenty-nine, which matters the day `mcp` is upgraded. The
+bridge suite has the same shape in `_result`, seventeen copies, one per module, each unwrapping a
+dispatch envelope for its own command. A test-harness effort, and a small one.
+
+<a id="create-human-typeerror"></a>
+
+## `mpfb_create_human` refuses a non-number with a `TypeError`
+
+Found by FR 036's `tool_refusals.py`. Every other tool refuses a bad argument shape with a
+`ValueError` whose sentence names the argument; `mpfb_create_human`'s slider check compares the
+value with `0.0 <= value <= 1.0` before checking its type, so `age="x"` fails with
+`TypeError: '<=' not supported between instances of 'float' and 'str'`, and `age=None` the same
+way. FastMCP reports either as a tool error, so nothing is sent, but the sentence tells an agent
+nothing it can act on. The fix is a type check before the range check; its refusal sentences then
+belong in a unit test, which is where FR 036 found none.
 
 <a id="direct-tests-of-the-bridges-shared-modules"></a>
 
@@ -47,8 +71,9 @@ command's fixture reaches is never reached at all.
 [FR 035](done/035-bridge-test-layers/README.md) reserved the layer for this — `bbb_shared/`, which
 runs after the add-on's own machinery and before any command — and did not create it, because
 writing tests and moving files are different efforts and mixing them would have lost that
-request's before-and-after proof. [FR 036](036-subject-resolver-and-duplication/README.md) creates
-the directory for the shared modules *it* adds; the thirteen that exist remain this entry's.
+request's before-and-after proof. [FR 036](done/036-subject-resolver-and-duplication/README.md)
+created the directory, with direct tests of the four shared modules it added; the thirteen that
+existed before it remain this entry's.
 
 Three of them read nothing out of MPFB's services and could be tested without a character, or
 without MPFB at all: `artifact_names.py` (the name rule; its tool-side twin is already tested

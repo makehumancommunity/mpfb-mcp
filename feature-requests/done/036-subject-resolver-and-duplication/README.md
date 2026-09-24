@@ -1,17 +1,17 @@
 # One subject resolver, and the rule for what else to share
 
-**Status:** In progress
+**Status:** Done
 
 Eighteen bridge commands take a subject: the object the caller named, or the active one if it
 named none. Sixteen of them then go on to that object's basemesh. The rules are in the
 specifications, and today they exist as sixteen local copies plus one shared function, which
-[FR 034](../done/034-character-summary/README.md) moved into `shared/macro_reading.py`. The copies
+[FR 034](../034-character-summary/README.md) moved into `shared/macro_reading.py`. The copies
 have the same code and differ only in wording, and some of that wording has drifted.
 
 The NEXT_STEPS entry also asked for a scan of the rest of the code. [census.py](census.py) found
 39 function names defined in more than one module, and three patterns written under several names.
 Judging those against the architecture's rule on shared code
-([Shared modules, and what warrants one](../../specifications/architecture.md#shared-modules-and-what-warrants-one))
+([Shared modules, and what warrants one](../../../specifications/architecture.md#shared-modules-and-what-warrants-one))
 exposed a problem with the rule itself. It has two halves:
 
 - **The warrant.** Share whatever must not drift. This still holds.
@@ -94,7 +94,7 @@ only change a caller can see is listed in requirement 3.
    identical private copies) both apply it. Both lookups are still passed into
    `modifier_reading()` exactly as they are today.
 7. **One way to read what MPFB does not publish.** One shared function reads a name kept on a
-   service's module, applying [the three rules](../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish).
+   service's module, applying [the three rules](../../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish).
    One reads a `BlenderConfigSet` string property as `None` when it is unset. One coerces a path
    that MPFB may hand back as a `pathlib.Path`. All eighteen `sys.modules` reaches in `commands/`
    and `shared/` go through the first. All six copies of `_property_value` and all seven of
@@ -132,12 +132,12 @@ only change a caller can see is listed in requirement 3.
 - **Behaviour is preserved, and that is proven.** Proving it matters more here than anywhere else,
   because every change is meant to be invisible. There are two proofs, one per side of the socket.
   On the bridge side it is the snapshot diff described in
-  [testing.md](../../specifications/testing.md#two-patterns-for-a-claim-about-more-than-one-command).
+  [testing.md](../../../specifications/testing.md#two-patterns-for-a-claim-about-more-than-one-command).
   On the tool side it is a diff of refusal sentences. Both should be empty apart from the five
   sentences in requirement 3 (see [Tests](#tests)).
 - **A command still reads like a command.** The phrases a command owns are passed at the call
   site, so a reader of `set_skin.py` can still see that `set_skin` says "no skin was applied"
-  without opening the shared module. This is the reason [refit_blocker.py](../../bridge/mpfb_bridge/shared/refit_blocker.py)
+  without opening the shared module. This is the reason [refit_blocker.py](../../../bridge/mpfb_bridge/shared/refit_blocker.py)
   keeps its wording per command, and it applies here too: **the condition is shared and the
   wording is not.** A resolver or a validator that looked up its messages in a table keyed by tool
   name would fail this requirement.
@@ -145,7 +145,7 @@ only change a caller can see is listed in requirement 3.
   side. If a helper has no module it naturally belongs in, that is a reason to keep it duplicated
   (see [the rule](#the-rule-restated)), not a reason to create a grab-bag module.
 - **It stays familiar to MPFB's developers.** The bridge follows
-  [MPFB's conventions](../../specifications/architecture.md#readability-and-developer-experience-are-prioritized)
+  [MPFB's conventions](../../../specifications/architecture.md#readability-and-developer-experience-are-prioritized)
   and passes its `.pylintrc` and pyright configuration with no new suppressions. A shared module
   that reproduces MPFB's own call keeps the comment that names which MPFB panel makes that call.
 - **Adding a tool is still four files.** A new command imports the resolver, and a new tool
@@ -161,7 +161,7 @@ only change a caller can see is listed in requirement 3.
 ### The rule, restated
 
 This is the text proposed to replace the restraint half of
-[Shared modules, and what warrants one](../../specifications/architecture.md#shared-modules-and-what-warrants-one).
+[Shared modules, and what warrants one](../../../specifications/architecture.md#shared-modules-and-what-warrants-one).
 The warrant bullets stay as they are, apart from the additions listed under
 [Affected specifications](#affected-specifications).
 
@@ -206,7 +206,7 @@ names.
 
 That brings the bridge's shared modules from thirteen to about seventeen, and adds one module on
 the tool side. The count is a result of the rule, not a target.
-[shared/__init__.py](../../bridge/mpfb_bridge/shared/__init__.py) says "the count is not a
+[shared/__init__.py](../../../bridge/mpfb_bridge/shared/__init__.py) says "the count is not a
 coincidence" and dates each module back to the fragment it mirrors. That paragraph is rewritten,
 not extended: the count follows from the rule, and after the pivot the fragment ancestry is
 history. Its list of modules that take no `services` gains `subject` (for the subject step),
@@ -244,7 +244,7 @@ already takes its `hint` that way.
   not short-circuit, so that each command keeps the order it has now. Requirement 4 includes this.
 - **`str(requested_name)` in the message** exists so that a non-string name cannot crash the
   formatting. The tool side makes that impossible, but a socket can be reached by other clients
-  (see [both ends validate](../../specifications/architecture.md#both-ends-validate-deliberately)).
+  (see [both ends validate](../../../specifications/architecture.md#both-ends-validate-deliberately)).
   Keep it.
 - **`get_object_info`'s `resolved_from` vocabulary is not fixed here.** Renaming a response key,
   or changing `"active_object"` to `"active"`, breaks any caller that reads it, and this effort
@@ -275,11 +275,11 @@ already takes its `hint` that way.
   goes in `KEPT`. Do not merge the two.
 - **FR 035 moved every bridge test file**, and is `Done`, so this effort's new tests go straight
   into the layers FR 035 created (see [Tests](#tests)). The layer rule is in
-  [testing.md](../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary).
+  [testing.md](../../../specifications/testing.md#two-harnesses-split-at-the-directory-boundary).
 
 ## Affected specifications
 
-- [architecture.md, "Shared modules, and what warrants one"](../../specifications/architecture.md#shared-modules-and-what-warrants-one):
+- [architecture.md, "Shared modules, and what warrants one"](../../../specifications/architecture.md#shared-modules-and-what-warrants-one):
   **this is the main change.**
   - Replace the restraint with [the rule, restated](#the-rule-restated).
   - Replace the "being identical is not by itself a reason" paragraph and its deleted-payload
@@ -292,22 +292,22 @@ already takes its `hint` that way.
   - Check "What the bootstrap used to bind above a fragment is a parameter here". It explains the
     present by the past, and it may now belong in HISTORY.md.
   - Drop the "there are thirteen" count, or say that it follows from the rule.
-- [architecture.md, "Reading module-level names MPFB does not publish"](../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish):
+- [architecture.md, "Reading module-level names MPFB does not publish"](../../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish):
   the three rules now live in one shared function. Say which one, and record the decision on the
   four face-unit reads.
-- [tool-interface.md, "Validate before crossing the socket"](../../specifications/tool-interface.md#validate-before-crossing-the-socket):
+- [tool-interface.md, "Validate before crossing the socket"](../../../specifications/tool-interface.md#validate-before-crossing-the-socket):
   the shape rules now live in one module on this side. Say which one.
-- [mutating-tools.md, "Where these rules are enforced"](../../specifications/mutating-tools.md#where-these-rules-are-enforced):
+- [mutating-tools.md, "Where these rules are enforced"](../../../specifications/mutating-tools.md#where-these-rules-are-enforced):
   "The far side, in both copies" becomes the shared resolver, and the selection row names the
   shared construct. Also check the claim next to it, "no rule in this document changed when those
   commands were written", which should still be true.
-- [tool-interface.md, "How a tool addresses an object"](../../specifications/tool-interface.md#how-a-tool-addresses-an-object):
+- [tool-interface.md, "How a tool addresses an object"](../../../specifications/tool-interface.md#how-a-tool-addresses-an-object):
   the paragraph on "whatever is active" says how the subject is read. Add that it is read in one
   place.
-- [testing.md](../../specifications/testing.md#two-patterns-for-a-claim-about-more-than-one-command):
+- [testing.md](../../../specifications/testing.md#two-patterns-for-a-claim-about-more-than-one-command):
   add the subject-resolution composite test as a third example of "two commands agree", with
   eighteen commands instead of two.
-- The root [CLAUDE.md](../../CLAUDE.md), because the layout changes. The `bridge/mpfb_bridge/shared/`
+- The root [CLAUDE.md](../../../CLAUDE.md), because the layout changes. The `bridge/mpfb_bridge/shared/`
   row says "Thirteen modules" and names what they share. The package module table gains the
   validator module, and "What is validated on this side of the socket" can point at it rather
   than describing each rule from scratch.
@@ -316,7 +316,7 @@ already takes its `hint` that way.
 
 **The unittest suite still reports every existing test passing**, and no existing test has its
 assertions edited. There are 428 today. The new tool-side module gets its own test module,
-following [the exception for what is entirely on this side of the socket](../../specifications/testing.md#the-exception-what-is-entirely-on-this-side-of-the-socket).
+following [the exception for what is entirely on this side of the socket](../../../specifications/testing.md#the-exception-what-is-entirely-on-this-side-of-the-socket).
 It tests each validator directly, including the parameters that carry a tool's own wording.
 
 **Refusal sentences, before and after: `tool_refusals.py`, in this subdir.** For every registered
@@ -333,7 +333,7 @@ The diff must be empty. It needs no Blender, and it moves to `done/` with this r
   without going through dispatch. The subject resolver, the selection construct and the plain
   Blender reads need `bpy` but no MPFB, apart from the basemesh step. This does **not** also take
   on direct tests for the thirteen existing shared modules. FR 035 recorded that as a separate
-  effort ([NEXT_STEPS.md](../NEXT_STEPS.md#direct-tests-of-the-bridges-shared-modules)), and it
+  effort ([NEXT_STEPS.md](../../NEXT_STEPS.md#direct-tests-of-the-bridges-shared-modules)), and it
   stays one.
 - **`eee_composite/subject_resolution_test.py`** dispatches all eighteen subject-taking commands in
   each of the three miss states: nothing active, a name that does not exist, and an object with no
@@ -345,7 +345,7 @@ The diff must be empty. It needs no Blender, and it moves to `done/` with this r
 
 **Live check: a snapshot diff, in this subdir.** `snapshot.py` follows FR 034's `live_check.py`.
 It starts a headless Blender with the bridge on a spare port, using the Blender from
-[local_environment.md](../../local_environment.md), and writes a JSON snapshot with sorted keys for
+[local_environment.md](../../../local_environment.md), and writes a JSON snapshot with sorted keys for
 each of these:
 
 - all eighteen commands in the three miss states;
@@ -361,32 +361,63 @@ diff for every group should be empty, except for the subject resolver's, which s
 the sentences requirement 3 lists. The script and its before-and-after snapshots move to `done/`
 with this request.
 
-**No smoke item** is added to [verification/](../../verification/), because no tool is added. Run
+**No smoke item** is added to [verification/](../../../verification/), because no tool is added. Run
 the smoke run once at the end anyway. It is under 2 s, and it is the only check that goes through
 the real MCP tools.
 
 **`census.py --check` is this request's structural check.** Run it at the end. It needs no
 Blender.
 
+## Verification
+
+One commit per group, in the order of the requirements: the subject resolver, the phenotype
+reading, the target name rule, the unpublished surface, the selection restore, the plain Blender
+reads with the version string, and the tool-side validators. Every check the [Tests](#tests)
+section asks for was run after each bridge-side group, and the tool-side one around its own commit:
+
+- **Snapshot diff** ([snapshot.py](snapshot.py)): two runs on the starting commit were
+  byte-identical, so the script's `VOLATILE` list is complete. Against
+  [snapshot-before.json](snapshot-before.json), the subject resolver's commit changed exactly ten
+  `message` lines, requirement 3's five and the five decided during implementation, and every later
+  group's diff against the one before it was empty. [snapshot-after.json](snapshot-after.json) is
+  the last run. It covers the eighteen commands in the three miss states, a character taken through
+  every mutating command with the active object read back after each step, and the three status
+  commands.
+- **Refusal diff** ([tool_refusals.py](tool_refusals.py)): 1,907 calls, 1,484 refused locally.
+  Before and after the tool-side commit the file was byte-identical to
+  [refusals-before.json](refusals-before.json).
+- **Bridge suite**: 359 passed at the start and 389 at the end. The 30 new tests are four modules in
+  the new `bbb_shared/` layer and `eee_composite/subject_resolution_test.py`. Line coverage went
+  from 84% of 5,323 statements to 85% of 4,942.
+- **Unit suite**: 428 passed at the start and 446 at the end. No existing assertion was edited, and
+  18 tests are in `tests/test_arguments.py`.
+- **Lint**: pylint (bridge `.pylintrc`) and pyright (bridge config) were diffed against the
+  starting commit after each group and report no new finding, apart from `consider-using-f-string`
+  on the new modules, which the `.format()` convention produces everywhere. 79 findings and 33
+  `duplicate-code` reports went away.
+- **Census**: `census.py --check` exits 0. See [census.md](census.md) for what is left and why.
+- **Smoke run**: 34 passed, 0 failed, 0 skipped, in 1.5 s, against a headless Blender.
+
 ## References
 
-- [NEXT_STEPS.md: "Basemesh resolver and other code duplications"](../NEXT_STEPS.md#one-basemesh-resolver),
-  where this request came from.
+- NEXT_STEPS.md's "Basemesh resolver and other code duplications", where this request came from.
+  The entry left the queue when this request was done; what landed is in
+  [HISTORY.md](../../HISTORY.md#one-basemesh-resolver).
 - [census.md](census.md) is the full census and gives the verdict and reason for each group.
   [census.py](census.py) is the script that produced it. The script reads source only and needs
   no Blender.
 - Where the old restraint came from:
-  - FR 013's [review](../done/013-live-verification/review.md#is-the-duplication-a-risk-or-an-economy),
+  - FR 013's [review](../013-live-verification/review.md#is-the-duplication-a-risk-or-an-economy),
     which called sixteen identical payload helpers "an economy, not a risk".
-  - [FR 015](../done/015-fourth-shared-fragment/README.md), which applied that judgement.
-  - [FR 002](../done/002-codegen-structure/README.md) and
-    [FR 017](../done/017-category-table-cost/README.md), for what a fragment cost when it was
+  - [FR 015](../015-fourth-shared-fragment/README.md), which applied that judgement.
+  - [FR 002](../002-codegen-structure/README.md) and
+    [FR 017](../017-category-table-cost/README.md), for what a fragment cost when it was
     pasted into every program.
-  - [shared/__init__.py](../../bridge/mpfb_bridge/shared/__init__.py), for the seven modules that
+  - [shared/__init__.py](../../../bridge/mpfb_bridge/shared/__init__.py), for the seven modules that
     mirror a deleted fragment "name for name".
-- [FR 034](../done/034-character-summary/README.md) moved the first resolver into
+- [FR 034](../034-character-summary/README.md) moved the first resolver into
   `macro_reading.py`, and its `live_check.py --snapshot` is the model for this request's live
   check.
-- [FR 035](../done/035-bridge-test-layers/README.md) reserved `bbb_shared/`, which this request creates.
-- [shared/refit_blocker.py](../../bridge/mpfb_bridge/shared/refit_blocker.py) is the precedent for
+- [FR 035](../035-bridge-test-layers/README.md) reserved `bbb_shared/`, which this request creates.
+- [shared/refit_blocker.py](../../../bridge/mpfb_bridge/shared/refit_blocker.py) is the precedent for
   sharing the condition and keeping the wording per command.
