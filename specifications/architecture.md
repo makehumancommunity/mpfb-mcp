@@ -551,7 +551,7 @@ in it is reachable from the wire** — no handler, no `PARAMS`, no entry in `COM
 what lets [commands/table.py](../bridge/mpfb_bridge/commands/table.py) go on being the one file a
 sceptic reads to know everything this add-on can be asked to do.
 
-There are ten, and the warrant for each is the same shape: **duplication that must not drift,
+There are thirteen, and the warrant for each is the same shape: **duplication that must not drift,
 not size.** Three copies of a hundred-line scan of the user's target directories are three chances
 for two commands to disagree about what is installed, and that disagreement is worse than either
 behaviour on its own. Two commands sharing a five-line helper are not a reason to reach for this.
@@ -592,7 +592,24 @@ behaviour on its own. Two commands sharing a five-line helper are not a reason t
   composed units its rebuild destroyed; and `mpfb_set_face_units`, which says whether what it just
   composed is now at risk. One of them saying "nothing to lose" while another says "this will be
   discarded" is the failure; `ppp_mutating/expression_divergence_test.py` asks all three about one
-  character. `mpfb_get_character_summary` (FR 034) is meant to read through it too.
+  character. `mpfb_get_character_summary` reads through it as well, which makes four.
+- **A summary and its detailed tool are one implementation.** `macro_reading.py`, `asset_info.py`
+  and `target_rollup.py` share this one warrant, which is why it is stated once rather than three
+  times. [FR 034](../feature-requests/done/034-character-summary/README.md) moved the reading of
+  the phenotype out of `get_macro_details`, of what an object was made from and which objects
+  belong with it out of `get_object_info`, and of the target stack and its rollup out of
+  `get_target_stack`, so that `mpfb_get_character_summary` reports a subset of each answer under
+  the same names **without a second reading**. The failure it prevents is the one a summary is
+  most prone to: an agent that reads "no rig" in the summary and "rig `default`" from
+  `mpfb_get_object_info` has been handed a contradiction it cannot resolve, and acts on whichever
+  it read last. The basemesh resolution moved into `macro_reading.py` with the rest, because the
+  summary promises to resolve its subject exactly as `mpfb_get_macro_details` does and one function
+  is the only way that stays true; the other resolvers were not consolidated (see
+  [NEXT_STEPS.md](../feature-requests/NEXT_STEPS.md#one-basemesh-resolver)). The face-unit read was
+  **not** moved: `get_face_units` reads straight off `FaceService` and the non-zero filter is one
+  line, which is below the bar. `bridge/test/tests/uuu_get_character_summary_test.py` dispatches
+  the summary beside each detailed command on one character and asserts every shared field equal —
+  the test that keeps them agreeing after the reason is forgotten.
 - **A shared module may share the condition and leave the wording alone.** `refit_blocker.py` is
   that case: `HumanService.refit()` cannot refit a generated Rigify rig with no meta rig left in
   the scene, reports it only through an `operator` no MCP tool has one of, and returns having
@@ -643,6 +660,9 @@ than the six copies.
 *handed* `services`, because a module that resolved MPFB at import would hold a services dict
 across a disable and re-enable — the stale state `mpfb_resolution.resolve()` is called per dispatch
 to avoid. `target_categories.py` takes a `tables` record for the freshness reason above.
+`asset_info.py` takes a `Lookup` built from `services` once per call instead, because it also reads
+four module-level names MPFB does not publish as services (two type vocabularies, two property
+sets), and gathering them in one object keeps that `sys.modules` reach in one place.
 Three take neither, because they read nothing out of MPFB's services: `performed.py` works on a
 dict the command has finished building, `artifact_names.py` on a name and a path, and
 `expression_panel.py` on MPFB's root package name, since the module it reaches is addressed by

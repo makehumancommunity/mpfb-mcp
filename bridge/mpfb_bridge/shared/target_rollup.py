@@ -7,7 +7,7 @@ What is actually on a character, one shape key at a time and rolled up.
 caller asks; ``get_character_summary`` reports the rollup, the asymmetries and
 the counts that ``get_target_stack`` gives for its **default** arguments, under
 the same names
-([FR 034](../../../feature-requests/034-character-summary/README.md)). Two
+([FR 034](../../../feature-requests/done/034-character-summary/README.md)). Two
 readings of one stack that disagreed would look like a bug in neither.
 
 **The shape keys are read from ``key_blocks`` directly rather than through

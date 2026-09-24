@@ -6,9 +6,9 @@ rather than executing code.
 
 ## Status
 
-Proof of concept. Thirty-one tools are implemented.
+Proof of concept. Thirty-two tools are implemented.
 
-**All thirty tools that cross the socket speak to the bridge**, and there is nothing else
+**All thirty-one tools that cross the socket speak to the bridge**, and there is nothing else
 for them to speak to. The odd one out, `mpfb_list_docs`, answers from a local table and reaches
 no Blender at all.
 
@@ -25,6 +25,8 @@ See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
 **Introspection** — read-only, and each of them always answers rather than failing:
 
 - `mpfb_get_status` — is MPFB present, initialized and correctly configured?
+- `mpfb_get_character_summary` — what is this character, in one call: phenotype, rig, assets,
+  skin, morphs and face, each exactly as the detailed tool below would report it?
 - `mpfb_list_objects` — which MakeHuman objects are in the current scene?
 - `mpfb_get_object_info` — what is this object, what was it made from, and what belongs with it?
 - `mpfb_get_macro_details` — what is this character's phenotype?
@@ -74,7 +76,7 @@ See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
 generate a Rigify rig after them. The tools report the violation they can see rather than
 enforcing it.
 
-**All thirty-one have been run against a real Blender, and re-checking all of them is one short
+**All thirty-two have been run against a real Blender, and re-checking all of them is one short
 command.** [verification/](verification/) is a smoke run — one call per tool with default
 arguments, measured at 1.5 s for the whole set against a headless Blender — so confirming that
 nothing has stopped working is a command rather than a session. It leaves what it builds in the

@@ -8,7 +8,7 @@ face unit composed on top of it, the summary and **each detailed command** are
 dispatched, and every field the summary shares with one of them is asserted
 equal to that command's answer. The summary reads each section through the
 shared module its detailed command uses
-([FR 034](../../../feature-requests/034-character-summary/README.md)), so today
+([FR 034](../../../feature-requests/done/034-character-summary/README.md)), so today
 the two agree by construction; this test is what keeps them agreeing after
 somebody has forgotten why - a copy of a reading grown inside one command would
 pass that command's own tests and fail here.

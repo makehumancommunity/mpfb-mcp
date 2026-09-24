@@ -7,7 +7,7 @@ What an object was made from, and which objects belong with it.
 here; ``get_character_summary`` reports the rig, the equipped assets and the
 skin of a whole character from the same walk and the same ``asset_info``,
 under the same names
-([FR 034](../../../feature-requests/034-character-summary/README.md)). A
+([FR 034](../../../feature-requests/done/034-character-summary/README.md)). A
 summary that walked the family its own way could report "no rig" beside
 ``get_object_info``'s "rig ``default``", and the caller would act on whichever
 it read last.

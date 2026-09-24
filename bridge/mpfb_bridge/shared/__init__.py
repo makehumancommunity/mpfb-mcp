@@ -36,23 +36,31 @@ away from the thing it reproduces. They are ordinary findings now that nothing
 compares these files against a second copy, so fix one *deliberately* and say
 in the commit which MPFB behaviour the new spelling still reproduces.
 
-**Ten modules**, and the count is not a coincidence: they are the ten
-concepts more than one command needed. ``preset_files``, ``rig_lookup``,
-``asset_sections``, ``target_categories`` and ``modifier_reading`` arrived with
-FR 031's read-only commands; ``performed`` and ``refit_blocker`` with FR 032's
-mutating ones. Each of those seven mirrors a shared fragment from the
-generated-code path that FR 033 deleted, name for name, which is why the names
-are what they are. FR 027 added three with no such ancestry:
-``artifact_names``, the name rule ``preset_files`` used to hold alone, now
-shared with saved expressions; ``expression_divergence``, the one comparison of
-stack and face three commands report; and ``expression_panel``, how two
-commands reach MPFB's expressions-library UI module.
+**Thirteen modules**, and the count is not a coincidence: they are the
+thirteen concepts more than one command needed. ``preset_files``,
+``rig_lookup``, ``asset_sections``, ``target_categories`` and
+``modifier_reading`` arrived with FR 031's read-only commands; ``performed``
+and ``refit_blocker`` with FR 032's mutating ones. Each of those seven mirrors
+a shared fragment from the generated-code path that FR 033 deleted, name for
+name, which is why the names are what they are. FR 027 added three with no
+such ancestry: ``artifact_names``, the name rule ``preset_files`` used to hold
+alone, now shared with saved expressions; ``expression_divergence``, the one
+comparison of stack and face three commands report; and ``expression_panel``,
+how two commands reach MPFB's expressions-library UI module. FR 034 added the
+last three, which share one warrant - a summary and its detailed command are
+one implementation: ``macro_reading``, ``asset_info`` and ``target_rollup``,
+each the reading of one detailed command moved out so that
+``get_character_summary`` reports a subset of its answer without a second
+reading.
 
 ``performed``, ``artifact_names`` and ``expression_panel`` are the exceptions
 to the ``services`` rule above: none reads anything out of MPFB's services, so
 none takes a services dict. ``performed`` is one function over a dict the
 command has already finished building, ``artifact_names`` works on a name and a
-path, and ``expression_panel`` takes MPFB's root package name.
+path, and ``expression_panel`` takes MPFB's root package name. ``asset_info``
+bends the rule rather than breaking it: its functions take a ``Lookup`` built
+from ``services`` once per call, because it also reads four module-level names
+MPFB does not publish as services.
 """
 
 __all__ = ()

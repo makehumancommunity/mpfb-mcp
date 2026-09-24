@@ -219,6 +219,40 @@ answer, including the unfiltered one — which is the answer most likely to be m
 whole — and including an empty one, where the temptation to report "nothing found" is strongest
 and most wrong.
 
+## A summary is never a second opinion
+
+A summary tool answers several detailed tools' questions at once, and is only worth having if an
+agent can trust it as much as the tools it stands in for. `mpfb_get_character_summary`
+([FR 034](../feature-requests/done/034-character-summary/README.md)) is the one there is, and the
+contract it set applies to any other:
+
+- **Each section is a subset of one detailed tool's answer, under the same field names.** A caller
+  that learned `rigify_role` or `unexplained_face_units` from one tool reads it the same way in the
+  other, and the summary's description spends nothing explaining a field the detailed tool's
+  description already does.
+- **The two never disagree about one subject in one state.** An agent that reads "no rig" in the
+  summary and "rig `default`" from `mpfb_get_object_info` has been handed a contradiction it cannot
+  resolve, and will act on whichever it read last. This is made true by construction rather than
+  by testing: each section is read by the implementation its detailed tool uses, shared in the
+  bridge ([a summary and its detailed tool are one implementation](architecture.md#shared-modules-and-what-warrants-one)),
+  and a bridge test dispatches both and compares, to keep it true after the reason is forgotten.
+  It also rules out composing the summary by calling the other commands' handlers.
+- **It reports no fact a detailed tool does not.** It selects and it counts; it does not derive. A
+  finding that joins two sections — "the rig cannot be refitted *and* there are garments on it" —
+  would be the one part of the answer the caller could not check against another tool, so it is
+  left to the caller to join. Where a new fact was wanted (`macro_drift`), it was added to the
+  detailed tool too, so the rule still holds.
+- **It names the detailed tool behind each section, once, in its description** rather than in
+  every response, so a caller wanting more than the summary carries knows where to go.
+- **What it cuts, it says it cut**, per [how tools bound a large answer](#how-tools-bound-a-large-answer)
+  — and no more: a summary takes no filter, paging or `include_*` switch, since each would turn one
+  question into dozens and a caller wanting a slice has the detailed tool. The one cut in
+  `mpfb_get_character_summary` is the target rollup, which grows with a character; it keeps the
+  entries furthest from zero, **in the detailed tool's own order**, so a capped list is still a
+  sub-list of the whole, and reports the whole's size beside an always-present
+  `rollup_truncated`. `truncated` itself was not reused, because `mpfb_get_target_stack` already
+  uses that name for something else, and the first rule above forbids one name meaning two things.
+
 ## A tool may report a fact MPFB's own UI does not show
 
 Where a tool's answer can legitimately disagree with what the user sees in Blender, **the docstring

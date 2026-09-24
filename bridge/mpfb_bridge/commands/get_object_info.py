@@ -19,7 +19,7 @@ decisions there that look like oversights - three ``asset_info`` shapes, two
 entry shapes, ``rigify_role`` asked of typed objects, nothing selected in order
 to be inspected. It moved there so that ``get_character_summary`` reports a
 character's rig, assets and skin from the same walk
-([FR 034](../../../feature-requests/034-character-summary/README.md)). What is
+([FR 034](../../../feature-requests/done/034-character-summary/README.md)). What is
 left here is resolving the subject and the answer's shape, and one decision of
 this command's own:
 

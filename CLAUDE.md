@@ -59,7 +59,7 @@ fourteen and flipped the default; and
 had been carrying nothing since. What that path was is in
 [HISTORY.md](feature-requests/HISTORY.md) and nowhere else in this repository.
 
-**Thirty-one tools are implemented, and all thirty-one have been run against a
+**Thirty-two tools are implemented, and all thirty-two have been run against a
 real Blender.** [README.md](README.md) lists them by purpose;
 [HISTORY.md](feature-requests/HISTORY.md) tells the story of each effort, including what the live
 run found; [vision.md](specifications/vision.md#target-tool-catalog) says what is planned beyond
@@ -70,7 +70,7 @@ them; [NEXT_STEPS.md](feature-requests/NEXT_STEPS.md) is the active queue.
 [mpfb-integration.md](specifications/mpfb-integration.md#a-capability-that-depends-on-an-optional-asset-pack).
 
 The live verification is a **smoke run**: one call per tool with default arguments, one command,
-under 2 s for all thirty-one against a headless Blender. It lives in [verification/](verification/) —
+under 2 s for all thirty-two against a headless Blender. It lives in [verification/](verification/) —
 see [verification/README.md](verification/README.md). It writes **two** files outside the `.blend`,
 always the same two (a preset and a saved expression), and since FR 033 it also **leaves in the scene everything it builds**, because
 the bridge executes nothing on a harness's behalf and is not growing a command that would; that
@@ -133,7 +133,7 @@ To exercise a tool against real Blender: start Blender with MPFB and the MPFB Br
 installed and enabled, start the bridge's command server from its preferences panel (default
 `127.0.0.1:9877`), then run `mpfb-mcp` and call the tool from an MCP client. For a Blender with no
 window, `blender --background --command mpfb_bridge` is the other drive mechanism and takes
-`--port`. To confirm that all thirty-one still work rather than exercise one, use
+`--port`. To confirm that all thirty-two still work rather than exercise one, use
 [verification/](verification/README.md#running).
 
 Two further environment variables, both **off by default**, make a call visible
@@ -187,7 +187,7 @@ repository:
 | Path | What it is |
 |------|------------|
 | [bridge/mpfb_bridge/](bridge/mpfb_bridge) | The add-on. `command_server.py` is the socket, the framing and the dispatch, and imports no `bpy`; `commands/table.py` is the closed vocabulary and is the one file to read to know everything the add-on can be asked to do, with one module per command beside it; `validation.py` is what a command declares it takes; `mpfb_resolution.py` is the `sys.modules` scan; `stats.py` is what the panel paints; `ui.py`, `timer.py` and `cli.py` are the Blender-facing halves — `timer.py` drives the server in a windowed Blender and `cli.py` in a headless one. Operator ids are prefixed `mpfb_bridge.`, **never** `mpfb.` |
-| [bridge/mpfb_bridge/shared/](bridge/mpfb_bridge/shared) | **Ten modules, and none of them is a command.** A concept two or more commands model identically — the file-name rule, MPFB's asset section table, the modeling category scan, whether the expression stack explains the face. Nothing here is reachable from the wire, which is why `commands/table.py`'s claim survives a second directory beside it. MPFB arrives as a leading `services` parameter rather than being resolved at import, so a disabled-and-re-enabled MPFB cannot leave a stale dict behind; `target_categories.py` additionally takes a per-call `tables` record, because a scan taken at startup would be blind to a target installed since. `performed.py`, `artifact_names.py` and `expression_panel.py` take neither and read nothing out of MPFB's services ([rationale](specifications/architecture.md#shared-modules-and-what-warrants-one)) |
+| [bridge/mpfb_bridge/shared/](bridge/mpfb_bridge/shared) | **Thirteen modules, and none of them is a command.** A concept two or more commands model identically — the file-name rule, MPFB's asset section table, the modeling category scan, whether the expression stack explains the face, and — since FR 034 — the phenotype, asset and target-stack readings a summary shares with its detailed tools. Nothing here is reachable from the wire, which is why `commands/table.py`'s claim survives a second directory beside it. MPFB arrives as a leading `services` parameter rather than being resolved at import, so a disabled-and-re-enabled MPFB cannot leave a stale dict behind; `target_categories.py` additionally takes a per-call `tables` record, because a scan taken at startup would be blind to a target installed since; `asset_info.py` takes a per-call `Lookup` built from `services` instead. `performed.py`, `artifact_names.py` and `expression_panel.py` take neither and read nothing out of MPFB's services ([rationale](specifications/architecture.md#shared-modules-and-what-warrants-one)) |
 | [bridge/test/](bridge/test) | Its harness: pytest in a headless Blender, MPFB's arrangement. Not discovered by `unittest discover -s tests`, and must never be. It also produces a coverage report, through a `.coveragerc` here and an `a1_coverage.pth` that `run_to_install_pytest.py` writes into Blender's own site-packages. `tests/_fixtures.py` is what its command modules share: dispatch, the MPFB skip, a character, real rig/target/asset trees, target files that are real MPFB target data and an MHCLO a command can actually equip. `tests/ppp_mutating/` is a **prefixed directory** holding the sixteen commands that change a `.blend`, which is MPFB's way out of running short of letters |
 | `bridge/.pylintrc`, `bridge/pyrightconfig.json`, `bridge/requirements-dev.txt` | MPFB's, copied and retargeted. Where this repository's conventions and MPFB's disagree about add-on code, MPFB's win |
 
@@ -212,12 +212,12 @@ module imports it. If a change to shared code is needed to add an ordinary tool,
 drifted. A tool that answers without Blender at all touches two of the four: `mpfb_list_docs` has
 no command.
 
-### The thirty-one tools
+### The thirty-two tools
 
 Tool module, **bridge command** and test module all share a name: `mpfb_set_skin` is
 `tools/set_skin.py`, `bridge/mpfb_bridge/commands/set_skin.py` and `tests/test_set_skin.py`.
 **Two exceptions**, both deliberate: `mpfb_list_docs` has no command, because it never crosses the
-socket — so there are thirty commands for thirty-one tools; and `mpfb_get_status`'s command
+socket — so there are thirty-one commands for thirty-two tools; and `mpfb_get_status`'s command
 is `get_mpfb_status`, because `get_status` is the bridge's own state and two commands answering
 "status" about two different pieces of software is a collision that is cheap now and permanent
 later.
@@ -245,6 +245,7 @@ right one.
 | `mpfb_set_face_units` | Composes a face from ARKit units, batched like `mpfb_set_targets`. **The first tool gated on an optional asset pack** (`faceunits01`) rather than on MPFB itself; refuses up front when it is absent and reports `could_not_load` per unit when the pack's own install probe passed but a specific target file still had not shipped. `refit` defaults to **true**, unlike every other refitting tool and unlike the composer panel (FR 026 said it matched; FR 027 found it does not and kept the default on its merits). What it writes is transient, and **every answer says whether the expression stack still explains the face** (`matches_stack`) — the two-mechanism model is explained in this tool's description and nowhere else. |
 | `mpfb_list_expressions` | Catalogue of saved expressions, the files MPFB's expressions-library panel draws sliders from. `fragment` is the address. Reports what MPFB's own scan drops: `unreadable` files and **`shadowed`** ones — a user-data file hidden behind a same-named file in a higher-priority root, which MPFB's panel claims cannot happen. `refresh` is the pack probe only; the file scan is never cached. |
 | `mpfb_get_expression` | Reads the applied-expressions stack and answers what MPFB never does: **does the stack explain the face?** `matches_stack`/`unexplained_face_units` come from `shared/expression_divergence.py`, the one implementation all three expression-aware tools report through. Does not restate the 52 live values — that is `mpfb_get_face_units`. |
+| `mpfb_get_character_summary` | One character in one call: phenotype, rig, assets, skin, target rollup, face. **Never a second opinion** — each section is read by the shared module its detailed tool uses (`macro_reading.py`, `asset_info.py`, `target_rollup.py`, `expression_divergence.py`) and carries a subset of that tool's fields under the same names. Reports no fact a detailed tool does not; `macro_drift` was added to `mpfb_get_macro_details` so that stays true. The rollup is **capped** (25 modifiers, 8 asymmetries, largest kept, `rollup_truncated`) to keep the worst case under 8 KB. |
 | `mpfb_apply_expressions` | Changes the stack, batched, and lets MPFB rebuild the face — which **discards anything composed on top**; `discarded_face_units` names what the rebuild actually moved, measured on both sides of the write. `merge`/`replace`, weight 0.0 removes, `replace` with `[]` clears. Resolves every fragment first; refuses without `faceunits01` except for removals. Keeps MPFB's library panel in step by calling into its `useexpression` UI module (`panel_synced`). |
 | `mpfb_save_expression` | The second tool to write **outside the `.blend`**, and the only way a composed face crosses into the library: saves the live **shape keys** (not MPFB's stale composer sliders) as `<name>.json` in user data. Refuses a name a higher-priority root would shadow. Changes nothing on the character; `apply_with` is the `replace` call that makes the face durable. |
 | `mpfb_add_rig` | First consumer of a catalogue's identifiers. **Dispatches on the `custom.` prefix itself**, because MPFB's two adding functions are not interchangeable and neither miss reads as a mistake. Names every asset it just failed to rig. |
@@ -290,7 +291,7 @@ These are the specific local checks, and each exists because the alternative fai
 
 ## Tests
 
-Stdlib `unittest`, no pytest, 423 tests. **Two layers per tool that crosses the socket** — the
+Stdlib `unittest`, no pytest, 428 tests. **Two layers per tool that crosses the socket** — the
 wrapper with `send_command` mocked below the seam, and the bridge path against `fake_bridge`.
 Everything about what a tool *answers* is checked against a real MPFB in `bridge/test/`, which is
 [where a tool is tested](specifications/testing.md#a-tool-is-tested-where-it-runs). FR 033 deleted
@@ -322,6 +323,7 @@ one, and the list of what the suite can never establish.
 | [test_get_target_stack.py](tests/test_get_target_stack.py), [test_set_targets.py](tests/test_set_targets.py), [test_symmetrize_targets.py](tests/test_symmetrize_targets.py) | `mpfb_set_targets`' two different ranges and its rejection of an unknown key, and `mpfb_symmetrize_targets`' `direction` — the package's only required argument. The category walk and the write order are `bridge/test/tests/ppp_mutating/`'s. |
 | [test_get_face_units.py](tests/test_get_face_units.py), [test_set_face_units.py](tests/test_set_face_units.py) | Entry shape for `mpfb_set_face_units`, and that the ARKit vocabulary is deliberately *not* checked here — it is answered by the payload against MPFB's own `ARKIT_FACEUNITS`, per `bridge/test/tests/ppp_mutating/set_face_units_test.py`, which is also where the pack-absent refusal, the partial-install `could_not_load` case and the additive/`clear_first` semantics are checked against a real install carrying the `faceunits01` pack. |
 | [test_list_expressions.py](tests/test_list_expressions.py), [test_get_expression.py](tests/test_get_expression.py), [test_apply_expressions.py](tests/test_apply_expressions.py), [test_save_expression.py](tests/test_save_expression.py) | Entry shape and `mode` for `mpfb_apply_expressions`, a repeated fragment refused locally, and that the fragment vocabulary is *not* checked here; the name rule for `mpfb_save_expression` over the preset tests' table, and each metadata argument's type. Everything the four answer is `bridge/test/`'s: `sss_list_expressions_test.py`, `ttt_get_expression_test.py`, and in `ppp_mutating/` the two command modules plus `expression_divergence_test.py`, which asks all three divergence users about one character and runs the compose-save-apply round trip. |
+| [test_get_character_summary.py](tests/test_get_character_summary.py) | Only the one argument's shape and what reaches the wire, which is right. The claim the tool exists for — every shared field equals its detailed command's answer — is `bridge/test/tests/uuu_get_character_summary_test.py`'s, by dispatching both. |
 | [test_add_rig.py](tests/test_add_rig.py), [test_generate_rigify_rig.py](tests/test_generate_rigify_rig.py) | That the rig identifier vocabulary is deliberately *not* checked here, and that `meta_rig_action` is — one of the two vocabularies that earn a local check, since MPFB silently falls back to `"hide"`. |
 | [test_add_asset.py](tests/test_add_asset.py), [test_remove_asset.py](tests/test_remove_asset.py) | That `asset_type` is required and that exactly one of `path`/`fragment` is allowed, both refused before anything is sent. |
 | [test_set_skin.py](tests/test_set_skin.py), [test_set_asset_material.py](tests/test_set_asset_material.py), [test_list_asset_materials.py](tests/test_list_asset_materials.py) | `skin_type` is the other locally checked vocabulary, and this is where the defaulting that follows MPFB's settings panel rather than the function signature is pinned. |

@@ -13,7 +13,7 @@ views of one snapshot this answer carries - ``targets``, one entry per shape
 key, and ``modifiers``, the categories MPFB's sliders manipulate. It moved
 there so that ``get_character_summary`` reports this command's rollup for its
 default arguments without a second reading
-([FR 034](../../../feature-requests/034-character-summary/README.md)).
+([FR 034](../../../feature-requests/done/034-character-summary/README.md)).
 
 The asymmetry between the two views looks like an oversight and is a decision:
 ``targets`` is filtered, paged and capped while ``modifiers`` is none of those.

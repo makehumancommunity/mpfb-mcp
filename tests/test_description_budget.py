@@ -4,7 +4,7 @@
 The preloaded tool surface, measured and capped.
 
 An MCP client downloads every tool's description and parameter schema before
-any work happens, so the thirty-one docstrings in ``src/mpfbmcp/tools/`` are a
+any work happens, so the thirty-two docstrings in ``src/mpfbmcp/tools/`` are a
 call-time cost paid by every session whether or not a tool is used.
 [FR 013](../feature-requests/done/013-live-verification/review.md) measured it
 for the first time and found 66.7 KB of descriptions against an estimate of
@@ -102,7 +102,7 @@ import mpfbmcp
 # what the five cost, and the paragraph of headroom stays a paragraph.
 #
 # Raised from 68,300 to 69,600 by
-# [FR 034](../feature-requests/034-character-summary/README.md), which added
+# [FR 034](../feature-requests/done/034-character-summary/README.md), which added
 # `mpfb_get_character_summary` - 1,315 B against a 2,160 B per-tool average -
 # and grew `mpfb_get_macro_details` by one line for `macro_drift`. The summary
 # is under the average because it restates no field: its description names the

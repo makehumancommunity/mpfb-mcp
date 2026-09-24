@@ -22,10 +22,10 @@ and ``set_face_units``, which says whether what it just composed is now at risk
 - and they must give **the same answer**, since a disagreement between them
 would look like a bug in neither. That is the bar
 [shared modules, and what warrants one](../../../specifications/architecture.md#shared-modules-and-what-warrants-one)
-sets. ``mpfb_get_character_summary``
-([FR 034](../../../feature-requests/034-character-summary/README.md)) is meant
-to read through :func:`stack_rows` and :func:`divergence` rather than grow a
-fourth copy.
+sets. ``get_character_summary``
+([FR 034](../../../feature-requests/done/034-character-summary/README.md)) is a
+fourth user: it reports a subset of :func:`divergence`'s answer rather than
+growing a copy of it.
 
 **What "unexplained" means, precisely.** A unit is unexplained when its live
 value differs from what a rebuild of the stack *would write now* - the

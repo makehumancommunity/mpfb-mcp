@@ -29,7 +29,7 @@ names:
 **So it reports no fact a detailed command does not.** It selects and it
 counts; it does not derive. A finding that joined two sections - "the rig
 cannot be refitted *and* there are garments on it" - was considered and left
-out ([FR 034](../../../feature-requests/034-character-summary/README.md)): it
+out ([FR 034](../../../feature-requests/done/034-character-summary/README.md)): it
 would be the one part of the answer the caller could not confirm with another
 tool. And it is **never composed by calling the other commands' handlers**,
 which would make its shape the union of five answers it then pruned, couple it

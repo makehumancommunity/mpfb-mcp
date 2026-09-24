@@ -20,7 +20,7 @@ decisions a reimplementation would undo - nothing is recalculated, the macro
 shape keys are read undecoded, the values come through ``TargetService`` - and
 with the basemesh resolution, because ``get_character_summary`` reports a
 subset of this answer and promises to resolve its subject exactly as this does
-([FR 034](../../../feature-requests/034-character-summary/README.md)). What is
+([FR 034](../../../feature-requests/done/034-character-summary/README.md)). What is
 left here is the answer's shape and its message.
 
 ``macro_drift`` is the one field that answers the comparison

@@ -174,25 +174,20 @@ answer changes.
 
 | Area | An agent must be able to | Today |
 |---|---|---|
-| **Introspection** | ask what is already there, and what state it is in, before acting — always cheaply, and always getting an answer rather than an error | 7 tools |
+| **Introspection** | ask what is already there, and what state it is in, before acting — always cheaply, and always getting an answer rather than an error | 8 tools |
 | **Catalogues** | learn what *could* be added, each entry named exactly as the acting tool will want it | 5 tools |
 | **Creation and modification** | build a character and change it: phenotype, detail morphs, rig, garments, materials, face — and undo a mistake; and **keep** it, as a preset that outlives the session and a face as an expression the library can apply | 17 tools |
 | **Documentation** | answer "how does MPFB do X" without the client shipping its own copy of the manual | 2 tools |
 
-[README.md](../README.md) lists the thirty-one that exist, grouped this way;
-[CLAUDE.md](../CLAUDE.md#the-thirty-one-tools) gives one line each and points at the module
-docstring that explains it. **Thirty-one tools become thirty bridge commands**, one for
+[README.md](../README.md) lists the thirty-two that exist, grouped this way;
+[CLAUDE.md](../CLAUDE.md#the-thirty-two-tools) gives one line each and points at the module
+docstring that explains it. **Thirty-two tools become thirty-one bridge commands**, one for
 one except `mpfb_list_docs`, as the migration proceeds — the count above is the count the bridge
 is aiming at, and a migration that changed it would be changing the product rather than the
 transport.
 
 **What is still missing**, and why each is worth having:
 
-- `mpfb_get_character_summary` — macro details, equipped assets, rig, skin and active targets for
-  one character in a single answer, scoped as
-  [FR 034](../feature-requests/034-character-summary/README.md). Today that is five calls, which is five round trips to establish
-  what an agent needs before almost any modification. Its macro half must be produced by calling
-  the same read `mpfb_get_macro_details` uses, not by a second implementation that can diverge.
 - `mpfb_search_docs` — ranked search over MPFB documentation *bundled with the client*, mirroring
   how blmcp exposes Blender's RST reference. Likely sourced from `../../makehuman-static-website`.
   [FR 024](../feature-requests/done/024-documentation-urls/README.md) took the small half of this

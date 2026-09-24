@@ -25,7 +25,7 @@ so they sum to 0.99 and **every** default character trips this command's
 ``test_mpfbs_own_default_character_is_not_race_normalized``, which records it
 rather than repairing it.
 
-``macro_drift`` ([FR 034](../../../feature-requests/034-character-summary/README.md))
+``macro_drift`` ([FR 034](../../../feature-requests/done/034-character-summary/README.md))
 is checked in both directions, since a comparison is only worth reporting if it
 fires on neither too much nor too little: false on a character MPFB just built,
 including one built at the sliders' extremes, where zero-weight targets are the

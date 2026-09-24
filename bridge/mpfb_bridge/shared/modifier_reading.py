@@ -23,9 +23,10 @@ from the other; ``symmetrize_targets`` reads it on both sides to decide what to
 copy, and reads it again afterwards to report what the destination became. A
 disagreement between the two would not look like a bug in either: it would look
 like a character that is symmetric in one command and asymmetric in the other,
-and the caller would have no way to tell which one to believe. **Only the first
-of those two has migrated**, which is exactly the situation the drift check
-exists for.
+and the caller would have no way to tell which one to believe.
+``get_target_stack`` reaches it through
+[`target_rollup`](target_rollup.py) since FR 034, which is also how
+``get_character_summary`` reports the same numbers.
 
 **The lookup is the parameter, because the two differ in what they may read
 from.** ``get_target_stack`` changes nothing, so it reads ``key_blocks`` once

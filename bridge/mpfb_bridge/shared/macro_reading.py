@@ -35,7 +35,7 @@ three of them are the ones a reimplementation would undo:
   accessor for.
 
 **``macro_drift`` is the one comparison made here rather than left to the
-caller** ([FR 034](../../../feature-requests/034-character-summary/README.md)).
+caller** ([FR 034](../../../feature-requests/done/034-character-summary/README.md)).
 It is true when the macro shape keys on the mesh are not the ones the current
 values imply: a different set of names, or a shape key whose value is not the
 weight the stack gives it. The second half matters more than it looks. Moving

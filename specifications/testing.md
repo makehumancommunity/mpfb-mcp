@@ -98,6 +98,27 @@ Exhaustively proving one feature against a live Blender is worth doing **once**,
 making the claim. It is not worth re-proving on every code change, and keeping the proof around
 forever is what turns a good idea into an unbounded directory.
 
+### Two patterns for a claim about more than one command
+
+[FR 034](../feature-requests/done/034-character-summary/README.md) moved the reading code of three
+commands into shared modules and added a fourth command that reports a subset of all three. Two
+claims came with it that no single command's tests can make, and each has a way of being checked
+worth reusing:
+
+- **"Two commands agree" is tested by dispatching both.** For one subject in one state, dispatch
+  the summary and each detailed command and assert every shared field equal
+  (`bridge/test/tests/uuu_get_character_summary_test.py`; FR 027's
+  `ppp_mutating/expression_divergence_test.py` is the same shape for three commands). A copy of a
+  reading grown inside one command passes that command's own tests; only asking both catches it.
+  When the fixtures cannot make every section interesting at once, ask in each state that makes
+  one interesting, rather than weakening the comparison.
+- **"This refactor changes no answer" is tested by a snapshot diff.** The request's live check
+  took a `--snapshot` of every affected command's answer — on its worst-case character, under
+  several argument sets, including the misses — to one JSON file with sorted keys, before the
+  first move and after each one. A `diff` of two snapshots is empty or names exactly the intended
+  change, which is a sharper instrument than the bridge tests, since those assert what someone
+  thought to assert. It lives in the request's own subdir and moves to `done/` with it.
+
 ## Two harnesses, split at the directory boundary
 
 [FR 028](../feature-requests/done/028-pivot-to-specific-addon/README.md) added a second test harness
