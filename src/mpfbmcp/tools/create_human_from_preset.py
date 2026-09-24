@@ -109,8 +109,8 @@ def register(mcp: FastMCP) -> None:
         material_instances_policy: str | None = None,
     ) -> dict[str, object]:
         """
-        Build a **new** character from a saved MPFB preset: phenotype, detail
-        morphs, rig, body parts, garments, skin and eye materials. It **adds**
+        Build a **new** character from a saved MPFB preset: phenotype,
+        modeling targets, rig, body parts, garments, skin and eye materials. It **adds**
         a character and changes nothing already in the scene - this is not
         "load into the current character". Seconds, not milliseconds: it
         imports and fits every asset the preset names.

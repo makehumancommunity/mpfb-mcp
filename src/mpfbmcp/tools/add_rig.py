@@ -72,7 +72,7 @@ def register(mcp: FastMCP) -> None:
         **Rig the character before dressing it.** MPFB rigs a garment only if a
         rig is present when the garment is attached, and nothing rigs it
         retroactively. This tool does not refuse to rig a dressed character -
-        decorative clothes are legitimate - but `mesh_assets_not_rigged` names
+        decorative garments are legitimate - but `mesh_assets_not_rigged` names
         every asset it just failed to rig, and a non-empty list is a mistake
         unless you meant it.
 
@@ -88,7 +88,7 @@ def register(mcp: FastMCP) -> None:
         the armature but not deformed by it.
 
         **A `rigify.*` identifier produces a meta rig, not a finished rig.**
-        `is_metarig: true` comes back with a `next_step`: attach the clothes
+        `is_metarig: true` comes back with a `next_step`: attach the garments
         first, then call `mpfb_generate_rigify_rig`. A meta rig deforms nothing
         on its own.
 

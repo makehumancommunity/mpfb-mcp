@@ -140,7 +140,7 @@ def register(mcp: FastMCP) -> None:
         **The face is rebuilt from the stack**, so units composed on top of it
         with `mpfb_set_face_units` are discarded and named in
         `discarded_face_units` - call `mpfb_save_expression` first to keep them.
-        `refit` (default true, as MPFB's library panel) refits clothes and rig.
+        `refit` (default true, as MPFB's library panel) refits the mesh assets and the rig.
 
         `result` carries `changed` (the stack or the face moved), `requested`
         (per row: `action` of added / updated /

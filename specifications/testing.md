@@ -351,7 +351,7 @@ now answered in `bridge/test/`, and each is named here with where:
   equipped through `mpfb_add_asset` matches one from the asset library panel, or that a rig
   added through `mpfb_add_rig` matches one from the rig panel — the three
   `ddd_mutating/` modules of those names do the modification for real.
-- **No stub has geometry.** Nothing establishes that rigging after dressing leaves the clothes
+- **No stub has geometry.** Nothing establishes that rigging after dressing leaves the garments
   unrigged — the claim
   [A tool reports an ordering constraint it cannot enforce](mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce)
   rests on. `ddd_mutating/add_rig_test.py` puts a real relative on a real character and reads the

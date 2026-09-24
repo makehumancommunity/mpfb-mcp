@@ -82,7 +82,7 @@ def register(mcp: FastMCP) -> None:
         Rigify rig - the second step of the two `mpfb_add_rig` starts when
         given a `rigify.*` identifier.
 
-        **Attach the character's clothes and other mesh assets before calling
+        **Attach the character's garments and other mesh assets before calling
         this.** Generation re-parents and re-weights whatever is on the
         character at the moment it runs, and nothing handles an asset added
         afterwards. `mesh_assets_present` reports what was there.
@@ -99,7 +99,7 @@ def register(mcp: FastMCP) -> None:
         **Prefer `"hide"`.** Deleting the meta rig makes the character
         permanently unrefittable: `mpfb_refit_human` can only refit a generated
         Rigify rig through its meta rig, and with none in the scene it refits
-        the clothes, leaves the rig behind and says nothing.
+        the mesh assets, leaves the rig behind and says nothing.
         `refit_will_be_possible` reports this either way.
 
         **This tool is not undoable and cannot restore your selection.**

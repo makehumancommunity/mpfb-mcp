@@ -49,7 +49,7 @@ def _validated_direction(direction: object) -> str:
 def register(mcp: FastMCP) -> None:
     @mcp.tool(
         annotations=ToolAnnotations(
-            title="Symmetrize Detail Targets",
+            title="Symmetrize Modeling Targets",
             readOnlyHint=False,
             # Overwrites values the user may have set deliberately, and pruning
             # deletes shape keys. The most destructive tool in this package.
@@ -65,7 +65,7 @@ def register(mcp: FastMCP) -> None:
                                 prune: bool = True,
                                 refit: bool = False) -> dict[str, object]:
         """
-        Make a MakeHuman character's detail targets left/right symmetric, by
+        Make a MakeHuman character's modeling targets left/right symmetric, by
         copying one side's modeling onto the other.
 
         **MPFB itself cannot do this.** Its `symmetry` setting only mirrors
@@ -90,7 +90,7 @@ def register(mcp: FastMCP) -> None:
 
         `prune` (default true, MPFB's own) deletes a target's shape key once
         its value reaches zero. `refit` (default false, MPFB's own) re-fits
-        clothes and the rig afterwards; read `assets_possibly_stale` and call
+        the mesh assets and the rig afterwards; read `assets_possibly_stale` and call
         `mpfb_refit_human` when the modeling is done.
 
         `result` carries `changes` - per category, both sides' values before,

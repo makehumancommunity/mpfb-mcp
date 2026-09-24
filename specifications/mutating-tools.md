@@ -194,7 +194,7 @@ afterwards — `HumanService.refit()` deliberately passes `set_parent=False`. Ri
 come after the mesh assets, because `RigifyHelpers.adjust_children_for_rigify()` handles exactly
 what is on the character when it runs. MPFB's own character builder documents both in comments, and
 its randomizer follows them; nothing enforces them. An agent that dresses a character and then rigs
-it gets clothes that do not follow the armature, and finds out when someone moves a bone.
+it gets garments that do not follow the armature, and finds out when someone moves a bone.
 
 No single call can validate a sequence. But a tool can often *observe* that the caller is about to
 break one, and where it can, **it reports the observation in its response, naming the objects
@@ -219,7 +219,7 @@ affected** — rather than either failing or staying silent.
   is that same fact, knowable in advance.
 - **Splitting a tool can be what makes the order expressible.** Rigify generation is a tool of its
   own rather than a flag on `mpfb_add_rig` precisely because the correct order — meta rig, then
-  clothes, then generate — cannot be written as a single call.
+  garments, then generate — cannot be written as a single call.
 
 ## A tool whose effect is outside the `.blend` owes more
 

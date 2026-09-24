@@ -147,7 +147,7 @@ def register(mcp: FastMCP) -> None:
         nothing else"; `removed_by_replace` names what it zeroed.
 
         `refit` (default **true**, unlike every other refitting tool here:
-        composing is normally one call) re-fits clothes and the rig afterwards.
+        composing is normally one call) re-fits the mesh assets and the rig afterwards.
 
         **A composed face is transient.** MPFB has two mechanisms over one set
         of shape keys: this tool writes them directly, while saved expressions

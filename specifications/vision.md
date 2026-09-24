@@ -27,7 +27,7 @@ other MCP clients) as a normal set of MCP tools, **without requiring any change 
 **"Available" is a low bar; the goal is *efficiently* available.** An agent driving MPFB through
 a generic code-execution tool can already do anything — it would have to read MPFB's source to
 know what to call, guess which of two similarly named functions is the right one, and discover
-by failure that a rig must be added before the clothes. Every tool here exists to remove one of
+by failure that a rig must be added before the garments. Every tool here exists to remove one of
 those, so that a correct MakeHuman character is the *cheap* outcome rather than the lucky one.
 The measure of the project is not how much of MPFB is reachable but how few round trips, and how
 little source-reading, a competent agent needs to get a character right.
@@ -152,7 +152,7 @@ with which of MPFB's several defaults. These are the tests a candidate tool has 
   facts a human reads off the screen have to be in the response — which sides of a face disagree,
   which garments were attached while there was no rig, what a refit has just invalidated.
 - **Splitting a tool can be what makes an order expressible.** Rigify generation is its own tool
-  rather than a flag, because "meta rig, then clothes, then generate" cannot be written as one
+  rather than a flag, because "meta rig, then garments, then generate" cannot be written as one
   call. See
   [A tool reports an ordering constraint it cannot enforce](mutating-tools.md#a-tool-reports-an-ordering-constraint-it-cannot-enforce).
 
@@ -176,7 +176,7 @@ answer changes.
 |---|---|---|
 | **Introspection** | ask what is already there, and what state it is in, before acting — always cheaply, and always getting an answer rather than an error | 8 tools |
 | **Catalogues** | learn what *could* be added, each entry named exactly as the acting tool will want it | 5 tools |
-| **Creation and modification** | build a character and change it: phenotype, detail morphs, rig, garments, materials, face — and undo a mistake; and **keep** it, as a preset that outlives the session and a face as an expression the library can apply | 17 tools |
+| **Creation and modification** | build a character and change it: phenotype, modeling targets, rig, garments, materials, face — and undo a mistake; and **keep** it, as a preset that outlives the session and a face as an expression the library can apply | 17 tools |
 | **Documentation** | answer "how does MPFB do X" without the client shipping its own copy of the manual | 2 tools |
 
 [README.md](../README.md) lists the thirty-two that exist, grouped this way;

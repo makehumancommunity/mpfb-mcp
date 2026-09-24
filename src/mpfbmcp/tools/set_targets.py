@@ -1,5 +1,5 @@
 """
-The ``mpfb_set_targets`` tool: change a character's detail targets, in batches.
+The ``mpfb_set_targets`` tool: change a character's modeling targets, in batches.
 
 The tool ``mpfb_list_targets`` was built for. It works at two levels, because
 MPFB does. A modeling *slider* is a ``target.json`` **category**: a modifier
@@ -133,7 +133,7 @@ def _validated_targets(value: object) -> list[dict]:
 def register(mcp: FastMCP) -> None:
     @mcp.tool(
         annotations=ToolAnnotations(
-            title="Set Detail Targets",
+            title="Set Modeling Targets",
             readOnlyHint=False,
             # Pruning deletes shape keys, including ones the caller did not name.
             destructiveHint=True,
@@ -148,8 +148,8 @@ def register(mcp: FastMCP) -> None:
                          prune: bool = True,
                          refit: bool = False) -> dict[str, object]:
         """
-        Change a MakeHuman character's detail targets - one modeling slider,
-        one raw target, or fifty of them in a single call.
+        Change a MakeHuman character's modeling targets - one modifier (a
+        per-category slider), one raw target, or fifty of them in one call.
 
         **Send the whole change as one call.** A round trip costs about half a
         second and the work inside costs milliseconds.
@@ -186,7 +186,7 @@ def register(mcp: FastMCP) -> None:
         `symmetry` (default false, MPFB's own) also applies a sided change to
         the other side, so one entry touches up to four shape keys. `prune`
         (default true, MPFB's own) deletes a target's shape key once its value
-        reaches zero. `refit` (default false, MPFB's own) re-fits clothes and
+        reaches zero. `refit` (default false, MPFB's own) re-fits the mesh assets and
         the rig afterwards; leave it false, read `assets_possibly_stale`, and
         call `mpfb_refit_human` once when the modeling is done.
 

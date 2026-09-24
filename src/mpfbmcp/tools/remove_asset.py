@@ -43,13 +43,13 @@ def register(mcp: FastMCP) -> None:
     )
     def mpfb_remove_asset(name: str) -> dict[str, object]:
         """
-        Take one MHCLO asset - a garment, a body part or a topology proxy - off
+        Take one mesh asset - a garment, a body part or the body proxy - off
         a MakeHuman character and clean up after it, the way MPFB's own
         "unload" does.
 
         **Use this rather than deleting the object.** MPFB hides the body under
         a garment with a mask modifier on the basemesh (and on the body proxy,
-        for clothes), and a garment may have brought a sub-rig of its own.
+        for garments), and a garment may have brought a sub-rig of its own.
         Deleting the object with a generic Blender tool leaves both behind, and
         the character keeps a hole in it with nothing visible to explain it.
 

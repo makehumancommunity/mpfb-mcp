@@ -113,8 +113,8 @@ def register(mcp: FastMCP) -> None:
 
         `prune` (default true, MPFB's own) deletes macro shape keys whose
         weight falls to zero, keeping the shape key list from growing as
-        sliders move. `refit` (default false, MPFB's own) re-fits clothes and
-        the rig to the new body shape. **The default is false because a refit
+        sliders move. `refit` (default false, MPFB's own) re-fits the mesh
+        assets and the rig to the new body shape. **The default is false because a refit
         is expensive, not because it is unnecessary**: leave it false, read
         `assets_possibly_stale`, and call `mpfb_refit_human` once after a
         series of changes rather than paying for a refit per slider.

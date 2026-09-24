@@ -3,7 +3,7 @@ The ``mpfb_get_target_stack`` tool: what is actually shaping this character.
 
 The read half of the detail-target pair completed by ``mpfb_set_targets``, and
 the counterpart of ``mpfb_get_macro_details`` one level down: that one reads the
-eleven phenotype numbers, this one reads the individual morphs stacked on top of
+eleven phenotype numbers, this one reads the modeling targets stacked on top of
 them.
 
 The answer carries two views of the same facts, because the two levels are

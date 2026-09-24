@@ -317,3 +317,108 @@ takes them all, requires exactly one, and reports which one resolved and to what
   Taking the path would make the tool accept something it cannot store faithfully. The resolution
   is still reported (`resolved_path` beside `listed_path`, per row), for the reason the clause
   above gives.
+
+## The glossary
+
+**One concept has one spelling across every tool, and one spelling means one concept.** The caller
+is a language model that generalizes one tool's names to the next, and none of the divergences
+this section removes failed when it generalized wrongly: a misspelled argument used to be dropped
+silently, and a key read under another tool's name comes back `None`.
+[FR 037](../feature-requests/037-one-word-per-concept/README.md) took a census of every argument,
+answer key, refusal slug and backticked description term and renamed what diverged; this is what
+it settled, and each exception below is listed with its reason so that the next census confirms it
+rather than reopening it.
+
+The mechanical part is checked by `tests/test_vocabulary.py`: every tool refuses an undeclared
+argument (see [above](#validate-before-crossing-the-socket)), `arguments.RETIRED_ARGUMENTS` is
+coherent with what each tool declares, and no argument name carries two JSON types. Answer keys are
+built bridge-side as dicts, and a permanent check over that source would also match internal
+dictionaries, so they were checked by the FR's own `census.py --check` instead.
+
+### Arguments and answer keys
+
+| Concept | Spelling | Not |
+|---|---|---|
+| The object a tool operates on | `name` — always a Blender object name, and optional wherever the active object will do | a file's name |
+| A file-backed artifact the tool reads or writes by name | `<artifact>_name`: `preset_name`, `expression_name` | `name` |
+| An object that does not exist yet | `generated_rig_name`, a basename the answer's `rig_object_name` reports the outcome of | `rig_name` |
+| An object named in an answer | `<role>_name`: `basemesh_name`, `metarig_name`, `bodyproxy_name`, `subject_name` | `object_name` |
+| …when the role also has a catalogue name | `<role>_object_name`: `rig_object_name`, `asset_object_name`, `subrig_object_name` | `rig_name` |
+| An object inside a record *of* objects | `name` (`list_objects`, `related_objects`, `equipped_assets`) | `object_name` |
+| An object inside a record *about something on* it | `object_name` (`materials_destroyed`, `vertex_groups_left_behind`) | |
+| How the subject was resolved | `subject_resolved_by: "active" \| "name"` | `resolved_from` |
+| How a file path was found | `path_resolved_by`, beside `resolved_path` | a bare `resolved_by` |
+| The subject could not be resolved | `blocked_by: "subject_not_found"` | `not_found` |
+| A tool's success | its verb beside `performed` ([mutating-tools.md](mutating-tools.md#the-flag-a-caller-branches-on-is-called-performed)) | |
+| A batch tool's per-entry writes | `changes`, with `change_count` | `applied`, `changed` — both are other tools' verbs |
+| What MPFB identified an object as | `<thing>_identified_as`: `rig_identified_as`, `material_identified_as` | `rig_type`, `material_type` |
+| MPFB's type string for an object | `object_type`, wherever it is passed or reported | `asset_type` |
+| A value before and after, in a per-entry record | `previous_value` / `new_value` | `previous` / `new` |
+| A whole field before and after | `<field>_before` / `<field>_after` | `previous_<field>`, `current_<field>` |
+| Adding to what is there, or making it exactly this | `mode: "merge" \| "replace"`, and what a replace dropped is `removed_by_replace` | `clear_first` |
+| The echo of an argument `X` | `requested_X`, `X_recognized`, `known_Xs` — `X` the argument's own name | a shortened `X` |
+| What a shape key holds, a face unit included | `value` | `weight` |
+| A multiplier over a whole expression | `weight`, on an expression row | |
+| The object names of a character's mesh assets | `mesh_assets`, qualified by moment or subset (`mesh_assets_present`, `mesh_assets_not_rigged`) | |
+| One record per mesh asset on a character | `equipped_assets` | `assets`, which is `mpfb_list_assets`' catalogue |
+
+Where MPFB's own spelling disagrees with a row here, the row wins;
+[mpfb-integration.md](mpfb-integration.md#where-mpfbs-spelling-disagrees-with-the-glossary-the-glossary-wins)
+says why, and which of MPFB's spellings are kept.
+
+### Words in descriptions and specifications
+
+- **subject**: what the caller named, or the active object when they named nothing.
+- **character**: the family of objects a subject belongs to. "Human" survives in tool names, which
+  are not renamed, and in MPFB's `is_human_project`.
+- **basemesh**: the body object at the root of a character.
+- **phenotype**: the eleven sliders — gender, age, muscle, weight, height, proportions, cup size,
+  firmness and the three race weights — that MPFB calls **macro details**, which is why the tools
+  that read and write them are `mpfb_get_macro_details` and `mpfb_set_macro_details` and the key is
+  `macro_details`.
+- **modeling targets**: everything below the phenotype that shapes the body. A **target** is one
+  morph, a `.target` file and the shape key it becomes; a **modifier** is a per-category slider
+  that drives one target or a pair of opposites. These are `mpfb_set_targets`' two arguments. Not
+  "detail targets" or "detail morphs": "detail" collides with macro details.
+- **mesh asset**: anything equipped on a character from an MHCLO file, which is one of three kinds:
+  a **garment** (MPFB's `Clothes` type), a **body part** (eyes, eyebrows, eyelashes, hair, teeth,
+  tongue) or the **body proxy** (`Proxymeshes`). "Clothes" appears only where MPFB's own word is
+  quoted: the type, `load_clothes`, and `override_clothes_material_type`, whose MPFB setting covers
+  every body part but the eyes as well as garments.
+
+### Kept on purpose
+
+Each of these looks like a divergence and is not:
+
+- **`refresh`** always means "bypass a cache this tool reads"; which cache, and what it costs, is
+  per tool and is said in each description.
+- **`path` / `fragment` / `identifier`** are different identifiers for different things
+  ([above](#how-tools-name-things-that-can-be-added)).
+- **`shapekey_name` beside `name`** in the target tools, because the two differ above 60 characters.
+- **`refit` defaulting to true** in `mpfb_set_face_units` and `mpfb_apply_expressions`, where
+  composing is normally one call.
+- **`weight` as a macro slider** in `mpfb_create_human` and `mpfb_set_macro_details`: it is one of
+  MPFB's eleven names, and a number input like the other ten.
+- **`macro_target_stack[].weight`** in `mpfb_get_macro_details`: what MPFB *computed* a macro
+  target's shape key should hold, which `macro_drift` compares with the value read off the key. One
+  name for both would hide which side a number came from.
+- **`previous_weight`** beside an expression row's `weight`: the per-entry before-and-after form,
+  with the field's own name.
+- **`source_value`, `destination_value_before` / `_after`** in `mpfb_symmetrize_targets`: an entry
+  has two sides, and the side is part of the name.
+- **`live`, `from_stack`, `now`** in `discarded_face_units`: one face unit read three times, named
+  by where each reading came from.
+- **`loaded_from`** (a path, per target) and **`loaded_from_disk`** (the face units that had to be
+  loaded): two concepts with two shapes.
+- **`requested`** in `mpfb_apply_expressions` (per-entry outcomes) and in the preset tool's
+  `overrides` records (a value): both are what the caller asked for.
+- **`requested_name`** in `mpfb_remove_asset`: the echo of a required asset `name`, which is never
+  the active object and so is not a `subject_name`.
+- **`kind`** in `equipped_assets` records: the preset file's own keys, not MPFB's object types.
+- **`allowed_material_types`** in `mpfb_add_asset`: the subset for this asset's type, not the whole
+  vocabulary a `known_` key would list.
+- **`settings_used`** and **`contents`**: MPFB's own dicts, reported in MPFB's spelling.
+- **`<x>_reason`** keys, and a bare `reason` inside a per-entry record, which always means "why this
+  entry was not done".
+- **Tool names.** A renamed tool breaks every client configuration and saved transcript, which a
+  renamed key does not.

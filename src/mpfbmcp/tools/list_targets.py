@@ -63,8 +63,8 @@ def register(mcp: FastMCP) -> None:
         report each under the name that setting it will require. Changes
         nothing.
 
-        Macro details and phenotype (gender, age, weight, muscle, height,
-        proportions) are **not** here: they are attributes on the basemesh
+        The phenotype (gender, age, weight, muscle, height, proportions) is
+        **not** here: they are attributes on the basemesh
         rather than target files, and are `mpfb_get_macro_details` /
         `mpfb_set_macro_details` territory.
 

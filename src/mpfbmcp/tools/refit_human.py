@@ -48,8 +48,8 @@ def register(mcp: FastMCP) -> None:
     def mpfb_refit_human(name: str | None = None) -> dict[str, object]:
         """
         Re-fit everything on a MakeHuman character to the current shape of its
-        basemesh: every garment, proxy and other mesh asset, the rig, and any
-        sub-rigs.
+        basemesh: every mesh asset (garments, body parts, the body proxy), the
+        rig, and any sub-rigs.
 
         Call this after changing a character's shape with
         `mpfb_set_macro_details`, `mpfb_set_targets` or

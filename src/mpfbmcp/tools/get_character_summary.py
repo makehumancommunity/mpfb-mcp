@@ -2,7 +2,7 @@
 The ``mpfb_get_character_summary`` tool: one character, one answer.
 
 What an agent needs to know before it changes a character - phenotype, rig,
-equipped assets, skin, detail morphs, face - in one call rather than the five or
+equipped assets, skin, modeling targets, face - in one call rather than the five or
 six it replaces, and small enough to read every time.
 
 **It is never a second opinion.** Each section is read inside Blender by the
@@ -57,7 +57,7 @@ def register(mcp: FastMCP) -> None:
           - `rig` - `mpfb_get_object_info` on the rig; `null` when there is
             none. `rigify_role` says whether it is a meta rig or generated.
           - `equipped_assets` - `mpfb_get_object_info`'s related objects: every
-            equipped garment, body part and proxy, by type then name. Not
+            equipped garment, body part and body proxy, by type then name. Not
             capped.
           - `skin` - `mpfb_get_object_info` on the basemesh.
           - `targets` - `mpfb_get_target_stack` with its defaults: the

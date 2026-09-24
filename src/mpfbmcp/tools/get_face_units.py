@@ -2,7 +2,7 @@
 The ``mpfb_get_face_units`` tool: what a character's face is doing right now.
 
 The read half of the face-unit pair completed by ``mpfb_set_face_units``. A
-character these twenty-five other tools build has a phenotype, detail morphs,
+character these twenty-five other tools build has a phenotype, modeling targets,
 a rig, garments and a skin - and, until this pair, one fixed neutral
 expression, because the ``!ex-`` shape keys that drive an ARKit face were the
 one part of MPFB's modelling surface no tool reached.

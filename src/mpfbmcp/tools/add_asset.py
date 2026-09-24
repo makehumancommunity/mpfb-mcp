@@ -109,8 +109,9 @@ def register(mcp: FastMCP) -> None:
         import_weights: bool = True,
     ) -> dict[str, object]:
         """
-        Equip a MakeHuman character with one MHCLO asset - clothes, hair, eyes,
-        eyebrows, eyelashes, teeth, tongue or a topology proxy.
+        Equip a MakeHuman character with one mesh asset from an MHCLO - a
+        garment, a body part (hair, eyes, eyebrows, eyelashes, teeth, tongue)
+        or the body proxy.
 
         **Rig the character before dressing it**: MPFB rigs a garment only if a
         rig is present when the garment is attached, and nothing rigs it

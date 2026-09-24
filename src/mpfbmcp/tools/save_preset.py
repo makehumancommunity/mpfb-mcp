@@ -66,7 +66,7 @@ def register(mcp: FastMCP) -> None:
         overwrite: bool = False,
     ) -> dict[str, object]:
         """
-        Save a character as an MPFB preset - phenotype, detail morphs, rig,
+        Save a character as an MPFB preset - phenotype, modeling targets, rig,
         body parts, garments, skin and eye materials - to be rebuilt later with
         `mpfb_create_human_from_preset` or from MPFB's own preset panel.
         **This writes a file outside the .blend, and nothing in Blender can

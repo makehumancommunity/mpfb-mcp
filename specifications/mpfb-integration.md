@@ -111,7 +111,7 @@ types. Renaming either would make a value impossible to look up in MPFB.
 
 ## Where MPFB's own code paths disagree, mpfb-mcp picks one and names it
 
-Sometimes there is no single MPFB implementation to wrap. Adding a topology proxy has three:
+Sometimes there is no single MPFB implementation to wrap. Adding a body proxy has three:
 `HumanService.add_mhclo_asset()` imports and fits it and stops there;
 `HumanService._check_add_proxy()` calls that and then hides the basemesh, copies the scale factor,
 creates the proxy's extra vertex groups and runs a corrective pass; and the asset library's proxy

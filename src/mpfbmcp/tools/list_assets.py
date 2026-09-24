@@ -61,8 +61,8 @@ def register(mcp: FastMCP) -> None:
                          offset: int = 0,
                          refresh: bool = False) -> dict[str, object]:
         """
-        Find the MakeHuman assets installed in this Blender - clothes, hair,
-        eyes, eyebrows, eyelashes, teeth, tongue, topology proxies, skins,
+        Find the MakeHuman assets installed in this Blender - garments, hair,
+        eyes, eyebrows, eyelashes, teeth, tongue, body proxies, skins,
         poses - narrowed by subdir, by a keyword in the name, and by asset
         pack. Adds nothing to the scene. The forward counterpart of
         `mpfb_get_object_info`, which says what an existing object was made
