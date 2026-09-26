@@ -125,6 +125,88 @@ in the user config dir. The latter is loaded in an operator in the rigging ui hi
 
 Both types should be supported, probably with different tool calls. 
 
+The session that rendered the extensions-page line-up ([FULL_SESSION.md](FULL_SESSION.md))
+needed this and did without: six characters were taken out of the A-pose by rotating
+`upperarm01`, `lowerarm01` and `head` by hand through blender mcp. `mpfb_list_assets` already
+lists `poses` as a subdir, so the catalogue half exists and only the acting tool is missing. A way
+back to the rest pose belongs with it, and so does each pose's license (see
+[License in the catalogues](#license-in-the-catalogues)): the only CC0 standing poses installed
+there are in `poses03`, which is not named as a CC0 pack.
+
+<a id="placing-a-character"></a>
+
+## Placing a character
+
+Found by the line-up session ([FULL_SESSION.md](FULL_SESSION.md)). No tool puts a character
+anywhere but the origin: `mpfb_create_human` has no `location`, and `mpfb_add_rig` moves the
+basemesh back to the origin anyway. So six characters were built on top of each other and spread
+out by hand through blender mcp, which is the first thing any multi-character scene needs. A
+`location`/`rotation` on `mpfb_create_human`, or a `mpfb_move_character` that moves the rig (or
+the basemesh when there is none), would cover it. Moving by hand also runs into
+[the sub-rig defect](#sub-rig-child-of-breaks-away-from-the-origin), so a tool that moves a
+character would have to handle that too, rather than leaving it to the caller.
+
+<a id="sub-rig-child-of-breaks-away-from-the-origin"></a>
+
+## A garment's sub-rig breaks when its character is away from the origin
+
+Found by the line-up session. This is an MPFB defect, and belongs upstream as well as here.
+`ponytail01` ships a sub-rig, and its `root` bone gets a `CHILD_OF` constraint on the main rig's
+`head` with `owner_space = POSE`, `target_space = WORLD` and `set_inverse_pending = True`
+(`mpfb2/src/mpfb/entities/rig.py:577`). That is right only while the main rig's object transform
+is identity. On a character that had been moved and turned, 2355 of the hair's 3718 vertices were
+dragged two metres toward the world origin. Setting both spaces to `WORLD` and recomputing the
+inverse fixed it, but only until the rig was moved again. Until MPFB is fixed, `mpfb_add_asset`
+could report a sub-rig created on a character whose rig is not at the origin, and a
+[placing tool](#placing-a-character) would have to repair every sub-rig it moves.
+
+<a id="license-in-the-catalogues"></a>
+
+## License in the catalogues
+
+Found by the line-up session, whose brief allowed CC0 assets only. No catalogue says what an
+asset's license is, yet MPFB has it on disk: every pack JSON in `data/packs/` records a `license`
+per asset. The session had to read those files directly. `mpfb_list_assets`,
+`mpfb_list_asset_materials` and a future pose catalogue should report `license` (and `author`)
+per entry, and take a `license` filter. Two related findings:
+
+- `pack` is not a stand-in for license. Every `*_cc0` pack checked duplicates a non-CC0 one
+  (`hats01` / `hats01_cc0`), so `mpfb_list_assets(pack="_cc0")` returned 24 assets, 18 of them
+  attributed to the *non*-CC0 name with `pack_ambiguous: true`. The answer then contradicted the
+  filter the caller passed. When several packs claim an asset, report all of them.
+- `mpfb_get_status` listed `accessories01_cc0` as installed while none of its four capes were on
+  disk. Reporting a registered pack whose assets cannot be found would have saved a confused
+  search.
+
+<a id="eye-and-layered-skin-colours"></a>
+
+## Procedural eye colour and layered skin colour
+
+Found by the line-up session. Both materials MPFB builds from nothing come out the same every
+time, and no tool changes them. With `PROCEDURAL_EYES`, every character gets the same blue irises.
+A `LAYERED` skin with no MHMAT gets MPFB's default skin colour. The session set
+`IrisMajorColor`/`IrisMinorColor` on each `EnhancedEye` group node, and `SkinColor` plus the lips,
+eyelid and nail colours (with their `*Override` inputs) on `MpfbSkinMasterColor`, through blender
+mcp. MPFB's own material panels expose both, so this wraps existing behaviour rather than
+inventing it: something like `mpfb_set_eye_color` (iris colours, perhaps pupil size) and a
+colour-level edit of a `LAYERED` skin. The group and input names are MPFB's node trees, so they
+drift with MPFB, which is an argument for reading them from MPFB rather than hard-coding them.
+
+<a id="create-human-takes-no-name"></a>
+
+## `mpfb_create_human` takes no name, and no targets
+
+Found by the line-up session. A cast of six is `Human` … `Human.005`, and its eyes are
+`Human.high-poly` … `Human.high-poly.005`. That is harmless to the tools, which address by the
+returned name, but a later session reading the scene cannot tell who is who. A `name` argument
+would fix it, and the response already reports what Blender made of it, since Blender
+uniquifies.
+
+In the same session the stylised character got its rig before its targets, and had to be refitted.
+`mpfb_set_targets` did say so in `assets_possibly_stale`. A `modifiers` argument on
+`mpfb_create_human`, in the same shape `mpfb_set_targets` takes, would make building in the right
+order the easy thing to do.
+
 ## Exporting characters
 
 Need to have a tool for exporting a character to, for example, fbx. This should involve 
