@@ -209,5 +209,7 @@ order the easy thing to do.
 
 ## Exporting characters
 
-Need to have a tool for exporting a character to, for example, fbx. This should involve 
-similar procedures as is used in `src/mpfb/ui/operations/exportops` in MPFB.
+Scoped as [FR 039](039-exporting-characters/README.md) (Proposed):
+`mpfb_create_export_copy`, which mirrors MPFB's Export copy panel (`src/mpfb/ui/operations/exportops`),
+and `mpfb_export_character`, which writes FBX, glTF or USD into a directory the human sets in
+the bridge's preferences.
