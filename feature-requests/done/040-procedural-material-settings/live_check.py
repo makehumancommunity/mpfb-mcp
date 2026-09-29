@@ -52,7 +52,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))))
 sys.path.insert(0, REPO_ROOT)
 
-BLENDER = os.environ.get("BLENDER_EXE", "/home/joepal/system/blender-5.1.0-linux-x64/blender")
+BLENDER = os.environ.get("BLENDER_EXE")
 PORT = int(os.environ.get("FR040_PORT", "9940"))
 PRESET = "fr040_live_check"
 
@@ -336,4 +336,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if not BLENDER:
+        sys.exit("Set BLENDER_EXE to the Blender executable (see local_environment.md).")
     sys.exit(main())

@@ -457,7 +457,7 @@ opened MPFB's asset panels, which is exactly the situation the request predicted
   `get_asset_list()` / `update_asset_list()` (the cache, its item shape, its label keying and its
   preview loading), `get_asset_roots()`, `find_asset_absolute_path()` (what a fragment is resolved
   by), `get_pack_names()` / `get_asset_names_in_pack()` / `get_asset_names_in_pack_pattern()`.
-- [../../../../asset_packs_staging](../../../../asset_packs_staging) — `src/staging/assetpack.py` builds
+- [asset_packs_staging](https://github.com/makehumancommunity/asset_packs_staging) — `src/staging/assetpack.py` builds
   the pack metadata that lands in `<user_data>/packs/`, keyed by each asset's `final_name`, which is
   also the directory it is installed under. This is the source of the naming convention the pack
   attribution relies on, and the place to check if that attribution turns out to be wrong.

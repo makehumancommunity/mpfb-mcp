@@ -20,9 +20,11 @@ and none of which is summarized here:
 
 ## Environment
 
-There should be a file [local_environment.md](local_environment.md) with information about 
-where blender, mpfb and local user data can be found. This file is gitignored since it is only
-relevant per machine. 
+Read `local_environment.md` if it exists: it says where Blender, MPFB's source and MPFB's user
+data are on this machine, and whether this is the maintainer's checkout. It is gitignored, since it
+is only relevant per machine; [local_environment.example.md](local_environment.example.md) is the
+template to copy it from. If it is missing and a task needs one of those paths, ask for it rather
+than guessing, and do not write a machine's paths into a tracked file.
 
 ## Documentation
 
@@ -79,14 +81,15 @@ needs it, in that request's own subdir, and moves to `done/` with it.
 
 ## Version control
 
-**Commit directly to `master`.** Do not create a branch for a change, and do not open a pull
-request. The project is a single-developer early beta where every change so far has been a
-straight-line addition to `master`; branching and review would add ceremony without adding a
-reviewer. This overrides any general "branch before committing to the default branch" default.
+The default branch is `master`, and changes reach it through a pull request from a branch.
 
-Revisit this once the project has grown enough to merit it — more than one person committing, a
-release that users depend on, or changes large enough that they need review before landing. Until
-then, a branch is only warranted if explicitly asked for.
+**The maintainer's checkout is the exception**, and says so in the "Version control" section of
+its `local_environment.md`. There, commit directly to `master`, and do not create a branch or open
+a pull request unless asked: the project has had a single developer, every change so far has been
+a straight-line addition to `master`, and branching and review would add ceremony without adding a
+reviewer. This overrides any general "branch before committing to the default branch" default. It
+is the maintainer's to revisit once there is more than one person committing, a release users
+depend on, or a change large enough to need review before landing.
 
 ## Commands
 
@@ -361,14 +364,14 @@ MPFB-extension bootstrap, the deliberate protocol duplication) rather than resta
 
 ## Relationship to sibling projects
 
-- **[../mpfb2](../mpfb2)** — the actual MPFB Blender addon this server drives. Its
+- **[mpfb2](https://github.com/makehumancommunity/mpfb2)** — the actual MPFB Blender addon this server drives. Its
   `bl_ext.*.mpfb` services (`HumanService`, `TargetService`, asset/skin/rig functions, etc.) are
   what the MCP tools wrap. `docs/services/humanservice.md` documents `HumanService`'s full API.
-- **[../blender_mcp](../blender_mcp)** — the generic Blender MCP server this project's
+- **[blender_mcp](https://projects.blender.org/lab/blender_mcp)** — the generic Blender MCP server this project's
   Blender-side logic used to be executed by, and which `bridge/mpfb_bridge/command_server.py` took
   its socket and framing from. Nothing depends on it now; it is kept as the model the bridge was
   copied from, and as what the `blender_mcp` in an old commit message means.
-- **[../makehuman-static-website](../makehuman-static-website)** — likely source for bundled MPFB
+- **[makehuman-static-website](https://github.com/makehumancommunity/makehuman-static-website)** — likely source for bundled MPFB
   documentation if a `mpfb_search_docs` tool is implemented.
 
 ## Backends

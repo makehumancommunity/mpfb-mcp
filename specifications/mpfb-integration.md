@@ -35,7 +35,7 @@ the running install rather than the source.
 
 A fourth is not about a character at all. `FaceService.save_expression()` writes an empty `license`
 when none is given, while the composer panel behind MPFB's own "save expression" button pre-fills
-`CC0` ([`properties/license.json`](../../mpfb2/src/mpfb/ui/create_assets/makeexpression/properties/license.json)).
+`CC0` ([`properties/license.json`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/ui/create_assets/makeexpression/properties/license.json)).
 `mpfb_save_expression` defaults `license` to `CC0` and reports the metadata it wrote, read back from
 the file. [FR 027](../feature-requests/done/027-expression-library/README.md) asked whether a licence
 - a statement made on the user's behalf - was a default an agent should apply silently, and kept it:
@@ -176,9 +176,9 @@ versus services" to *any* two MPFB code paths.
   dressed character twice, with the argument as the only difference, rather than by reading the
   function. The smoke run writes outside the `.blend` too now, but exactly one file, always the
   same one, and [verification/README.md](../verification/README.md) names it.
-- **Filing it changes nothing here.** A confirmed defect is written up in
-  [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../mpfb2/features/MCP_DISCOVERED_BUGS.md), one
-  section each, and that is where the reporting ends: MPFB has its own priorities, so a reported
+- **Filing it changes nothing here.** A confirmed defect is written up in a defect list kept for
+  MPFB's maintainers, `MCP_DISCOVERED_BUGS.md`, one section each; it lives beside a local mpfb2
+  checkout and is not published. That is where the reporting ends: MPFB has its own priorities, so a reported
   defect may stand for a long time. The workaround, the coercion or the defensive check that copes
   with it stays exactly as it is, and it is removed when a **running** MPFB no longer needs it —
   which is what the script detects, since it is written to fail once a defect is gone.

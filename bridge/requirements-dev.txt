@@ -1,5 +1,6 @@
 # Development-only dependencies for static type checking, copied from mpfb2's own
-# requirements-dev.txt along with its rule. See ../mpfb2/docs/type-checking.md.
+# requirements-dev.txt along with its rule. See
+# https://github.com/makehumancommunity/mpfb2/blob/master/docs/type-checking.md.
 # NEVER add these to blender_manifest.toml or import them at runtime — at runtime the real
 # compiled bpy is present.
 #

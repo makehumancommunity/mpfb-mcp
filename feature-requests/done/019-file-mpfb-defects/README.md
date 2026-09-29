@@ -15,7 +15,7 @@ into the effort that found the evidence would have made both worse.
 
 **What "filing" means here.** Not an issue in a tracker: it means writing a summary of the
 confirmed defects to
-[../mpfb2/features/MCP_DISCOVERED_BUGS.md](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md), one
+../mpfb2/features/MCP_DISCOVERED_BUGS.md, one
 section per defect, in the directory where that project already keeps its own investigations. That
 is the whole deliverable — a document handed to MPFB's own effort, not a promise from it.
 
@@ -48,7 +48,7 @@ that never gave a reason.
 ## Functional requirements
 
 - **FR-1.** Write, to
-  [../mpfb2/features/MCP_DISCOVERED_BUGS.md](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md), one
+  ../mpfb2/features/MCP_DISCOVERED_BUGS.md, one
   section for each of the five confirmed:
   1. **A long-named user target prevents registration.** The one above. Severity is the argument:
      it disables the add-on, and the trigger is a file the user put in a directory MPFB told them
@@ -138,7 +138,7 @@ out of `verification/` and into this subdir. It was never a check of mpfb-mcp's 
 defects in MPFB, on behalf of the report above — and it writes into MPFB's user `custom` directory,
 which the smoke run in `verification/` never does. The three probe targets came with it, including
 the long-named one that prevents MPFB from loading if it is left on disk when Blender starts. The
-paths [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md)
+paths `../mpfb2/features/MCP_DISCOVERED_BUGS.md`
 cites were re-pointed in the same change.
 
 The Architecture note above says `verification/fixtures.py` carries `SAFE_AT_STARTUP`. It no longer

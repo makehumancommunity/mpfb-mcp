@@ -380,7 +380,7 @@ it is the work.** Nothing here is complete on a green unit run.
   record: what was run, what it changed about the request, and what could not be reverted.
 - [CLAUDE.md](../../../CLAUDE.md#commands) — how to bring up Blender with MPFB and the blender_mcp add-on,
   and the `BLENDER_MCP_HOST`/`BLENDER_MCP_PORT` overrides.
-- [../mpfb2](../../../../mpfb2) — where the confirmed MPFB defects from FR-6 get filed.
+- [mpfb2](https://github.com/makehumancommunity/mpfb2) — where the confirmed MPFB defects from FR-6 get filed.
 
 ## Verification status
 

@@ -128,7 +128,7 @@ it, lives in that request's own subdir, and goes to `done/` with it.
   every citation of the old path is re-pointed.
 
   **FR 019 changed what that costs.** The filed report,
-  [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md),
+  `../mpfb2/features/MCP_DISCOVERED_BUGS.md`,
   cites `verification/check_mpfb_issues.py` **by path, from another repository**, once per defect,
   and names a function inside it per section; it also links `verification/check_fr010.py`, which
   FR-7 deletes, for the proxy comparison. So this request must either keep those two paths valid
@@ -316,7 +316,7 @@ live check in FR-1 is sufficient and this is a convenience.
   non-functional requirements say why: that ceiling measures bytes this repository computes, and
   this one would be measuring the machine MPFB happens to be running on.
 - [FR 019](../019-file-mpfb-defects/README.md) — **Done**. Its deliverable,
-  [`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md),
+  `../mpfb2/features/MCP_DISCOVERED_BUGS.md`,
   cites `verification/check_mpfb_issues.py` and `verification/check_fr010.py` by path from another
   repository; FR-8 says what this request owes them.
 - [FR 018](../018-alternative-material-refresh/README.md) — Proposed; the cache-staleness fixture

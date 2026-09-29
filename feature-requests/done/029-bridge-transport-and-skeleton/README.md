@@ -255,7 +255,7 @@ reader to re-derive it.
 
 **`bpy.utils.register_cli_command` needs no version guard, and that is requirement 10's doing.**
 Against the old `"4.2.0"` floor this was an open question: the API is documented in
-[the 5.1 reference](../../../../blender_python_reference_5_1/bpy.utils.html), blender lab's add-on
+[the 5.1 reference](https://docs.blender.org/api/5.1/bpy.utils.html), blender lab's add-on
 uses it but declares `blender_version_min = "5.1.0"` and so is no evidence about 4.2, and the
 alternative would have been a `hasattr` guard leaving headless mode quietly unavailable on some
 installs. At `"5.0.0"` the API is simply there. Write the registration unguarded — a `hasattr`

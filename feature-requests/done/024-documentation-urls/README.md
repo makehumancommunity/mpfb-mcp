@@ -16,7 +16,7 @@ stays a separate, later effort — this request neither implements it nor forecl
 There are two distinct bodies of material, with different audiences and different provenance:
 
 - **The community sites.** MPFB keeps thirteen `URL_*` constants in
-  [`src/mpfb/ui/weburls.py`](../../../../mpfb2/src/mpfb/ui/weburls.py) — homepage, documentation, FAQ,
+  [`src/mpfb/ui/weburls.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/ui/weburls.py) — homepage, documentation, FAQ,
   forum, issue tracker, asset packs, system assets, the getting-started guide and video. These are
   MPFB's own values and change with MPFB. (The NEXT_STEPS entry — since moved to
   [HISTORY.md](../../HISTORY.md) — said they are found via the `start_here` UI module;
@@ -251,11 +251,11 @@ It runs during the effort and moves to `done/` with it; what stays behind is the
 
 ## References
 
-- [`mpfb2/src/mpfb/ui/weburls.py`](../../../../mpfb2/src/mpfb/ui/weburls.py) — the thirteen constants,
+- [`mpfb2/src/mpfb/ui/weburls.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/ui/weburls.py) — the thirteen constants,
   and their docstring's reason for existing ("so that the same link does not have to be maintained
   in several panels"), which is the same reason this tool should read them rather than copy them.
 - [`mpfb2/docs/`](https://github.com/makehumancommunity/mpfb2/tree/master/docs) — 105 markdown
-  files; locally at [`../../../mpfb2/docs`](../../../../mpfb2/docs).
+  files; at [`mpfb2/docs`](https://github.com/makehumancommunity/mpfb2/tree/master/docs).
 - NEXT_STEPS: *Getting URLs to documentation etc* — the entry this request scoped. It has since
   moved to [HISTORY.md](../../HISTORY.md), so there is no section left in NEXT_STEPS.md to link.
 - [NEXT_STEPS: Finding, downloading and installing asset packs](../../NEXT_STEPS.md#finding-downloading-and-installing-asset-packs)

@@ -51,10 +51,10 @@ Optional, needed only by specific tools:
 
 ## 1. Clone the repository
 
-If you do not already have a checkout, clone it from wherever you were given it:
+If you do not already have a checkout, clone it:
 
 ```bash
-git clone <repository-url> mpfb-mcp
+git clone https://github.com/makehumancommunity/mpfb-mcp.git
 ```
 
 ```bash

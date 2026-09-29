@@ -1,15 +1,13 @@
 # Session log: image 1, "Character line-up — the hero"
 
 **Date:** 2026-09-26
-**Task:** render image 1 from
-[`mpfb2/non-coding-efforts/update-extensions-page/IMAGES.md`](../../mpfb2/non-coding-efforts/update-extensions-page/IMAGES.md#1-character-line-up--the-hero),
-using mpfb-mcp first and blender mcp only as a fallback. Constraints: multilayered (`LAYERED`)
+**Task:** render image 1 of the image brief for MPFB's extensions page (kept outside this
+repository), using mpfb-mcp first and blender mcp only as a fallback. Constraints: multilayered (`LAYERED`)
 skin, procedural eyes, CC0 assets only (the system assets pack or a `*_cc0` pack), 1920×1080.
 
-**Result:** `mpfb2/non-coding-efforts/update-extensions-page/images/01-character-lineup.png`
-(1920×1080, Cycles, 1024 samples, denoised, 34 s on one RTX 3090). A copy of the scene is beside
-it as `01-character-lineup.blend` (67 MB). The Blender session's own file,
-`/export/3d/lightroom/LightRoom5.blend`, was **not** saved.
+**Result:** `01-character-lineup.png` (1920×1080, Cycles, 1024 samples, denoised, 34 s on one
+GPU), with a copy of the scene beside it as `01-character-lineup.blend` (67 MB). The studio file
+the session started from, `LightRoom5.blend`, was **not** saved.
 
 ## Summary of where the work went
 
@@ -27,7 +25,7 @@ mcp, and three of those jobs are things MPFB's own UI can do, so they count as g
 
 **The mpfb-mcp tools were not attached to this Claude session.** The Blender side was fine: the
 MPFB Bridge was listening on 127.0.0.1:9877 and blender mcp's add-on on 9876, both inside the one
-Blender (pid 24086). But no `mcp__mpfb*` tool was among the session's tools, only `mcp__blender__*`.
+Blender. But no `mcp__mpfb*` tool was among the session's tools, only `mcp__blender__*`.
 
 Workaround: a 30-line stdio MCP client (`mcp.ClientSession` over `stdio_client`) that starts
 `.venv/bin/mpfb-mcp` and calls tools by name. Every mpfb-mcp call in this session went through the
@@ -153,7 +151,7 @@ and turned a few degrees, all different per character. No pose asset is involved
 `Human.ponytail01.rig`, object-parented to the main rig. Its `root` bone has a `CHILD_OF`
 constraint targeting the main rig's `head`, with **`owner_space = POSE` and
 `target_space = WORLD`**, and MPFB sets `set_inverse_pending = True`
-(`mpfb2/src/mpfb/entities/rig.py:577`). 2355 of the hair's 3718 vertices are in the
+([`mpfb2/src/mpfb/entities/rig.py:577`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/entities/rig.py#L577)). 2355 of the hair's 3718 vertices are in the
 `mhmask-subrig` group, fully weighted to that `root`.
 
 Mixing spaces like that is right only while the main rig's object transform is identity. This
@@ -172,12 +170,6 @@ bite anyone who builds several characters side by side in MPFB and uses a hair o
 sub-rig, which makes it worth an MPFB issue. Until MPFB is fixed, mpfb-mcp could at least warn
 when `mpfb_add_asset` creates a sub-rig on a character whose rig is not at the origin.
 
-### Render device
-The first render failed with *System is out of GPU memory*: an unrelated `python` process was
-holding 24.7 GB of the RTX 5090's 32 GB. I switched Cycles to the idle RTX 3090 for the session
-and **restored the original device selection afterwards**. Note for the next session: with that
-process still running, the saved preferences will hit the same error.
-
 ## What was missing in mpfb-mcp
 
 In order of how much each would have saved in this session:
@@ -186,7 +178,7 @@ In order of how much each would have saved in this session:
    `mpfb_move_character` that moves the rig or basemesh *and* keeps sub-rig constraints valid.
    Any multi-character image needs it, and done by hand it runs into the sub-rig defect above.
 2. **Poses.** `mpfb_list_poses` and `mpfb_apply_pose`, over MPFB's BVH/JSON pose support, and
-   ideally a way to reset to rest. Every image in IMAGES.md except the UI screenshots wants a
+   ideally a way to reset to rest. Every image in the extensions-page brief except the UI screenshots wants a
    non-A pose, and image 6 is entirely about a pose.
 3. **License in catalogues.** `license` (and `author`) per entry in `mpfb_list_assets` and
    `mpfb_list_asset_materials`, read from the pack JSON MPFB already has on disk, plus a
@@ -229,11 +221,7 @@ the entire cast in about ten seconds of tool time.
 
 ## Files
 
-| File | What |
-|------|------|
-| `mpfb2/non-coding-efforts/update-extensions-page/images/01-character-lineup.png` | The image, 1920×1080 RGB PNG |
-| `mpfb2/non-coding-efforts/update-extensions-page/images/01-character-lineup.blend` | The scene as rendered: studio, lights, six characters. IMAGES.md recommends one shared `.blend` for images 1, 2, 4, 6 and 7, and this can be it |
-
-Scene changes made through blender mcp, all saved in the copy and none in `LightRoom5.blend`:
+The image and the scene as rendered (studio, lights, six characters) were saved beside the brief,
+outside this repository. Scene changes made through blender mcp, all saved in the copy and none in `LightRoom5.blend`:
 backdrop colour, `Area` light repurposed, `Fill` and `Rim` added, `Puff` hidden, Cycles samples
 and denoising. The camera is untouched.

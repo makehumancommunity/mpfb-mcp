@@ -10,7 +10,7 @@ answer to both, and it is a core part of the addon rather than an accessory: the
 MPFB users move a character between scenes, between projects and between machines.
 
 This request scopes three tools around
-[`HumanService`](../../../../mpfb2/src/mpfb/services/humanservice.py)'s serialization half: one to
+[`HumanService`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/services/humanservice.py)'s serialization half: one to
 list the presets that exist, one to write the current character into that namespace, and one to
 build a character from a preset. It is the first entry in the
 [Creation and modification](../../../specifications/vision.md#target-tool-catalog) area that both
@@ -263,7 +263,7 @@ pass-through — and nowhere else. Clothes are therefore always saved, and the d
 
 Nobody has noticed because both UI operators pass `True`. This is a defect in the
 [FR 019](../019-file-mpfb-defects/README.md) sense and should be filed in
-[`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md) —
+`../mpfb2/features/MCP_DISCOVERED_BUGS.md` —
 **after** confirming it against the running install rather than from source alone, which is FR 013's
 correction and the reason FR 019 exists in the form it does. It is a small enough report that it
 belongs in this effort rather than in a request of its own.
@@ -359,22 +359,22 @@ differed, and moves to `done/` with the request. What stays behind is the three 
 
 ## References
 
-- [`mpfb2/src/mpfb/services/humanservice.py`](../../../../mpfb2/src/mpfb/services/humanservice.py) —
+- [`mpfb2/src/mpfb/services/humanservice.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/services/humanservice.py) —
   `serialize_to_json_string` / `_to_json_file`, `deserialize_from_dict` / `_from_json_file`,
   `get_default_deserialization_settings`, `get_list_of_human_presets`,
   `update_list_of_human_presets`.
-- [`mpfb2/docs/services/humanservice.md`](../../../../mpfb2/docs/services/humanservice.md) — the
+- [`mpfb2/docs/services/humanservice.md`](https://github.com/makehumancommunity/mpfb2/blob/master/docs/services/humanservice.md) — the
   Serialization, Deserialization and Presets sections. Note that it documents `save_clothes` as
   working.
-- [`mpfb2/docs/fileformats/human_preset.md`](../../../../mpfb2/docs/fileformats/human_preset.md) —
+- [`mpfb2/docs/fileformats/human_preset.md`](https://github.com/makehumancommunity/mpfb2/blob/master/docs/fileformats/human_preset.md) —
   what is actually in the JSON, key by key, including the asset-path-relative-to-any-asset-root
   convention the tools' responses must not mangle. This document is in
   [FR 024](../024-documentation-urls/README.md)'s candidate curated set, partly for this effort.
 - MPFB's own UI, which these tools collapse:
-  [`savenewpresets.py`](../../../../mpfb2/src/mpfb/ui/presets/humanpresets/operators/savenewpresets.py),
-  [`overwritepresets.py`](../../../../mpfb2/src/mpfb/ui/presets/humanpresets/operators/overwritepresets.py),
-  [`humanfrompresets.py`](../../../../mpfb2/src/mpfb/ui/new_human/newhuman/operators/humanfrompresets.py),
-  [`frompresetspanel.py`](../../../../mpfb2/src/mpfb/ui/new_human/newhuman/frompresetspanel.py).
+  [`savenewpresets.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/ui/presets/humanpresets/operators/savenewpresets.py),
+  [`overwritepresets.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/ui/presets/humanpresets/operators/overwritepresets.py),
+  [`humanfrompresets.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/ui/new_human/newhuman/operators/humanfrompresets.py),
+  [`frompresetspanel.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/ui/new_human/newhuman/frompresetspanel.py).
 - [NEXT_STEPS: Saving, listing and loading character presets](../../NEXT_STEPS.md#saving-listing-and-loading-character-presets)
   — the entry this request scopes.
 - [FR 019](../019-file-mpfb-defects/README.md) — the established shape for a defect report,

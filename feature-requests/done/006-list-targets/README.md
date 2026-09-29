@@ -378,6 +378,6 @@ today. Category labels are likewise equal to category names.
   the import-time snapshot this tool deliberately does not inherit.
 - MPFB `data/targets/` — `target.json` and the sibling directories, including the unindexed `asym`
   and `expression` and the out-of-scope `macrodetails`.
-- [../../../../extra-targets](../../../../extra-targets) — generates viseme and ARKit face-unit target
+- [extra-targets](https://github.com/makehumancommunity/extra-targets) — generates viseme and ARKit face-unit target
   packs intended to be installed into the user data directory, and is therefore the most likely
   real-world source of the user targets this tool lists.

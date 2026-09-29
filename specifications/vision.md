@@ -19,7 +19,7 @@ request that added it.
 ## Goal
 
 MPFB (MakeHuman Plugin For Blender) exposes a rich Python service layer
-(`HumanService`, `TargetService`, `AssetService`, etc. — see `../mpfb2/`) for creating and
+(`HumanService`, `TargetService`, `AssetService`, etc. — see [mpfb2](https://github.com/makehumancommunity/mpfb2)) for creating and
 editing MakeHuman characters, but that layer is only reachable from *inside* a running
 Blender process. mpfb-mcp's goal is to make MPFB's capabilities available to LLM agents (and
 other MCP clients) as a normal set of MCP tools, **without requiring any change to MPFB itself**.
@@ -189,7 +189,8 @@ transport.
 **What is still missing**, and why each is worth having:
 
 - `mpfb_search_docs` — ranked search over MPFB documentation *bundled with the client*, mirroring
-  how blmcp exposes Blender's RST reference. Likely sourced from `../../makehuman-static-website`.
+  how blmcp exposes Blender's RST reference. Likely sourced from
+  [makehuman-static-website](https://github.com/makehumancommunity/makehuman-static-website).
   [FR 024](../feature-requests/done/024-documentation-urls/README.md) took the small half of this
   area — `mpfb_list_urls` and `mpfb_list_docs` hand out addresses, so an agent can be pointed at
   the authoritative document instead of guessing. What is left is the half that needs the text
@@ -208,12 +209,11 @@ request when it is scoped.
 
 ## Superseded: which "blender mcp"? Neither, in the end
 
-There are two unrelated projects called "blender mcp": blender lab's implementation (at
-`../../blender_mcp`, which this project's Blender-side logic used to be executed by) and a
-separate, more feature-rich
-[community implementation](https://github.com/ahujasid/blender-mcp), a local clone of which is
-available at `../../ahujasid-blender-mcp`. Some users have the latter installed instead of the
-former.
+There are two unrelated projects called "blender mcp": blender lab's
+[implementation](https://projects.blender.org/lab/blender_mcp), which this project's Blender-side
+logic used to be executed by, and a separate, more feature-rich
+[community implementation](https://github.com/ahujasid/blender-mcp). Some users have the latter
+installed instead of the former.
 
 **Supporting both used to be a goal. It is not any more.** The bridge removes the dependency
 that an adapter between them existed to abstract: once no program crosses the socket, there is no

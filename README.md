@@ -14,7 +14,7 @@ no Blender at all.
 
 It was not always one machine. Until
 [FR 033](feature-requests/done/033-retire-the-generated-code-path/README.md) a tool assembled a
-Python program per call and sent it to blender lab's [blender_mcp](../blender_mcp) add-on to
+Python program per call and sent it to blender lab's [blender_mcp](https://projects.blender.org/lab/blender_mcp) add-on to
 `exec()`; the two ran side by side through four efforts so that they could be compared against a
 real Blender before the old one was deleted. On one Blender in one session the same smoke run
 takes **4.9 s on the bridge and took 48.5 s on the path it replaced**, and the Blender-side logic

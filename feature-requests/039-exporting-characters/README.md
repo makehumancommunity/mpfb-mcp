@@ -5,7 +5,7 @@
 Everything the thirty-two tools build stays inside Blender. A character made for a game engine, a
 VR platform or a web viewer has to leave. Today an agent has to hand that step back to the user,
 and it is not a simple one. MPFB's documentation
-([Exporting MPFB characters](../../../makehuman-static-website/content/MPFB/Docs/exporting/_index.md))
+([Exporting MPFB characters](https://github.com/makehumancommunity/makehuman-static-website/blob/master/content/MPFB/Docs/exporting/_index.md))
 covers it in three stages. First, get the character into a state other applications can read:
 bake the modeling shape keys, delete the helper geometry, and decide what to do with mask and
 subdivision modifiers. Second, pick materials and a rig that translate. Third, select the right
@@ -344,8 +344,8 @@ into its own request. The request is `Done` only when all three have landed.
   `META_VISEMES`, `ARKIT_FACEUNITS`), and `targetservice.py` (`bake_targets`). Their
   documentation: `mpfb2/docs/services/exportservice.md`, `mpfb2/docs/ui/operations/exportops.md`.
 - User documentation:
-  [Exporting MPFB characters](../../../makehuman-static-website/content/MPFB/Docs/exporting/_index.md),
-  [Export copy](../../../makehuman-static-website/content/MPFB/Docs/exporting/export_copy.md), and
+  [Exporting MPFB characters](https://github.com/makehumancommunity/makehuman-static-website/blob/master/content/MPFB/Docs/exporting/_index.md),
+  [Export copy](https://github.com/makehumancommunity/makehuman-static-website/blob/master/content/MPFB/Docs/exporting/export_copy.md), and
   the asset packs `visemes01` (Microsoft), `visemes02` (Meta) and `faceunits01` under
   `makehuman-static-website/content/Assets/AssetPacks/`.
 - Precedents in this repository: [FR 025](../done/025-character-presets/README.md) (the first

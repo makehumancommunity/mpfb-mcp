@@ -11,7 +11,7 @@ MPFB's users actually work with: a **named, saved, weighted combination** — a 
 others. That library is what `ui/apply_assets/useexpression` exposes, and none of it is reachable.
 
 This request scopes four tools over the **library** half of
-[`FaceService`](../../../../mpfb2/src/mpfb/services/faceservice.py): one to list what is installed, one
+[`FaceService`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/services/faceservice.py): one to list what is installed, one
 to read what a character is currently wearing, one to change it, and one to **save a composed face as
 an expression file** — which is what turns FR 026's transient output into something the library,
 and therefore a preset, can carry. It also **extends `mpfb_set_face_units`**, because the mechanism
@@ -437,7 +437,7 @@ stack read (the `{fragment, weight, resolved}` rows) callable apart from the com
 
 Each to be confirmed against the running install before filing, per
 [FR 019](../019-file-mpfb-defects/README.md), in
-[`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md):
+`../mpfb2/features/MCP_DISCOVERED_BUGS.md`:
 
 - **User-saved expressions are shadowed, and the panel says the opposite.** The composer's
   `available_expression` property says "user-saved expressions take priority over system-shipped
@@ -544,7 +544,7 @@ about what a tool *answers* is asserted against a real MPFB in `bridge/test/`.
 - **Fixtures reproduce the install, not a convenient version of it**, per
   [testing.md](../../../specifications/testing.md#a-fixture-reproduces-the-install-never-a-convenient-one):
   expression files in a fixture are written by `FaceService.save_expression` or copied from
-  [the format document](../../../../mpfb2/docs/fileformats/expression.md), not hand-simplified JSON.
+  [the format document](https://github.com/makehumancommunity/mpfb2/blob/master/docs/fileformats/expression.md), not hand-simplified JSON.
 - **`tests/test_description_budget.py`** — ceiling raised, reason in the comment.
 - **`tests/test_verification_smoke.py` and `verification/smoke.py`** — four items, with the
   pack-absent degradation FR 026's items settled. Two leave something behind that the
@@ -663,28 +663,28 @@ fixed MPFB would make fail:
 
 ## References
 
-- [`mpfb2/src/mpfb/services/faceservice.py`](../../../../mpfb2/src/mpfb/services/faceservice.py) —
+- [`mpfb2/src/mpfb/services/faceservice.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/services/faceservice.py) —
   `APPLIED_EXPRESSIONS_PROP`, `save_expression`, `list_available_expressions`, `load_expression`,
   `aggregate_expression_stack`, `set_stack_weight`, `apply_expression_file`,
   `rebuild_expression_stack`, `clear_applied_expressions`, `_read_applied_expressions`,
   `_write_applied_expressions`, `_compute_expression_library_relative_path`.
-- [`mpfb2/src/mpfb/services/assetservice.py`](../../../../mpfb2/src/mpfb/services/assetservice.py) —
+- [`mpfb2/src/mpfb/services/assetservice.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/services/assetservice.py) —
   `get_available_data_roots` (the root order requirement 29 rests on), `get_asset_roots`,
   `find_asset_absolute_path` (the basename match).
-- [`mpfb2/docs/fileformats/expression.md`](../../../../mpfb2/docs/fileformats/expression.md) — the JSON
+- [`mpfb2/docs/fileformats/expression.md`](https://github.com/makehumancommunity/mpfb2/blob/master/docs/fileformats/expression.md) — the JSON
   format key by key, its `.mhpose` ancestry, and the backwards-compatibility rules a reader must
   honour.
 - MPFB's own library UI, which three of these tools collapse:
-  [`useexpression/__init__.py`](../../../../mpfb2/src/mpfb/ui/apply_assets/useexpression/__init__.py),
+  [`useexpression/__init__.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/ui/apply_assets/useexpression/__init__.py),
   which holds `ExpressionsLibraryProperties`, `_EXPRESSION_PROP_MAP`, `write_slider_values` and
   `refresh_expression_sliders`, and
-  [`useexpressionpanel.py`](../../../../mpfb2/src/mpfb/ui/apply_assets/useexpression/useexpressionpanel.py).
+  [`useexpressionpanel.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/ui/apply_assets/useexpression/useexpressionpanel.py).
 - MPFB's own save path, which `mpfb_save_expression` departs from in its source of values:
-  [`makeexpression/operators/save.py`](../../../../mpfb2/src/mpfb/ui/create_assets/makeexpression/operators/save.py)
-  and the composer's [`properties/`](../../../../mpfb2/src/mpfb/ui/create_assets/makeexpression/properties),
+  [`makeexpression/operators/save.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/ui/create_assets/makeexpression/operators/save.py)
+  and the composer's [`properties/`](https://github.com/makehumancommunity/mpfb2/tree/master/src/mpfb/ui/create_assets/makeexpression/properties),
   which hold the `license`, `expression_name`, `available_expression` and `auto_refit` defaults
   cited above.
-- [`mpfb2/src/mpfb/services/humanservice.py`](../../../../mpfb2/src/mpfb/services/humanservice.py) —
+- [`mpfb2/src/mpfb/services/humanservice.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/services/humanservice.py) —
   `_populate_human_info_with_expression_info` and `_apply_expressions_from_human_info`, which are
   where a preset meets the stack, and the precedent for both the private-accessor call and the call
   into `useexpression`.

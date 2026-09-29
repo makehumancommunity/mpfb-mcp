@@ -1,7 +1,8 @@
 #!/usr/bin/bash
 
 # Run the bridge's tests in a headless Blender, with coverage when Blender's own
-# Python has it. Modelled on ../../../mpfb2/test/execute_tests_headless.bash.
+# Python has it. Modelled on MPFB's
+# https://github.com/makehumancommunity/mpfb2/blob/master/test/execute_tests_headless.bash.
 #
 # Prerequisites, both inherited from MPFB's harness:
 #   - The MPFB Bridge add-on must be installed in this Blender, and realpath()

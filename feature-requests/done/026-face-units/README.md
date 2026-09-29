@@ -36,7 +36,7 @@ keys that drive an ARKit face are the one part of MPFB's modelling surface no to
 can set them meaningfully.
 
 This request scopes two tools over the **face-unit** half of
-[`FaceService`](../../../../mpfb2/src/mpfb/services/faceservice.py): one to read the 52 ARKit units a
+[`FaceService`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/services/faceservice.py): one to read the 52 ARKit units a
 character's face is currently holding, one to write them. It is the first effort to depend on an
 **asset pack that may not be installed**, which is the durable part of it.
 
@@ -303,7 +303,7 @@ Use `MPFB_BOOTSTRAP` (the raising one) for both. Neither tool is meaningful with
 
 Each to be confirmed against the running install before filing, per
 [FR 019](../019-file-mpfb-defects/README.md), in
-[`../mpfb2/features/MCP_DISCOVERED_BUGS.md`](../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md):
+`../mpfb2/features/MCP_DISCOVERED_BUGS.md`:
 
 - **`set_expression` cannot report failure.** It warns and skips on an unknown name and on a missing
   target file, and returns `None` either way. A caller cannot distinguish "applied eight units" from
@@ -414,17 +414,17 @@ established.
 
 ## References
 
-- [`mpfb2/src/mpfb/services/faceservice.py`](../../../../mpfb2/src/mpfb/services/faceservice.py) —
+- [`mpfb2/src/mpfb/services/faceservice.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/services/faceservice.py) —
   `ARKIT_FACEUNITS`, `FACEUNIT_REGIONS`, `FACEUNIT_DESCRIPTIONS`, `set_expression`,
   `clear_expression`, `read_current_expression`, `is_faceunits01_installed`; and, for the excluded
   half, `MICROSOFT_VISEMES`, `META_VISEMES`, `load_targets`, `interpolate_targets`,
   `configure_lip_sync`.
-- [`mpfb2/src/mpfb/services/targetservice.py`](../../../../mpfb2/src/mpfb/services/targetservice.py) —
+- [`mpfb2/src/mpfb/services/targetservice.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/services/targetservice.py) —
   `expression_name_to_shapekey_name` / `shapekey_name_to_expression_name`, the `!ex-` prefix, and
   `target_full_path`, which is what the pack probe rides on.
 - MPFB's own composer UI, which these two tools collapse:
-  [`makeexpressionpanel.py`](../../../../mpfb2/src/mpfb/ui/create_assets/makeexpression/makeexpressionpanel.py)
-  and its [`operators/`](../../../../mpfb2/src/mpfb/ui/create_assets/makeexpression/operators) —
+  [`makeexpressionpanel.py`](https://github.com/makehumancommunity/mpfb2/blob/master/src/mpfb/ui/create_assets/makeexpression/makeexpressionpanel.py)
+  and its [`operators/`](https://github.com/makehumancommunity/mpfb2/tree/master/src/mpfb/ui/create_assets/makeexpression/operators) —
   `load.py`'s comment on why a composer load is transient is the clearest statement of the two-layer
   split in MPFB's source.
 - [FR 027](../../027-expression-library/README.md) — the other half: saved expression files, the

@@ -179,7 +179,7 @@ already warmed, which the global clear reached anyway.
 ## [FR 019](done/019-file-mpfb-defects/README.md) — the confirmed MPFB defects, written up where MPFB's own effort will read them
 
 The first effort whose deliverable is in another repository and the first that changes no behaviour:
-[`MCP_DISCOVERED_BUGS.md`](../../mpfb2/features/MCP_DISCOVERED_BUGS.md), six confirmed defects
+`MCP_DISCOVERED_BUGS.md` beside a local mpfb2 checkout (not published), six confirmed defects
 worst-first, each with the code path, the observed values and the probe that provokes it. Nine
 candidates went in and six came out, which is why this was separate from the effort that found the
 evidence. **Filing is not fixing**: every workaround stays until a running MPFB no longer needs it.
