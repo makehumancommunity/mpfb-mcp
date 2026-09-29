@@ -141,21 +141,19 @@ per entry, and take a `license` filter. Two related findings:
 
 ## Procedural eye colour and layered skin colour
 
-Found by the line-up session. Both materials MPFB builds from nothing come out the same every
-time, and no tool changes them. With `PROCEDURAL_EYES`, every character gets the same blue irises.
-A `LAYERED` skin with no MHMAT gets MPFB's default skin colour. The session set
-`IrisMajorColor`/`IrisMinorColor` on each `EnhancedEye` group node, and `SkinColor` plus the lips,
-eyelid and nail colours (with their `*Override` inputs) on `MpfbSkinMasterColor`, through blender
-mcp. MPFB's own material panels expose both, so this wraps existing behaviour rather than
-inventing it: something like `mpfb_set_eye_color` (iris colours, perhaps pupil size) and a
-colour-level edit of a `LAYERED` skin. The group and input names are MPFB's node trees, so they
-drift with MPFB, which is an argument for reading them from MPFB rather than hard-coding them.
+Scoped as [FR 040](040-procedural-material-settings/README.md) (Proposed):
+`mpfb_get_material_settings` and `mpfb_set_material_settings`, a generic read and write over the
+three procedural material mechanisms MPFB serializes into a preset. Those are procedural eyes,
+layered skin, and the MakeSkin colour adjustment on hair, body parts and garments.
 
-MPFB serializes these settings when saving a character preset. May be worth it to study that 
-logic to figure out what should be in scope for reading and writing in the node trees.
+Left out of FR 040 on purpose, and still open here:
 
-There are also procedural aspects of the MakeSkin material (color mix in etc). Might be worth
-it to deal with these using the same logic.
+- **Enhanced skin settings**: the per-slot `colorMixIn`, roughness and pore inputs of an
+  `ENHANCED`/`ENHANCED_SSS` skin (`skin_material_settings[<slot>]` in a preset). The same
+  generic tools could take a fourth section.
+- **MPFB's named settings files**: `eye_settings.<name>.json` and `enhanced_settings.<name>.json`
+  in the user config directory, with their save/apply panels under Presets. That is a catalogue
+  and an apply-by-name, and a save would be another file written outside the `.blend`.
 
 <a id="create-human-takes-no-name"></a>
 
