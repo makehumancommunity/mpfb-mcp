@@ -11,6 +11,7 @@ requires-python = ">=3.10"
 # setuptools 77+, and the build requirement below admits 68. The licence text
 # is in LICENSE, and test modules carry SPDX headers.
 classifiers = [
+    "Development Status :: 4 - Beta",
     "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
 ]
 dependencies = [

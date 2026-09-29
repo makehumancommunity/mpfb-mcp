@@ -74,7 +74,7 @@ def register(mcp: FastMCP) -> None:
 
         `create_human()`'s own defaults are used for `mask_helpers`,
         `detailed_helpers`, `extra_vertex_groups` and `feet_on_ground`; this
-        proof-of-concept does not expose them.
+        tool does not expose them.
 
         On `status: "ok"`, `result` carries `basemesh_name` - the address every
         later tool needs, since Blender uniquifies a name already in use - plus `vertex_count`,

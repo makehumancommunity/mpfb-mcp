@@ -1,7 +1,7 @@
 """
 MCP server for MPFB (MakeHuman Plugin For Blender).
 
-Proof-of-concept: exposes MPFB-specific tools that run inside a running Blender
+Early beta: exposes MPFB-specific tools that run inside a running Blender
 instance. A tool names a command from a closed vocabulary and hands over its
 parameters; the MPFB Bridge add-on - this project's own, in ``bridge/`` -
 dispatches it and answers over its TCP socket (see bridge_connection.py).

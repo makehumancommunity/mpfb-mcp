@@ -143,7 +143,7 @@ def validated_text(value: object, argument: str, hint: str) -> str | None:
 # A spelling a tool no longer takes, per tool, and the one that replaced it.
 # Per tool rather than one set: a spelling retired from one tool can still be
 # declared by another, where it means something else. An entry stays for as long
-# as a caller might still send the old spelling, which in a proof of concept with
+# as a caller might still send the old spelling, which in an early beta with
 # no released users is until nobody remembers it.
 RETIRED_ARGUMENTS: dict[str, dict[str, str]] = {
     # FR 037, R1: `name` is the object a tool operates on. The file became

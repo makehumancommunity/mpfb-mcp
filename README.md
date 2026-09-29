@@ -6,7 +6,7 @@ rather than executing code.
 
 ## Status
 
-Proof of concept. Thirty-four tools are implemented.
+Early beta. Thirty-four tools are implemented.
 
 **All thirty-three tools that cross the socket speak to the bridge**, and there is nothing else
 for them to speak to. The odd one out, `mpfb_list_docs`, answers from a local table and reaches

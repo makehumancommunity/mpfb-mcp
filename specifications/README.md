@@ -6,8 +6,8 @@ This directory holds the structured specifications for mpfb-mcp.
 
 **These specifications are visionary.** They describe the **desired end state** of the
 system — the design we are building *toward* — not necessarily how it is implemented today.
-The codebase is a small, early-stage proof of concept and will, in places, diverge from what
-is written here: a spec may describe tools, behavior, or conventions that do not exist yet.
+The codebase is in early beta and will, in places, diverge from what is written here: a spec
+may describe tools, behavior, or conventions that do not exist yet.
 
 When the two disagree:
 

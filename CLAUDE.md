@@ -46,7 +46,7 @@ lifecycle that on completion folds durable decisions into `specifications/`, mov
 
 ## Project status
 
-Proof of concept, and **the pivot is complete**: the Blender-side logic lives in a companion add-on
+Early beta, and **the pivot is complete**: the Blender-side logic lives in a companion add-on
 of our own, the MPFB Bridge in [bridge/](bridge), and there is one way to reach Blender.
 [FR 028](feature-requests/done/028-pivot-to-specific-addon/README.md) landed the decision and a
 working transport; [FR 030](feature-requests/done/030-backend-seam/README.md) built the **seam**
@@ -80,7 +80,7 @@ needs it, in that request's own subdir, and moves to `done/` with it.
 ## Version control
 
 **Commit directly to `master`.** Do not create a branch for a change, and do not open a pull
-request. The project is a single-developer proof of concept where every change so far has been a
+request. The project is a single-developer early beta where every change so far has been a
 straight-line addition to `master`; branching and review would add ceremony without adding a
 reviewer. This overrides any general "branch before committing to the default branch" default.
 
