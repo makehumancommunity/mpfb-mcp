@@ -8,47 +8,6 @@ Completed efforts are no longer listed here — they move to [HISTORY.md](HISTOR
 records what has already landed and why. When an effort below is finished, move it there
 (see the [lifecycle in CLAUDE.md](CLAUDE.md#lifecycle)).
 
-<a id="selection-restore-covers-one-object"></a>
-
-## Selection restore covers one object
-
-Found by FR 036's census and asserted, as a gap, by `bbb_shared/selection_test.py`. The ten
-mutating commands that activate something put back the active object and the *borrowed* object's
-own selection, through `shared/selection.py`. An operator that selects *other* objects - a new
-armature from `mpfb_add_rig`, an imported garment from `mpfb_add_asset` - leaves them selected, so
-the user's selection after the call is not the one they had. Closing it means snapshotting every
-object's selection on the way in, which changes what several commands leave behind and is a
-behaviour change to announce, not a refactoring. `mpfb_generate_rigify_rig` is a separate case
-already: it reports `active_object_after` because it cannot restore.
-
-<a id="one-helper-for-the-tool-under-test"></a>
-
-## One helper for the tool under test
-
-Found by FR 036's census, which did not search `tests/`. Twenty-nine functions in `tests/` reach
-into FastMCP's private `mcp._tool_manager._tools` to get the callable behind a tool
-(`_tool_callable` twenty times, `_register_and_get_tool` nine), and every copy differs only in
-which tool it names. Under the rule for shared code
-([rule 2](../specifications/architecture.md#shared-modules-and-what-warrants-one)) that is plainly
-one concept, and one helper would also put the reach into a *private* attribute of a pinned
-dependency in one place rather than twenty-nine, which matters the day `mcp` is upgraded. The
-bridge suite has the same shape in `_result`, seventeen copies, one per module, each unwrapping a
-dispatch envelope for its own command. A test-harness effort, and a small one.
-
-<a id="create-human-typeerror"></a>
-
-## `mpfb_create_human` refuses a non-number with a `TypeError`
-
-Found by FR 036's `tool_refusals.py`. Every other tool refuses a bad argument shape with a
-`ValueError` whose sentence names the argument; `mpfb_create_human`'s slider check compares the
-value with `0.0 <= value <= 1.0` before checking its type, so `age="x"` fails with
-`TypeError: '<=' not supported between instances of 'float' and 'str'`, and `age=None` the same
-way. FastMCP reports either as a tool error, so nothing is sent, but the sentence tells an agent
-nothing it can act on. The fix is a type check before the range check; its refusal sentences then
-belong in a unit test, which is where FR 036 found none.
-
-<a id="stale-anchor-links"></a>
-
 ## Stale anchor links in the documentation
 
 Found by a link check while [FR 037](done/037-one-word-per-concept/README.md) closed. These relative
@@ -191,6 +150,12 @@ mcp. MPFB's own material panels expose both, so this wraps existing behaviour ra
 inventing it: something like `mpfb_set_eye_color` (iris colours, perhaps pupil size) and a
 colour-level edit of a `LAYERED` skin. The group and input names are MPFB's node trees, so they
 drift with MPFB, which is an argument for reading them from MPFB rather than hard-coding them.
+
+MPFB serializes these settings when saving a character preset. May be worth it to study that 
+logic to figure out what should be in scope for reading and writing in the node trees.
+
+There are also procedural aspects of the MakeSkin material (color mix in etc). Might be worth
+it to deal with these using the same logic.
 
 <a id="create-human-takes-no-name"></a>
 
