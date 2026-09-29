@@ -1,10 +1,10 @@
 """
 Which object a command is about, and which character that object belongs to.
 
-**One implementation, imported by all eighteen commands that take a subject.**
+**One implementation, imported by all twenty commands that take a subject.**
 See [`__init__.py`](__init__.py) for why this directory exists beside
 ``commands/``. Every tool that takes a subject promises the same three things
-about it, and a promise made eighteen times is kept only if it is written once:
+about it, and a promise made twenty times is kept only if it is written once:
 
 - **The active object is the view layer's**, not ``bpy.context.active_object``.
   A command runs from a timer or from the headless loop, never from a viewport
@@ -21,7 +21,7 @@ about it, and a promise made eighteen times is kept only if it is written once:
 
 It also says **how the subject was resolved**, ``"active"`` or ``"name"``, so
 that no command computes ``subject_resolved_by`` on a line of its own. All
-eighteen report it under that key; ``get_object_info`` said
+twenty report it under that key; ``get_object_info`` said
 ``resolved_from: "active_object"`` until FR 037.
 
 **The condition is here; the wording is not**, as in

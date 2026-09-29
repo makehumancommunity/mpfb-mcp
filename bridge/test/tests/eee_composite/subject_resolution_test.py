@@ -1,7 +1,7 @@
 """
-All eighteen commands that take a subject, asked about the same three misses.
+All twenty commands that take a subject, asked about the same three misses.
 
-The claim is about eighteen commands at once, which is why it is here: every
+The claim is about twenty commands at once, which is why it is here: every
 command that takes a subject resolves it the same way, because all of them go
 through ``shared/subject_resolution.py``
 ([FR 036](../../../../feature-requests/done/036-subject-resolver-and-duplication/README.md)).
@@ -50,7 +50,7 @@ SUBJECT_ONLY = ("get_object_info", "generate_rigify_rig")
 
 
 def _calls(subject):
-    """The eighteen commands, each with the least that passes its parameter contract."""
+    """The twenty commands, each with the least that passes its parameter contract."""
     return {
         "get_object_info": dict(name=subject),
         "get_macro_details": dict(name=subject),
@@ -73,6 +73,9 @@ def _calls(subject):
         "generate_rigify_rig": dict(name=subject),
         "add_asset": dict(name=subject, fragment="none/none.mhclo", object_type="Clothes"),
         "set_skin": dict(name=subject),
+        "get_material_settings": dict(name=subject),
+        "set_material_settings": dict(name=subject, eyes=[
+            dict(socket="IrisMajorColor", color=[0.1, 0.4, 0.1, 1.0])]),
     }
 
 
@@ -101,11 +104,11 @@ def _refused_if_mutating(command, answer):
 
 
 def _resolved_by(command, answer):  # pylint: disable=unused-argument
-    # One key in all eighteen since FR 037; get_object_info said resolved_from.
+    # One key in every one of them since FR 037; get_object_info said resolved_from.
     return answer["subject_resolved_by"]
 
 
-def test_all_eighteen_are_covered():
+def test_every_command_taking_a_subject_is_covered():
     """Every command that takes a subject is in :func:`_calls`, and nothing else is.
 
     A subject is an optional ``name`` - omitted, it is the active object. A

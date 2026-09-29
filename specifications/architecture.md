@@ -632,12 +632,12 @@ now four parts, and it applies on both sides of the socket:
   `performed.py` is one of the smallest — one function, reading nothing out of MPFB — and it
   clears the bar on consequence rather than size: the whole reason the
   [`performed` flag](mutating-tools.md#the-flag-a-caller-branches-on-is-called-performed) exists is
-  that thirteen tools disagreed about what to call it, so an implementation per command, sixteen
+  that thirteen tools disagreed about what to call it, so an implementation per command, seventeen
   today, would be the original problem in a new spelling.
-- **A convention eighteen commands must follow identically is the `performed.py` case, twice.**
+- **A convention twenty commands must follow identically is the `performed.py` case, twice.**
   `subject_resolution.py` resolves the object a command is about — the view layer's active object
   or a name looked up in the file, then any member of the family to its basemesh — and says how it
-  was resolved, for all eighteen commands that take a subject
+  was resolved, for all twenty commands that take a subject
   ([how a tool addresses an object](tool-interface.md#how-a-tool-addresses-an-object)).
   `selection.py` puts the caller's active object and the borrowed object's selection back, for the
   ten mutating commands that activate something
@@ -645,7 +645,7 @@ now four parts, and it applies on both sides of the socket:
   copies of the first had one body and drifting wording; five of them had stopped pointing the
   caller at `mpfb_get_object_info`, with no reason anyone could find. Neither module raises or
   short-circuits, so each command keeps the order in which it reports its refusals, and each passes
-  in its own phrases (rule 4). `eee_composite/subject_resolution_test.py` asks all eighteen about
+  in its own phrases (rule 4). `eee_composite/subject_resolution_test.py` asks all twenty about
   the same three misses.
 - **A rule that fails silently is shared, so that it is followed in one place.**
   `mpfb_surface.py` reads the names MPFB keeps on a service's module under
@@ -730,6 +730,17 @@ now four parts, and it applies on both sides of the socket:
   step (see [a UI module with no service behind it](#a-ui-module-with-no-service-behind-it)); how
   the module is found, what a miss means and what `panel_synced` reports must not differ between
   them, and the rules for reaching the module belong in one place a reader can check.
+- **`material_settings.py` is where a read, a write and a summary address one node.**
+  [FR 040](../feature-requests/done/040-procedural-material-settings/README.md) added it for all
+  three warrants above at once: `mpfb_set_material_settings` must write the node
+  `mpfb_get_material_settings` reported, with the sockets it reported, or an agent copying a read
+  into a write gets a refusal for a socket it was just shown; `mpfb_get_character_summary` reports
+  three of the read's colours under the read's own keys; and what counts as a setting, what
+  "linked" means and how a linear colour becomes a hex are rules that fail silently when two copies
+  disagree. It follows the serializer's route to each node rather than a tidier one, and carries the
+  two lists MPFB writes inline to find them, commented as copies
+  ([names inside MPFB's node trees are read live](mpfb-integration.md#names-inside-mpfbs-node-trees-are-read-live-never-tabulated)).
+  It was the one shared addition the request allowed, and no other shared module's code changed.
 
 **The evidence for the rule is FR 036's census**, not the census of generated programs that
 stood here before: those programs were deleted by

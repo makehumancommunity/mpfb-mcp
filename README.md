@@ -6,9 +6,9 @@ rather than executing code.
 
 ## Status
 
-Proof of concept. Thirty-two tools are implemented.
+Proof of concept. Thirty-four tools are implemented.
 
-**All thirty-one tools that cross the socket speak to the bridge**, and there is nothing else
+**All thirty-three tools that cross the socket speak to the bridge**, and there is nothing else
 for them to speak to. The odd one out, `mpfb_list_docs`, answers from a local table and reaches
 no Blender at all.
 
@@ -34,6 +34,8 @@ See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
 - `mpfb_get_face_units` — what is this character's face doing, in ARKit face units?
 - `mpfb_get_expression` — which saved expressions is this character wearing, and do they explain
   its face?
+- `mpfb_get_material_settings` — what are this character's iris colours, layered skin and hair and
+  garment tints, exactly as a preset would save them?
 
 **Catalogues** — what could be added, each entry named the way the acting tool will want it:
 
@@ -67,6 +69,8 @@ See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
 - `mpfb_add_asset` / `mpfb_remove_asset` — equip an MHCLO asset, and take it off properly.
 - `mpfb_set_skin` — give the character a skin, in any of MPFB's five material models.
 - `mpfb_set_asset_material` — recolour an equipped asset, or restore its own material.
+- `mpfb_set_material_settings` — change iris colours, the layered skin and the tint of hair and
+  garments, batched, in a way a preset keeps.
 - `mpfb_save_preset` / `mpfb_create_human_from_preset` — keep a character past this Blender
   session, and build a new one from a saved character. These and `mpfb_save_expression` are the
   only tools here that write a file, and nothing in Blender can undo it, so both saving tools
@@ -76,7 +80,7 @@ See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
 generate a Rigify rig after them. The tools report the violation they can see rather than
 enforcing it.
 
-**All thirty-two have been run against a real Blender, and re-checking all of them is one short
+**All thirty-four have been run against a real Blender, and re-checking all of them is one short
 command.** [verification/](verification/) is a smoke run — one call per tool with default
 arguments, measured at 1.5 s for the whole set against a headless Blender — so confirming that
 nothing has stopped working is a command rather than a session. It leaves what it builds in the

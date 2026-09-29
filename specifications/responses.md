@@ -116,6 +116,13 @@ filtered response must never be readable as a complete one.**
   this whole convention guards against is an agent reporting that an asset is not installed because
   it was not on page one.
 
+**A filter on sections is the same obligation in a different shape.** `mpfb_get_material_settings`
+answers 21-22 KB for a character with procedural eyes, a layered skin and six mesh assets, of which
+the skin's nine groups are 16 KB, so it takes a `section` argument - added because the answer was
+measured past the line, not in advance of it. A section left out is `null` rather than absent or
+empty, which is [the `null` versus `[]` rule](#response-shape) - not computed, rather than none -
+and `requested_section` echoes the filter.
+
 ## How tools report a derived rather than recorded fact
 
 [How tools report the asset behind an object](#how-tools-report-the-asset-behind-an-object) draws a
@@ -160,6 +167,14 @@ the asset's containing directory name against the asset names in the installed p
   decimals, so exact equality would call every saved face unexplained. `clamped_face_units` is the
   same kind again: MPFB clamps each unit's sum to `[0, 1]` and keeps no record that it did, so the
   unclamped sum is recomputed over the same rows and reported beside the value MPFB applied.
+- **A value converted into the caller's terms is this kind, and is never accepted back.** A colour
+  socket holds scene-linear RGBA, and an agent that thinks in sRGB picks colours that come out too
+  light. So every colour `mpfb_get_material_settings` and `mpfb_set_material_settings` report
+  carries an `srgb_hex` beside it: each channel clamped to 0-1, put through the sRGB transfer
+  function and rounded to a byte, alpha dropped. Neither the node nor a preset records it, the
+  descriptions say it is derived, and the write takes only the linear value - accepting hex would
+  need a second key per entry and a conversion the read could not round-trip exactly
+  ([FR 040](../feature-requests/done/040-procedural-material-settings/README.md)).
 
 ## A response says which source answered it
 
@@ -308,6 +323,20 @@ And a fifth, where MPFB's UI says the opposite of what MPFB does:
   hidden file under `shadowed`, with the file that hides it, and `mpfb_save_expression` refuses to
   create one. A tool that followed the panel's description would report a file as available that
   nothing in MPFB will ever load.
+
+And a sixth, where the fact is about what a write *would* do:
+
+- **The tool reports what makes a write useless or wider than asked.** On MPFB's layered skin most
+  region colours - `bodygroup`'s `SkinColor`, `facegroup`'s `EyelidColor`, the nails' colour - are
+  driven by a link from the `color` group, and so is a MakeSkin `diffuseIntensity`'s `Color2`, from
+  its texture. Writing a linked socket's default value succeeds and changes nothing, and MPFB's
+  serializer saves it anyway. `mpfb_get_material_settings` reports each link as the node and
+  socket it comes from (`linked`), and the write refuses one, naming the socket that drives it.
+  Likewise a material is a datablock, and every object using it changes with it:
+  `material_shared_with` names the objects outside the section that would change too - another
+  character, or an export copy - on the read, and `materials_written` on the write. And a declared
+  range MPFB's own value already contradicts is named (`values_outside_range`) rather than left for
+  the caller to meet as a refusal ([FR 040](../feature-requests/done/040-procedural-material-settings/README.md)).
 
 Prefer describing what is actually on disk, and label the part MPFB will not show — rather than
 either papering over the difference or quietly inheriting the limitation. Where the difference is

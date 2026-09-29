@@ -47,6 +47,8 @@ __all__ = (
     "dispatch",
     "expression_library",
     "linked_plain_object",
+    "material_character",
+    "material_data_roots",
     "nothing_active",
     "only_these_data_roots",
     "redirected_locations",
@@ -59,6 +61,7 @@ __all__ = (
     "write_expression",
     "write_mhclo",
     "write_mhmat",
+    "write_png",
     "write_target",
 )
 
@@ -236,10 +239,31 @@ def write_target(path, content=None):
     return path
 
 
-def write_mhmat(path, name=None):
-    """A real MHMAT file, carrying only the lines anything here reads back."""
-    return write(path, "# MakeHuman Material Definition\nname {:s}\n".format(
-        name or os.path.splitext(os.path.basename(path))[0]))
+def write_mhmat(path, name=None, lines=()):
+    """A real MHMAT file, carrying only the lines anything here reads back.
+
+    ``lines`` are appended as given - ``"diffuseTexture shirt.png"`` - for a
+    test whose material needs a texture MPFB will build a node for.
+    """
+    return write(path, "# MakeHuman Material Definition\nname {:s}\n{:s}".format(
+        name or os.path.splitext(os.path.basename(path))[0],
+        "".join(line + "\n" for line in lines)))
+
+
+def write_png(path, rgba=(0.5, 0.5, 0.5, 1.0)):
+    """A four-pixel PNG, written by Blender, for an MHMAT to name as a texture."""
+    directory = os.path.dirname(path)
+    if directory:
+        os.makedirs(directory, exist_ok=True)
+    image = bpy.data.images.new(os.path.basename(path), 2, 2)
+    try:
+        image.pixels[:] = list(rgba) * 4
+        image.filepath_raw = path
+        image.file_format = "PNG"
+        image.save()
+    finally:
+        bpy.data.images.remove(image)
+    return path
 
 
 def write_mhclo(path, material=True, uuid=None):
@@ -272,7 +296,7 @@ _MHCLO_SCALE_LINES = (
 )
 
 
-def write_loadable_mhclo(path, material=True):
+def write_loadable_mhclo(path, material=True, uuid=None, mhmat_lines=()):
     """An MHCLO a mutating command can actually **equip**, and its OBJ beside it.
 
     Different from :func:`write_mhclo` in the one way that matters here, and the
@@ -295,9 +319,13 @@ def write_loadable_mhclo(path, material=True):
     base = os.path.splitext(path)[0]
     name = os.path.basename(base)
     lines = ["# MakeHuman clothes file", "name " + name, "obj_file " + name + ".obj"]
+    if uuid:
+        # What a preset keys an asset's colour adjustment and alternative
+        # material by, so a fixture that is saved and loaded again needs one.
+        lines.append("uuid " + uuid)
     if material:
         lines.append("material " + name + ".mhmat")
-        write_mhmat(os.path.join(os.path.dirname(path), name + ".mhmat"))
+        write_mhmat(os.path.join(os.path.dirname(path), name + ".mhmat"), lines=mhmat_lines)
     lines.extend(_MHCLO_SCALE_LINES)
     lines.append("verts 0")
     # Each line matches one asset vertex to three basemesh vertices with
@@ -761,3 +789,76 @@ def expression_library(services, root):
             yield paths
         finally:
             face_service.is_faceunits01_installed(force_recheck=True)
+
+
+# The uuids the material fixture's assets carry. A preset keys a colour
+# adjustment by uuid, so the round trip needs them to be stable and distinct.
+MATERIAL_FIXTURE_UUIDS = {
+    "eyes": "b1d9e0a0-0000-4000-8000-00000000e7e5",
+    "hair": "b1d9e0a0-0000-4000-8000-0000000a1a12",
+    "garment": "b1d9e0a0-0000-4000-8000-0000005a1d17",
+    "aoshirt": "b1d9e0a0-0000-4000-8000-00000000a0a0",
+}
+
+
+def material_character(services, character, root):
+    """Procedural eyes, a LAYERED skin, and three MakeSkin assets on ``character``.
+
+    The fixture FR 040's three sections need, built the way a user builds it
+    and not by writing node values: each asset is equipped through
+    ``add_asset``'s own command, and the skin through
+    ``HumanService.set_character_skin()``. The hair's and the garment's MHMATs
+    name a diffuse texture, as every real one does: without one MPFB builds no
+    ``diffuseIntensity`` node, and identifies the material as ``gameengine``.
+    ``aoshirt``'s names an AO map as well, so the node on its Base Color is
+    ``aoMix``.
+
+    **Call it inside ``material_data_roots(services, root)``, and keep that open
+    for as long as anything re-reads an asset** - a refit or a preset load
+    searches the data roots rather than remembering where a file came from.
+    Returns ``{role: object name}``.
+    """
+    root = str(root)
+    texture = write_png(os.path.join(root, "textures", "fixture_diffuse.png"),
+                        (0.6, 0.3, 0.2, 1.0))
+    ao_map = write_png(os.path.join(root, "textures", "fixture_ao.png"), (0.9, 0.9, 0.9, 1.0))
+    specs = (
+        ("eyes", "Eyes", "eyes", "PROCEDURAL_EYES", ()),
+        ("hair", "Hair", "hair", "MAKESKIN", ("diffuseTexture " + texture,)),
+        ("garment", "Clothes", "clothes", "MAKESKIN", ("diffuseTexture " + texture,)),
+        ("aoshirt", "Clothes", "clothes", "MAKESKIN",
+         ("diffuseTexture " + texture, "aomapTexture " + ao_map, "aomapIntensity 1.0")),
+    )
+    names = {}
+    for role, object_type, subdir, material_type, mhmat_lines in specs:
+        stem = "fixture_" + role
+        write_loadable_mhclo(os.path.join(root, subdir, stem, stem + ".mhclo"),
+                             uuid=MATERIAL_FIXTURE_UUIDS[role], mhmat_lines=mhmat_lines)
+        envelope = dispatch("add_asset", {
+            "name": character.basemesh.name,
+            "fragment": "{:s}/{:s}.mhclo".format(stem, stem),
+            "object_type": object_type,
+            "material_type": material_type,
+        })
+        assert envelope["status"] == "ok", "equipping {:s} failed: {!r}".format(role, envelope)
+        assert envelope["result"]["added"] is True, envelope["result"]["message"]
+        names[role] = envelope["result"]["asset_object_name"]
+
+    services["HumanService"].set_character_skin(
+        None, character.basemesh, skin_type="LAYERED", material_instances=False)
+    names["body"] = character.basemesh.name
+    return names
+
+
+def material_data_roots(services, root):
+    """:func:`only_these_data_roots` with ``root`` as user data, and MPFB's own data kept.
+
+    Procedural eyes and MakeSkin materials are built from node trees MPFB ships
+    in its data directory (``node_trees/procedural_eyes.json``), so pointing that
+    root away as well - which is what a deterministic *asset* library wants -
+    leaves MPFB unable to build either. MPFB's shipped data is the same on every
+    install of one version, so keeping it costs the fixture no determinism.
+    """
+    return only_these_data_roots(
+        services, user_data=str(root),
+        mpfb_data=getattr(services["LocationService"], _REDIRECTABLE["mpfb_data"]))

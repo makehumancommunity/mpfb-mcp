@@ -1,11 +1,11 @@
 # Procedural material settings: iris colour, layered skin colour and MakeSkin colour adjustments
 
-**Status:** Proposed
+**Status:** Done
 
 Two materials MPFB builds without a file come out the same every time, and no tool changes them.
 With `PROCEDURAL_EYES` every character gets the same blue irises. A `LAYERED` skin with no MHMAT
 gets MPFB's default skin colour. The extensions-page line-up session
-([NEXT_STEPS](../NEXT_STEPS.md#eye-and-layered-skin-colours)) set these by hand, through blender
+([NEXT_STEPS](../../NEXT_STEPS.md#eye-and-layered-skin-colours)) set these by hand, through blender
 mcp. It wrote `IrisMajorColor`/`IrisMinorColor` on the eye group node, and `SkinColor` plus the
 lips, eyelid and nail colours on `MpfbSkinMasterColor`. There is a third gap of the same kind:
 hair, eyebrows and garments carry a MakeSkin material whose colour can be tinted, and MPFB saves
@@ -74,7 +74,7 @@ trip. The request is `Done` when both have landed.
 
 1. **Subject.** Takes `name`: any object in the character's family, with `null` meaning the active
    object. It is resolved through `shared/subject_resolution.py`. A miss is
-   `blocked_by: "subject_not_found"` ([FR 038](../done/038-subject-not-found-everywhere/README.md)).
+   `blocked_by: "subject_not_found"` ([FR 038](../038-subject-not-found-everywhere/README.md)).
 2. **Three sections, always present**: `eyes`, `skin` and `color_adjustments`. A section that does
    not apply says why, rather than being absent or empty: no eyes; eyes whose material is not
    procedural; no skin material; a skin that is not layered. Each carries the object and material it
@@ -87,7 +87,7 @@ trip. The request is `Done` when both have landed.
    - its kind (colour or float);
    - an **sRGB hex** for a colour, derived from the linear value (clamped, alpha dropped), and
      reported as derived per
-     [responses.md](../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact);
+     [responses.md](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact);
    - the declared range for a float, where the socket has one;
    - whether it is **linked**, and from which node and socket.
 
@@ -104,17 +104,17 @@ trip. The request is `Done` when both have landed.
    Base Color, is listed with the reason and no settings.
 6. **Shared materials are reported.** When a material that was read is used by objects outside
    what the section names (another character, or an export copy per
-   [FR 039](../039-exporting-characters/README.md)), the section says which. A write would change
+   [FR 039](../../039-exporting-characters/README.md)), the section says which. A write would change
    them too.
 7. **Size.** The answer for a character with procedural eyes, a layered skin, hair, eyebrows,
    eyelashes and one garment is measured during the effort. If it is over roughly 16 KB, the tool
    gains a filter argument naming one section, per
-   [how tools bound a large answer](../../specifications/responses.md#how-tools-bound-a-large-answer).
+   [how tools bound a large answer](../../../specifications/responses.md#how-tools-bound-a-large-answer).
    The filter is not added speculatively.
 8. **`mpfb_get_character_summary`** gains the sRGB hex of the irises (`IrisMajorColor`,
    `IrisMinorColor`) and of the layered skin's `SkinColor`, under the names the detailed tool uses
    and read by the same shared module, per
-   [a summary is never a second opinion](../../specifications/responses.md#a-summary-is-never-a-second-opinion).
+   [a summary is never a second opinion](../../../specifications/responses.md#a-summary-is-never-a-second-opinion).
    Nothing else from this tool goes into the summary. Proposed while writing this request, not
    asked; drop it if it threatens the summary's 8 KB cap.
 
@@ -133,7 +133,7 @@ trip. The request is `Done` when both have landed.
     A `color` is four finite numbers, scene-linear RGBA, as the read reports it. Three numbers are
     refused, with the refusal saying that alpha is required.
 11. **Resolve every entry before writing any**, per
-    [a batched mutating tool resolves before it writes](../../specifications/mutating-tools.md#a-batched-mutating-tool-resolves-before-it-writes).
+    [a batched mutating tool resolves before it writes](../../../specifications/mutating-tools.md#a-batched-mutating-tool-resolves-before-it-writes).
     An entry fails resolution when:
     - its section does not apply (eyes not procedural, skin not layered, asset not MakeSkin or not
       in the family);
@@ -151,7 +151,7 @@ trip. The request is `Done` when both have landed.
     `new_value` (with the sRGB hex beside each colour). Also `change_count`, and the shared-material
     fact from requirement 6 for every material written.
 14. **A call naming nothing answers immediately**, saying nothing was named, per
-    [do only what was asked](../../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after).
+    [do only what was asked](../../../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after).
 15. **Nothing is borrowed, so nothing is restored.** Writing a socket's default value needs no
     active object, selection or mode. The command must not change any of them, and the bridge
     tests check that.
@@ -220,25 +220,25 @@ trip. The request is `Done` when both have landed.
 
 ## Affected specifications
 
-- [mpfb-integration.md](../../specifications/mpfb-integration.md): a new principle, **names inside
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md): a new principle, **names inside
   MPFB's node trees are read live, never tabulated**, with this request as its first case. Two
   additions to
-  [where MPFB's own code paths disagree](../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it):
+  [where MPFB's own code paths disagree](../../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it):
   `identify_material()` against the serializer's discriminators, and the serializer's exclusions
   (eyes, a MakeSkin body).
-- [tool-interface.md — the glossary](../../specifications/tool-interface.md#the-glossary): `socket`
+- [tool-interface.md — the glossary](../../../specifications/tool-interface.md#the-glossary): `socket`
   and `group`; `value` broadened from "what a shape key holds" to include a float socket; `color`
   for a colour socket; the sRGB hex key's spelling. [Kept on
-  purpose](../../specifications/tool-interface.md#kept-on-purpose) gains **socket names are MPFB's
+  purpose](../../../specifications/tool-interface.md#kept-on-purpose) gains **socket names are MPFB's
   data and pass through verbatim**, including `AurolaeOverride` (MPFB's spelling), the way a shape
   key name does. The glossary does not rename data.
-- [responses.md](../../specifications/responses.md): the sRGB hex as a derived fact; the linked flag
+- [responses.md](../../../specifications/responses.md): the sRGB hex as a derived fact; the linked flag
   and the shared-material fact as instances of
-  [a tool may report a fact MPFB's own UI does not show](../../specifications/responses.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show).
-- [mutating-tools.md](../../specifications/mutating-tools.md): the third batched tool, and a
+  [a tool may report a fact MPFB's own UI does not show](../../../specifications/responses.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show).
+- [mutating-tools.md](../../../specifications/mutating-tools.md): the third batched tool, and a
   refusal that names a different, writable target (linked socket → `color`) as the fix.
-- [vision.md — Target tool catalog](../../specifications/vision.md#target-tool-catalog): the counts.
-- [testing.md](../../specifications/testing.md): only if the serializer-agreement check below is a
+- [vision.md — Target tool catalog](../../../specifications/vision.md#target-tool-catalog): the counts.
+- [testing.md](../../../specifications/testing.md): only if the serializer-agreement check below is a
   pattern it does not already describe. It is close to "never a second opinion", but against MPFB
   rather than against another command.
 
@@ -266,14 +266,85 @@ trip. The request is `Done` when both have landed.
   and confirmation of any MPFB defect candidate before it goes into
   `mpfb2/features/MCP_DISCOVERED_BUGS.md`. It cannot judge whether a colour *looks* right. A render
   is optional evidence, not a pass criterion.
-- **Two smoke items** in [verification/](../../verification/), default arguments. The write with
+- **Two smoke items** in [verification/](../../../verification/), default arguments. The write with
   default arguments is the no-op answer of requirement 14.
+
+## Verification status
+
+All of it ran, against Blender 5.1.0 with MPFB from source (mpfb2 at `6e96c5e`).
+
+- **[`live_check.py`](live_check.py)**, in this subdir: 30 checks, through the **real tools over the
+  real socket** to a headless Blender the script starts itself, on the **installed** asset library:
+  procedural `high-poly` eyes, a LAYERED `young_caucasian_female` skin, `long01`, `eyebrow001`,
+  `eyelashes01`, `female_casualsuit01` (an AO map) and `punkduck_female_tight_jeans`. All passed.
+  The answer is **21,326 B** whole - eyes 1,755, skin 16,642, colour adjustments 3,608 - and the
+  read and a nine-socket write took **3.9 ms** and **4.0 ms**. The round trip wrote
+  `human.fr040_live_check.json`, compared the file's three keys with the read, loaded it with
+  clothes into a new character whose read was identical, and deleted the file.
+- **The pitfalls, settled.** Probed in the developer's windowed Blender on a throwaway copy of the
+  layered material, and again by the live check: a group input assigned outside its interface range
+  is stored as given (12.0 against 0.2; 5.0 and -3.0 against 0-1); a colour component above 1.0 is
+  kept and a negative one becomes 0; a built-in `Factor` is clamped by its RNA hard range. Inside
+  `MpfbSkinMasterColor`, `SkinColor` and the texture meet in a mix whose factor is
+  `DiffuseTextureStrength - SkinOverride`, clamped: flat colour with no texture, texture with a
+  texture unless `SkinOverride` raises the colour over it. `aoMix` is a MULTIPLY node whose colours
+  are both linked, so its only setting is `Factor`, the AO strength.
+- **Two MPFB defects confirmed and filed** in `mpfb2/features/MCP_DISCOVERED_BUGS.md`: item 11,
+  `MpfbBody`'s `NavelWidthMultiplier` default of 11.0 against its declared 0.001-0.2, the only input
+  on any of these nodes outside its own range; item 12, the colour adjustment on an asset with an AO
+  map being the AO strength rather than the tint.
+- **Bridge tests**: `ccc_reading/get_material_settings_test.py` (9), including exact agreement with
+  `serialize_to_json_string()`; `ddd_mutating/set_material_settings_test.py` (11);
+  `eee_composite/material_settings_roundtrip_test.py` (3); a summary agreement test in
+  `eee_composite/get_character_summary_test.py`; both commands added to
+  `eee_composite/subject_resolution_test.py`. **414** in all. Every one passed, and so did every
+  other module but one: `ddd_mutating/refit_human_test.py::test_the_answer_agrees_with_mpfbs_own_metarig_lookup`
+  fails inside MPFB's `RigService.refit_existing_armature()` ("Cannot edit hidden object"), alone as
+  in the suite, and nothing here touches it. Because `-x` stops the run there, the modules after it
+  were run one by one.
+- **Unit tests**: `tests/test_get_material_settings.py` and `tests/test_set_material_settings.py`
+  (25), **484** in all, green. The description ceiling is raised to 72,900 and the schema ceiling
+  to 13,150, reasons in `tests/test_description_budget.py`.
+- **Two smoke items**; the run is 36 items, all passing, in 1.5 s.
+
+### What landed differently from the text above, and why
+
+- **`section` exists** (requirement 7): the size case measured 21-22 KB, the skin 16 KB of it. A
+  section not read is `null`, and `requested_section` echoes the filter.
+- **The range check has one exception** (requirement 11): a socket whose current value already
+  lies outside its declared range is not held to it, because MPFB's own default does that for
+  `NavelWidthMultiplier` and enforcing the range would refuse MPFB's own neighbourhood of values.
+  The read names such sockets in `values_outside_range`.
+- **A colour must be non-negative**, beside requirement 10's four finite numbers, because Blender
+  stores a negative component as zero. A component above 1.0 is allowed.
+- **The skin is read from the body proxy when there is one**, not the basemesh as
+  [Architecture](#architecture) said, because that is what the serializer reads; LAYERED gives both
+  the same material.
+- **Every mesh asset gets a colour-adjustment record** (requirement 5), not only those the
+  serializer keeps: the eyes, a proxy and a second object of one body-part type are listed with a
+  `reason`. Faithfulness decides what counts as a setting; it does not have to hide the asset.
+- **"Not MakeSkin" is the serializer's test, not `identify_material()`'s** (requirement 5): an asset
+  applies when `find_color_adjustment()`'s route reaches a node with settings. On a real install
+  the two agree; the reasons say which step failed.
+- **The skin's group list is a copy of MPFB's** (requirement 4, and the non-functional
+  requirement on names): the nine keys are a local variable in `HumanService`, so they cannot be
+  read live. They are how MPFB *finds* the nodes, which the requirement allows, and are commented as
+  a copy.
+- **`write_instead`** on a linked-socket refusal is new, and makes requirement 11's "set `color`'s
+  `<X>Color` instead" a field rather than a sentence.
+- **The smoke item for the write names one socket** rather than being the no-op call
+  [Tests](#tests) planned: every mutating smoke item must come back `performed: true`. It writes a
+  value back to what it already was.
+- **`found: false` on the read carries `blocked_by`**, as requirement 1 asked, although the other
+  reads do not; an added key costs a caller nothing.
+- **The summary's section is `material_settings`**, a sub-tree of the read's answer, because the
+  summary's `skin` key already means something else there.
 
 ## Decisions taken while scoping
 
 - **Three mechanisms: eyes, layered skin and MakeSkin colour adjustment.** The enhanced skin's
   per-slot settings (`colorMixIn`, roughness, pores on `ENHANCED`/`ENHANCED_SSS`) are left out,
-  and stay in [NEXT_STEPS](../NEXT_STEPS.md#eye-and-layered-skin-colours). The "colour mix-in"
+  and stay in [NEXT_STEPS](../../NEXT_STEPS.md#eye-and-layered-skin-colours). The "colour mix-in"
   NEXT_STEPS attributed to MakeSkin is the enhanced skin's `colorMixIn`. MakeSkin has none, and its
   analogue is the colour adjustment, which is in.
 - **One generic read and one generic write**, keyed like the preset. Rejected:
@@ -312,7 +383,7 @@ trip. The request is `Done` when both have landed.
   `.../enhancedsettings/`.
 - mpfb2 bug 306 (`mpfb2/features/bug_306_fix_eyes*.md`): the procedural eye material's rendering
   on Blender 5, and the reason to expect its node tree to change.
-- Precedents here: [FR 011](../done/011-skin-and-materials/README.md) (`mpfb_set_skin`),
-  [FR 025](../done/025-character-presets/README.md) (the preset tools the round trip goes through),
+- Precedents here: [FR 011](../011-skin-and-materials/README.md) (`mpfb_set_skin`),
+  [FR 025](../025-character-presets/README.md) (the preset tools the round trip goes through),
   `mpfb_set_targets` and `mpfb_set_face_units` (batched writes resolved first),
-  [FR 034](../done/034-character-summary/README.md) (the summary rule).
+  [FR 034](../034-character-summary/README.md) (the summary rule).

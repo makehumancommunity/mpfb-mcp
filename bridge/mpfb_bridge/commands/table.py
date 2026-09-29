@@ -53,6 +53,7 @@ from . import get_character_summary
 from . import get_expression
 from . import get_face_units
 from . import get_macro_details
+from . import get_material_settings
 from . import get_mpfb_status
 from . import get_object_info
 from . import get_target_stack
@@ -73,6 +74,7 @@ from . import save_preset
 from . import set_asset_material
 from . import set_face_units
 from . import set_macro_details
+from . import set_material_settings
 from . import set_skin
 from . import set_targets
 from . import symmetrize_targets
@@ -144,6 +146,12 @@ COMMANDS = {
         params=get_macro_details.PARAMS,
         requires_mpfb=True,
         summary=get_macro_details.SUMMARY),
+    "get_material_settings": Command(
+        name="get_material_settings",
+        handler=get_material_settings.get_material_settings,
+        params=get_material_settings.PARAMS,
+        requires_mpfb=True,
+        summary=get_material_settings.SUMMARY),
     "get_mpfb_status": Command(
         name="get_mpfb_status",
         handler=get_mpfb_status.get_mpfb_status,
@@ -286,6 +294,12 @@ COMMANDS = {
         params=set_macro_details.PARAMS,
         requires_mpfb=True,
         summary=set_macro_details.SUMMARY),
+    "set_material_settings": Command(
+        name="set_material_settings",
+        handler=set_material_settings.set_material_settings,
+        params=set_material_settings.PARAMS,
+        requires_mpfb=True,
+        summary=set_material_settings.SUMMARY),
     "set_skin": Command(
         name="set_skin",
         handler=set_skin.set_skin,

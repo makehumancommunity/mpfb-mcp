@@ -38,6 +38,11 @@ Reading the operator turned up three things this request has to deal with, not i
   copies the object and its mesh, and a copied mesh points at the same material datablocks.
   Changing the copy's materials, which the GameEngine swap below does, changes the original's
   unless the copy is given its own materials first.
+  Since [FR 040](../done/040-procedural-material-settings/README.md), `mpfb_get_material_settings`
+  and `mpfb_set_material_settings` report this for the procedural eye, layered skin and
+  colour-adjustment materials as `material_shared_with` / `materials_written`, which would name the
+  copy while it still shares; a bridge test here could use that rather than comparing datablocks.
+  The swap also rebuilds those materials, so the copy loses what FR 040's write set on them.
 - **The operator's REMOVE branches delete modifiers from the list they are iterating over**
   (`for modifier in new_basemesh.modifiers: ... remove(modifier)`), which can skip the neighbour of
   each removed modifier. This is a defect candidate for `mpfb2/features/MCP_DISCOVERED_BUGS.md`,

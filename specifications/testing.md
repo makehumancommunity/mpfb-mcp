@@ -113,10 +113,10 @@ worth reusing:
   When the fixtures cannot make every section interesting at once, ask in each state that makes
   one interesting, rather than weakening the comparison. **The pattern scales past two.**
   [FR 036](../feature-requests/done/036-subject-resolver-and-duplication/README.md)'s
-  `eee_composite/subject_resolution_test.py` dispatches all eighteen commands that take a subject in
+  `eee_composite/subject_resolution_test.py` dispatches all twenty commands that take a subject in
   each of three miss states and asserts they agree on `found`, the subject, how it was resolved and
-  the start of the sentence. It also asserts that the eighteen are exactly the commands declaring an
-  optional `name`, so a nineteenth cannot join without being asked.
+  the start of the sentence. It also asserts that the twenty are exactly the commands declaring an
+  optional `name`, so a twenty-first cannot join without being asked.
 - **"This refactor changes no answer" is tested by a snapshot diff.** The request's live check
   took a `--snapshot` of every affected command's answer — on its worst-case character, under
   several argument sets, including the misses — to one JSON file with sorted keys, before the
@@ -127,6 +127,17 @@ worth reusing:
   can still reword a refusal the unit tests never read, so FR 036's `tool_refusals.py` called every
   tool with every bad value per argument, `backend.send` replaced by a `BaseException` no tool can
   swallow, and diffed the sentences before and after.
+- **"This read is what MPFB would save" is tested against MPFB's own serializer**, the first
+  pattern with MPFB on the other side of the comparison.
+  [FR 040](../feature-requests/done/040-procedural-material-settings/README.md)'s
+  `ccc_reading/get_material_settings_test.py` calls `HumanService.serialize_to_json_string()` on the
+  character it just read and asserts the preset's `eyes_material_settings`,
+  `skin_material_settings` and `color_adjustments` **exactly** equal to the read's `settings`,
+  key for key - no tolerance, since both sides read the same floats through the same `NodeService`
+  call and the read rounds nothing. A test calling MPFB directly is in keeping with
+  [a tool is tested where it runs](#a-tool-is-tested-where-it-runs): what is under test is a claim
+  about MPFB's output, and MPFB is right there. The round trip through the preset commands, the
+  write's end of the same claim, is `eee_composite/material_settings_roundtrip_test.py`'s.
 
 ## Two harnesses, split at the directory boundary
 

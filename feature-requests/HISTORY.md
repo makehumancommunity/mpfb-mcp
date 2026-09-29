@@ -587,3 +587,57 @@ descriptions name it. `eee_composite/subject_resolution_test.py` asks it of ever
 answer carries `performed`, in all three miss states, and fails without the fix. An added key
 breaks no caller, so the protocol version stayed at 2. Unit suite 459, bridge suite 390, smoke run
 34 of 34.
+
+<a id="procedural-material-settings"></a>
+
+## [FR 040](done/040-procedural-material-settings/README.md) — `mpfb_get_material_settings` and `mpfb_set_material_settings`
+
+Every character's irises were the same blue and every LAYERED skin MPFB's default colour, and the
+tint MPFB saves for hair and garments could be neither read nor written. Two tools now reach the
+three procedural mechanisms MPFB serializes into a preset - procedural eyes, the layered skin's nine
+groups, and the MakeSkin colour adjustment - with one generic read and one batched write, keyed like
+the preset. Thirty-four tools, thirty-three commands, and one shared module,
+`shared/material_settings.py`, which the summary uses too.
+
+**The read agrees with MPFB's serializer exactly**, which is the claim the effort rests on. Every
+node is found by the serializer's route (the proxy's material when there is one, the serializer's
+own "procedural" test, one body part per type, no eyes) and its settings are
+`NodeService.get_socket_default_values()`, so a bridge test serializes the character it read and
+asserts the three preset keys equal to the read's values with no tolerance. The round trip holds the
+same way: written, saved, loaded as a new character with clothes, and read back identical, on the
+fixture and on the installed library. No socket name is written on either side of the socket; the
+vocabulary is in the answer, and [mpfb-integration.md](../specifications/mpfb-integration.md#names-inside-mpfbs-node-trees-are-read-live-never-tabulated)
+now says why.
+
+What the live install settled. **Blender does not enforce a group node input's range** - 12.0
+assigned against a declared 0.2 is stored - but it does clamp a built-in `Factor` and a negative
+colour component, and it keeps a component above 1.0. So a colour must be four non-negative numbers,
+and a float outside its declared range is refused, **except** where MPFB's own value already lies
+outside it: `MpfbBody` defaults `NavelWidthMultiplier` to 11.0 against a declared 0.001-0.2, which
+went into mpfb2's `MCP_DISCOVERED_BUGS.md` as item 11. **A layered `SkinColor` shows by
+`DiffuseTextureStrength - SkinOverride`**: fully with no texture, over one only as far as
+`SkinOverride` raises it; the write's description says so in a sentence. **On an asset whose MHMAT
+has an AO map the colour adjustment is the AO strength**: the node on Base Color is MakeSkin's
+MULTIPLY `aoMix`, both of whose colours are linked, so the tint behind it can be neither written nor
+saved - item 12, followed rather than worked around. And an untextured MakeSkin material has no
+`diffuseIntensity` at all and is identified as `gameengine`, a fixture trap recorded in the spec.
+
+Decisions made during the effort, beyond the request: **`section`** on the read, because the
+request's size case measured 21-22 KB with the skin alone 16 KB; a section not read is `null`.
+**Every mesh asset gets a colour-adjustment record**, those the serializer skips with the reason,
+so an untintable asset is explained rather than missing. **`write_instead`** on a linked-socket
+refusal names the `color` group's socket that drives it. The read carries `blocked_by` on a miss, as
+the request asked, although no other read does. **The smoke item writes one real socket** rather
+than the no-op call the request planned, because every mutating smoke item must perform; it writes
+a value back to what it was. The summary gained `material_settings`, three hex colours under the
+read's own keys and the one place three socket names are written down.
+
+Verified by [`live_check.py`](done/040-procedural-material-settings/live_check.py) (30 checks over
+the socket to a headless Blender with the installed library: sections, `aoMix`, size, latency of
+about 4 ms each way, the pitfalls, the summary, and the round trip through a preset file it deletes
+afterwards). 24 new bridge tests (414), 25 new unit tests (484), and two smoke items; the smoke run
+is 36 of 36 in 1.5 s. The live check had to start the bridge through `cli.cli_execute()`, because
+on this machine the add-on is installed in two extension repositories and Blender refuses a command
+registered twice. The bridge suite's `refit_human_test.py::test_the_answer_agrees_with_mpfbs_own_metarig_lookup`
+failed throughout, alone as in the suite, inside MPFB's `RigService` ("Cannot edit hidden object")
+against mpfb2 at `6e96c5e`; nothing in this effort touches it, and it is left for its own look.

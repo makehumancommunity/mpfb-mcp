@@ -182,6 +182,28 @@ versus services" to *any* two MPFB code paths.
   defect may stand for a long time. The workaround, the coercion or the defensive check that copes
   with it stays exactly as it is, and it is removed when a **running** MPFB no longer needs it —
   which is what the script detects, since it is written to fail once a defect is gone.
+- **Two readings of one material follow the serializer, and report the other one.**
+  `MaterialService.identify_material()` recognizes procedural eyes by an `IrisSection4Color` input
+  and a layered skin by `NavelCenterOverride`; `HumanService`'s serializer recognizes procedural
+  eyes by `IrisMinorColor` and a layered skin by its group node names. They agree on every material
+  MPFB builds today. `mpfb_get_material_settings` decides what counts as a setting by the
+  **serializer's** test, since the promise is that its answer is what a preset holds, and reports
+  `identify_material()`'s verdict beside it as `material_identified_as`, the discriminator the other
+  tools already report ([FR 040](../feature-requests/done/040-procedural-material-settings/README.md)).
+- **The serializer's exclusions are followed, not extended.** It records no colour adjustment for
+  the eyes even when they carry a MakeSkin material, none for a MakeSkin body (the body is in
+  neither of its lists), only **one** object of each body-part type, and on an asset whose MHMAT
+  names an AO map it records the `aoMix` node - the AO strength - rather than the diffuse tint
+  behind it (MCP_DISCOVERED_BUGS item 12). `mpfb_get_material_settings` lists every mesh asset
+  anyway, each one the serializer skips with the `reason` it does, so an agent can see why a tint
+  will not survive a preset rather than finding the asset missing. A tidier rule would make the
+  read disagree with the file it describes.
+- **`identify_material()` calls an untextured MakeSkin material `gameengine`.** MakeSkin creates
+  its `diffuseIntensity` node only for a diffuse texture, and that node is how MakeSkin is
+  recognized, so a MakeSkin material whose MHMAT names none is identified by its Principled BSDF
+  instead. Observed in FR 040's bridge tests. Every real MHMAT names a texture, which is why it is
+  recorded here as a trap for fixtures rather than filed; `material_identified_as` reports MPFB's
+  verdict as it is.
 - **Do not merge them.** Picking one and naming it is the rule; synthesizing a fourth behavior that
   matches none of MPFB's own would make the result unreproducible from inside Blender.
 - **Not reproducing something MPFB's UI does is the same decision and carries the same burden**, so
@@ -217,6 +239,37 @@ versus services" to *any* two MPFB code paths.
   path, which destroys them); and the viewport colour is keyed on the object's recorded
   `object_type`, so an asset mislabelled at equip time gets the wrong colour here too. Reproduce
   them, and say in the command's docstring that they are reproductions rather than choices.
+
+## Names inside MPFB's node trees are read live, never tabulated
+
+A socket on one of MPFB's procedural node groups - `IrisMajorColor`, `SkinOverride`, the colour
+adjustment's `Factor` - is MPFB's data in the same way a shape key name is, and it changes with
+MPFB: the procedural eye tree is being reshaped by mpfb2's bug 306 work as this is written. So
+**no socket, group or node name specific to these materials is written down on either side of the
+socket**, beyond what MPFB's own code uses to *find* the node.
+[FR 040](../feature-requests/done/040-procedural-material-settings/README.md) is the first case.
+
+- **The vocabulary is in the read's answer.** `mpfb_get_material_settings` reports each node's
+  settings keyed by the live socket names, and the write resolves every entry against the same live
+  node. A socket MPFB renames shows up as a different key in the read and an `unknown_socket`
+  refusal with `closest` in the write, never as a silent no-op. The tool descriptions name no
+  socket; the unit tests pin none.
+- **Which sockets count is MPFB's decision.** A node's settings are
+  `NodeService.get_socket_default_values(node)`, the call the serializer makes, so the answer's keys
+  are a preset's keys by construction.
+- **What MPFB writes inline to find a node may be copied, and says so.** The nine layered-skin
+  group keys and the six body-part types the serializer walks are local variables in
+  `HumanService`, not names MPFB publishes, so
+  [`shared/material_settings.py`](../bridge/mpfb_bridge/shared/material_settings.py) carries a copy
+  of each, commented as one. A group MPFB adds shows up as `groups_not_serialized` until the copy is
+  updated, and the bridge test comparing the read with the serializer fails.
+- **The one exception is the summary**, which names three sockets - the two iris colours and the
+  skin colour - because they are what that section is for. A renamed one is reported as `null`
+  rather than dropped.
+- **Ranges and links are read from the live node too**: a group input's range from its node group's
+  interface item, a built-in node's from its RNA property's hard limits, and a link as the node and
+  socket it comes from. A range can be contradicted by MPFB's own value (MCP_DISCOVERED_BUGS
+  item 11), and the write does not enforce a range MPFB itself does not keep.
 
 ## Reading MPFB's data files directly
 

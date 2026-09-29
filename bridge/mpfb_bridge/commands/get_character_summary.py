@@ -26,6 +26,15 @@ names:
   reads it, and
   [`expression_divergence.py`](../shared/expression_divergence.py) as
   ``get_expression`` reports it.
+- ``material_settings`` - [`material_settings.py`](../shared/material_settings.py),
+  as ``get_material_settings``: the irises' and the layered skin's colours as
+  sRGB hex and nothing else from that command
+  ([FR 040](../../../feature-requests/done/040-procedural-material-settings/README.md),
+  requirement 8). It is a sub-tree of that command's answer under the same
+  keys, down to ``skin.groups.color.srgb_hex``, so a caller who knows one knows
+  where the other keeps it. **Three socket names are written here**, which the
+  detailed command never does: they are what the section is for, and a socket
+  MPFB renames is reported as ``null`` rather than dropped.
 
 **So it reports no fact a detailed command does not.** It selects and it
 counts; it does not derive. A finding that joined two sections - "the rig
@@ -73,6 +82,7 @@ __all__ = (
 from ..log import get_logger
 from ..shared import asset_info
 from ..shared import macro_reading
+from ..shared import material_settings
 from ..shared import mpfb_surface
 from ..shared import subject_resolution
 from ..shared import target_categories
@@ -105,6 +115,12 @@ _ASSET_FIELDS = ("asset_source", "material_identified_as", "material_source")
 _RIG_FIELDS = ("rig_identified_as", "rig_definition_path")
 _SKIN_FIELDS = ("material_identified_as", "material_source", "mhmat_path")
 _STACK_ROW_FIELDS = ("fragment", "weight", "resolved")
+
+# The colours requirement 8 of FR 040 names, and the only socket names this
+# command knows. An iris has two; the skin's own colour is on its colour group.
+_IRIS_SOCKETS = ("IrisMajorColor", "IrisMinorColor")
+_SKIN_COLOR_GROUP = "color"
+_SKIN_SOCKETS = ("SkinColor",)
 
 
 def _pick(dictionary, keys):
@@ -190,6 +206,24 @@ def _face(services, basemesh):
     )
 
 
+def _material_settings(services, basemesh):
+    """The iris and skin colours, as get_material_settings reports them, and nothing else."""
+    eyes = material_settings.eyes_section(services, basemesh)
+    eyes_summary = dict(applies=eyes["applies"], reason=eyes["reason"])
+    if eyes["applies"]:
+        eyes_summary["srgb_hex"] = {socket: eyes["srgb_hex"].get(socket)
+                                    for socket in _IRIS_SOCKETS}
+
+    skin = material_settings.skin_section(services, basemesh)
+    skin_summary = dict(applies=skin["applies"], reason=skin["reason"])
+    if skin["applies"]:
+        group = skin["groups"].get(_SKIN_COLOR_GROUP)
+        hexes = dict() if group is None else group["srgb_hex"]
+        skin_summary["groups"] = {_SKIN_COLOR_GROUP: dict(
+            srgb_hex={socket: hexes.get(socket) for socket in _SKIN_SOCKETS})}
+    return dict(eyes=eyes_summary, skin=skin_summary)
+
+
 def _message_for(basemesh, rig, assets, targets, face):
     parts = ["Character '{:s}'".format(basemesh.name)]
     parts.append(": no rig" if rig is None else ": rig '{:s}'".format(rig["name"]))
@@ -233,6 +267,7 @@ def get_character_summary(params, resolution):
             skin=None,
             targets=None,
             face=None,
+            material_settings=None,
             message=message,
         )
 
@@ -244,6 +279,7 @@ def get_character_summary(params, resolution):
         lookup, basemesh, services["ObjectService"].get_object_type(basemesh)), _SKIN_FIELDS)
     targets = _targets(services, basemesh)
     face = _face(services, basemesh)
+    materials = _material_settings(services, basemesh)
 
     _LOG.debug("get_character_summary: %r, rig %r, %d assets, %d modifiers",
                basemesh.name, None if rig is None else rig["name"], len(assets),
@@ -262,5 +298,6 @@ def get_character_summary(params, resolution):
         skin=skin,
         targets=targets,
         face=face,
+        material_settings=materials,
         message=_message_for(basemesh, rig, assets, targets, face),
     )

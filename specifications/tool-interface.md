@@ -146,7 +146,9 @@ the exception above - but no MPFB function ever receives it. It selects between 
 builds the stack, so it cannot drift from anything MPFB or the user's disk holds, and the reason not
 to validate a vocabulary here does not apply to it. It is a shape, checked on both sides like any
 other: locally, and in the command's parameter contract (`choices`), which the dispatcher enforces
-before the handler runs.
+before the handler runs. `mpfb_get_material_settings`' `section` is the second such vocabulary: its
+three values are the preset's own keys as this package names them, not a name MPFB's node trees
+hold ([FR 040](../feature-requests/done/040-procedural-material-settings/README.md)).
 
 **An argument that becomes a path is a shape, not a vocabulary, and it is checked here.**
 `mpfb_save_preset` and `mpfb_create_human_from_preset` take a `preset_name` that resolves to
@@ -196,6 +198,12 @@ two compensations:
   catagory` is a message a caller can act on; a silently ignored key is not.
 - **Give the response a per-entry error channel**, so the half of the validation that can only
   happen inside Blender comes back the same way: which entry, why, and what the valid values were.
+- **One key per JSON type, even when that means two keys for one idea.**
+  `mpfb_set_material_settings` writes either a float socket or a colour socket, and takes `value`
+  for the first and `color` for the second, exactly one per entry, rather than one key carrying
+  either a number or a list. A three-number `color` is refused with a sentence saying alpha is
+  required, and a negative component because Blender stores it as zero; a component above 1.0 is
+  kept, because Blender keeps it.
 
 ## How a tool addresses an object
 
@@ -218,11 +226,11 @@ paper over:
   failure. A response should say which way its subject was resolved, because the two have very
   different lifetimes: a name stays valid until the object is renamed or deleted, while an
   active-object answer is stale the moment the user clicks elsewhere.
-- **All of this is read in one place.** The eighteen commands that take a subject resolve it
+- **All of this is read in one place.** The twenty commands that take a subject resolve it
   through [`shared/subject_resolution.py`](../bridge/mpfb_bridge/shared/subject_resolution.py):
   the view layer's active object or a name looked up in the file, then any member of the family to
   its basemesh the way MPFB's own panels find it, and how the subject was resolved. Each command
-  still phrases its own misses. All eighteen report `subject_resolved_by: "active" | "name"`.
+  still phrases its own misses. All twenty report `subject_resolved_by: "active" | "name"`.
   `mpfb_get_object_info` said `resolved_from: "active_object"` until
   [FR 037](../feature-requests/done/037-one-word-per-concept/README.md) renamed it, which
   [refusing an undeclared argument](#validate-before-crossing-the-socket) and the protocol version
@@ -357,7 +365,11 @@ dictionaries, so they were checked by the FR's own `census.py --check` instead.
 | A whole field before and after | `<field>_before` / `<field>_after` | `previous_<field>`, `current_<field>` |
 | Adding to what is there, or making it exactly this | `mode: "merge" \| "replace"`, and what a replace dropped is `removed_by_replace` | `clear_first` |
 | The echo of an argument `X` | `requested_X`, `X_recognized`, `known_Xs` — `X` the argument's own name | a shortened `X` |
-| What a shape key holds, a face unit included | `value` | `weight` |
+| What a shape key holds, a face unit included, and a float socket | `value` | `weight` |
+| A colour socket's value, four scene-linear RGBA numbers | `color` | a hex string, or `value` carrying a list |
+| An sRGB rendering of a colour, derived and never accepted back | `srgb_hex`; per-entry `previous_srgb_hex` / `new_srgb_hex` | `hex`, `srgb` |
+| An input on one of MPFB's node groups, by its live name | `socket` | `input` |
+| A layered skin group, by the preset's key (`color`, `body`, ...) | `group` | the node name `colorgroup` |
 | A multiplier over a whole expression | `weight`, on an expression row | |
 | The object names of a character's mesh assets | `mesh_assets`, qualified by moment or subset (`mesh_assets_present`, `mesh_assets_not_rigged`) | |
 | One record per mesh asset on a character | `equipped_assets` | `assets`, which is `mpfb_list_assets`' catalogue |
@@ -418,6 +430,14 @@ Each of these looks like a divergence and is not:
 - **`allowed_material_types`** in `mpfb_add_asset`: the subset for this asset's type, not the whole
   vocabulary a `known_` key would list.
 - **`settings_used`** and **`contents`**: MPFB's own dicts, reported in MPFB's spelling.
+- **Socket names are MPFB's data and pass through verbatim**, as a shape key name does, including
+  `AurolaeOverride` beside `AureolaeColor` on the layered skin's colour group - MPFB's spelling, not
+  a typo here to correct. The glossary does not rename data
+  ([names inside MPFB's node trees are read live](mpfb-integration.md#names-inside-mpfbs-node-trees-are-read-live-never-tabulated)).
+- **`settings`** in `mpfb_get_material_settings`: a node's values keyed as the preset keys them,
+  which is MPFB's `get_socket_default_values()` dict as it is.
+- **`applies`** and a bare **`reason`** on a material settings section or colour adjustment
+  record: whether the preset saves anything for it, and why not.
 - **`<x>_reason`** keys, and a bare `reason` inside a per-entry record, which always means "why this
   entry was not done".
 - **Tool names.** A renamed tool breaks every client configuration and saved transcript, which a

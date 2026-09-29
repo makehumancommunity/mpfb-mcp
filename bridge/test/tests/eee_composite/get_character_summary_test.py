@@ -36,6 +36,8 @@ from .._fixtures import Character
 from .._fixtures import dispatch
 from .._fixtures import expression_library
 from .._fixtures import linked_plain_object
+from .._fixtures import material_character
+from .._fixtures import material_data_roots
 from .._fixtures import redirected_locations
 from .._fixtures import result
 from .._fixtures import services_or_skip
@@ -44,7 +46,8 @@ from .._fixtures import write_loadable_mhclo
 
 COMMAND = "get_character_summary"
 
-SECTIONS = ("phenotype", "rig", "equipped_assets", "skin", "targets", "face")
+SECTIONS = ("phenotype", "rig", "equipped_assets", "skin", "targets", "face",
+            "material_settings")
 
 # Four categories MPFB itself ships in target.json, two of them sided, so the
 # rollup has entries and asymmetries to report. Values chosen distinct in
@@ -148,6 +151,23 @@ def _assert_agreement(name):
                                            for row in expression["applied_expressions"]]
     assert face["matches_stack"] == expression["matches_stack"]
     assert face["unexplained_face_units"] == expression["unexplained_face_units"]
+
+    # A sub-tree of get_material_settings' answer, down to the keys (FR 040).
+    materials = result("get_material_settings", {"name": name})
+    summarized = summary["material_settings"]
+    for section in ("eyes", "skin"):
+        assert summarized[section]["applies"] == materials[section]["applies"], section
+        assert summarized[section]["reason"] == materials[section]["reason"], section
+    if materials["eyes"]["applies"]:
+        assert summarized["eyes"]["srgb_hex"] == _pick(
+            materials["eyes"]["srgb_hex"], ("IrisMajorColor", "IrisMinorColor"))
+    else:
+        assert "srgb_hex" not in summarized["eyes"]
+    if materials["skin"]["applies"]:
+        assert summarized["skin"]["groups"] == {"color": {"srgb_hex": _pick(
+            materials["skin"]["groups"]["color"]["srgb_hex"], ("SkinColor",))}}
+    else:
+        assert "groups" not in summarized["skin"]
     return summary
 
 
@@ -179,6 +199,21 @@ def test_every_shared_field_agrees_with_its_detailed_command(tmp_path):
     assert inside["targets"]["modifiers"] == []
     assert len(outside["targets"]["modifiers"]) == 5
     assert len(outside["targets"]["asymmetries"]) == 2
+
+
+def test_material_colours_agree_with_get_material_settings(tmp_path):
+    """The summary's iris and skin colours, on a character that has both"""
+    services = services_or_skip()
+    with Character() as character, material_data_roots(services, tmp_path):
+        material_character(services, character, tmp_path)
+        result("set_material_settings", {
+            "name": character.basemesh.name,
+            "eyes": [{"socket": "IrisMajorColor", "color": [0.05, 0.4, 0.1, 1.0]}]})
+        summary = _assert_agreement(character.basemesh.name)
+
+    assert summary["material_settings"]["eyes"]["srgb_hex"]["IrisMajorColor"] == "#3faa59"
+    assert summary["material_settings"]["skin"]["groups"]["color"]["srgb_hex"][
+        "SkinColor"].startswith("#")
 
 
 def test_a_bare_basemesh_has_empty_sections_not_missing_ones():

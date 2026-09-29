@@ -125,9 +125,12 @@ by the checks alone. Wall clock against somebody else's Blender is too noisy and
 install-dependent to gate on, and a check that fails for a reason outside the repository is one
 people learn to ignore.
 
-Last measured at **1.5 s**, 27 items, 0 failed, 0 skipped — a headless Blender 5.1.0 started with
-`--command mpfb_bridge`, MPFB 2.0.17 `FROM_SOURCE`, 938 assets across the library, blender_mcp
-disabled in that process. The same run in a windowed Blender on the same machine took 4.9 s. For
+Last measured at **1.5 s**, 36 items, 0 failed, 0 skipped (FR 040) — a headless Blender 5.1.0,
+MPFB `FROM_SOURCE`, blender_mcp disabled in that process. That run started the bridge through the
+add-on's own `cli.cli_execute()` from `--python-expr` rather than with `--command mpfb_bridge`,
+because the add-on was installed in two extension repositories on that machine, both symlinks to
+this checkout, and Blender refuses a command registered twice. The measurement before it was
+1.5 s for 27 items with 938 assets across the library. The same run in a windowed Blender on the same machine took 4.9 s. For
 scale: the last measurement of the generated code path this harness used to run on was **48.5 s**
 for the same twenty-five tools, and the twelvefold gap is the pivot's whole point measured in one
 session. It was never about what either add-on computed — the bridge sends parameters where the
@@ -151,13 +154,18 @@ builds a whole second character, which is the only honest way to call that tool.
   `mpfb_save_preset` item (FR 025), and `mpfbmcp_smoke_run.json` in the expressions directory of
   MPFB's user data, left there by the `mpfb_save_expression` item (FR 027). The names say where
   they came from and are constant, so repeated runs leave two files rather than a growing pile, and
-  both items pass `overwrite=True` — the only arguments in the whole table not left at their
-  default — because the default is correct and would make each item pass once and fail forever
+  both items pass `overwrite=True` — with one exception below, the only arguments in the whole
+  table not left at their default — because the default is correct and would make each item pass once and fail forever
   after. **The expression is visible in MPFB's own expressions-library panel**, which the preset
   is too, in MPFB's preset dropdown. FR 027 weighed keeping its item refusal-only instead and
   did not: a mutating item must come back `performed: true`, and a smoke item that never writes
   would never find out that writing broke. Delete them by hand if you want them gone; nothing here
   does.
+- **The `mpfb_set_material_settings` item names one socket**, the other non-default argument in the
+  table: the call naming nothing - what FR 040 planned as its item - answers `performed: false`,
+  which the rule above does not allow. It writes the first writable float on the first colour
+  adjustment the read reports, back to the value it already holds, so the scene is left as it was
+  found. Which socket that is comes from the read, since the names are MPFB's.
 - **One item leaves a custom property on the character**: `mpfb_apply_expressions` writes MPFB's
   applied-expressions stack (`mpfb_applied_expressions`) on the run's basemesh, which the
   `mpfb_save_preset` item then serializes. It is inside the `.blend` and goes with the character. Before FR 025 this line said *nothing* outside the `.blend` was written, which

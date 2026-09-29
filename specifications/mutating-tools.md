@@ -293,6 +293,19 @@ is written, and if any entry fails, none of them are applied.**
 - **Report per entry once application starts**, in request order, including what changed as a
   consequence — one sided change with `symmetry` on touches up to four shape keys, and the response
   has to be able to say so.
+- **A refusal names the write that would work, when there is one.** `mpfb_set_material_settings`
+  ([FR 040](../feature-requests/done/040-procedural-material-settings/README.md)), the third batched
+  tool, refuses an entry naming a **linked** socket, since writing one changes nothing. On MPFB's
+  layered skin almost every region colour is linked from the `color` group, so the refusal carries
+  `write_instead` - the group and socket that drive it - and the caller's one action is to resend
+  with that. Where the driver is not something a caller can set, such as a texture, it is `null`.
+- **A range is enforced where it protects something, and not where MPFB contradicts it.** A
+  built-in node's factor is clamped by Blender without a word, so a value outside it is refused
+  rather than stored as something else. A group node's input range is only an interface hint -
+  Blender stores whatever is assigned - and is enforced anyway, as what MPFB's own UI would let a
+  user set, **except** on a socket whose current value already lies outside it: MPFB's `MpfbBody`
+  declares `NavelWidthMultiplier` as 0.001-0.2 and defaults it to 11.0, and a range MPFB does not
+  keep is not one this package holds a caller to. Measured against the installed MPFB, not read.
 - **Batch because per-call cost dominates, not on principle**, and the number that argument rests
   on has moved twice. It was originally made against a ~1.0 s round trip, then against the ~250 ms
   [FR 013](../feature-requests/done/013-live-verification/README.md) measured; on the bridge the

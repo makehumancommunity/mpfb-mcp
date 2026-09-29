@@ -363,6 +363,33 @@ def _set_skin(run: _Run) -> dict:
     return run.tools["mpfb_set_skin"](name=_character(run), fragment=skin["fragment"])
 
 
+@_item("mpfb_get_material_settings", "eyes", "skin", "color_adjustments")
+def _get_material_settings(run: _Run) -> dict:
+    # After set_skin, so the skin section describes the skin the run applied -
+    # a MakeSkin one at the default, so `skin` answers `applies: false`.
+    return run.tools["mpfb_get_material_settings"](name=_character(run))
+
+
+@_item("mpfb_set_material_settings", "changes", "resolution_errors", "materials_written")
+def _set_material_settings(run: _Run) -> dict:
+    # Every mutating item must perform, so this is not the call naming nothing
+    # (FR 040 planned that one, and this harness's rule overruled it). It is
+    # the least a write can be: one float the read reports as writable, on the
+    # first colour adjustment that applies, set to the value it already has.
+    # Which sockets exist is MPFB's, so the item takes the name from the read.
+    read = run("mpfb_get_material_settings", name=_character(run), section="color_adjustments")
+    for record in (read.get("result") or {}).get("color_adjustments") or []:
+        if not record["applies"]:
+            continue
+        for socket, value in record["settings"].items():
+            if isinstance(value, float) and socket not in record["linked"]:
+                return run.tools["mpfb_set_material_settings"](
+                    name=_character(run), color_adjustments=[
+                        {"object_name": record["object_name"], "socket": socket,
+                         "value": value}])
+    raise Skipped("no mesh asset on the character carries a colour adjustment a preset saves")
+
+
 @_item("mpfb_refit_human", "basemesh_name", "rig_object_name", "mesh_assets", "mesh_asset_count",
        "subrigs")
 def _refit_human(run: _Run) -> dict:

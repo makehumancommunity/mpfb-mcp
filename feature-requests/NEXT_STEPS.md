@@ -23,7 +23,7 @@ last predate FR 037.
   That heading contains a markdown link, so its generated anchor is not the one written; an explicit
   `<a id>` above it would fix this and any other link to it.
 - `specifications/architecture.md` links to `CLAUDE.md#the-twenty-five-tools`; the heading is "The
-  thirty-two tools" now.
+  thirty-four tools" now.
 - `HISTORY.md` links to `NEXT_STEPS.md#should-the-bridge-serve-its-own-test-harness`.
 - `bridge/mpfb_bridge/commands/list_asset_materials.py` links to
   `specifications/architecture.md#shared-fragments`, a section that was renamed when shared
@@ -139,18 +139,18 @@ per entry, and take a `license` filter. Two related findings:
 
 <a id="eye-and-layered-skin-colours"></a>
 
-## Procedural eye colour and layered skin colour
+## Enhanced skin settings, and MPFB's named material settings files
 
-Scoped as [FR 040](040-procedural-material-settings/README.md) (Proposed):
-`mpfb_get_material_settings` and `mpfb_set_material_settings`, a generic read and write over the
-three procedural material mechanisms MPFB serializes into a preset. Those are procedural eyes,
-layered skin, and the MakeSkin colour adjustment on hair, body parts and garments.
-
-Left out of FR 040 on purpose, and still open here:
+What [FR 040](done/040-procedural-material-settings/README.md) left out on purpose. It landed
+`mpfb_get_material_settings` and `mpfb_set_material_settings` over the three procedural mechanisms
+MPFB serializes into a preset - procedural eyes, the layered skin, and the MakeSkin colour
+adjustment on hair, body parts and garments - see [HISTORY.md](HISTORY.md#procedural-material-settings).
+Still open:
 
 - **Enhanced skin settings**: the per-slot `colorMixIn`, roughness and pore inputs of an
   `ENHANCED`/`ENHANCED_SSS` skin (`skin_material_settings[<slot>]` in a preset). The same
-  generic tools could take a fourth section.
+  generic tools could take a fourth section; `shared/material_settings.py` is where it would be
+  found, and the serializer's `"colorMixIn"` test is how.
 - **MPFB's named settings files**: `eye_settings.<name>.json` and `enhanced_settings.<name>.json`
   in the user config directory, with their save/apply panels under Presets. That is a catalogue
   and an apply-by-name, and a save would be another file written outside the `.blend`.

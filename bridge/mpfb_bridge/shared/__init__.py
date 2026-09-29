@@ -13,7 +13,7 @@ nothing here is dispatched. A command imports one of these the way it imports
 is something two or more commands have to agree about, or one concept they
 would otherwise each write for themselves: ``list_rigs`` predicts which file
 ``add_rig`` will load, all three preset commands build
-``<user config>/human.<name>.json`` the same way, all eighteen commands that
+``<user config>/human.<name>.json`` the same way, all twenty commands that
 take a subject resolve it the same way, and all six refitting commands decide
 the same way whether a refit would silently leave the rig behind. One
 implementation is the only way to guarantee agreement; ``add_rig`` importing
@@ -58,8 +58,11 @@ commit which MPFB behaviour the new spelling still reproduces.
 How the modules got here is in
 [HISTORY.md](../../../feature-requests/HISTORY.md): seven mirror a shared fragment
 of the generated-code path FR 033 deleted, three arrived with the expression
-library, three with the character summary, and four with
-[FR 036](../../../feature-requests/done/036-subject-resolver-and-duplication/README.md).
+library, three with the character summary, four with
+[FR 036](../../../feature-requests/done/036-subject-resolver-and-duplication/README.md), and
+``material_settings`` with
+[FR 040](../../../feature-requests/done/040-procedural-material-settings/README.md), which
+both material settings commands and the character summary must agree about.
 """
 
 __all__ = ()
