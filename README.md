@@ -4,23 +4,19 @@ An MCP server with MPFB tools. Its Blender-side half is a companion add-on of ou
 **MPFB Bridge** in [bridge/](bridge), which dispatches a closed vocabulary of named commands
 rather than executing code.
 
+In practice, you will most likely want to use this in parallel with a Blender MCP bridge such as
+either of:
+
+- Blender Lab's [Blender MCP](https://projects.blender.org/lab/blender_mcp)
+- Ahujasid's [MCP for Blender](https://github.com/ahujasid/mcp-for-blender)
+
+In fact, you can control MPFB solely by using either of these, but it will then be an inefficient
+and token-heavy thing. By steering MPFB-specific operation to the MPFB specific bridge, 
+you can speed up things and save some tokens.
+
 ## Status
 
 Early beta. Thirty-four tools are implemented.
-
-**All thirty-three tools that cross the socket speak to the bridge**, and there is nothing else
-for them to speak to. The odd one out, `mpfb_list_docs`, answers from a local table and reaches
-no Blender at all.
-
-It was not always one machine. Until
-[FR 033](feature-requests/done/033-retire-the-generated-code-path/README.md) a tool assembled a
-Python program per call and sent it to blender lab's [blender_mcp](https://projects.blender.org/lab/blender_mcp) add-on to
-`exec()`; the two ran side by side through four efforts so that they could be compared against a
-real Blender before the old one was deleted. On one Blender in one session the same smoke run
-takes **4.9 s on the bridge and took 48.5 s on the path it replaced**, and the Blender-side logic
-is now testable against a real MPFB, which it never was.
-See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
-[NEXT_STEPS.md](feature-requests/NEXT_STEPS.md) for what remains.
 
 **Introspection** — read-only, and each of them always answers rather than failing:
 
@@ -80,23 +76,12 @@ See [CLAUDE.md](CLAUDE.md#commands) for the environment variables and
 generate a Rigify rig after them. The tools report the violation they can see rather than
 enforcing it.
 
-**All thirty-four have been run against a real Blender, and re-checking all of them is one short
-command.** [verification/](verification/) is a smoke run — one call per tool with default
-arguments, measured at 1.5 s for the whole set against a headless Blender — so confirming that
-nothing has stopped working is a command rather than a session. It leaves what it builds in the
-scene, which is the price of the add-on having no way to execute code on a harness's behalf; point
-it at a Blender you are willing to throw away, and read
-[verification/README.md](verification/README.md#what-fr-033-cost-this-instrument). Each tool was
-also proved exhaustively once, by the effort that added it; see
-[HISTORY.md](feature-requests/HISTORY.md) for what each of those runs found.
-
 See [src/mpfbmcp](src/mpfbmcp) and [CLAUDE.md](CLAUDE.md) for how they work and how to run them.
 
 ## Documentation
 
-The structured specifications for the project live in the
-[specifications/](specifications/) directory. Start with its
-[index](specifications/README.md). Highlights:
+The structured specifications for the project live in the [specifications/](specifications/) directory.
+ Start with its [index](specifications/README.md). Highlights:
 
 - [Vision](specifications/vision.md) — why this project exists, why a bridge add-on of our own,
   and the target tool catalog.
@@ -105,5 +90,5 @@ The structured specifications for the project live in the
 
 To install every part from this checkout — MPFB, the bridge add-on, the server and an MCP client
 configuration — follow [INSTALL.md](INSTALL.md). Developer setup and commands are documented in
-[CLAUDE.md](CLAUDE.md). Planned and in-progress
-development efforts are tracked in [feature-requests/](feature-requests/).
+[CLAUDE.md](CLAUDE.md). Planned and in-progress development efforts are tracked 
+in [feature-requests/](feature-requests/).
