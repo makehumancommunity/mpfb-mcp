@@ -96,9 +96,12 @@ there are in `poses03`, which is not named as a CC0 pack.
 
 ## Posing support
 
-**The first part is scoped as [FR 041](041-pose-controls-and-read-back/README.md) (Proposed):**
+**The first part is scoped as [FR 041](041-pose-controls-and-read-back/README.md) (Accepted):**
 `mpfb_get_pose_controls` and `mpfb_get_pose`, the controls and the read-back below, read-only.
-The transform tool, the switches as arguments, hand shapes and a rest-pose reset remain here.
+**The second part is scoped as [FR 042](042-posing-bones-switches-and-reset/README.md)
+(Accepted):** `mpfb_set_pose_bones`, `mpfb_set_pose_switches` (snapping by default) and
+`mpfb_reset_pose`. Named hand shapes remain here; a Rigify fist is reachable through FR 042's
+`scale_to`.
 
 Found by posing a character into a karate fighting stance with the mpfb-mcp tools and blender
 mcp (2026-10-17). The character had a generated Rigify rig (`rigify_generated.human_toes`). The

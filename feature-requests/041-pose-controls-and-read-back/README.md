@@ -1,6 +1,6 @@
 # Pose controls and pose read-back: what can be moved on a character's rig, and where it is now
 
-**Status:** Proposed
+**Status:** Accepted
 
 This is the first part of [Posing support](../NEXT_STEPS.md#posing-support). That entry came from
 a session that posed a character with a generated Rigify rig into a karate stance. The mpfb-mcp
@@ -121,6 +121,16 @@ It does this without `execute_blender_code` and without a screenshot.
    each end of the range means (for example, `IK_FK` 0.0 is IK). This tool reports **that the
    switch exists**. The current value belongs to FR 10. The properties are found on the live rig,
    not looked up in a table (see [Architecture](#architecture)).
+
+   **A parent switch names its parents.** `IK_parent` and `pole_parent` are integers from 0 to N,
+   and the property itself says only "Switch parent of hand_ik.L". Rigify keeps the names of the
+   parents (`None`, `root`, `torso`, …) only in the generated `rig_ui.py`, as the `parent_names`
+   of the panel's switch-parent operator. For these switches the answer maps each integer value to
+   its parent's name, so that [FR 042](../042-posing-bones-switches-and-reset/README.md)'s
+   `mpfb_set_pose_switches` can be called with a value an agent understands. How the names are
+   found is the effort's to establish (see [Architecture](#architecture)). Where they cannot be
+   found, the answer gives the range with `parent_names: null` and says why, rather than guessing
+   from Rigify's usual order.
 7. **MPFB's helpers on a default rig.** Every answer for a default rig reports the four helper
    modes (`arm_mode`, `leg_mode`, `finger_mode`, `eye_mode`; `NONE` when unset), and the helper
    bones appear as controls with `source: "mpfb_helper"`. Once a helper is installed, the FK bones
@@ -141,6 +151,10 @@ It does this without `execute_blender_code` and without a screenshot.
    using `get_pose_as_dict()`'s threshold (0.0001) so the two agree on "posed". For each one:
    - `bone`, `body_part` and `role`, as in FR 4;
    - the location offset in the character frame;
+   - the **current head** position in the character frame, beside the offset. That is what
+     [FR 042](../042-posing-bones-switches-and-reset/README.md)'s `move_to` takes, so a read-back
+     can be written back unchanged, without the caller adding the offset to the rest position
+     from `mpfb_get_pose_controls`;
    - the rotation from rest as an axis in the character frame plus degrees. An agent can read that,
      but not a quaternion in a bone's local axes;
    - the scale where it is not 1.
@@ -209,6 +223,17 @@ It does this without `execute_blender_code` and without a screenshot.
   its sides `_l`/`_r`, so suffix rules that work for `.L` may not work there. If they are not
   enough, the fallback is the `rig_ui.py` text Rigify writes into the file. That text is evidence to
   read during the effort, **not** something to parse at runtime.
+- **A parent switch's names are the one place that rule may not hold** (FR 6). Rigify's
+  `SwitchParentBuilder` builds each switch's parent list at generation time and writes it only
+  into `rig_ui.py`. The effort first establishes whether the list can be rebuilt from the live rig.
+  The candidates are the parent bones' own names and the order in which
+  `utils/switch_parent.py` adds them. A bridge test then checks the rebuilt names against the
+  generated script, as the default-rig table is checked against MPFB's helpers. If they cannot be
+  rebuilt, reading `rig_ui.py` **as data** (searched, never executed) is allowed for this one
+  purpose. That is then a decision this request records, together with what it costs when the text
+  block is missing or was edited, which is `parent_names: null`.
+  [FR 042](../042-posing-bones-switches-and-reset/README.md) faces the same question for the bone
+  chains its snaps read, and the two answers should be the same.
 - **The default rig is classified from a table, checked against MPFB.** The default rig has no
   meaningful collections, so a hand-kept table in `pose_controls.py` maps its bones to body parts.
   The table is the arm, leg and finger chains MPFB's `Default*Helpers` name, plus spine, neck, head
@@ -290,6 +315,11 @@ It does this without `execute_blender_code` and without a screenshot.
 - **The character frame comes from the rig object, not the pose.** This was not asked. It is the
   only definition under which `forward` stays put while the character is being posed, which the
   transform tool's relative offsets depend on.
+- **Two additions for FR 042** (asked 2026-10-17). `mpfb_get_pose` reports each posed control's
+  current head beside its offset (FR 9), and the parent switches name their parents (FR 6). Both
+  came out of scoping [FR 042](../042-posing-bones-switches-and-reset/README.md). The first lets
+  that request's `move_to` take a read-back unchanged. The second lets an agent pass
+  `IK_parent` a value whose meaning it knows.
 
 ## References
 
