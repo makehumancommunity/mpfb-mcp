@@ -123,6 +123,21 @@ measured past the line, not in advance of it. A section left out is `null` rathe
 empty, which is [the `null` versus `[]` rule](#response-shape) - not computed, rather than none -
 and `requested_section` echoes the filter.
 
+**A filter may leave a part out by default, and then the counts must cover it.**
+`mpfb_get_pose_controls` and `mpfb_get_pose` take `body_parts`, which **defaults to every part but
+the face**: a generated Rigify rig has about a hundred face controls, and MPFB characters make
+expressions with shape keys instead
+([FR 041](../feature-requests/done/041-pose-controls-and-read-back/README.md)). A default that hides
+something is only honest if the hidden part is still visible as a number, so
+`counts_by_body_part` always covers all ten parts whatever was asked, `requested_body_parts` echoes
+the filter as applied, and the description says the face must be named. `mpfb_get_pose`'s
+`at_rest` is about the whole character for the same reason: a posed face behind the default filter
+must not read as a character at rest. Measured: the controls answer for a generated `human_toes`
+rig is 63 KB by default and 92 KB with the face, two arms alone 13 KB - an answer read once per
+character, and its description says to name the parts being posed; the pose read-back, read after
+every change, holds near the 8 KB line (7.2 KB for 13 posed controls; about 290 B per posed
+control on 3.8 KB of fixed sections, so 20 posed controls is 9.6 KB).
+
 ## How tools report a derived rather than recorded fact
 
 [How tools report the asset behind an object](#how-tools-report-the-asset-behind-an-object) draws a
@@ -175,6 +190,16 @@ the asset's containing directory name against the asset names in the installed p
   descriptions say it is derived, and the write takes only the linear value - accepting hex would
   need a second key per entry and a conversion the read could not round-trip exactly
   ([FR 040](../feature-requests/done/040-procedural-material-settings/README.md)).
+- **A measurement of the pose is this kind, and carries its definition with it.** Nothing in
+  Blender records whether a limb is stretched or out of reach. `mpfb_get_pose` derives
+  `stretched` (the deforming chain over 1 mm longer than at rest), `reach_ratio` (root to IK
+  control over rest length) and `target_unreachable` (IK in charge, tip over 1 cm from the
+  control, control at least a chain length away), with the tolerances in one module
+  (`shared/pose_reading.py`) and a short `limb_measures` sentence for each in every answer. Where it
+  cannot be computed it is `null`, not `false`: `target_unreachable` is `null` while FK is in
+  charge. FR 041's live check found that Rigify's IK chain gives a little even with `IK_Stretch`
+  at 0.0 (17 mm on a 480 mm arm), so a message says how much longer a limb is rather than blaming a
+  switch.
 
 ## A response says which source answered it
 
@@ -235,6 +260,32 @@ selection and sends a caller looking rather than concluding. All three are prese
 answer, including the unfiltered one — which is the answer most likely to be mistaken for the
 whole — and including an empty one, where the temptation to report "nothing found" is strongest
 and most wrong.
+
+## A position on a character is in the character frame
+
+Every position and direction a tool reports on a character, or takes as an argument, is in **the
+character frame**: metres along `forward`, `left` and `up`, measured from the rig object's origin,
+each a JSON object with those three keys. `left` is the character's own left, the `.L` side. A
+rotation is an axis in that frame and `degrees`, the short way round. Positions are rounded to the
+millimetre, unit vectors to three decimals, angles to a tenth of a degree, all in one place
+(`shared/character_frame.py`), so two answers about one bone cannot disagree in the last digit
+([FR 041](../feature-requests/done/041-pose-controls-and-read-back/README.md)).
+
+- **The frame comes from the rig object's world matrix, never from the pose.** A character whose
+  torso is twisted still faces where its rig object faces, so `forward` stays put while it is being
+  posed. That is the only definition under which a relative move (FR 042's `move_by`) means the
+  same at the start and the end of a posing session.
+- **Which local axes are forward and left is MPFB's convention, and it is asserted, not assumed.**
+  Every rig MPFB builds faces local -Y with its `.L` side on local +X; the bridge tests check it on
+  a default rig, a Rigify meta-rig and a generated rig, and FR 041's live check confirmed it against
+  a screenshot of a character turned 120 degrees.
+- **Every answer carries the frame itself**, `character_frame`, as the origin and the three unit
+  vectors in world space, so a world position is one transform away for a caller who wants one. A
+  world position is never reported in its place: it changes every time the character is placed,
+  and an agent cannot reason with it.
+- **Where the body is, is measured on deforming bones.** A landmark (`hips`, `head`, the hands and
+  feet) is the head of a `DEF-` bone on Rigify, or of the bone itself on the default rig, never of a
+  control: `hand_ik.L` and the hand differ exactly when a limb is in FK or cannot reach.
 
 ## A summary is never a second opinion
 

@@ -1,8 +1,8 @@
 # Pose controls and pose read-back: what can be moved on a character's rig, and where it is now
 
-**Status:** Accepted
+**Status:** Done
 
-This is the first part of [Posing support](../NEXT_STEPS.md#posing-support). That entry came from
+This is the first part of [Posing support](../../NEXT_STEPS.md#posing-support). That entry came from
 a session that posed a character with a generated Rigify rig into a karate stance. The mpfb-mcp
 tools could say which object was the rig and what MPFB identified it as, and nothing more. The
 session had to know from memory which of the rig's 1090 bones were the ones to move. It checked
@@ -61,7 +61,7 @@ It does this without `execute_blender_code` and without a screenshot.
 
 - Changing anything: transforms, switches, hand shapes, or a reset to rest. These belong to the
   transform tool's request, which this one comes before.
-- Saving or loading a pose (see [Loading poses](../NEXT_STEPS.md#loading-poses)), and retargeting.
+- Saving or loading a pose (see [Loading poses](../../NEXT_STEPS.md#loading-poses)), and retargeting.
 - **Garment sub-rigs** (`ponytail01` and the like). Both tools answer about the rig that deforms
   the basemesh, and they do not list sub-rigs or their bones.
 - Classifying `game_engine`, `game_engine_with_breast`, `mixamo`, `mixamo_unity`, `cmu_mb`,
@@ -126,7 +126,7 @@ It does this without `execute_blender_code` and without a screenshot.
    and the property itself says only "Switch parent of hand_ik.L". Rigify keeps the names of the
    parents (`None`, `root`, `torso`, …) only in the generated `rig_ui.py`, as the `parent_names`
    of the panel's switch-parent operator. For these switches the answer maps each integer value to
-   its parent's name, so that [FR 042](../042-posing-bones-switches-and-reset/README.md)'s
+   its parent's name, so that [FR 042](../../042-posing-bones-switches-and-reset/README.md)'s
    `mpfb_set_pose_switches` can be called with a value an agent understands. How the names are
    found is the effort's to establish (see [Architecture](#architecture)). Where they cannot be
    found, the answer gives the range with `parent_names: null` and says why, rather than guessing
@@ -139,8 +139,8 @@ It does this without `execute_blender_code` and without a screenshot.
 8. **`body_parts` filter.** It takes a list of body parts and **defaults to every part except
    `face`**. A generated Rigify rig has a large number of face controls, and expressions on MPFB
    characters are made with shape keys
-   ([FR 026](../done/026-face-units/README.md), [FR 027](../done/027-expression-library/README.md)).
-   Following [How tools bound a large answer](../../specifications/responses.md#how-tools-bound-a-large-answer),
+   ([FR 026](../026-face-units/README.md), [FR 027](../027-expression-library/README.md)).
+   Following [How tools bound a large answer](../../../specifications/responses.md#how-tools-bound-a-large-answer),
    the answer echoes `requested_body_parts` and always reports `counts_by_body_part` for **every**
    part, the omitted ones included. A caller that never asked for `face` can still see that it
    exists and how large it is. The description says that `face` must be named explicitly.
@@ -152,7 +152,7 @@ It does this without `execute_blender_code` and without a screenshot.
    - `bone`, `body_part` and `role`, as in FR 4;
    - the location offset in the character frame;
    - the **current head** position in the character frame, beside the offset. That is what
-     [FR 042](../042-posing-bones-switches-and-reset/README.md)'s `move_to` takes, so a read-back
+     [FR 042](../../042-posing-bones-switches-and-reset/README.md)'s `move_to` takes, so a read-back
      can be written back unchanged, without the caller adding the offset to the rest position
      from `mpfb_get_pose_controls`;
    - the rotation from rest as an axis in the character frame plus degrees. An agent can read that,
@@ -160,7 +160,7 @@ It does this without `execute_blender_code` and without a screenshot.
    - the scale where it is not 1.
 
    Reporting scale departs from `get_pose_as_dict()` on purpose. The command docstring says why, per
-   [where MPFB's own code paths disagree](../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it).
+   [where MPFB's own code paths disagree](../../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it).
    `at_rest: true` and an empty list mean the character is in its rest pose. The same
    `body_parts` filter as FR 8, with the same default and the same counts, applies here.
 10. **The current value of every switch** from FR 6, per limb.
@@ -177,7 +177,7 @@ It does this without `execute_blender_code` and without a screenshot.
       beyond its tip. This is how an over-reach shows up with stretch off, or on a default rig with
       helpers.
 
-    These are [derived facts](../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact),
+    These are [derived facts](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact),
     and the response says how each one was computed.
 13. **Unclassified rigs** get FR 9 without `body_part` and `role`, and leave out FR 10–12 as
     `null`. That is the `null` rule for "not computed", not `[]`, which would mean "none".
@@ -201,15 +201,15 @@ It does this without `execute_blender_code` and without a screenshot.
 ## Architecture
 
 - **Two bridge commands**, `get_pose_controls` and `get_pose`, plus the two tool modules and the
-  four other touch points listed in [CLAUDE.md](../../CLAUDE.md). Both tools are introspection
-  tools in the sense of [vision.md](../../specifications/vision.md#target-tool-catalog).
+  four other touch points listed in [CLAUDE.md](../../../CLAUDE.md). Both tools are introspection
+  tools in the sense of [vision.md](../../../specifications/vision.md#target-tool-catalog).
 - **Two shared modules, because the transform tool will need both:**
   - `character_frame.py`: the frame in FR 3, and conversion in both directions. It is a shared
     module before it has a second user, because a later `move_by: {"forward": 0.2}` that disagreed
     with this request's `forward` would be a silent and very visible defect.
   - `pose_controls.py`: classification. It reports which rig family the rig is, and gives each bone
     its body part, role, chain and source. `get_pose` uses it to label what is posed. Per
-    [a summary is never a second opinion](../../specifications/responses.md#a-summary-is-never-a-second-opinion),
+    [a summary is never a second opinion](../../../specifications/responses.md#a-summary-is-never-a-second-opinion),
     the two commands must not classify separately.
 - **Generated Rigify is classified from the live armature, not from a table.** Body part and chain
   come from the **bone collections** (`Arm.L (IK)` gives `left_arm` and IK). Role within a
@@ -217,7 +217,7 @@ It does this without `execute_blender_code` and without a screenshot.
   `_master`, `_tweak`). The switches come from the custom properties on the generated rig's
   `*_parent` bones. Rigify creates these through `make_property()` with a description and a range,
   so both can be read live. This follows the spirit of
-  [names inside MPFB's node trees are read live](../../specifications/mpfb-integration.md#names-inside-mpfbs-node-trees-are-read-live-never-tabulated).
+  [names inside MPFB's node trees are read live](../../../specifications/mpfb-integration.md#names-inside-mpfbs-node-trees-are-read-live-never-tabulated).
   The effort has to establish, against a real generated `human_toes` **and** a generated
   `game_engine` rig, whether collections plus suffixes are enough. The game engine meta-rig names
   its sides `_l`/`_r`, so suffix rules that work for `.L` may not work there. If they are not
@@ -232,20 +232,20 @@ It does this without `execute_blender_code` and without a screenshot.
   rebuilt, reading `rig_ui.py` **as data** (searched, never executed) is allowed for this one
   purpose. That is then a decision this request records, together with what it costs when the text
   block is missing or was edited, which is `parent_names: null`.
-  [FR 042](../042-posing-bones-switches-and-reset/README.md) faces the same question for the bone
+  [FR 042](../../042-posing-bones-switches-and-reset/README.md) faces the same question for the bone
   chains its snaps read, and the two answers should be the same.
 - **The default rig is classified from a table, checked against MPFB.** The default rig has no
   meaningful collections, so a hand-kept table in `pose_controls.py` maps its bones to body parts.
   The table is the arm, leg and finger chains MPFB's `Default*Helpers` name, plus spine, neck, head
   and face. The bridge code may not import those helper modules
-  ([never import MPFB submodules directly](../../specifications/architecture.md#never-import-mpfb-submodules-directly)).
+  ([never import MPFB submodules directly](../../../specifications/architecture.md#never-import-mpfb-submodules-directly)).
   A bridge test therefore checks the table against them, in the way `tests/test_reference_drift.py`
   checks the vendored URL table, so a renamed bone in MPFB fails a test and does not silently
   unclassify a limb. The effort decides whether `_ROTATION_LIMITS` and `_ROTATION_LOCKS` are worth
   reporting as well. They are what the helpers enforce, but they are not on the bones until helpers
   are installed.
 - **Helper detection** reads `RigHelpersProperties` on the armature, through
-  `mpfb_surface.py`, which is how [module-level names MPFB does not publish](../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish)
+  `mpfb_surface.py`, which is how [module-level names MPFB does not publish](../../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish)
   are read. It is confirmed by the bones being present. If the property says a helper is
   installed and the bone is missing, that is reported, not resolved silently.
 - **Rest versus current.** Rest positions come from `bone.matrix_local` and the rig object's world
@@ -260,27 +260,27 @@ It does this without `execute_blender_code` and without a screenshot.
 
 ## Affected specifications
 
-- [tool-interface.md](../../specifications/tool-interface.md#the-glossary): new glossary rows for
+- [tool-interface.md](../../../specifications/tool-interface.md#the-glossary): new glossary rows for
   `body_part`/`body_parts`, `role`, `chain`, the character frame's `forward`/`left`/`up`, and the
   two new `blocked_by` values.
-- [responses.md](../../specifications/responses.md): the character frame as a standing rule for how
+- [responses.md](../../../specifications/responses.md): the character frame as a standing rule for how
   any tool reports a position on a character (answers so far have reported none). It also extends
-  [how tools bound a large answer](../../specifications/responses.md#how-tools-bound-a-large-answer)
+  [how tools bound a large answer](../../../specifications/responses.md#how-tools-bound-a-large-answer)
   with a default filter that leaves a part out, which `section` on `mpfb_get_material_settings`
   does not.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md): reading Rigify's generated
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md): reading Rigify's generated
   structure live, which is the first time this package depends on **Rigify's** conventions and not
   only MPFB's, and the scale divergence from `get_pose_as_dict()`.
-- [architecture.md](../../specifications/architecture.md#shared-modules-and-what-warrants-one):
+- [architecture.md](../../../specifications/architecture.md#shared-modules-and-what-warrants-one):
   `character_frame.py`, as a shared module created ahead of its second user, and why.
-- [vision.md](../../specifications/vision.md#target-tool-catalog): Introspection goes from 9 tools
+- [vision.md](../../../specifications/vision.md#target-tool-catalog): Introspection goes from 9 tools
   to 11.
 
 ## Tests
 
 - **Unit suite** (`tests/test_get_pose_controls.py`, `tests/test_get_pose.py`): argument shape
   only. `body_parts` is a list of strings, and its *vocabulary* is not checked here, per
-  [validate the shape, never the vocabulary](../../specifications/tool-interface.md#validate-before-crossing-the-socket).
+  [validate the shape, never the vocabulary](../../../specifications/tool-interface.md#validate-before-crossing-the-socket).
   Also what reaches the wire, and the bridge-path layer against `fake_bridge`. Add both to
   `test_vocabulary.py`'s coverage and to the description budget.
 - **Bridge suite** (`bridge/test/tests/ccc_reading/`): one character per classified family. That is
@@ -298,7 +298,7 @@ It does this without `execute_blender_code` and without a screenshot.
   through `execute_blender_code`, and confirm that `mpfb_get_pose` reports the fists left in the
   air and the stretched arms the session found by looking. A generated `game_engine` rig, measured
   once, settles the suffix question in [Architecture](#architecture).
-- **Smoke items:** one per tool in [verification/](../../verification/), on the smoke run's
+- **Smoke items:** one per tool in [verification/](../../../verification/), on the smoke run's
   character, which has a rig.
 
 ## Decisions taken while scoping
@@ -317,13 +317,82 @@ It does this without `execute_blender_code` and without a screenshot.
   transform tool's relative offsets depend on.
 - **Two additions for FR 042** (asked 2026-10-17). `mpfb_get_pose` reports each posed control's
   current head beside its offset (FR 9), and the parent switches name their parents (FR 6). Both
-  came out of scoping [FR 042](../042-posing-bones-switches-and-reset/README.md). The first lets
+  came out of scoping [FR 042](../../042-posing-bones-switches-and-reset/README.md). The first lets
   that request's `move_to` take a read-back unchanged. The second lets an agent pass
   `IK_parent` a value whose meaning it knows.
 
+## Decisions taken during the effort
+
+- **The refusal slugs are `rig_not_found` and `rigify_not_generated`**, settled against the
+  glossary's `<thing>_not_found` pattern, plus `unknown_body_parts` with `known_body_parts`, as
+  `unknown_face_units` already was. `no_armature_found` stays `mpfb_generate_rigify_rig`'s: it
+  answers a different question.
+- **The role vocabulary** settled at fifteen: `root`, `body`, `fk`, `ik_control`, `pole`,
+  `ik_chain` (the first bone of a Rigify IK chain, which twists the limb), `foot_roll` (heel, spin
+  and IK toe), `switches` (the bone carrying a limb's switches, every channel locked),
+  `finger_master`, `finger_segment`, `toe_master`, `toe_segment` (toes are not fingers, and an agent
+  reading `finger_master` on a foot would be misled), `tweak`, `look_target`, `face_control`. Which
+  `_ik` bone is the IK control and which the pole is read off the switches' own descriptions.
+- **The eyes and their target are the head's `look_target`**, not the face's: where a character
+  looks is posing, and the face is left out by default. `neck`/`head` are the head, and
+  `shoulder.L` the left arm, on both families, so a Rigify shoulder and a default clavicle land in
+  the same place.
+- **Parent names are read live, not out of `rig_ui.py`.** Rigify passes `items=` to
+  `make_property()` for every parent switch, so the names are on the property; the bridge test
+  checks them against the script. FR 042's snap chains are a different question, which this does
+  not answer.
+- **A switch must be unique per body part**, because FR 042 addresses one by `body_part` and
+  `switch`. `finger_curve`, `rubber_tweak` and `lid_follow`, which repeat within a part, are each
+  control's `settings`; `mpfb_get_pose` reports the ones off their default.
+- **Collections and suffixes are not enough for `game_engine`** (the suffix question): MPFB's
+  legacy convert-to-Rigify generates every control into one collection, `Bones`. Its body parts
+  come from a token table of the meta-rig names; roles and chains from the same naming rules as
+  `human_toes`, which hold.
+- **A third shared module**, `pose_reading.py`, beside the two the request named: off rest,
+  landmarks, reach and stretch, which FR 042's writers report after a write by the same code. The
+  posing subject and its refusals are resolved once, in `pose_controls.resolve_posing_subject()`,
+  for the readers and FR 042's writers.
+- **`posed` is grouped by body part**, like `controls`, and the switch values come as two maps
+  (`switch_values`, `switch_parents`) rather than a list of records: the read-back measured 11.3 KB
+  on the karate pose before, 9.6 KB after, with nothing required dropped.
+- **Rotation is the bone's orientation change from rest, parents included**, because that is what
+  FR 042's `rotate_to` has to reproduce through `pose_bone.matrix`; the description says so.
+- **The rotation limits MPFB's helpers apply are not reported.** They are on the bones once helpers
+  are installed, as constraints any reader can see, and nothing in this request acts on them.
+- **The depsgraph update before reading** changes nothing observable: the bridge tests compare
+  mode, active object, selection, every bone's channels and every switch, before and after.
+
+## Verification
+
+Both halves of "verified" hold. The bridge suite tests both commands on one character per family
+(`ccc_reading/get_pose_controls_test.py`, `get_pose_test.py`) and the two shared modules directly
+(`bbb_shared/character_frame_test.py`, `pose_controls_test.py`), 48 tests in all; the smoke run has
+one item per tool. The live check, [live_check.py](live_check.py), ran on 2026-10-17 against a
+windowed Blender 5.1 with MPFB, the bridge and the community blender-mcp add-on (through which it
+posed), and passed all 19 checks:
+
+- every bone the karate session moved is a control with the role it used it for, and nothing on
+  the generated rig fits no body part;
+- on a character moved to (1.5, -2, 0) and turned 120 degrees, `forward` is (0.866, 0.5, 0), and a
+  screenshot taken from that direction shows the character's front;
+- fists made by scale alone are posed; hands placed in the frame are where they were put; after
+  the hips are lowered 0.4 m the hands stay in the air (`IK_parent` is `Root`) and both arms report
+  `stretched`, 58 mm longer than at rest, `reach_ratio` 1.119 - what the session found by looking;
+- reading changes nothing;
+- a generated `game_engine` rig classifies with no unassigned bone.
+
+Measured: the controls answer is 63 KB by default on a generated `human_toes` rig, 92 KB with the
+face, 13 KB for two arms, 46 KB on `game_engine` - its ceiling, written down here and in
+[responses.md](../../../specifications/responses.md#how-tools-bound-a-large-answer). The pose
+read-back is 7.2 KB for that 13-control pose, within the 8 KB target; it is about 3.8 KB of fixed
+sections plus about 290 B per posed control, so the line holds to about 14 posed controls and the
+original 20-control karate pose measures 9.6 KB. Each handler takes about 6 ms in Blender; through
+a windowed Blender's bridge every call, `list_objects` included, takes about a second, which is
+the timer that drives the server there and not these commands.
+
 ## References
 
-- [NEXT_STEPS: Posing support](../NEXT_STEPS.md#posing-support), the session this request comes from.
+- [NEXT_STEPS: Posing support](../../NEXT_STEPS.md#posing-support), the session this request comes from.
 - mpfb2: `src/mpfb/services/rigservice.py` (`identify_rig`, `get_pose_as_dict`,
   `get_world_space_location_of_pose_bone`, `find_leg_length`, `find_arm_length`);
   `src/mpfb/entities/rigging/righelpers/` (the `Default*Helpers` chains and rotation limits);

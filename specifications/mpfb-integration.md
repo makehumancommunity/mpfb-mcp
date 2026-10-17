@@ -239,6 +239,15 @@ versus services" to *any* two MPFB code paths.
   path, which destroys them); and the viewport colour is keyed on the object's recorded
   `object_type`, so an asset mislabelled at equip time gets the wrong colour here too. Reproduce
   them, and say in the command's docstring that they are reproductions rather than choices.
+- **What is "posed" is MPFB's test, plus scale.** `RigService.get_pose_as_dict()` decides whether a
+  bone is off rest with a 0.0001 threshold on each channel in the bone's own rotation mode, and
+  records rotation and translation only. A Rigify fist is made by scaling the finger masters on Y,
+  so following MPFB here would read a clenched hand as at rest, and saving that pose through MPFB
+  loses the fist. `mpfb_get_pose` uses MPFB's threshold, so the two agree on everything MPFB can
+  see, and adds scale; `shared/pose_reading.py` is where the choice is made, and its bridge test
+  asserts that MPFB's dict misses a scale-only fist
+  ([FR 041](../feature-requests/done/041-pose-controls-and-read-back/README.md)). A future
+  pose-saving tool inherits the same gap and has to decide it again.
 
 ## Names inside MPFB's node trees are read live, never tabulated
 
@@ -270,6 +279,46 @@ socket**, beyond what MPFB's own code uses to *find* the node.
   interface item, a built-in node's from its RNA property's hard limits, and a link as the node and
   socket it comes from. A range can be contradicted by MPFB's own value (MCP_DISCOVERED_BUGS
   item 11), and the write does not enforce a range MPFB itself does not keep.
+
+## A generated Rigify rig is read live, by Rigify's conventions
+
+[FR 041](../feature-requests/done/041-pose-controls-and-read-back/README.md) is the first time this
+package depends on **Rigify's** conventions and not only MPFB's. MPFB has no list of a generated
+rig's controls: `RigifyHelpers.get_list_of_*_bones` names *meta-rig* bones and exists to convert a
+standard rig into one. So the posing tools read the generated rig itself, in the spirit of
+[names inside MPFB's node trees](#names-inside-mpfbs-node-trees-are-read-live-never-tabulated):
+
+- **Body part and chain from the bone collections**, which MPFB's meta-rig defines
+  (`data/rigs/rigify/rig.human_toes.json`) and Rigify carries through: `Arm.L (IK)` is the left
+  arm's IK chain, and the parenthesised qualifiers Rigify hides - `(Tweak)`, `(Detail)`,
+  `(Primary)`, `(Secondary)` - are `hidden_by_default`. Three refinements by name, because the
+  collections lump them where an agent would not look: `neck` and `head` are the head, `shoulder.L`
+  is the left arm, and the eyes and their common target are the head's `look_target`.
+- **Role from Rigify's naming** - `_fk`, `_tweak`, `_master`, `_parent`, `_ik_target` - and the
+  limb's IK control and pole from the switches themselves, whose descriptions Rigify writes as
+  `"Switch parent of hand_ik.L"`.
+- **Switches from the custom properties**, with range, default and description from
+  `id_properties_ui()`. A parent switch's **parent names are on the property too**: Rigify's
+  `SwitchParentBuilder` passes `items=` to `make_property()`, in Blender's core Rigify since it
+  moved there, so the names are read live and the generated `rig_ui.py` is never read at runtime.
+  The bridge test checks the live names against that script, searched as data. A property with no
+  `items` reports `parent_names: null` with a reason rather than a guess from Rigify's usual order.
+  What each end of a switch *means* is not on the property, so a short table of meanings
+  (`SWITCH_ENDS`) is this package's, read from Rigify's source: note that `FK_limb_follow` and the
+  spine's `neck_follow`/`head_follow` run in opposite directions, because Rigify drives one
+  constraint at `value` and the other at `1 - value`.
+- **Where the convention does not hold, a table stands in, and is checked.** A
+  `rigify_generated.game_engine` rig - which MPFB makes only through its legacy convert-to-Rigify
+  operator - has **every control in one collection**, `Bones`, and `_l`/`_r` sides; collections and
+  suffixes are not enough there (established live during FR 041). Its body parts come from a token
+  table keyed on the meta-rig bone each control is named for. The default rig has one collection
+  too, and is classified from a table of the chains MPFB's `Default*Helpers` name; the bridge test
+  reads those classes out of `sys.modules` and fails if MPFB renames a bone. Which helpers a default
+  rig carries is MPFB's own record (`RigHelpersProperties`, read off its UI package as
+  [a UI module with no service behind it](architecture.md#a-ui-module-with-no-service-behind-it)),
+  compared with the bones present; what a helper drives is read off the constraints.
+- **Any other rig is answered unclassified**, its bones as a hierarchy with no body part or role.
+  A wrong `left_hand` is worse than none.
 
 ## Reading MPFB's data files directly
 

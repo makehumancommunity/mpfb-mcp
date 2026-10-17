@@ -373,6 +373,11 @@ dictionaries, so they were checked by the FR's own `census.py --check` instead.
 | A multiplier over a whole expression | `weight`, on an expression row | |
 | The object names of a character's mesh assets | `mesh_assets`, qualified by moment or subset (`mesh_assets_present`, `mesh_assets_not_rigged`) | |
 | One record per mesh asset on a character | `equipped_assets` | `assets`, which is `mpfb_list_assets`' catalogue |
+| A part of the body a posing tool groups bones by | `body_part` in an answer, `body_parts` the argument; one of `root`, `torso`, `head`, `face`, `left_arm`, `right_arm`, `left_hand`, `right_hand`, `left_leg`, `right_leg` — feet and toes belong to the leg | Rigify's collection names (`Arm.L (IK)`), `limb` |
+| What a control is for, on a classified rig | `role`: `root`, `body`, `fk`, `ik_control`, `pole`, `ik_chain`, `foot_roll`, `switches`, `finger_master`, `finger_segment`, `toe_master`, `toe_segment`, `tweak`, `look_target`, `face_control` | `type`, `kind` |
+| Which of a limb's chains a control belongs to | `chain`: `"ik"`, `"fk"`, or `null` off a limb | `mode` |
+| A position or direction on a character | an object with `forward`, `left`, `up`, in metres from the rig object's origin ([the character frame](responses.md#a-position-on-a-character-is-in-the-character-frame)); a rotation is `{"axis": <that>, "degrees": n}` | a world-space `[x, y, z]` |
+| The character has no rig to pose / only a Rigify meta-rig / a body part that is not one | `blocked_by: "rig_not_found"` / `"rigify_not_generated"` / `"unknown_body_parts"`, with `known_body_parts` | `no_rig`, `no_armature_found` (which `mpfb_generate_rigify_rig` keeps for a different question: no armature at all among the relatives) |
 
 Where MPFB's own spelling disagrees with a row here, the row wins;
 [mpfb-integration.md](mpfb-integration.md#where-mpfbs-spelling-disagrees-with-the-glossary-the-glossary-wins)
@@ -392,6 +397,13 @@ says why, and which of MPFB's spellings are kept.
   morph, a `.target` file and the shape key it becomes; a **modifier** is a per-category slider
   that drives one target or a pair of opposites. These are `mpfb_set_targets`' two arguments. Not
   "detail targets" or "detail morphs": "detail" collides with macro details.
+- **rig**, in a posing tool: the armature the basemesh's armature modifier points at, so a
+  character carrying a meta-rig and the rig generated from it is answered about the one that moves
+  the body. A **control** is a bone of it an animator would grab; `DEF-`, `MCH-` and `ORG-` bones
+  are not controls.
+- **character frame**: `forward`, `left` (the character's own, the `.L` side) and `up`, taken from
+  the rig object and not from the pose; see
+  [responses.md](responses.md#a-position-on-a-character-is-in-the-character-frame).
 - **mesh asset**: anything equipped on a character from an MHCLO file, which is one of three kinds:
   a **garment** (MPFB's `Clothes` type), a **body part** (eyes, eyebrows, eyelashes, hair, teeth,
   tongue) or the **body proxy** (`Proxymeshes`). "Clothes" appears only where MPFB's own word is
@@ -440,5 +452,13 @@ Each of these looks like a divergence and is not:
   record: whether the preset saves anything for it, and why not.
 - **`<x>_reason`** keys, and a bare `reason` inside a per-entry record, which always means "why this
   entry was not done".
+- **`head`** as a body part and as the key holding a bone's head position in the posing tools:
+  the first is this package's vocabulary, the second is Blender's own name for the point a bone
+  rotates about, which is what FR 042's `move_to` takes. One is a value, the other a key, and
+  renaming Blender's term would cost every reader who knows it.
+- **`switches`** in `mpfb_get_pose_controls` and **`switch_values`** / **`switch_parents`** in
+  `mpfb_get_pose`: the first is a list of definitions (range, ends, parent names), the others are
+  the current values as maps keyed by body part and switch, read after every pose change. One name
+  for both would carry two shapes.
 - **Tool names.** A renamed tool breaks every client configuration and saved transcript, which a
   renamed key does not.

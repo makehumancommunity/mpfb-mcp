@@ -23,7 +23,7 @@ last predate FR 037.
   That heading contains a markdown link, so its generated anchor is not the one written; an explicit
   `<a id>` above it would fix this and any other link to it.
 - `specifications/architecture.md` links to `CLAUDE.md#the-twenty-five-tools`; the heading is "The
-  thirty-four tools" now.
+  thirty-six tools" now.
 - `HISTORY.md` links to `NEXT_STEPS.md#should-the-bridge-serve-its-own-test-harness`.
 - `bridge/mpfb_bridge/commands/list_asset_materials.py` links to
   `specifications/architecture.md#shared-fragments`, a section that was renamed when shared
@@ -50,7 +50,8 @@ runs after the add-on's own machinery and before any command — and did not cre
 writing tests and moving files are different efforts and mixing them would have lost that
 request's before-and-after proof. [FR 036](done/036-subject-resolver-and-duplication/README.md)
 created the directory, with direct tests of the four shared modules it added; the thirteen that
-existed before it remain this entry's.
+existed before it remain this entry's. [FR 041](done/041-pose-controls-and-read-back/README.md)
+tested two of its three there; `pose_reading.py` is tested through `get_pose` only.
 
 Three of them read nothing out of MPFB's services and could be tested without a character, or
 without MPFB at all: `artifact_names.py` (the name rule; its tool-side twin is already tested
@@ -96,8 +97,9 @@ there are in `poses03`, which is not named as a CC0 pack.
 
 ## Posing support
 
-**The first part is scoped as [FR 041](041-pose-controls-and-read-back/README.md) (Accepted):**
-`mpfb_get_pose_controls` and `mpfb_get_pose`, the controls and the read-back below, read-only.
+**The first part landed as [FR 041](done/041-pose-controls-and-read-back/README.md)**
+([HISTORY](HISTORY.md)): `mpfb_get_pose_controls` and `mpfb_get_pose`, the controls and the
+read-back below, read-only, with the character frame and the posing vocabulary.
 **The second part is scoped as [FR 042](042-posing-bones-switches-and-reset/README.md)
 (Accepted):** `mpfb_set_pose_bones`, `mpfb_set_pose_switches` (snapping by default) and
 `mpfb_reset_pose`. Named hand shapes remain here; a Rigify fist is reachable through FR 042's
@@ -160,6 +162,30 @@ reversible. Hand shapes and the Rigify switches can then be added as arguments t
 tool, and pose loading comes last, once there is a rest-pose reset to fall back on. All of this is
 Blender-side logic in bridge commands, and none of it is in a `HumanService`-style service. Like
 `mpfb_set_asset_material`, most of it means reimplementing what MPFB's UI does, or what Rigify does.
+
+<a id="narrower-pose-controls"></a>
+
+## More filters on `mpfb_get_pose_controls`
+
+[FR 041](done/041-pose-controls-and-read-back/README.md) measured the controls answer at 63 KB by
+default on a generated `human_toes` rig, 92 KB with the face, and 46 KB on a generated
+`game_engine` rig. The request allowed that, since the answer is read once per character, and
+`body_parts` is the only way to narrow it: two arms alone are 13 KB. Most of what a caller pays for
+is controls it will not touch. On `human_toes`, 109 of the 180 controls outside the face are
+hidden by default (tweaks and finger and toe segments).
+
+Consider filters that cut across body parts, keeping the
+[bounded-answer rules](../specifications/responses.md#how-tools-bound-a-large-answer): counts for
+whatever is left out, and the filter echoed back. Some candidates:
+
+- **`roles`**, for example only `ik_control` (and perhaps `pole`). That is the handful of bones
+  that places hands and feet, and on its own would be enough for a first blocking pass of a pose.
+- **Leaving out `hidden_by_default` controls**, or listing them by name and role only.
+- **A compact form** that drops the rest positions, locks and rotation modes, for a caller that
+  only needs to know which bones exist and what they are for.
+
+Whichever is chosen, `mpfb_get_pose` should probably not take the same filter. It is already near
+its 8 KB line, and `body_parts` is enough there.
 
 <a id="placing-a-character"></a>
 

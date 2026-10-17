@@ -16,7 +16,7 @@ you can speed up things and save some tokens.
 
 ## Status
 
-Early beta. Thirty-four tools are implemented.
+Early beta. Thirty-six tools are implemented.
 
 **Introspection** — read-only, and each of them always answers rather than failing:
 
@@ -32,6 +32,10 @@ Early beta. Thirty-four tools are implemented.
   its face?
 - `mpfb_get_material_settings` — what are this character's iris colours, layered skin and hair and
   garment tints, exactly as a preset would save them?
+- `mpfb_get_pose_controls` — which bones pose this character, by body part, what does each do, and
+  where does it rest?
+- `mpfb_get_pose` — what is this character's pose now: what is off rest, where are its hands, feet,
+  hips and head, and is a limb stretched or out of reach?
 
 **Catalogues** — what could be added, each entry named the way the acting tool will want it:
 

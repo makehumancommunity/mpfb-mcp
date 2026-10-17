@@ -64,6 +64,7 @@ __all__ = (
     "module_level",
     "property_value",
     "required_module_level",
+    "rig_helpers_properties",
 )
 
 import sys
@@ -98,6 +99,24 @@ def human_object_properties(services):
     read that would take the fallback silently if it were made from the wrong one.
     """
     return module_level(services, "HumanService", "HumanObjectProperties", fallback=None)
+
+
+def rig_helpers_properties(root_name):
+    """MPFB's ``RigHelpersProperties``, read off its standard rig UI package, or ``None``.
+
+    **The one name here that no service's module imports.** It is the
+    ``BlenderConfigSet`` through which MPFB records which IK helpers a default
+    rig carries (``arm_mode``, ``leg_mode``, ``finger_mode``, ``eye_mode``), and
+    it is defined in ``<root>.ui.rigging.standardrig`` and imported only by UI
+    modules and the helper entities. So it is reached the way
+    [a UI module with no service behind it](../../../specifications/architecture.md#a-ui-module-with-no-service-behind-it)
+    is: ``sys.modules.get()``, never an import, a miss being an ordinary answer.
+    It meets both of that section's conditions - MPFB imports the package while
+    registering its panels, and what it holds is the property *definitions*
+    read from JSON; the values are read off the armature at call time.
+    """
+    module = sys.modules.get(str(root_name) + ".ui.rigging.standardrig")
+    return getattr(module, "RigHelpersProperties", None)
 
 
 def required_module_level(services, service_name, name):

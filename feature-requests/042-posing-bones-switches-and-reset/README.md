@@ -3,7 +3,7 @@
 **Status:** Accepted
 
 This is the second part of [Posing support](../NEXT_STEPS.md#posing-support), and it depends on
-the first. [FR 041](../041-pose-controls-and-read-back/README.md) adds the read-only tools: which
+the first. [FR 041](../done/041-pose-controls-and-read-back/README.md) adds the read-only tools: which
 controls a rig has, what each one does, what the pose is now, and whether a limb is stretched.
 This request adds the tools that change a pose.
 
@@ -232,9 +232,14 @@ and no limb that jumps when a switch changes.
   `mpfb_set_asset_material`, a reimplementation, and this time it is of **Rigify's** UI as well as
   MPFB's.
 - **What FR 041 provides is consumed, not copied.** `shared/character_frame.py` converts between
-  the frame and armature space. `shared/pose_controls.py` gives each bone's body part, role,
-  chain, source and `driven_by`, and it is what FR 7's "in charge" check reads. FR 041's read-back
-  code computes FR 11's landmarks, reach and stretch.
+  the frame and armature space, both ways (`world_point`, `world_vector`). `shared/pose_controls.py`
+  gives each bone's body part, role, chain, source and `driven_by`, each switch's bone, type, range
+  and live `default` (FR 18), and each limb's switch bone, IK control and pole; and
+  `resolve_posing_subject()` is FR 1's subject, rig and refusals, taking a `not_done` phrase for a
+  command that would have changed something. `shared/pose_reading.py` - a third module FR 041 added
+  - computes FR 11's landmarks, reach and stretch, reports each limb's `in_charge` (`ik`, `fk` or
+  `blend`, from `IK_FK` or the default rig's helpers), which is what FR 7's "in charge" check can
+  read, and `off_rest()`, which is FR 17's `left_off_rest` test.
   [A summary is never a second opinion](../../specifications/responses.md#a-summary-is-never-a-second-opinion)
   applies just as much to a mutating tool's after-report.
 - **A new shared module, `pose_writing.py`**, used by all three commands: writing a bone from a
@@ -249,7 +254,10 @@ and no limb that jumps when a switch changes.
   is compatible with the bridge's licence, and the module docstring credits it. **The pitfall is
   the chains, not the math.** Rigify's operators get their FK chain, IK result chain, tail and
   extra controls as JSON-encoded operator properties baked into `rig_ui.py`. FR 041 classifies
-  controls, but not the `ORG-`/`MCH-` chains a snap reads. The effort has to establish whether
+  controls, but not the `MCH-` chains a snap reads. It does derive each limb's `ORG-` chain from its
+  FK controls (`upper_arm_fk.L` is `ORG-upper_arm.L`, `upperarm_fk_l` is `ORG-upperarm_l`), and
+  found that a generated `game_engine` rig has every control in one collection, `Bones`, so nothing
+  there can come from collections. The effort has to establish whether
   those chains follow from Rigify's naming on a generated `human_toes` and a generated
   `game_engine` rig. If they do, a bridge test checks the derived chains against the ones in the
   generated `rig_ui.py`, in the way FR 041 checks its default-rig table against MPFB's helpers. If
@@ -262,10 +270,19 @@ and no limb that jumps when a switch changes.
   `use_keyframe_insert_auto` says. Whether a channel is animated is read from the rig's action
   and its F-curve data paths.
 - **Rigify's `IK_parent` is an integer**, 0 to N, and the property's description says only
-  "Switch parent of hand_ik.L". The names of the parents (`root`, `torso`, …) exist only in
-  `rig_ui.py`. `value` is therefore the integer. FR 041's switch listing maps each integer to its
-  parent's name, or reports `parent_names: null` where it cannot, so a caller picks the integer
-  from a named list.
+  "Switch parent of hand_ik.L". `value` is therefore the integer. FR 041 found the names of the
+  parents on the property itself, as its `items` (Rigify's `SwitchParentBuilder` passes them to
+  `make_property()`), checked against `rig_ui.py` by a bridge test; its switch listing maps each
+  integer to its parent's name, or reports `parent_names: null` where a property carries none, so a
+  caller picks the integer from a named list.
+- **`rotate_to` takes `mpfb_get_pose`'s `rotation` as it is**, and that is the rotation taking the
+  bone's rest orientation to its current one **including what its parents did**, so a write
+  reproduces it through `pose_bone.matrix` with parents written first (FR 9). A rotation under a
+  tenth of a degree reads `{"axis": null, "degrees": 0.0}`, which a `rotate_to` must accept as "at
+  rest".
+- **Through a windowed Blender's bridge every call takes about a second** (measured during FR 041;
+  each handler takes milliseconds, the rest is the timer driving the server), which is one more
+  reason the writers are batched.
 
 ## Affected specifications
 
@@ -370,7 +387,7 @@ All asked on 2026-10-17 unless marked otherwise.
 ## References
 
 - [NEXT_STEPS: Posing support](../NEXT_STEPS.md#posing-support), and
-  [FR 041](../041-pose-controls-and-read-back/README.md), which this builds on.
+  [FR 041](../done/041-pose-controls-and-read-back/README.md), which this builds on.
 - Blender: `scripts/addons_core/rigify/rigs/limbs/limb_rigs.py` (`make_property` for `IK_FK`,
   `IK_Stretch`, `pole_vector` and `FK_limb_follow`; `add_global_buttons`; `RigifyLimbIk2FkBase`;
   `RigifyLimbTogglePoleBase`), `scripts/addons_core/rigify/utils/switch_parent.py` (`IK_parent`

@@ -159,6 +159,10 @@ def build_server() -> FastMCP:
             "Changing a body's shape moves it out from under everything fitted "
             "to it, so finish a series of modeling changes with one call to "
             "mpfb_refit_human. "
+            "To pose a character, find its controls with mpfb_get_pose_controls - "
+            "which bones to move, by body part, in a frame that turns with the "
+            "character - and read the result back with mpfb_get_pose rather "
+            "than from a screenshot. "
             "A character exists only in the running .blend until it is saved "
             "as an MPFB preset: mpfb_save_preset writes one - the only file "
             "any tool here creates, and not undoable - mpfb_list_presets says "
@@ -200,7 +204,8 @@ def build_server() -> FastMCP:
     from mpfbmcp.tools import (
         add_asset, add_rig, apply_expressions, create_human, create_human_from_preset,
         generate_rigify_rig, get_character_summary, get_expression, get_face_units,
-        get_macro_details, get_material_settings, get_object_info, get_status, get_target_stack,
+        get_macro_details, get_material_settings, get_object_info, get_pose, get_pose_controls,
+        get_status, get_target_stack,
         list_asset_materials, list_assets, list_docs, list_expressions, list_objects,
         list_presets, list_rigs, list_targets, list_urls, refit_human, remove_asset,
         save_expression, save_preset, set_asset_material, set_face_units, set_macro_details,
@@ -217,6 +222,8 @@ def build_server() -> FastMCP:
     get_macro_details.register(mcp)
     get_material_settings.register(mcp)
     get_object_info.register(mcp)
+    get_pose.register(mcp)
+    get_pose_controls.register(mcp)
     get_status.register(mcp)
     get_target_stack.register(mcp)
     list_asset_materials.register(mcp)

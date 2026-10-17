@@ -56,6 +56,8 @@ from . import get_macro_details
 from . import get_material_settings
 from . import get_mpfb_status
 from . import get_object_info
+from . import get_pose
+from . import get_pose_controls
 from . import get_target_stack
 from . import get_status
 from . import list_asset_materials
@@ -172,6 +174,18 @@ COMMANDS = {
         params=get_object_info.PARAMS,
         requires_mpfb=True,
         summary=get_object_info.SUMMARY),
+    "get_pose": Command(
+        name="get_pose",
+        handler=get_pose.get_pose,
+        params=get_pose.PARAMS,
+        requires_mpfb=True,
+        summary=get_pose.SUMMARY),
+    "get_pose_controls": Command(
+        name="get_pose_controls",
+        handler=get_pose_controls.get_pose_controls,
+        params=get_pose_controls.PARAMS,
+        requires_mpfb=True,
+        summary=get_pose_controls.SUMMARY),
     "get_target_stack": Command(
         name="get_target_stack",
         handler=get_target_stack.get_target_stack,

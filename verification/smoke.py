@@ -405,6 +405,26 @@ def _generate_rigify_rig(run: _Run) -> dict:
     return run.tools["mpfb_generate_rigify_rig"](name=_character(run))
 
 
+def _posable(envelope: dict) -> dict:
+    """The envelope, or a skip when the run's rig is one no posing tool can answer about."""
+    blocked = (envelope.get("result") or {}).get("blocked_by")
+    if blocked in ("rig_not_found", "rigify_not_generated"):
+        raise Skipped("the character's rig cannot be posed here ({})".format(blocked))
+    return envelope
+
+
+@_item("mpfb_get_pose_controls", "controls", "counts_by_body_part", "character_frame")
+def _get_pose_controls(run: _Run) -> dict:
+    # After generation, so a run with Rigify lists the generated rig's controls
+    # rather than being refused a meta-rig.
+    return _posable(run.tools["mpfb_get_pose_controls"](name=_character(run)))
+
+
+@_item("mpfb_get_pose", "at_rest", "posed", "landmarks", "limbs")
+def _get_pose(run: _Run) -> dict:
+    return _posable(run.tools["mpfb_get_pose"](name=_character(run)))
+
+
 @_item("mpfb_remove_asset", "asset_object_name", "object_type", "basemesh_name",
        "objects_removed")
 def _remove_asset(run: _Run) -> dict:

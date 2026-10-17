@@ -533,8 +533,7 @@ reading it re-executes nothing, while importing it would run MPFB code inside an
 be exactly as broken as the tool was called to report on. A miss is therefore an ordinary answer
 carrying a reason, not a case to fix by importing.
 
-**Two conditions make a UI module readable, and `weburls` is the only one so far that meets
-both.** It must be reachable without importing it — which means MPFB must already import it on a
+**Two conditions make a UI module readable, and `weburls` was the first to meet both.** It must be reachable without importing it — which means MPFB must already import it on a
 normal install, a claim a stub cannot make and
 [a live check has to](testing.md#what-the-suite-can-never-establish); FR 024's found it loaded
 along with 308 other UI modules. And it must hold **data rather than a snapshot**: eleven string
@@ -547,6 +546,15 @@ that module builds its table when Blender starts, so a tool reading it would be 
 installed since. Reading a UI module is not a general licence — it is available where the module
 is a constant table, and the fallback the second rule already required is what makes being wrong
 about that survivable.
+
+**`RigHelpersProperties` is the second.** It is the `BlenderConfigSet` through which MPFB records
+which IK helpers a default rig carries, defined in `<root>.ui.rigging.standardrig` and imported by
+no service, only by UI modules and the helper entities
+([FR 041](../feature-requests/done/041-pose-controls-and-read-back/README.md)). MPFB imports that
+package while registering its panels, and what it holds is property *definitions* read from JSON -
+the values are read off the armature at call time - so both conditions hold.
+`mpfb_surface.rig_helpers_properties()` reads it with `sys.modules.get()`, and a miss reports the
+helper modes as `null` with a reason; the helper bones are still recognised by name.
 
 **Calling a UI module is a third case, and FR 027 is where it was decided.** MPFB's
 expressions-library panel draws one slider per expression file, registered as a scene property
@@ -742,6 +750,20 @@ now four parts, and it applies on both sides of the socket:
   ([names inside MPFB's node trees are read live](mpfb-integration.md#names-inside-mpfbs-node-trees-are-read-live-never-tabulated)).
   It was the one shared addition the request allowed, and no other shared module's code changed.
 
+- **A frame two tools must share is shared before the second tool exists.** `character_frame.py`
+  came with [FR 041](../feature-requests/done/041-pose-controls-and-read-back/README.md), whose two
+  tools only *read* positions; the tools that take them are FR 042's. It was made a shared module
+  ahead of that second user deliberately: a later `move_by: {"forward": 0.2}` that disagreed with
+  the read-back's `forward` would be a defect that is both silent and very visible, and rounding
+  done once is the only way two answers about one bone agree in the last digit. Beside it,
+  `pose_controls.py` classifies a rig - family, and each bone's body part, role, chain and source -
+  so that `mpfb_get_pose_controls` and `mpfb_get_pose` cannot label one bone two ways, and resolves
+  the posing subject and its refusals once for every posing tool, readers and writers alike; and
+  `pose_reading.py` says what the pose *is* - off rest, landmarks, reach and stretch - so FR 042's
+  writers report a limb after a write under the read's keys and by the read's code. A third module
+  where the request named two, because the classification is what a bone is and the reading is what
+  the pose is, and the writers need the second without the first's tables.
+
 **The evidence for the rule is FR 036's census**, not the census of generated programs that
 stood here before: those programs were deleted by
 [FR 033](../feature-requests/done/033-retire-the-generated-code-path/README.md), and a rule backed
@@ -762,6 +784,9 @@ four module-level names through `mpfb_surface.py` once rather than at every use.
 neither, because they read nothing out of MPFB's services: `performed.py` works on a dict the
 command has finished building, `artifact_names.py` on a name and a path, `expression_panel.py` on
 MPFB's root package name, and `selection.py` and `blender_data.py` on plain Blender state.
+`character_frame.py` and `pose_reading.py` read only Blender too; `pose_controls.py`'s rig lookup
+takes `services`, and its classification takes the root package name for the one name it reads off
+MPFB's UI package.
 `subject_resolution.py` is half of each: its subject step reads only the view layer and `bpy.data`,
 and only its basemesh step takes `services`.
 

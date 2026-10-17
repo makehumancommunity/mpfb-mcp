@@ -641,3 +641,53 @@ on this machine the add-on is installed in two extension repositories and Blende
 registered twice. The bridge suite's `refit_human_test.py::test_the_answer_agrees_with_mpfbs_own_metarig_lookup`
 failed throughout, alone as in the suite, inside MPFB's `RigService` ("Cannot edit hidden object")
 against mpfb2 at `6e96c5e`; nothing in this effort touches it, and it is left for its own look.
+
+<a id="pose-controls-and-read-back"></a>
+
+## [FR 041](done/041-pose-controls-and-read-back/README.md) — `mpfb_get_pose_controls` and `mpfb_get_pose`
+
+The first part of [Posing support](NEXT_STEPS.md#posing-support). A session posing a character
+with a generated Rigify rig into a karate stance had to know from memory which of 1090 bones to
+move, worked every move out in bone-local axes, and checked each change with a screenshot. Two
+read-only tools now answer what it had to look up or look at: which controls a rig has, grouped by
+body part with a role, and what the pose is now. Thirty-six tools, thirty-five commands, and three
+shared modules that FR 042's writers will use too: `character_frame.py`, `pose_controls.py` and
+`pose_reading.py`.
+
+**Everything is in the character frame** - metres along `forward`, `left` and `up` from the rig
+object, taken from its world matrix and never from the pose - so a moved and turned character reads
+the same and a relative move will mean the same throughout a session. That MPFB's rigs face local
+-Y with `.L` on +X is asserted by the bridge tests on three rig kinds, and the live check confirmed
+it against a screenshot of a character turned 120 degrees.
+
+What the effort established. **A generated Rigify rig can be classified live**: body part and chain
+from the bone collections MPFB's meta-rig defines, role from Rigify's naming, which `_ik` bone is
+the IK control from the switches' own descriptions, and **a parent switch's names from the property
+itself** - Rigify passes `items=` to `make_property()`, so `rig_ui.py` is never read at runtime and a
+bridge test checks the two agree. **A generated `game_engine` rig cannot**: MPFB's legacy
+convert-to-Rigify puts every control in one collection, so it gets a token table of the meta-rig
+names. **The default rig's table is checked against MPFB's `Default*Helpers`**, read out of
+`sys.modules` by a test, and which helpers are installed is MPFB's own record (`RigHelpersProperties`,
+the second UI module this package reads) compared with the bones; what a helper drives is read off
+the constraints. Any other rig is listed unclassified. **"Off rest" includes scale**, which
+`get_pose_as_dict()` does not record, because a Rigify fist is scale; a bridge test asserts MPFB
+misses it. And **Rigify's IK chain gives a little with `IK_Stretch` at 0.0** - 17 mm on a 480 mm
+arm - so the read-back states how much longer a limb is rather than blaming a switch.
+
+Decisions beyond the request: refusals `rig_not_found`, `rigify_not_generated`,
+`unknown_body_parts`; fifteen roles, with `toe_master`/`toe_segment` apart from the fingers and
+`ik_chain`, `foot_roll` and `switches` for Rigify's other limb controls; the eyes as the head's
+`look_target`; a switch unique per body part, so FR 042 can address it by `body_part` and `switch`,
+with repeated properties (`finger_curve`, `rubber_tweak`) as each control's `settings`; `posed`
+grouped by body part and switch values as two maps, which took the karate pose from 11.3 KB to
+9.6 KB. The posing subject and its refusals are resolved once, in `pose_controls`, for the readers
+and the writers to come.
+
+Verified by [`live_check.py`](done/041-pose-controls-and-read-back/live_check.py), which drives the
+real tools against a windowed Blender and poses through the community blender-mcp add-on's socket,
+as the request asked: 19 checks, from the karate session's bones and roles through fists left in
+the air and arms 58 mm too long after the hips were lowered, to a `game_engine` rig classified.
+Measured: the controls answer is 63 KB by default on `human_toes` (92 KB with the face, 13 KB for
+two arms) - its ceiling, written into responses.md - and the pose read-back 7.2 KB for a 13-control
+pose, about 290 B per posed control on 3.8 KB of fixed sections. 48 new bridge tests (462), 22 new
+unit tests (506), and two smoke items; the smoke run is 36 of 36.

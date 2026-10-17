@@ -43,6 +43,7 @@ __all__ = (
     "RETIRED_ARGUMENTS",
     "refuse_undeclared",
     "validated_asset_name",
+    "validated_body_parts",
     "validated_count",
     "validated_flag",
     "validated_mode",
@@ -138,6 +139,32 @@ def validated_text(value: object, argument: str, hint: str) -> str | None:
     if not value.strip():
         raise ValueError("{:s} must not be empty or whitespace; {:s}".format(argument, hint))
     return value
+
+
+def validated_body_parts(value: object) -> list[str] | None:
+    """An optional, non-empty list of distinct body part names; ``None`` means the tool's default.
+
+    Shape only: which names are body parts is answered by the bridge, which
+    lists them when one is not. An empty list is refused rather than read as
+    "none", because no posing tool has anything to say about no body parts and
+    the caller almost certainly meant the default. A repeated name is refused
+    because it can only be a mistake. Shared by every posing tool, since FR 042
+    takes the same argument FR 041 introduced.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        raise ValueError("body_parts must be a list of strings or omitted, got {!r}".format(value))
+    if not value:
+        raise ValueError("body_parts must not be empty; omit it for the default body parts")
+    for position, part in enumerate(value):
+        if not isinstance(part, str) or not part.strip():
+            raise ValueError("body_parts[{}] must be a non-empty string, got {!r}".format(
+                position, part))
+    repeated = sorted(set(part for part in value if value.count(part) > 1))
+    if repeated:
+        raise ValueError("body_parts names {} more than once".format(", ".join(repeated)))
+    return list(value)
 
 
 # A spelling a tool no longer takes, per tool, and the one that replaced it.

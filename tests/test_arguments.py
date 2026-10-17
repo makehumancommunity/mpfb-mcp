@@ -130,6 +130,37 @@ class ValidatedTextTests(unittest.TestCase):
                          "section must not be empty or whitespace; omit it to cover every section")
 
 
+class ValidatedBodyPartsTests(unittest.TestCase):
+    def test_omitted_means_the_default(self) -> None:
+        self.assertIsNone(arguments.validated_body_parts(None))
+
+    def test_a_list_is_returned_as_given_vocabulary_unchecked(self) -> None:
+        self.assertEqual(arguments.validated_body_parts(["face", "elbows"]), ["face", "elbows"])
+
+    def test_not_a_list(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            arguments.validated_body_parts("left_arm")
+        self.assertEqual(str(raised.exception),
+                         "body_parts must be a list of strings or omitted, got 'left_arm'")
+
+    def test_empty_is_not_omitted(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            arguments.validated_body_parts([])
+        self.assertEqual(str(raised.exception),
+                         "body_parts must not be empty; omit it for the default body parts")
+
+    def test_an_entry_that_is_not_a_name(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            arguments.validated_body_parts(["left_arm", " "])
+        self.assertEqual(str(raised.exception),
+                         "body_parts[1] must be a non-empty string, got ' '")
+
+    def test_a_repeated_name(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            arguments.validated_body_parts(["face", "torso", "face"])
+        self.assertEqual(str(raised.exception), "body_parts names face more than once")
+
+
 class RefuseUndeclaredTests(unittest.TestCase):
     def test_declared_arguments_pass(self) -> None:
         arguments.refuse_undeclared("mpfb_list_docs", {"topic", "keyword"}, {"topic": "x"})

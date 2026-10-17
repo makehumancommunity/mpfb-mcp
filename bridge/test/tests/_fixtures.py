@@ -49,8 +49,13 @@ __all__ = (
     "linked_plain_object",
     "material_character",
     "material_data_roots",
+    "mpfb_root",
+    "mpfb_ui_module",
     "nothing_active",
     "only_these_data_roots",
+    "posing_state",
+    "rigged_character",
+    "with_helpers",
     "redirected_locations",
     "resolution_module",
     "result",
@@ -862,3 +867,124 @@ def material_data_roots(services, root):
     return only_these_data_roots(
         services, user_data=str(root),
         mpfb_data=getattr(services["LocationService"], _REDIRECTABLE["mpfb_data"]))
+
+
+# --------------------------------------------------------------------------
+# Posing: a character of each rig family, MPFB's IK helpers, and a snapshot of
+# everything a read-only posing command promises not to change. FR 041's two
+# command modules and its two shared-module tests all build these.
+# --------------------------------------------------------------------------
+
+
+def mpfb_root():
+    """MPFB's root package name here, which is where its UI modules hang."""
+    resolution = dynamic_import("mpfb_resolution", "resolve")()
+    if not resolution.is_ok:
+        pytest.skip("MPFB is {:s} in this Blender: {:s}".format(
+            resolution.state, resolution.message))
+    return resolution.module.__name__
+
+
+def mpfb_ui_module(relative):
+    """An MPFB UI module MPFB itself has already imported, or a skip naming it.
+
+    Read from ``sys.modules`` the way the bridge reads one, never imported: a
+    test that imported it could pass where the add-on would find nothing.
+    """
+    name = mpfb_root() + "." + relative
+    module = sys.modules.get(name)
+    if module is None:
+        pytest.skip("{:s} is not loaded in this Blender".format(name))
+    return module
+
+
+def _rigify_or_skip(services):
+    if not services["SystemService"].check_for_rigify():
+        pytest.skip("Rigify is not enabled in this Blender, so no Rigify rig can be generated")
+
+
+def _activate_only(blender_object):
+    for other in bpy.context.view_layer.objects:
+        other.select_set(False)
+    bpy.context.view_layer.objects.active = blender_object
+    blender_object.select_set(True)
+
+
+def rigged_character(services, character, rig):
+    """Rig ``character`` and return the armature that moves it.
+
+    ``rig`` is an identifier ``mpfb_add_rig`` would take, plus two that only a
+    generation produces: ``"generated:human_toes"`` adds MPFB's meta-rig and
+    generates it with ``RigService.generate_rigify_rig()``, and
+    ``"generated:game_engine"`` adds the standard ``game_engine`` rig and runs
+    MPFB's legacy convert-to-Rigify operator on it, which is the only way MPFB
+    makes a ``rigify_generated.game_engine`` rig. Both skip without Rigify.
+    """
+    human_service = services["HumanService"]
+    if rig == "generated:human_toes":
+        _rigify_or_skip(services)
+        meta_rig = human_service.add_builtin_rig(
+            character.basemesh, "rigify.human_toes", import_weights=True)
+        assert meta_rig is not None, "the meta-rig should have been added"
+        generated = services["RigService"].generate_rigify_rig(meta_rig, meta_rig_action="hide")
+        assert generated is not None, "Rigify should have generated the human_toes meta-rig"
+        return generated
+    if rig == "generated:game_engine":
+        _rigify_or_skip(services)
+        standard = human_service.add_builtin_rig(
+            character.basemesh, "game_engine", import_weights=True)
+        before = set(blender_object.name for blender_object in bpy.data.objects)
+        _activate_only(standard)
+        result = bpy.ops.mpfb.convert_to_rigify()
+        assert result == {"FINISHED"}, result
+        created = [blender_object for blender_object in bpy.data.objects
+                   if blender_object.name not in before and blender_object.type == "ARMATURE"]
+        assert len(created) == 1, "convert-to-Rigify should have generated one armature"
+        return created[0]
+    added = human_service.add_builtin_rig(character.basemesh, rig, import_weights=True)
+    assert added is not None, "the {:s} rig should have been added".format(rig)
+    return added
+
+
+def with_helpers(rig_object, arm="NONE", leg="NONE", finger="NONE", eye=False):
+    """Install MPFB's IK helpers on a default rig, the way its panel's button does.
+
+    Sets the panel's own scene settings and runs ``mpfb.add_helpers``, so what
+    is on the rig afterwards - bones, constraints, the recorded modes - is
+    exactly what a user clicking the button would get.
+    """
+    panel = mpfb_ui_module("ui.rigging.standardrig.standardrigpanel")
+    settings = panel.SETUP_HELPERS_PROPERTIES
+    scene = bpy.context.scene
+    settings.set_value("arm_helpers_type", arm, entity_reference=scene)
+    settings.set_value("leg_helpers_type", leg, entity_reference=scene)
+    settings.set_value("finger_helpers_type", finger, entity_reference=scene)
+    settings.set_value("eye_ik", eye, entity_reference=scene)
+    _activate_only(rig_object)
+    assert bpy.ops.mpfb.add_helpers() == {"FINISHED"}
+    return rig_object
+
+
+def posing_state(rig_object):
+    """Everything a read-only posing command must leave as it found it.
+
+    The mode, the active object, the selection, and every pose bone's local
+    transform and every custom property on it - which covers the switches.
+    """
+    bones = {}
+    for pose_bone in rig_object.pose.bones:
+        properties = {key: pose_bone[key] for key in pose_bone.keys()
+                      if isinstance(pose_bone[key], (bool, int, float))}
+        bones[pose_bone.name] = (tuple(round(value, 6) for value in pose_bone.location),
+                                 tuple(round(value, 6) for value in pose_bone.rotation_quaternion),
+                                 tuple(round(value, 6) for value in pose_bone.rotation_euler),
+                                 tuple(round(value, 6) for value in pose_bone.scale),
+                                 properties)
+    active = bpy.context.view_layer.objects.active
+    return {
+        "mode": bpy.context.mode,
+        "rig_mode": rig_object.mode,
+        "active": None if active is None else active.name,
+        "selected": sorted(blender_object.name for blender_object in bpy.context.selected_objects),
+        "bones": bones,
+    }
