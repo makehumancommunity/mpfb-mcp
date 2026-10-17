@@ -96,6 +96,10 @@ there are in `poses03`, which is not named as a CC0 pack.
 
 ## Posing support
 
+**The first part is scoped as [FR 041](041-pose-controls-and-read-back/README.md) (Proposed):**
+`mpfb_get_pose_controls` and `mpfb_get_pose`, the controls and the read-back below, read-only.
+The transform tool, the switches as arguments, hand shapes and a rest-pose reset remain here.
+
 Found by posing a character into a karate fighting stance with the mpfb-mcp tools and blender
 mcp (2026-10-17). The character had a generated Rigify rig (`rigify_generated.human_toes`). The
 mpfb-mcp tools could tell which object was the rig and that it was a generated Rigify rig, and
@@ -106,8 +110,9 @@ useful first:
   `DEF-`/`ORG-`/`MCH-` bones. The session had to know from memory that `torso`, `foot_ik.L`, `hand_ik.L`,
   `upper_arm_ik_target.L` and `f_index.01_master.L` are the bones that matter, and the names
   are different on the default rig, the game engine rig, and a default rig with MPFB's IK helpers.
-  MPFB already knows these names (`RigService.identify_rig`, `RigifyHelpers.get_list_of_*_bones`,
-  `entities/rigging/righelpers/`). A `mpfb_get_pose_controls` tool could group the controls by
+  MPFB knows some of these names (`RigService.identify_rig`, `entities/rigging/righelpers/`), but
+  `RigifyHelpers.get_list_of_*_bones` names meta-rig bones, not a generated rig's controls; see
+  FR 041. A `mpfb_get_pose_controls` tool could group the controls by
   body part (left hand, left foot, torso, head, fingers), name each one's role (IK target, pole, FK
   chain, finger curl), and give its rest position in world space and the way the character faces.
 - **Moving a bone in world terms has to be computed by hand.** The rig's local axes are not
