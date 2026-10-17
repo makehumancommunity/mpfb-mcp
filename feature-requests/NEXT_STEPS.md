@@ -92,6 +92,67 @@ back to the rest pose belongs with it, and so does each pose's license (see
 [License in the catalogues](#license-in-the-catalogues)): the only CC0 standing poses installed
 there are in `poses03`, which is not named as a CC0 pack.
 
+<a id="posing-support"></a>
+
+## Posing support
+
+Found by posing a character into a karate fighting stance with the mpfb-mcp tools and blender
+mcp (2026-10-17). The character had a generated Rigify rig (`rigify_generated.human_toes`). The
+mpfb-mcp tools could tell which object was the rig and that it was a generated Rigify rig, and
+nothing after that. Every pose change went through `execute_blender_code`. These are the gaps, most
+useful first:
+
+- **No tool says which bones to move.** The rig has 1090 bones, and 282 of them are not
+  `DEF-`/`ORG-`/`MCH-` bones. The session had to know from memory that `torso`, `foot_ik.L`, `hand_ik.L`,
+  `upper_arm_ik_target.L` and `f_index.01_master.L` are the bones that matter, and the names
+  are different on the default rig, the game engine rig, and a default rig with MPFB's IK helpers.
+  MPFB already knows these names (`RigService.identify_rig`, `RigifyHelpers.get_list_of_*_bones`,
+  `entities/rigging/righelpers/`). A `mpfb_get_pose_controls` tool could group the controls by
+  body part (left hand, left foot, torso, head, fingers), name each one's role (IK target, pole, FK
+  chain, finger curl), and give its rest position in world space and the way the character faces.
+- **Moving a bone in world terms has to be computed by hand.** The rig's local axes are not
+  world axes: `torso`, `hips` and `chest` lie horizontally, the hands have an arbitrary roll, and
+  the rotation modes are a mix of `QUATERNION`, `XYZ`, `ZXY` and `YXZ`. The pose was built with
+  a helper that sets `pose_bone.matrix` from a world-space move or rotation, updating the depsgraph
+  after each bone because each bone's result depends on its parent's. That helper is the core of a
+  batched `mpfb_set_pose_bones` tool, used the way `mpfb_set_targets` is used. Each entry would take
+  a bone, plus either a `move_by` in metres or a `rotate_by` in degrees about the bone's head, or an
+  `aim` direction with a `twist`. Offsets should be relative to the character ("forward" means the
+  way the character faces), not the world, so the tool still works on a character that
+  [has been placed](#placing-a-character) and turned.
+- **Rigify's switches are hidden custom properties.** `IK_FK` on `upper_arm_parent.L` and
+  `thigh_parent.L` (0 means IK) switches between IK and FK. `pole_vector` is off by default, and
+  without it the elbows splayed outward until it was turned on and `upper_arm_ik_target.L` was
+  moved. `IK_parent` makes the hands follow `root` and not the torso, so lowering the hips left
+  both fists in the air. `IK_Stretch` is 1.0, so a hand placed beyond reach stretches the arm
+  instead of stopping, and nothing reports it. The controls tool should report these, the pose tool
+  should be able to set them, and a read-back should name any limb that is stretched.
+- **There is no hand-shape helper.** On Rigify, a fist comes from scaling the finger master bones
+  on Y (0.45 for a closed fist), not from rotating them. On the default rig it means rotating three
+  bones per finger. A `hand` argument (`fist`, `open`, `relaxed`, or a 0-1 curl per finger) would
+  hide the difference between rigs.
+- **No tool reads a pose back.** Every check went through `look`. A `mpfb_get_pose` tool could
+  report which bones are not in their rest pose and where the hands, feet and head are in world
+  space. Together with a way to save one (MPFB already has `RigService.get_pose_as_dict`), it would
+  give a reset to rest pose and a pose that can be reused on another character.
+- **The pose libraries cannot reach a generated Rigify rig at all**, which makes
+  [Loading poses](#loading-poses) narrower than that entry assumes. There is one JSON pose per FK
+  rig type (`default_fk`, `game_engine_fk`, and so on), and MPFB's panel looks for
+  `<identify_rig>_ik` on any rig with an `_ik` bone, so this rig would need
+  `rigify_generated.human_toes_ik`, which does not exist. The 59 BVH poses are worse. Two of them,
+  `culturalibre_cl_fight_01` and `gpedroso_boxing`, would have been a good starting point for this
+  stance. But `import_bvh_file_as_pose` matches bones by default-rig names, and 35 of
+  `cl_fight_01`'s 163 bones also exist on the generated Rigify rig (`root`, `head`, `jaw`, the
+  eyes, the breasts and every toe). It would rewrite their rolls in edit mode and give a partly
+  posed, broken character without any error. A pose-loading tool must refuse a rig the pose was not
+  made for. Retargeting a default-rig pose onto Rigify controls would be a separate effort.
+
+The natural order is the controls tool, then the transform tool, both read-only or
+reversible. Hand shapes and the Rigify switches can then be added as arguments to the transform
+tool, and pose loading comes last, once there is a rest-pose reset to fall back on. All of this is
+Blender-side logic in bridge commands, and none of it is in a `HumanService`-style service. Like
+`mpfb_set_asset_material`, most of it means reimplementing what MPFB's UI does, or what Rigify does.
+
 <a id="placing-a-character"></a>
 
 ## Placing a character
