@@ -130,25 +130,12 @@ bridge commands that reimplements what MPFB's UI does.
 
 ## More filters on `mpfb_get_pose_controls`
 
-[FR 041](done/041-pose-controls-and-read-back/README.md) measured the controls answer at 63 KB by
-default on a generated `human_toes` rig, 92 KB with the face, and 46 KB on a generated
-`game_engine` rig. The request allowed that, since the answer is read once per character, and
-`body_parts` is the only way to narrow it: two arms alone are 13 KB. Most of what a caller pays for
-is controls it will not touch. On `human_toes`, 109 of the 180 controls outside the face are
-hidden by default (tweaks and finger and toe segments).
-
-Consider filters that cut across body parts, keeping the
-[bounded-answer rules](../specifications/responses.md#how-tools-bound-a-large-answer): counts for
-whatever is left out, and the filter echoed back. Some candidates:
-
-- **`roles`**, for example only `ik_control` (and perhaps `pole`). That is the handful of bones
-  that places hands and feet, and on its own would be enough for a first blocking pass of a pose.
-- **Leaving out `hidden_by_default` controls**, or listing them by name and role only.
-- **A compact form** that drops the rest positions, locks and rotation modes, for a caller that
-  only needs to know which bones exist and what they are for.
-
-Whichever is chosen, `mpfb_get_pose` should probably not take the same filter. It is already near
-its 8 KB line, and `body_parts` is enough there.
+Scoped as [FR 043](043-narrower-pose-controls/README.md) (Accepted): hidden controls left out by
+default (`include_hidden`), with `hidden_by_default` derived by role on `game_engine` so both
+generated families hide the same kinds of control; a `roles` filter with `counts_by_role`; and a
+`compact` form. [FR 041](done/041-pose-controls-and-read-back/README.md) measured the answer at
+63 KB by default on a generated `human_toes` rig, of which 109 of the 180 controls outside the face
+are hidden by default. `mpfb_get_pose` takes none of the new filters.
 
 <a id="placing-a-character"></a>
 
