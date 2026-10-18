@@ -44,12 +44,14 @@ growing back. It was three until FR 033, which retired the transport that let
 the harness send code of its own: the traceback item resolved a line number
 against a recorded *program*, and there are no programs any more.
 
-**Two items write outside the ``.blend``**, which nothing here did before
+**Three items write outside the ``.blend``**, which nothing here did before
 FR 025: ``mpfb_save_preset`` leaves ``human.mpfbmcp_smoke_run.json`` in MPFB's
-user config directory, and since FR 027 ``mpfb_save_expression`` leaves
-``mpfbmcp_smoke_run.json`` in the expressions directory of MPFB's user data -
-each under a name that says where it came from and constant across runs so
-that the pile does not grow.
+user config directory, since FR 027 ``mpfb_save_expression`` leaves
+``mpfbmcp_smoke_run.json`` in the expressions directory of MPFB's user data, and
+since FR 039 ``mpfb_export_character`` leaves ``mpfbmcp_smoke_run.fbx`` in the
+export directory (the bridge's preference, else ``<user data>/exports``) - each
+under a name that says where it came from and constant across runs so that the
+pile does not grow.
 
 **And since FR 033 the run leaves what it built inside the ``.blend`` too.**
 Deleting it needed a channel into Blender that the bridge does not offer and
@@ -107,6 +109,7 @@ class _Run:
         self.materials = None
         self.expressions = None
         self.saved_expression = None
+        self.export_copy = None
 
     def __call__(self, tool_name: str, **arguments: object) -> dict:
         """A helper call: a prerequisite an item needs, not the item's own call."""
@@ -511,6 +514,31 @@ def _create_human_from_preset(run: _Run) -> dict:
     return run.tools["mpfb_create_human_from_preset"](preset_name=PRESET_NAME)
 
 
+@_item("mpfb_create_export_copy", "copy_root_name", "copy_basemesh_name", "copied_objects",
+       "copy_repairs", "faceunits01_installed", "visemes01_installed")
+def _create_export_copy(run: _Run) -> dict:
+    # The character every item above built, with the panel's defaults. The
+    # copy stays in the scene, like everything else the run builds.
+    envelope = run.tools["mpfb_create_export_copy"](name=_character(run))
+    if envelope.get("status") == "ok" and envelope["result"].get("created"):
+        run.export_copy = envelope["result"]["copy_root_name"]
+    return envelope
+
+
+@_item("mpfb_export_character", "path", "path_resolved_by", "size_bytes", "objects_exported",
+       "file_before", "exporter_options", "readiness")
+def _export_character(run: _Run) -> dict:
+    """The third item that writes outside the ``.blend``: the copy above, as FBX.
+
+    ``overwrite`` is not left at its default, for the reason ``mpfb_save_preset``'s
+    item gives, and the name is constant so a re-run replaces one file.
+    """
+    if run.export_copy is None:
+        raise Skipped("no export copy was made, so there is nothing to export")
+    return run.tools["mpfb_export_character"](
+        export_name=EXPORT_NAME, name=run.export_copy, overwrite=True)
+
+
 # --------------------------------------------------------------------------
 # What an item needs from the install, asked of the catalogue tools rather than
 # named by filename here. FR-6: the run works on any adequate install, and names
@@ -526,6 +554,9 @@ PRESET_NAME = "mpfbmcp_smoke_run"
 # The expression the save item writes and the apply item reads back, named and
 # kept constant for the same two reasons as PRESET_NAME.
 EXPRESSION_NAME = "mpfbmcp_smoke_run"
+
+# The export the export item writes, for the same two reasons again.
+EXPORT_NAME = "mpfbmcp_smoke_run"
 
 
 def _character(run: _Run) -> str:

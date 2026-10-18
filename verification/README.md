@@ -149,12 +149,14 @@ builds a whole second character, which is the only honest way to call that tool.
 - Compares the MakeHuman objects in the scene before and after: nothing that predates the run may
   disappear, and the equipped asset must be gone again. The compare is itself an item, so both are
   failures rather than footnotes.
-- **Exactly two files are written outside the `.blend`**, and they are the same two on every run:
-  `human.mpfbmcp_smoke_run.json` in MPFB's user config directory, left there by the
-  `mpfb_save_preset` item (FR 025), and `mpfbmcp_smoke_run.json` in the expressions directory of
-  MPFB's user data, left there by the `mpfb_save_expression` item (FR 027). The names say where
-  they came from and are constant, so repeated runs leave two files rather than a growing pile, and
-  both items pass `overwrite=True` — with one exception below, the only arguments in the whole
+- **Exactly three files are written outside the `.blend`**, and they are the same three on every
+  run: `human.mpfbmcp_smoke_run.json` in MPFB's user config directory, left there by the
+  `mpfb_save_preset` item (FR 025), `mpfbmcp_smoke_run.json` in the expressions directory of
+  MPFB's user data, left there by the `mpfb_save_expression` item (FR 027), and
+  `mpfbmcp_smoke_run.fbx` in the export directory - the MPFB Bridge's preference or `--export-dir`,
+  else `<MPFB user data>/exports` - left there by the `mpfb_export_character` item (FR 039). The
+  names say where they came from and are constant, so repeated runs leave three files rather than
+  a growing pile, and all three items pass `overwrite=True` — with one exception below, the only arguments in the whole
   table not left at their default — because the default is correct and would make each item pass once and fail forever
   after. **The expression is visible in MPFB's own expressions-library panel**, which the preset
   is too, in MPFB's preset dropdown. FR 027 weighed keeping its item refusal-only instead and
@@ -166,6 +168,9 @@ builds a whole second character, which is the only honest way to call that tool.
   which the rule above does not allow. It writes the first writable float on the first colour
   adjustment the read reports, back to the value it already holds, so the scene is left as it was
   found. Which socket that is comes from the read, since the names are MPFB's.
+- **One item leaves a whole second character**: `mpfb_create_export_copy` copies the run's
+  character with MPFB's Export copy panel's defaults, into an "export copy" collection, and the
+  copy stays, as everything else the run builds does. The export item writes that copy.
 - **One item leaves a custom property on the character**: `mpfb_apply_expressions` writes MPFB's
   applied-expressions stack (`mpfb_applied_expressions`) on the run's basemesh, which the
   `mpfb_save_preset` item then serializes. It is inside the `.blend` and goes with the character. Before FR 025 this line said *nothing* outside the `.blend` was written, which

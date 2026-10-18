@@ -18,7 +18,7 @@ does not reach at all.
 ## Where these rules are enforced
 
 A reader looking for the enforcement should not have to guess, and the answer is not the same for
-all of them. "The far side" is the sixteen mutating commands in `bridge/mpfb_bridge/commands/`;
+all of them. "The far side" is the twenty-two mutating commands in `bridge/mpfb_bridge/commands/`;
 "the near side" is the tool module, which runs before anything is sent.
 
 **No rule in this document changed when those commands were written**, nor when
@@ -35,9 +35,10 @@ breaking it has side effects on somebody's `.blend` rather than a different-look
 | A precondition is an answer, not an exception | The **far side**. Every `blocked_by` branch runs before the mutating call |
 | `performed` means the same thing everywhere | A **shared module**, [`bridge/mpfb_bridge/shared/performed.py`](../bridge/mpfb_bridge/shared/performed.py), imported by every mutating command |
 | The before/after report | The **far side**, which is the only place that can observe both |
-| The caller's selection is restored | A **shared module**: `with selection.restored(...)`, from [`bridge/mpfb_bridge/shared/selection.py`](../bridge/mpfb_bridge/shared/selection.py), around every `refit()` and every operator call. It puts back the active object and the borrowed object's own selection, and **not** the selection of other objects an operator selected, such as a new armature ([NEXT_STEPS](../feature-requests/NEXT_STEPS.md#selection-restore-covers-one-object)). `mpfb_generate_rigify_rig` reports `active_object_after` instead |
+| The caller's selection is restored | A **shared module**: `with selection.restored(...)`, from [`bridge/mpfb_bridge/shared/selection.py`](../bridge/mpfb_bridge/shared/selection.py), around every `refit()` and every operator call. It puts back the active object and the borrowed object's own selection, and **not** the selection of other objects an operator selected, such as a new armature ([NEXT_STEPS](../feature-requests/NEXT_STEPS.md#selection-restore-covers-one-object)). The two export commands use `selection.restored_all()`, which puts back every object's selection and leaves what the command created deselected ([FR 039](../feature-requests/done/039-exporting-characters/README.md)). `mpfb_generate_rigify_rig` reports `active_object_after` instead |
 | A batch resolves before it writes | The **far side**. It is a property of the *code*, and nothing below the socket would enforce it |
-| A name that becomes a path is a name and never a path | **Both sides, deliberately.** `artifact_names.py` before anything is sent, `shared/artifact_names.py` as the last statement before `open()` - one rule for presets and saved expressions |
+| A name that becomes a path is a name and never a path | **Both sides, deliberately.** `artifact_names.py` before anything is sent, `shared/artifact_names.py` as the last statement before `open()` - one rule for presets, saved expressions and exports |
+| The directory of an export is the human's | The **add-on**: [`bridge/mpfb_bridge/export_directory.py`](../bridge/mpfb_bridge/export_directory.py) reads the bridge's preference or `--export-dir`. The near side has nothing to enforce, because no tool takes a directory |
 | `overwrite: False`, and the absolute path in every answer | The **far side** |
 | Refuse to write where the result cannot be found | The **far side**, which alone can walk MPFB's roots |
 | Argument shape and range | The **near side**, before anything is sent, mostly through [`src/mpfbmcp/arguments.py`](../src/mpfbmcp/arguments.py) — see [Validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket) |
@@ -45,9 +46,10 @@ breaking it has side effects on somebody's `.blend` rather than a different-look
 **One rule is enforced by neither and is worth naming as such.** Nothing makes a *failure*
 atomic. `mpfb_create_human_from_preset` builds a character in stages and a mid-way failure leaves
 what it built; `mpfb_add_rig`'s `AssertionError` path leaves a partly built armature;
-`mpfb_add_asset`'s failed import may leave an object. What the rules require in those cases is not
-a rollback — there is none to be had across a socket — but that the answer **names what was left
-behind**, which `objects_created` and `partial_objects_created` do.
+`mpfb_add_asset`'s failed import may leave an object; and `mpfb_create_export_copy` processes a copy
+in MPFB's stages, so a failure after the copy leaves a partly processed one (`copy_failed`). What the
+rules require in those cases is not a rollback — there is none to be had across a socket — but that
+the answer **names what was left behind**, which `objects_created` and `partial_objects_created` do.
 
 ## How a mutating tool takes its subject
 
@@ -191,6 +193,15 @@ problem, rather than letting MPFB's own guard surface as a traceback in an error
   so a typo never crosses the socket at all. Report `known_*` alongside either way: the local check
   is belt and braces, and the authoritative answer still comes from Blender.
 
+- **A combination MPFB fails on part way.** `ExportService.bake_modifiers_remove_helpers()` bakes
+  the basemesh's modifiers in a way that keeps its shape keys and the body proxy's with a bare
+  `modifier_apply`, which Blender refuses on a mesh with shape keys - and the Export copy sequence
+  interpolates visemes onto the proxy first. MPFB's own panel then fails half way through the copy.
+  `mpfb_create_export_copy` predicts it from the options and the proxy's modifiers and refuses
+  before copying (`proxy_cannot_be_baked`, naming the modifiers), because the alternative is a
+  half-processed copy left in the scene ([FR 039](../feature-requests/done/039-exporting-characters/README.md)).
+  A precondition can be a property of the *request* as much as of the world.
+
 Report which precondition blocked (`ready: false` plus a `blocked_by` naming it) rather than only a
 sentence, so a caller can branch on it; and make sure the tool changed nothing on the way to
 finding out.
@@ -236,8 +247,10 @@ affected** — rather than either failing or staying silent.
 Everything else here changes a `.blend` that the user can undo, revert or simply not save.
 `mpfb_save_preset` writes a **file**, and FR 025 is where that difference was first paid for;
 `mpfb_save_expression` ([FR 027](../feature-requests/done/027-expression-library/README.md)) is the
-second, writing `<name>.json` into the expressions directory of MPFB's user data. Four properties
-follow, and they are the whole of the extra obligation:
+second, writing `<name>.json` into the expressions directory of MPFB's user data; and
+`mpfb_export_character` ([FR 039](../feature-requests/done/039-exporting-characters/README.md)) is
+the third, writing `<export_name>.fbx`, `.glb` or `.usdz` - the first file meant for another
+application. Four properties follow, and they are the whole of the extra obligation:
 
 - **Address the artifact by name, never by a path.** A preset is `<name>` within MPFB's user config
   directory, resolving to `human.<name>.json`. A tool that took a caller-supplied path would write
@@ -248,6 +261,17 @@ follow, and they are the whole of the extra obligation:
   path not of exactly that shape raises `AttributeError: 'NoneType' object has no attribute
   'group'` from inside MPFB, with nothing in the message about what the caller did wrong. Confirmed
   against a running install, not read off the source.
+
+  **The directory may be one the human chose, never one the caller chose.** An export has no
+  directory MPFB owns, and a fixed one would leave the user moving files by hand. So the person who
+  started the bridge sets it - the add-on's `export_directory` preference, or `--export-dir`
+  headless - and otherwise it is `<MPFB user data>/exports`. It is the add-on's setting rather than
+  an environment variable on mpfb-mcp's side, because that would be the MCP client's configuration,
+  which an agent may be able to edit; and there is no directory argument, so nothing that writes a
+  call chooses where a file lands. `path_resolved_by` (`"command_line"`, `"preferences"`,
+  `"default"`) says who did, in every answer. **A directory somebody named that does not exist is a
+  refusal** (`export_directory_missing`), not created on their behalf: a typo in a preference must
+  not become a directory tree. The default is created, as MPFB creates its own.
 - **The name is a shape, so it is validated on this side of the socket, and more strictly than MPFB
   does.** This is the filesystem case of
   [validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket), and

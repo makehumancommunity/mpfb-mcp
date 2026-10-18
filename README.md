@@ -16,7 +16,7 @@ you can speed up things and save some tokens.
 
 ## Status
 
-Early beta. Thirty-nine tools are implemented.
+Early beta. Forty-one tools are implemented.
 
 **Introspection** — read-only, and each of them always answers rather than failing:
 
@@ -78,9 +78,15 @@ Early beta. Thirty-nine tools are implemented.
 - `mpfb_reset_pose` — put a character back at rest, and answer with the calls that put the pose
   back: Blender's own undo does not see what these tools do.
 - `mpfb_save_preset` / `mpfb_create_human_from_preset` — keep a character past this Blender
-  session, and build a new one from a saved character. These and `mpfb_save_expression` are the
-  only tools here that write a file, and nothing in Blender can undo it, so both saving tools
-  refuse to overwrite unless told to.
+  session, and build a new one from a saved character.
+- `mpfb_create_export_copy` / `mpfb_export_character` — take a character to a game engine or
+  another application: a processed copy, as MPFB's Export copy panel makes one, with visemes, ARKit
+  face units and GameEngine materials if asked; then one FBX, glTF or USD file, with presets for
+  Unity, Unreal and Godot. The file goes in a directory set in the MPFB Bridge's preferences, never
+  one the agent picks.
+
+`mpfb_save_preset`, `mpfb_save_expression` and `mpfb_export_character` are the only tools here
+that write a file, and nothing in Blender can undo it, so each refuses to overwrite unless told to.
 
 **Order matters and MPFB reports no error when it is wrong**: add the rig before the garments, and
 generate a Rigify rig after them. The tools report the violation they can see rather than

@@ -465,6 +465,28 @@ And a sixth, where the fact is about what a write *would* do:
   range MPFB's own value already contradicts is named (`values_outside_range`) rather than left for
   the caller to meet as a refusal ([FR 040](../feature-requests/done/040-procedural-material-settings/README.md)).
 
+And a seventh, where the fact is about what another application will make of a file:
+
+- **The tool reports what an export will lose, as facts, and never refuses on them.**
+  `mpfb_export_character` ([FR 039](../feature-requests/done/039-exporting-characters/README.md))
+  answers with `readiness`: per mesh, the material MPFB identifies (anything but `gameengine`, the one
+  MPFB's exporting documentation calls likely to translate, lands in `procedural_material_meshes`),
+  shape keys counted by kind, mask and subdivision modifiers, and a topology-changing modifier beside
+  shape keys; the basemesh's helper vertices; the rig MPFB identifies. A caller exporting a
+  procedural character for a renderer that reads it is not wrong, so none of these blocks the write.
+  **The facts are measured, not remembered**: re-importing each format showed that FBX applies a mask
+  and drops every shape key beside it, while glTF and USD keep the keys and ignore the mask - so the
+  same character loses its face in one format and gains its helper geometry in the other two. A
+  fact true on every answer is dropped instead, and **a count is preferred to a presence**: baking
+  MPFB's `Hide helpers` mask deletes the helper vertices and leaves their vertex groups behind, empty,
+  so `helper_vertices` counts the vertices rather than testing for the groups.
+- **What a tool had to repair in MPFB's own work is reported beside the result.**
+  `mpfb_create_export_copy`'s `copy_repairs` names every object MPFB's copy left out and every
+  reference on the copy that still pointed at the original
+  ([why](mpfb-integration.md#where-a-service-falls-short-of-what-its-own-code-says-it-does-follow-the-stated-intent)).
+  It is empty when MPFB needed no repair, and the user comparing the result with MPFB's panel then
+  sees exactly where the two differ.
+
 Prefer describing what is actually on disk, and label the part MPFB will not show — rather than
 either papering over the difference or quietly inheriting the limitation. Where the difference is
 a limitation of MPFB rather than of the tool, that is worth recording as a candidate mpfb2 issue

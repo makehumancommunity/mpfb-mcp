@@ -5,15 +5,19 @@ What a file this add-on writes by name may be called.
 [`__init__.py`](__init__.py) for why this directory exists beside
 ``commands/``.
 
-Two artifacts are addressed by a name that becomes a filename in a directory
-MPFB owns: a character preset (``<user config>/human.<name>.json``, written by
-``save_preset`` and read by ``create_human_from_preset``) and a saved expression
-(``<user data>/expressions/<name>.json``, written by ``save_expression``). The
-rule for which characters such a name may hold is the same for both, because
-the reason is the same - a name carrying ``/``, ``\\`` or ``..`` would escape the
+Three artifacts are addressed by a name that becomes a filename in a directory
+nobody on the far side of the socket chose: a character preset
+(``<user config>/human.<name>.json``, written by ``save_preset`` and read by
+``create_human_from_preset``), a saved expression
+(``<user data>/expressions/<name>.json``, written by ``save_expression``) and,
+since [FR 039](../../../feature-requests/done/039-exporting-characters/README.md),
+an export (``<export directory>/<name>.<fbx|glb|usdz>``, written by
+``export_character`` into the directory the bridge's user set). The rule for
+which characters such a name may hold is the same for all three, because the
+reason is the same - a name carrying ``/``, ``\\`` or ``..`` would escape the
 directory - so it lives here once, with the noun the refusal names as its only
-argument. What stays per artifact is the path, in ``preset_files.py`` and in
-``save_expression`` respectively.
+argument. What stays per artifact is the path, in ``preset_files.py``,
+``save_expression`` and ``export_character`` respectively.
 [FR 027](../../../feature-requests/done/027-expression-library/README.md) moved
 it here out of ``preset_files.py`` rather than copying it into a second module.
 
@@ -28,12 +32,12 @@ would also accept, so the two never disagree about what exists.
 authoritative check runs before anything is sent. This copy is **the last
 statement before ``open()``**, and it is here because a listening socket is
 reachable by anything on this machine, not only by mpfb-mcp. The two are run
-over one table of names and both nouns by ``tests/test_save_preset.py``, which
+over one table of names and all three nouns by ``tests/test_save_preset.py``, which
 executes this file's source directly - so it imports nothing but the standard
 library.
 
 It also holds the two ``os.stat`` helpers that report what is already at such
-a path - the ``file_before`` both saving commands refuse and report with -
+a path - the ``file_before`` all three writing commands refuse and report with -
 because "what is there" is the other half of "what may it be called". Reads
 nothing out of MPFB, so like ``performed`` it takes no ``services``.
 """

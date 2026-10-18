@@ -174,7 +174,9 @@ versus services" to *any* two MPFB code paths.
   directory. FR 025's [`check_presets.py`](../feature-requests/done/025-character-presets/check_presets.py)
   is the second of these and confirmed the `save_clothes` defect the same way — by serializing one
   dressed character twice, with the argument as the only difference, rather than by reading the
-  function. The smoke run writes outside the `.blend` too now, but exactly one file, always the
+  function. FR 039 refuted one read from source: the Export copy operator removes modifiers from the
+  collection it is iterating, which looks like it skips each removed modifier's neighbour, and on
+  Blender 5.1 does not. The smoke run writes outside the `.blend` too now, but exactly one file, always the
   same one, and [verification/README.md](../verification/README.md) names it.
 - **Filing it changes nothing here.** A confirmed defect is written up in a defect list kept for
   MPFB's maintainers, `MCP_DISCOVERED_BUGS.md`, one section each; it lives beside a local mpfb2
@@ -483,6 +485,21 @@ that effort:
   service function whose name says "is this pack here" other than the one `FaceService` already
   exposes; a tool inventing its own (checking for a specific file, say) risks disagreeing with what
   MPFB itself will and will not do.
+- **Where MPFB has no install-check, take the narrowest definition MPFB's own code implies, and
+  probe it the way MPFB resolves the files.** The viseme packs `visemes01` (Microsoft) and
+  `visemes02` (Meta) have none ([FR 039](../feature-requests/done/039-exporting-characters/README.md)).
+  `mpfb_create_export_copy` probes each with one target resolved through
+  `TargetService.target_full_path()`, exactly as `is_faceunits01_installed()` probes `cheekPuff`:
+  the silence viseme, `sil_00` and `viseme_sil`, which is what MPFB's `configure_lip_sync()` tests
+  for. One target rather than the set because resolving all 37 was measured at 291 ms, a cost every
+  answer reporting `visemes01_installed` would pay. The clause above still holds: the probe is not a
+  verification, so a requested set is resolved in full before anything is written and its misses
+  are `could_not_load`. A probe of MPFB's own is a request to MPFB, recorded in
+  [NEXT_STEPS](../feature-requests/NEXT_STEPS.md#viseme-pack-probes), and would replace this one.
+- **Check what a service does with a missing file, not what its docstring says.**
+  `FaceService.load_targets()` says it raises when a pack is absent; `bulk_load_targets()` underneath
+  warns and skips each target that does not resolve, so a load with nothing installed succeeds and
+  loads nothing. The per-target resolution before writing is what makes that visible.
 
 ## When mpfb-mcp models a concept MPFB's UI has but its services do not
 
@@ -510,8 +527,45 @@ address individual shape keys but could not express anything MPFB's own sliders 
 - **The goal is that the value reads back on MPFB's own slider.** Where reproducing a quirk and
   tidying it up would give different answers in MPFB's panel, reproduce the quirk.
 
-The general case — two MPFB *code paths* that disagree, rather than a UI concept the services lack —
-is [Where MPFB's own code paths disagree, mpfb-mcp picks one and names it](#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it).
+**The export copy is the second case**, and the larger one
+([FR 039](../feature-requests/done/039-exporting-characters/README.md)). MPFB's Export copy panel
+has an operator, `MPFB_OT_Create_Export_Copy_Operator`, whose `hardened_execute()` composes
+`ExportService`, `TargetService` and `FaceService` calls, and no service that does the same.
+`mpfb_create_export_copy`'s command reproduces that sequence, step for step and with the panel's
+eleven options and defaults, rather than calling `bpy.ops.mpfb.export_copy`, which reads its options
+from the user's `EXPO_*` scene properties. Where it departs, the command docstring and the answer say
+so: the caller's selection is put back rather than the copy left active, the copy is repaired where
+MPFB's own copy falls short (below), one combination MPFB fails on is refused, and a GameEngine
+material swap the panel lacks is offered beside it.
+
+### Where a service falls short of what its own code says it does, follow the stated intent
+
+`ExportService.create_character_copy()` comments that "any armature modifier on the child is
+pointed to the new root", and then retargets the one modifier named `Armature`. FR 039's live check
+found three consequences on a running install, each filed: a garment with a sub-rig, which is the
+sub-rig's child and so a grandchild of the root, is not copied at all, because
+`get_list_of_children()` returns direct children only; the `Armature PV` modifier MPFB adds for
+preserve-volume weights still follows the **original** rig; and on a generated Rigify rig the copied
+armature *data* keeps 84 B-bone drivers targeting the original rig, since `Object.copy()` remaps an
+object's own drivers and `ID.copy()` of its data does not. A copy driven by its original is not a
+copy.
+
+- **Repair to the stated intent, and report each repair.** The command copies the descendants the
+  service missed and points every reference on a copy - modifier, constraint, driver - that names an
+  original in the family at that original's copy. `copy_repairs` lists every object copied and every
+  reference retargeted. One rule covers all three, which is why the Rigify drivers are repaired
+  rather than only reported, as the request had planned.
+- **Call the service first, then repair.** Reimplementing the copy would hide the defect; calling
+  MPFB's function and repairing after it means `copy_repairs` is empty on an MPFB that no longer
+  needs it, which is how this package notices a fix upstream.
+- **This is not picking between two code paths**, which is
+  [a rule of its own](#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it): there
+  is one implementation, and its comment and its code disagree. Where the stated intent is not
+  clear, report rather than repair.
+
+The general case of the section above — two MPFB *code paths* that disagree, rather than a UI
+concept the services lack — is
+[Where MPFB's own code paths disagree, mpfb-mcp picks one and names it](#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it).
 
 ### Sometimes reading the UI module is the right answer
 

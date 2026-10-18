@@ -588,6 +588,40 @@ answer carries `performed`, in all three miss states, and fails without the fix.
 breaks no caller, so the protocol version stayed at 2. Unit suite 459, bridge suite 390, smoke run
 34 of 34.
 
+<a id="exporting-characters"></a>
+
+## [FR 039](done/039-exporting-characters/README.md) — `mpfb_create_export_copy` and `mpfb_export_character`
+
+A character can now leave Blender without the user repeating MPFB's documented preparation by hand.
+**`mpfb_create_export_copy`** is MPFB's Export copy panel rebuilt from services in a bridge command
+- its eleven options and defaults, its order, visemes and ARKit face units loaded and interpolated -
+plus a GameEngine material swap the panel lacks; the original is unchanged, and the caller's
+selection is put back in full. **`mpfb_export_character`** writes any character, a copy or not, to
+one self-contained `.fbx`, `.glb` or `.usdz`, with four cited engine presets. It takes only a name:
+**the directory is the human's**, a new bridge preference or `--export-dir`, else
+`<user data>/exports`, which is the third case of
+[address the artifact by name](../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more).
+Readiness facts - procedural materials, helper vertices, a topology-changing modifier beside shape
+keys - are reported, never refused on.
+
+**What the live check found mattered more than what the request predicted.** MPFB's own copy is short
+three ways: a garment with a sub-rig is not copied at all, `Armature PV` follows the original rig,
+and a generated Rigify rig's armature data keeps 84 B-bone drivers on the original. The command
+repairs all three and lists them in `copy_repairs`. MPFB's bake applies a body proxy's modifiers with
+an operator that fails once `interpolate` has given the proxy shape keys, which the panel also
+does, so that combination is refused up front. The predicted REMOVE-loop defect was refuted. FBX
+applies a mask and drops the shape keys beside it while glTF and USD keep the keys and ignore the
+mask, measured by re-importing, and USD renames a blend shape repeated across meshes. The three MPFB
+defects are filed in `mpfb2/features/MCP_DISCOVERED_BUGS.md`; what is left - a subdivision on a mesh
+asset under interpolated keys, the bake's cost in a crowded file, viseme install probes in MPFB, and
+the other ten commands' selection restore - is in [NEXT_STEPS](NEXT_STEPS.md#subdivision-on-mesh-assets-beside-shape-keys).
+
+Verified by [`live_check.py`](done/039-exporting-characters/live_check.py), 35 of 35, on a dressed,
+proxied, expressive character from the real install: every format and preset written and read back,
+the worst case 7 s headless and 77 s in a windowed Blender holding 1,876 objects, under a third of
+the socket timeout. 28 new bridge tests (553), 20 new unit tests (570), the description budget up
+3,250 B for two tools that both came in under the average; the smoke run is 43 of 43.
+
 <a id="procedural-material-settings"></a>
 
 ## [FR 040](done/040-procedural-material-settings/README.md) — `mpfb_get_material_settings` and `mpfb_set_material_settings`

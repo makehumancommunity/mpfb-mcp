@@ -1,10 +1,14 @@
 """
-What a preset or a saved expression may be called, checked before anything is sent.
+What a preset, a saved expression or an export may be called, checked before anything is sent.
 
-The two arguments in this package that become a **path**. ``mpfb_save_preset``
+The three arguments in this package that become a **path**. ``mpfb_save_preset``
 and ``mpfb_create_human_from_preset`` take ``preset_name`` and resolve it to
 ``<user config>/human.<preset_name>.json``; ``mpfb_save_expression`` takes
-``expression_name`` and writes ``<user data>/expressions/<expression_name>.json``.
+``expression_name`` and writes ``<user data>/expressions/<expression_name>.json``;
+and ``mpfb_export_character`` takes ``export_name`` and writes
+``<export directory>/<export_name>.<fbx|glb|usdz>``, in a directory the human
+running the bridge chose
+([FR 039](../../feature-requests/done/039-exporting-characters/README.md)).
 A name carrying ``/``, ``\\`` or ``..`` would address a file outside the
 directory MPFB owns - and on the saving side it would *write* one. That is a
 shape rather than a vocabulary, it is entirely knowable on this side of the
@@ -12,8 +16,8 @@ socket, and the consequence of getting it wrong is a file somewhere nobody will
 look for it. So it is checked here, per
 [validate before crossing the socket](../../specifications/tool-interface.md#validate-before-crossing-the-socket).
 
-**One rule for both artifacts, with the noun as an argument.** The pattern, the
-length bound and the dot rules are the same for a preset and an expression,
+**One rule for every artifact, with the noun as an argument.** The pattern, the
+length bound and the dot rules are the same for a preset, an expression and an export,
 because the reason for them is the same: a name that becomes a filename in a
 directory MPFB owns. What differs is only the word in the sentence a caller is
 shown and where the file ends up, so :func:`name_rejection` takes the noun and
@@ -41,7 +45,7 @@ exists. The reverse does not hold, and that is visible rather than hidden:
 
 ``bridge/mpfb_bridge/shared/artifact_names.py`` carries the same rule for the
 far side of the socket, where it is the last statement before ``open()``.
-``tests/test_save_preset.py`` runs the two over one table of names and both
+``tests/test_save_preset.py`` runs the two over one table of names and all three
 nouns, so they cannot drift apart.
 """
 
@@ -52,6 +56,7 @@ __all__ = (
     "NAME_PATTERN",
     "name_rejection",
     "preset_name_rejection",
+    "validated_export_name",
     "validated_expression_name",
     "validated_preset_name",
 )
@@ -132,3 +137,12 @@ def validated_expression_name(name: object) -> str:
         "Expressions are saved by name, never by path: the file is always <name>.json "
         "in the expressions directory of MPFB's user data. Call mpfb_list_expressions to "
         "see what exists.")
+
+
+def validated_export_name(name: object) -> str:
+    """An export's name, or ``ValueError``."""
+    return _validated(
+        name, "export",
+        "Exports are written by name, never by path: the file is always "
+        "<export_name>.<extension> in the export directory, which the person running "
+        "the MPFB Bridge chooses in its preferences.")

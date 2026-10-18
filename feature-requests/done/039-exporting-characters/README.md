@@ -1,6 +1,6 @@
 # Exporting characters: an export copy, and a file another application can open
 
-**Status:** Proposed
+**Status:** Done
 
 Everything the thirty-two tools build stays inside Blender. A character made for a game engine, a
 VR platform or a web viewer has to leave. Today an agent has to hand that step back to the user,
@@ -19,7 +19,7 @@ onto the copy, which is the main reason to use it for lip sync and face tracking
 user to run by hand. There is also **no service to wrap**: the sequence exists only in
 `MPFB_OT_Create_Export_Copy_Operator.hardened_execute()`, which composes `ExportService`,
 `TargetService` and `FaceService` calls. That is the situation
-[`mpfb_set_asset_material`](../../src/mpfbmcp/tools/set_asset_material.py) was built for:
+[`mpfb_set_asset_material`](../../../src/mpfbmcp/tools/set_asset_material.py) was built for:
 rebuild the sequence from services, in a bridge command.
 
 This request adds **two tools**. `mpfb_create_export_copy` mirrors MPFB's panel.
@@ -38,7 +38,7 @@ Reading the operator turned up three things this request has to deal with, not i
   copies the object and its mesh, and a copied mesh points at the same material datablocks.
   Changing the copy's materials, which the GameEngine swap below does, changes the original's
   unless the copy is given its own materials first.
-  Since [FR 040](../done/040-procedural-material-settings/README.md), `mpfb_get_material_settings`
+  Since [FR 040](../040-procedural-material-settings/README.md), `mpfb_get_material_settings`
   and `mpfb_set_material_settings` report this for the procedural eye, layered skin and
   colour-adjustment materials as `material_shared_with` / `materials_written`, which would name the
   copy while it still shares; a bridge test here could use that rather than comparing datablocks.
@@ -80,21 +80,21 @@ into its own request. The request is `Done` only when all three have landed.
 1. **Subject.** Takes `name`, which is any object in the character's family, with `null` meaning
    the active object. It is resolved through `shared/subject_resolution.py` like every other
    subject. A miss is `blocked_by: "subject_not_found"`
-   ([FR 038](../done/038-subject-not-found-everywhere/README.md)).
+   ([FR 038](../038-subject-not-found-everywhere/README.md)).
 2. **The panel's eleven options, with the panel's defaults**: `bake_shapekeys` (true),
    `mask_modifiers` and `subdiv_modifiers` (each `KEEP`/`REMOVE`/`BAKE`, default `KEEP`),
    `delete_helpers` (true), `remove_basemesh` (false), `load_meta_visemes`,
    `load_microsoft_visemes` and `load_arkit_face_units` (each false), `interpolate` (false),
    `suffix` (`"_export_copy"`), and `in_export_collection` (true, MPFB's `collection`). An unnamed
    option takes the panel's default, per
-   [mpfb-integration.md](../../specifications/mpfb-integration.md#where-mpfbs-ui-coerces-or-re-defaults-a-service-argument-mpfb-mcp-does-the-same-and-reports-both).
-   The exact spellings are settled against [the glossary](../../specifications/tool-interface.md#the-glossary)
+   [mpfb-integration.md](../../../specifications/mpfb-integration.md#where-mpfbs-ui-coerces-or-re-defaults-a-service-argument-mpfb-mcp-does-the-same-and-reports-both).
+   The exact spellings are settled against [the glossary](../../../specifications/tool-interface.md#the-glossary)
    during the effort. MPFB's own spellings are kept only where no glossary row disagrees.
 3. **The operator's order of operations, reproduced**: copy, bake shape keys, load visemes and face
    units, interpolate, bake modifiers and remove helpers, remove the modifiers set to `REMOVE`, and
    remove the basemesh. The REMOVE step collects the modifiers first and removes them afterwards,
    so none is skipped. This departs from the operator on purpose, and the tool's docstring says so,
-   per [where MPFB's own code paths disagree](../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it).
+   per [where MPFB's own code paths disagree](../../../specifications/mpfb-integration.md#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it).
 4. **The original is unchanged**: same shape keys, modifiers, materials, selection and active
    object. The bridge tests check this by reading the original before and after.
 5. **A face that gets baked is reported.** When `bake_shapekeys` is true and the character's face
@@ -104,7 +104,7 @@ into its own request. The request is `Done` only when all three have landed.
    through `shared/expression_divergence.py` so this tool agrees with the three that already report
    it. When the face was neutral, the key is empty and no sentence is added.
 6. **The optional packs, following
-   [the faceunits01 pattern](../../specifications/mpfb-integration.md#a-capability-that-depends-on-an-optional-asset-pack)**:
+   [the faceunits01 pattern](../../../specifications/mpfb-integration.md#a-capability-that-depends-on-an-optional-asset-pack)**:
    - Asking to load a set whose pack is absent is refused before anything is copied, with
      `blocked_by` naming the pack (for example `"visemes02_not_installed"`). A refusal is never a
      half-built copy.
@@ -113,7 +113,7 @@ into its own request. The request is `Done` only when all three have landed.
      therefore resolves every viseme's target file before copying, the same way
      `mpfb_set_targets` resolves its batch, and treats "none resolved" as not installed and "some
      resolved" as the per-item `could_not_load`. That definition belongs in
-     [mpfb-integration.md](../../specifications/mpfb-integration.md), and "MPFB should expose
+     [mpfb-integration.md](../../../specifications/mpfb-integration.md), and "MPFB should expose
      `is_visemes01_installed()`" is filed as a request to MPFB, not as a defect.
    - Every answer reports `faceunits01_installed`, `visemes01_installed` and `visemes02_installed`,
      since a caller choosing options needs them whether or not it asked for a set.
@@ -140,7 +140,7 @@ into its own request. The request is `Done` only when all three have landed.
     file is one artifact to name, report and refuse to overwrite. A "textures beside the file"
     mode is left out of this request (see [Decisions](#decisions-taken-while-scoping)).
 12. **Destination: a name, not a path.** `export_name` is validated by
-    [`artifact_names.py`](../../src/mpfbmcp/artifact_names.py) on both sides of the socket, as a
+    [`artifact_names.py`](../../../src/mpfbmcp/artifact_names.py) on both sides of the socket, as a
     third noun beside presets and saved expressions, and the drift test covers it. The file is
     `<export directory>/<export_name>.<ext>`. The **export directory** is:
     - a directory the human set in a new **bridge preference**, or passed as `--export-dir` to the
@@ -172,12 +172,12 @@ into its own request. The request is `Done` only when all three have landed.
     - the rig as `rig_identified_as`.
 
     Which facts to report and how they are spelled is settled against
-    [responses.md](../../specifications/responses.md). A fact that is true on every answer is
+    [responses.md](../../../specifications/responses.md). A fact that is true on every answer is
     dropped instead of being reported.
 16. **The caller's selection is restored in full.** The exporters work on the selection, so the
     command selects the family, exports and puts back every object's selection state. This is the
     first tool that needs the full snapshot described in
-    [NEXT_STEPS: selection restore covers one object](../NEXT_STEPS.md#selection-restore-covers-one-object).
+    [NEXT_STEPS: selection restore covers one object](../../NEXT_STEPS.md#selection-restore-covers-one-object).
     The snapshot goes into `shared/selection.py` for this tool. The other ten commands are left for
     that entry.
 
@@ -216,7 +216,7 @@ into its own request. The request is `Done` only when all three have landed.
   description says so.
 - **A refusal is never a partial write**, for both tools: packs probed, names validated and the
   file checked for existence before anything is copied or opened
-  ([mutating-tools.md](../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more)).
+  ([mutating-tools.md](../../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more)).
 - **Description budget.** Two tools with about sixteen and five arguments are the largest addition
   so far. `tests/test_description_budget.py`'s ceiling is only raised if the descriptions have
   been trimmed first, and the facts that live in the answer (pack state, readiness) are not
@@ -232,8 +232,8 @@ into its own request. The request is `Done` only when all three have landed.
   gains a full snapshot; the bridge gains a preference and a CLI flag. If anything else shared has
   to change, stop and say why.
 - **The export directory lives in the bridge, not in `mpfb-mcp`.** A `StringProperty(subtype="DIR_PATH")`
-  on `MPFB_BRIDGE_Preferences` in [ui.py](../../bridge/mpfb_bridge/ui.py), drawn on the panel next
-  to host and port, plus `--export-dir` in [cli.py](../../bridge/mpfb_bridge/cli.py) for a Blender
+  on `MPFB_BRIDGE_Preferences` in [ui.py](../../../bridge/mpfb_bridge/ui.py), drawn on the panel next
+  to host and port, plus `--export-dir` in [cli.py](../../../bridge/mpfb_bridge/cli.py) for a Blender
   with no preferences UI worth using. Because it lives in the add-on, the human who started the
   bridge is the one who chose it. An environment variable on the `mpfb-mcp` side would put the
   choice in the MCP client's configuration, which an agent may be able to edit.
@@ -265,27 +265,27 @@ into its own request. The request is `Done` only when all three have landed.
 
 ## Affected specifications
 
-- [mutating-tools.md — A tool whose effect is outside the `.blend` owes more](../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more):
+- [mutating-tools.md — A tool whose effect is outside the `.blend` owes more](../../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more):
   "address the artifact by name, never by a path" gains its third case. The directory may be one
   **the human** chose in the add-on, never one the caller chose. `path_resolved_by` then says
   which.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md): the viseme packs as an optional
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md): the viseme packs as an optional
   capability **with no MPFB probe**, and how one is defined then;
-  [when mpfb-mcp models a concept MPFB's UI has but its services do not](../../specifications/mpfb-integration.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not)
+  [when mpfb-mcp models a concept MPFB's UI has but its services do not](../../../specifications/mpfb-integration.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not)
   gains the export copy as its second example; and the documented REMOVE-branch departure.
-- [tool-interface.md — the glossary](../../specifications/tool-interface.md#the-glossary):
+- [tool-interface.md — the glossary](../../../specifications/tool-interface.md#the-glossary):
   `export_name` (an `<artifact>_name`), `format`, `target_engine`, the option spellings, and the
   "copy" and "export copy" nouns.
-- [responses.md](../../specifications/responses.md): readiness facts as the next instance of
-  [a tool may report a fact MPFB's own UI does not show](../../specifications/responses.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show).
-- [architecture.md](../../specifications/architecture.md): the bridge now has a preference the
+- [responses.md](../../../specifications/responses.md): readiness facts as the next instance of
+  [a tool may report a fact MPFB's own UI does not show](../../../specifications/responses.md#a-tool-may-report-a-fact-mpfbs-own-ui-does-not-show).
+- [architecture.md](../../../specifications/architecture.md): the bridge now has a preference the
   commands read, and a `shared/selection.py` that snapshots everything.
-- [vision.md — Target tool catalog](../../specifications/vision.md#target-tool-catalog): exporting
+- [vision.md — Target tool catalog](../../../specifications/vision.md#target-tool-catalog): exporting
   becomes part of what an agent must be able to do. It could be a fifth area, or folded into
   "keep it" beside presets; the effort decides.
-- [verification/README.md](../../verification/README.md): the smoke run writes a **third** file
+- [verification/README.md](../../../verification/README.md): the smoke run writes a **third** file
   outside the `.blend` (the export) and leaves a copy in the scene.
-- [testing.md](../../specifications/testing.md): only if the round-trip check below introduces a
+- [testing.md](../../../specifications/testing.md): only if the round-trip check below introduces a
   pattern it does not already describe.
 
 ## Tests
@@ -295,7 +295,7 @@ into its own request. The request is `Done` only when all three have landed.
   `test_save_preset.py`'s two-way drift check extended to it; `format` and `target_engine`, which
   are this package's own vocabularies and so shapes like `mode`; and whether `mask_modifiers` and
   `subdiv_modifiers` earn a local check under
-  [the exception](../../specifications/tool-interface.md#validate-before-crossing-the-socket) or
+  [the exception](../../../specifications/tool-interface.md#validate-before-crossing-the-socket) or
   are left to the command. `tests/test_verification_smoke.py` and `tests/test_vocabulary.py` pick
   the two tools up without being edited.
 - **Bridge tests** in `bridge/test/tests/ddd_mutating/`: the original unchanged after every
@@ -312,7 +312,7 @@ into its own request. The request is `Done` only when all three have landed.
   with a rig, garments, a proxy, an expression and every pack installed; the worst-case duration;
   the Rigify-driver question; the per-exporter modifier/shape key behaviour; and confirmation of
   the REMOVE-branch defect before it is filed.
-- **Two smoke items** in [verification/](../../verification/), default arguments, the export
+- **Two smoke items** in [verification/](../../../verification/), default arguments, the export
   writing under a fixed name into the default directory.
 
 ## Decisions taken while scoping
@@ -335,6 +335,119 @@ into its own request. The request is `Done` only when all three have landed.
 - **`remove_basemesh` with no proxy is refused** (proposed while writing this request, not
   asked). It is the one option combination whose result has no body.
 
+## Decisions taken during the effort
+
+- **The spellings.** The panel's options keep MPFB's names (`bake_shapekeys`, `mask_modifiers`,
+  `subdiv_modifiers`, `delete_helpers`, `remove_basemesh`, `interpolate`, `suffix`) except where
+  the glossary disagrees: `load_microsoft_visemes`, `load_meta_visemes`, `load_arkit_face_units`
+  (MPFB's `visemes_*` and `faceunits_arkit`; "face unit" is two words everywhere else) and
+  `in_export_collection` (MPFB's `collection`, which reads as a collection's name). The verbs are
+  `created` and `exported`. The effective options are echoed once, as `options_used` and
+  `exporter_options`, rather than as twelve `requested_*` keys. `export_name` is the third
+  `<artifact>_name`.
+- **`KEEP`/`REMOVE`/`BAKE`, `material_type`, `format` and `target_engine` are checked locally, and
+  none is the vocabulary exception**: no MPFB function receives any of them, so they are this
+  package's own, like `mode`. `format` defaults to `null`, meaning the preset's own (FBX, or glTF
+  for `godot`).
+- **`face_baked_into_mesh` lists every non-zero face unit**, each with its `value` and the
+  `from_stack` a rebuild would write, rather than only the unexplained ones: what the bake freezes is
+  the whole face, and the composed part is the difference. `expressions_baked_into_mesh` lists the
+  stack rows with a non-zero weight. Both come from `shared/expression_divergence.py`, are `[]` for a
+  neutral face and `null` when `bake_shapekeys` is off. The copy keeps the stack property, so the
+  message says a later `mpfb_apply_expressions` on it would apply the face twice.
+- **The copy is repaired, not only reported.** The live check found MPFB's
+  `ExportService.create_character_copy()` short in three ways, all now filed: it copies direct
+  children only, so a garment with a sub-rig (a grandchild) is **not copied**; it points only the
+  modifier named `Armature` at the new rig, so `Armature PV` still follows the original; and the
+  copied armature *data* keeps its drivers on the original rig - **84 B-bone ease drivers** on a
+  generated `human_toes` rig, which is the answer to this request's Rigify question. The request
+  said to report the Rigify case and not fix it. It is fixed, because one rule - every reference
+  on a copy to an original in the family is pointed at that original's copy - covers modifiers,
+  constraints and drivers alike, and a copy driven by its original is not a copy. `copy_repairs`
+  names every object copied and every reference retargeted, and is empty on an MPFB that no longer
+  needs it. Posing the original no longer moves the copy, checked live and in the bridge suite.
+- **The REMOVE-branch candidate was refuted.** Blender 5.1's collection iterator does not skip the
+  neighbour of a removed modifier or vertex group, live or headless. The command collects first
+  anyway; nothing was filed.
+- **One refusal MPFB's own sequence needs.** `bake_modifiers_remove_helpers()` applies the body
+  proxy's modifiers with a bare `modifier_apply`, which Blender refuses on a mesh with shape keys,
+  and `interpolate` gives the proxy shape keys first. The panel fails the same way, half way through.
+  The tool refuses up front (`proxy_cannot_be_baked`, naming the modifiers), so a refusal is still
+  never a half-built copy. Filed.
+- **The viseme packs are probed with one target each**, `sil_00` and `viseme_sil` - the one MPFB's
+  `configure_lip_sync()` tests for - as `faceunits01` is with `cheekPuff`. Resolving all 37 was
+  measured at 291 ms per answer, too much to pay on every call. A requested set is still resolved in
+  full before copying, and reports `could_not_load`. `FaceService.load_targets()`'s docstring says
+  it raises on a missing target; `bulk_load_targets()` warns and skips, which is what happens.
+- **The GameEngine swap pops every copied mesh's materials before rebuilding**, because
+  `set_character_skin()` renames whatever it finds `.unused` and clears its node tree, groups and
+  all - and on an unswapped copy what it finds is the original's. The skin goes through
+  `set_character_skin(skin_type="GAMEENGINE")`; mesh assets are rebuilt as
+  `add_mhclo_asset(material_type="GAMEENGINE")` builds them, with `NodeWrapperGameEngine` read out of
+  `sys.modules` (no service module carries it; its package loads at registration, confirmed headless
+  and windowed). The bridge test compares the original's materials, node counts and node groups
+  before and after.
+- **Helper geometry is counted, not inferred from a group's presence**: baking MPFB's `Hide helpers`
+  mask deletes the vertices and leaves the groups, empty. `helper_vertices_left` and
+  `helper_vertices` are counts.
+- **What each exporter does with a modifier beside shape keys was measured**, by re-importing: FBX
+  applies the modifier and **drops every shape key**; glTF (`export_apply` off) and USD keep the
+  keys and **ignore** the modifier, so the helpers and the body under the garments come along. No
+  exporter keeps both. A mask on the basemesh is fixed by `mask_modifiers: "BAKE"`. A
+  **subdivision on a mesh asset is not**: MPFB's strategies act on the basemesh (and, when baking,
+  the proxy), so a garment or eyebrows with visemes interpolated onto them keep their Subdivision,
+  and FBX drops their keys. Reported per mesh in `readiness`; recorded in NEXT_STEPS.
+- **USD renames a repeated blend shape.** A viseme on the body and on an interpolated garment
+  comes back from a `.usdz` as `aa_02` and `aa_022`: the same keys, one renamed. The round-trip test
+  asserts it.
+- **The export directory**: `--export-dir` wins over the preference, because it is the more recent
+  and more specific choice and a headless run reads the same `userpref.blend`; a directory somebody
+  named that does not exist is refused, the default is created. `path_resolved_by` says which,
+  `"command_line"`, `"preferences"` or `"default"` - the glossary's name for how a file path was
+  found. It lives in a small module of its own, `bridge/mpfb_bridge/export_directory.py`, because
+  `ui.py` and `cli.py` both write it and a command reading it from `ui.py` would import the
+  registration module into every dispatch.
+- **Two plain reads went into `shared/blender_data.py`**, beyond the request's list:
+  `with_descendants()`, the family both commands walk - what is copied must be what is written -
+  and `vertices_in_groups()`. `shared/selection.py` gained `restored_all()`, used by both commands;
+  the other ten keep `restored()`.
+- **A character with only a body proxy is exported through it**: the subject resolves to a basemesh
+  or, failing that, a proxy, and the miss sentence keeps the shared one's start and end.
+- **The smoke items** copy the run's character with the panel's defaults and export the copy as FBX
+  under a constant name, `overwrite: true`.
+
+## Verification
+
+Both halves of "verified" hold. The bridge suite has 28 new tests (553):
+`ddd_mutating/create_export_copy_test.py` (13: the original unchanged, each option, the repairs on
+a sub-rig fixture and a generated Rigify rig, the packs, the baked face, the GameEngine swap, every
+refusal), `ddd_mutating/export_character_test.py` (9: each format and preset, the three ways a
+directory is chosen, every refusal, the selection, a proxy-only character),
+`eee_composite/export_roundtrip_test.py` (a copy with masks baked and visemes interpolated, exported
+in four format/preset pairs and re-imported), and `restored_all`, `with_descendants` and
+`vertices_in_groups` in `bbb_shared/`. The unit suite has 20 new tests (570), and the name-rule drift
+check runs every name as all three nouns. The smoke run is 43 of 43 in 2.1 s.
+
+The live check, [live_check.py](live_check.py), ran on 2026-10-18 against a windowed Blender 5.1
+with MPFB, the bridge (reloaded to pick the commands up) and the community blender-mcp add-on, on
+the developer's install with every pack, and passed all 35 checks: a character with a default rig,
+hair with a sub-rig, eyebrows, a garment, a proxy, a MakeSkin skin, an expression and a composed
+unit was copied with everything on and the original family, the selection and the active object
+were unchanged; the baked face named the composed unit and the expression row; all 89 keys loaded;
+every mesh became GameEngine. All six format/preset pairs wrote into the preference's directory and
+read back with every mesh and a rig. The masked copy read back as measured above, Rigify's 84 data
+drivers were retargeted and posing the original did not move the copy, and the REMOVE loop skipped
+nothing.
+
+**Measured durations depend on the scene.** The worst case - no shape key bake, masks baked under
+all 89 loaded keys and the modeling ones - took **7.1 s** headless with one character, **27 s** in
+the windowed Blender at the first run and **77 s** at the last, by when the file held 1,876 objects:
+MPFB's `_apply_modifiers_keep_shapekeys()` duplicates the body and runs an operator per shape key,
+and each operator pays for the whole file. That is under a third of the 300 s socket timeout, so
+nothing was changed, and the tool description says it can take over a minute. Exports took 0.5 s
+(FBX, USD) to 2 s (glTF) for a 24-56 MB file. What cannot be checked here is whether Unity, Unreal
+or Godot accept the files; the preset tables cite their sources instead.
+
 ## References
 
 - MPFB's operator and panel: `mpfb2/src/mpfb/ui/operations/exportops/operators/createexportcopy.py`,
@@ -348,9 +461,9 @@ into its own request. The request is `Done` only when all three have landed.
   [Export copy](https://github.com/makehumancommunity/makehuman-static-website/blob/master/content/MPFB/Docs/exporting/export_copy.md), and
   the asset packs `visemes01` (Microsoft), `visemes02` (Meta) and `faceunits01` under
   `makehuman-static-website/content/Assets/AssetPacks/`.
-- Precedents in this repository: [FR 025](../done/025-character-presets/README.md) (the first
-  write outside the `.blend`), [FR 026](../done/026-face-units/README.md) (the optional-pack
-  pattern), [FR 027](../done/027-expression-library/README.md) (`expression_divergence.py`, and
+- Precedents in this repository: [FR 025](../025-character-presets/README.md) (the first
+  write outside the `.blend`), [FR 026](../026-face-units/README.md) (the optional-pack
+  pattern), [FR 027](../027-expression-library/README.md) (`expression_divergence.py`, and
   the save-expression name rule), and `mpfb_set_asset_material` (a UI-only mechanism rebuilt from
   services).
-- [NEXT_STEPS: selection restore covers one object](../NEXT_STEPS.md#selection-restore-covers-one-object).
+- [NEXT_STEPS: selection restore covers one object](../../NEXT_STEPS.md#selection-restore-covers-one-object).

@@ -164,11 +164,15 @@ def build_server() -> FastMCP:
             "character - and read the result back with mpfb_get_pose rather "
             "than from a screenshot. "
             "A character exists only in the running .blend until it is saved "
-            "as an MPFB preset: mpfb_save_preset writes one - the only file "
-            "any tool here creates, and not undoable - mpfb_list_presets says "
-            "which exist, and mpfb_create_human_from_preset builds a NEW "
-            "character from one rather than loading into the current one. "
+            "as an MPFB preset: mpfb_save_preset writes one - a file, and not "
+            "undoable - mpfb_list_presets says which exist, and "
+            "mpfb_create_human_from_preset builds a NEW character from one "
+            "rather than loading into the current one. "
             "A preset is addressed by its preset_name, never by a path. "
+            "To take a character to a game engine or another application, "
+            "make a processed copy with mpfb_create_export_copy and write it "
+            "with mpfb_export_character, which names only the file: the "
+            "directory is the Blender user's choice. "
             "Neither of the two lookup tools acts on Blender at all: they hand "
             "out addresses for the client to retrieve, and neither fetches "
             "anything itself. mpfb_list_urls gives the community sites - where "
@@ -202,8 +206,8 @@ def build_server() -> FastMCP:
     )
 
     from mpfbmcp.tools import (
-        add_asset, add_rig, apply_expressions, create_human, create_human_from_preset,
-        generate_rigify_rig, get_character_summary, get_expression, get_face_units,
+        add_asset, add_rig, apply_expressions, create_export_copy, create_human,
+        create_human_from_preset, export_character, generate_rigify_rig, get_character_summary, get_expression, get_face_units,
         get_macro_details, get_material_settings, get_object_info, get_pose, get_pose_controls,
         get_status, get_target_stack,
         list_asset_materials, list_assets, list_docs, list_expressions, list_objects,
@@ -214,8 +218,10 @@ def build_server() -> FastMCP:
     add_asset.register(mcp)
     add_rig.register(mcp)
     apply_expressions.register(mcp)
+    create_export_copy.register(mcp)
     create_human.register(mcp)
     create_human_from_preset.register(mcp)
+    export_character.register(mcp)
     generate_rigify_rig.register(mcp)
     get_character_summary.register(mcp)
     get_expression.register(mcp)

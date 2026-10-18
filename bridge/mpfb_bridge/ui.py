@@ -16,6 +16,11 @@ posture the pivot is meant to improve on, and "installation is the consent" only
 holds if starting it is a second, separate act. An autostart option was
 considered and refused for that reason rather than overlooked.
 
+**The export directory is a preference because the human must choose it.**
+``export_character`` takes only a file name; the directory is read by
+[`export_directory.py`](export_directory.py) from here (or from ``--export-dir``
+headless), so nothing that can reach the socket chooses where a file is written.
+
 **The panel says what is true, not only what is configured.** It reports where
 MPFB was found and what state it is in, and - once the server is up - how many
 requests it has answered and what the last one was. The commonest failure in
@@ -107,6 +112,15 @@ class MPFB_BRIDGE_Preferences(bpy.types.AddonPreferences):
         max=1.0,
         update=_update_timer_interval_active)
 
+    export_directory: bpy.props.StringProperty(
+        name="Export directory",
+        description="Where mpfb_export_character writes the files it exports. A client names only "
+                    "the file, never the directory, so this is the one place the destination is "
+                    "chosen. Empty means <MPFB user data>/exports. A directory named here that "
+                    "does not exist is refused rather than created",
+        subtype="DIR_PATH",
+        default="")
+
     def draw(self, _context):
         """Paint the preferences panel: the address, the switch, and what is happening."""
         layout = self.layout
@@ -115,6 +129,7 @@ class MPFB_BRIDGE_Preferences(bpy.types.AddonPreferences):
         column.prop(self, "host")
         column.prop(self, "port")
         column.prop(self, "timer_interval_active")
+        column.prop(self, "export_directory")
 
         layout.separator()
 

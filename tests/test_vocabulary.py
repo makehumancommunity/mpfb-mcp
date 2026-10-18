@@ -85,7 +85,7 @@ class DeclaredArgumentsTests(unittest.TestCase):
     def test_every_tool_is_checked_against_what_its_schema_declares(self) -> None:
         # If FastMCP's tool manager ever moves, build_server() finds no tools and
         # silently checks nothing; this is what says so.
-        self.assertEqual(len(self.tools), 39)
+        self.assertEqual(len(self.tools), 41)
         self.assertEqual(
             self.server.declared_arguments,
             {tool.name: frozenset(tool.inputSchema.get("properties", {}))

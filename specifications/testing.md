@@ -387,6 +387,18 @@ now answered in `bridge/test/`, and each is named here with where:
   is the one that made it for all twenty-four. The smoke run in [verification/](../verification/)
   makes it again, incidentally and on every run, since it goes over the real socket.
 
+- **That another application accepts a file a tool wrote.** `mpfb_export_character` writes FBX,
+  glTF and USD for Unity, Unreal and Godot, and no harness here runs any of them.
+  [FR 039](../feature-requests/done/039-exporting-characters/README.md) set the pattern for what can
+  be checked: **read the file back with Blender's own importer** and compare it with what was
+  written - meshes, bones, shape keys per mesh (`eee_composite/export_roundtrip_test.py`). That
+  proves the file is well-formed enough to rebuild the character, and it is what found that FBX
+  drops shape keys beside a modifier and USD renames a blend shape repeated across meshes; it proves
+  nothing about an engine's importer. The preset tables cite their sources instead, in the command
+  docstring. Re-import into the scene and remove what was imported, not into a scratch scene: the
+  FBX importer builds the pose through the view layer's depsgraph, and an armature imported into a
+  scene no window shows has no pose bones yet.
+
 An item needing a live Blender belongs to the feature request that needs it, which must say so in
 its own "Tests" section rather than leave it to be discovered.
 

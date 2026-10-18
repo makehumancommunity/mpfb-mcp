@@ -1,7 +1,7 @@
 """
 ``shared/blender_data.py``, called directly.
 
-Three reads of plain Blender data that four commands used to write for
+Five reads of plain Blender data that four commands used to write for
 themselves. They need ``bpy`` and no MPFB: each is checked on an object the test
 makes, on ``None``, and on an object that has none of what is being read.
 """
@@ -50,3 +50,40 @@ def test_material_names_skip_an_empty_slot():
     finally:
         bpy.data.objects.remove(made, do_unlink=True)
         bpy.data.materials.remove(material)
+
+
+def test_vertices_in_groups_counts_members_not_groups():
+    import bpy  # pylint: disable=import-outside-toplevel
+    mesh = bpy.data.meshes.new("BridgeTestDataVerticesMesh")
+    mesh.from_pydata([(0, 0, 0), (1, 0, 0), (0, 1, 0), (1, 1, 0)], [], [(0, 1, 3, 2)])
+    made = bpy.data.objects.new("BridgeTestDataVertices", mesh)
+    bpy.context.scene.collection.objects.link(made)
+    try:
+        assert _module().vertices_in_groups(made, ("HelperGeometry",)) == 0
+        helper = made.vertex_groups.new(name="HelperGeometry")
+        joints = made.vertex_groups.new(name="JointCubes")
+        # An empty group, which is what baking MPFB's mask leaves behind.
+        assert _module().vertices_in_groups(made, ("HelperGeometry", "JointCubes")) == 0
+        helper.add([0, 1], 1.0, "REPLACE")
+        joints.add([1, 2], 0.1, "REPLACE")
+        assert _module().vertices_in_groups(made, ("HelperGeometry", "JointCubes")) == 3
+        assert _module().vertices_in_groups(made, ("JointCubes",)) == 2
+        assert _module().vertices_in_groups(None, ("HelperGeometry",)) == 0
+    finally:
+        bpy.data.objects.remove(made, do_unlink=True)
+
+
+def test_with_descendants_walks_every_depth_parents_first():
+    import bpy  # pylint: disable=import-outside-toplevel
+    root = linked_plain_object("BridgeTestDataRoot")
+    child = linked_plain_object("BridgeTestDataChild")
+    grandchild = linked_plain_object("BridgeTestDataGrandchild")
+    stranger = linked_plain_object("BridgeTestDataStranger")
+    child.parent = root
+    grandchild.parent = child
+    try:
+        assert _module().with_descendants(root) == [root, child, grandchild]
+        assert _module().with_descendants(grandchild) == [grandchild]
+    finally:
+        for made in (root, child, grandchild, stranger):
+            bpy.data.objects.remove(made, do_unlink=True)

@@ -2,7 +2,10 @@
 The commands that **change** a .blend, against a real MPFB - thirteen when this
 directory was made, sixteen since FR 026 and FR 027 added the face commands,
 seventeen since FR 040 added ``set_material_settings``, twenty since FR 042 added
-the three pose writers.
+the three pose writers, twenty-two since FR 039 added the two export commands -
+``export_character`` the third that writes outside the .blend, into an export
+directory its tests set through the add-on's own preference or
+``export_directory.set_command_line()``, never the developer's.
 
 **A layer, after the add-on itself and the read-only commands.** A module here
 may assume that everything under ``aaa_addon/`` and ``ccc_reading/`` passed, and

@@ -151,7 +151,20 @@ import mpfbmcp
 # `counts_by_role` names every role on every classified answer. A compact entry
 # drops keys rather than nulling them, so the description has to list the keys
 # it keeps, which is most of the rest. The ceiling moves by what that cost.
-DESCRIPTION_CEILING = 80800
+#
+# Raised from 80,800 to 84,050 by
+# [FR 039](../feature-requests/done/039-exporting-characters/README.md), for two
+# tools, both trimmed first and both under the average:
+# `mpfb_create_export_copy` (1,988 B; 2,077 before trimming) carries MPFB's
+# panel's eleven options and the swap it lacks, one clause each - what
+# `bake_shapekeys` freezes, which pack each set needs, that the copy shares
+# materials unless swapped - since none of that is discoverable from an answer
+# before the call, plus the one refusal MPFB's own sequence makes necessary
+# and how long the call can take, measured; `mpfb_export_character` (1,312 B;
+# 1,552) spends most of its bytes on the one thing a caller must not guess at,
+# that the directory is not theirs to choose. The readiness facts are named and
+# not explained: they are in every answer.
+DESCRIPTION_CEILING = 84050
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -195,7 +208,11 @@ DESCRIPTION_CEILING = 80800
 # [FR 044](../feature-requests/done/044-switches-filter/README.md): 124 B for
 # `mpfb_get_pose_controls`' nullable `switch_names` list, the same shape as
 # `roles`.
-SCHEMA_CEILING = 15000
+#
+# Raised from 15,000 to 16,600 by FR 039: 1,612 B across two tools, of which
+# 1,143 B is `mpfb_create_export_copy`'s thirteen flat optional arguments - the
+# panel's options, flat as the tool interface requires rather than nested.
+SCHEMA_CEILING = 16600
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.
@@ -247,7 +264,7 @@ class DescriptionBudgetTests(unittest.TestCase):
         self.measured = measure()
 
     def test_every_registered_tool_is_measured(self) -> None:
-        self.assertEqual(39, len(self.measured))
+        self.assertEqual(41, len(self.measured))
 
     def test_total_description_size_is_under_the_ceiling(self) -> None:
         total = sum(entry["description_bytes"] for entry in self.measured)

@@ -12,6 +12,7 @@ an extension to offer one::
 
     blender --background scene.blend --command mpfb_bridge
     blender --background --command mpfb_bridge --port 9900
+    blender --background --command mpfb_bridge --export-dir /srv/exports
 
 It blocks until interrupted, which is the whole difference. Everything below the
 waiting is shared with the GUI path: the same socket, the same framing, the same
@@ -38,6 +39,7 @@ __all__ = (
 import argparse
 
 from . import command_server
+from . import export_directory
 from .commands import COMMANDS
 from .log import get_logger
 
@@ -69,8 +71,15 @@ def cli_execute(argv):
     parser.add_argument(
         "--port", type=int, default=command_server.DEFAULT_PORT,
         help="Port to listen on (default: %(default)s)")
+    parser.add_argument(
+        "--export-dir", default=None,
+        help="Directory mpfb_export_character writes into, overriding the add-on's "
+             "export_directory preference. It must exist: a named directory that does not is "
+             "refused rather than created (default: the preference, else <MPFB user "
+             "data>/exports)")
     arguments = parser.parse_args(argv)
 
+    export_directory.set_command_line(arguments.export_dir)
     try:
         command_server.start(arguments.host, arguments.port, COMMANDS)
     except Exception as error:  # pylint: disable=broad-except
@@ -95,5 +104,6 @@ def cli_execute(argv):
         # In a finally, because an interrupted background job that leaves a
         # bound socket behind is a confusing failure on the next run.
         command_server.stop()
+        export_directory.set_command_line(None)
 
     return 0

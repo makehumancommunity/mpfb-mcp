@@ -1,7 +1,7 @@
 """
-All twenty-five commands that take a subject, asked about the same three misses.
+All twenty-seven commands that take a subject, asked about the same three misses.
 
-The claim is about twenty-five commands at once, which is why it is here: every
+The claim is about twenty-seven commands at once, which is why it is here: every
 command that takes a subject resolves it the same way, because all of them go
 through ``shared/subject_resolution.py``
 ([FR 036](../../../../feature-requests/done/036-subject-resolver-and-duplication/README.md)).
@@ -28,13 +28,17 @@ What follows the shared part is each command's own, and is deliberately not
 compared.
 
 **Nothing may be written, even if a resolver regressed.** The two save
-commands would write outside the ``.blend`` if one of these misses were ever
-resolved to a character, so they run with MPFB's user directories redirected
-into ``tmp_path``, per the rule in ``ddd_mutating/__init__.py``.
+commands and ``export_character`` would write outside the ``.blend`` if one of
+these misses were ever resolved to a character, so they run with MPFB's user
+directories and the export directory redirected into ``tmp_path``, per the rule
+in ``ddd_mutating/__init__.py``. ``export_character`` also accepts a character
+with a body proxy and no basemesh, and says so in the middle of the third
+sentence, whose start and end it shares.
 """
 
 import os
 
+from .. import bridge_module
 from .. import dynamic_import
 from .._fixtures import linked_plain_object
 from .._fixtures import nothing_active
@@ -50,7 +54,7 @@ SUBJECT_ONLY = ("get_object_info", "generate_rigify_rig")
 
 
 def _calls(subject):
-    """The twenty-five commands, each with the least that passes its parameter contract."""
+    """The twenty-seven commands, each with the least that passes its parameter contract."""
     return {
         "get_object_info": dict(name=subject),
         "get_macro_details": dict(name=subject),
@@ -82,15 +86,23 @@ def _calls(subject):
         "reset_pose": dict(name=subject),
         "set_material_settings": dict(name=subject, eyes=[
             dict(socket="IrisMajorColor", color=[0.1, 0.4, 0.1, 1.0])]),
+        "create_export_copy": dict(name=subject),
+        "export_character": dict(export_name="bridge_test_never_written", name=subject),
     }
 
 
 def _answers(tmp_path, subject):
     services = services_or_skip()
-    with redirected_locations(services, user_config=str(tmp_path / "config"),
-                              user_data=str(tmp_path / "data")):
-        answers = {command: result(command, params)
-                   for command, params in _calls(subject).items()}
+    export_directory = bridge_module("export_directory")
+    export_directory.set_command_line(str(tmp_path))
+    try:
+        with redirected_locations(services, user_config=str(tmp_path / "config"),
+                                  user_data=str(tmp_path / "data")):
+            answers = {command: result(command, params)
+                       for command, params in _calls(subject).items()}
+    finally:
+        export_directory.set_command_line(None)
+    assert not [name for name in os.listdir(tmp_path) if name.startswith("bridge_test")]
     assert not os.path.exists(tmp_path / "config") or not os.listdir(tmp_path / "config")
     assert not os.path.exists(tmp_path / "data" / "expressions") \
         or not os.listdir(tmp_path / "data" / "expressions")
@@ -179,7 +191,7 @@ def test_a_name_that_does_not_exist(tmp_path):
 
 
 def test_an_object_with_no_basemesh(tmp_path):
-    """The third sentence from sixteen commands, and a found subject from two."""
+    """The third sentence from twenty-five commands, and a found subject from two."""
     import bpy  # pylint: disable=import-outside-toplevel
     cube = linked_plain_object(CUBE)
     try:

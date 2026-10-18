@@ -142,6 +142,18 @@ screen. Two prerequisites are easy to miss: the add-on must be *enabled* in the 
 because a disabled extension registers no CLI command, and the loop owns the main thread until it
 is interrupted.
 
+**The bridge has one preference a command reads: where exports go.** Host, port and poll interval
+configure the server; `export_directory` configures a command, `export_character`, and so does
+`--export-dir` on the headless command. Both are read through
+[`export_directory.py`](../bridge/mpfb_bridge/export_directory.py), a module at the add-on's root
+beside `stats.py`, because `ui.py` and `cli.py` both write the choice and a command importing the
+registration module to read it would be backwards. It is a preference rather than a request
+parameter or an mpfb-mcp environment variable for one reason: the person who started the bridge is
+the one who chooses where it writes, and nothing a caller sends - nor anything in the MCP client's
+configuration, which an agent may be able to edit - can
+([FR 039](../feature-requests/done/039-exporting-characters/README.md),
+[a tool whose effect is outside the `.blend`](mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more)).
+
 **`bpy.app.online_access` does not gate a loopback bind, and the bridge does not consult it.**
 Blender asks add-ons that declare a `network` permission to respect that flag, and blender lab's
 add-on refuses to start its server when it is off — while conceding in its own source that
@@ -608,7 +620,10 @@ now four parts, and it applies on both sides of the socket:
    exists, or can be created and named for that concept. Being identical *is* a reason. The burden
    is on keeping a copy, and a kept copy is recorded with its reason.
    [`blender_data.py`](../bridge/mpfb_bridge/shared/blender_data.py) — every object name in the
-   file, one object's vertex groups, its material slots — is this rule and nothing more, and on this
+   file, one object's vertex groups, its material slots, how many of its vertices are in named
+   groups, an object and its descendants — is this rule and nothing more (the last of the five is
+   rule 1 too: what `mpfb_create_export_copy` copies must be what `mpfb_export_character` writes),
+   and on this
    side of the socket so is [`src/mpfbmcp/arguments.py`](../src/mpfbmcp/arguments.py), the shape
    validators every tool calls. A shared module is named for its concept; there is no `utils.py`,
    and a helper with no natural home stays duplicated until it has one.
@@ -649,7 +664,9 @@ now four parts, and it applies on both sides of the socket:
   ([how a tool addresses an object](tool-interface.md#how-a-tool-addresses-an-object)).
   `selection.py` puts the caller's active object and the borrowed object's selection back, for the
   ten mutating commands that activate something
-  ([where these rules are enforced](mutating-tools.md#where-these-rules-are-enforced)). Sixteen
+  ([where these rules are enforced](mutating-tools.md#where-these-rules-are-enforced)), and since
+  [FR 039](../feature-requests/done/039-exporting-characters/README.md) every object's selection,
+  for the two export commands that select and deselect throughout. Sixteen
   copies of the first had one body and drifting wording; five of them had stopped pointing the
   caller at `mpfb_get_object_info`, with no reason anyone could find. Neither module raises or
   short-circuits, so each command keeps the order in which it reports its refusals, and each passes

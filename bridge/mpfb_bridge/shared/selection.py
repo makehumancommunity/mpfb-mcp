@@ -24,12 +24,23 @@ object, and the borrowed object's own selection. An operator that selects
 That gap is recorded in NEXT_STEPS.md rather than closed here, since closing it
 would change what a command leaves behind.
 
+**:func:`restored_all` is the full snapshot, and two commands use it**
+([FR 039](../../../feature-requests/done/039-exporting-characters/README.md)).
+``export_character`` has to *select* a whole family, because Blender's exporters
+write the selection, and ``create_export_copy`` drives MPFB's
+``bake_modifiers_remove_helpers()``, which selects and deselects throughout. For
+those, putting back one object's state would leave the user's scene visibly
+rearranged, so every object's selection is recorded and put back, and anything
+the block created is left deselected. The other ten commands keep
+:func:`restored`, for the reason above; moving them is the NEXT_STEPS entry's.
+
 Like ``performed`` and ``subject_resolution``'s subject step, it reads nothing
 out of MPFB and takes no ``services``.
 """
 
 __all__ = (
     "restored",
+    "restored_all",
 )
 
 import contextlib
@@ -53,3 +64,41 @@ def restored(borrowed):
         if not was_selected:
             borrowed.select_set(False)
         bpy.context.view_layer.objects.active = previous_active
+
+
+@contextlib.contextmanager
+def restored_all():
+    """Run the block, then put back the active object and **every** object's selection.
+
+    Read when the block is entered, from the view layer. Afterwards every object
+    in the view layer is deselected and the ones that were selected are selected
+    again, so an object the block created - an export copy, a temporary
+    duplicate - ends deselected, and the previously active object is active.
+
+    An object the block deleted is skipped rather than failing the restore: the
+    references raise ``ReferenceError`` once their object is gone. And an object
+    that cannot be selected any more (moved out of the view layer) is skipped
+    too, since Blender raises ``RuntimeError`` for that.
+    """
+    view_layer = bpy.context.view_layer
+    previous_active = view_layer.objects.active
+    previously_selected = [blender_object for blender_object in view_layer.objects
+                           if blender_object.select_get()]
+    try:
+        yield
+    finally:
+        view_layer = bpy.context.view_layer
+        for blender_object in view_layer.objects:
+            try:
+                blender_object.select_set(False)
+            except RuntimeError:
+                pass
+        for blender_object in previously_selected:
+            try:
+                blender_object.select_set(True)
+            except (ReferenceError, RuntimeError):
+                pass
+        try:
+            view_layer.objects.active = previous_active
+        except (ReferenceError, RuntimeError):
+            view_layer.objects.active = None

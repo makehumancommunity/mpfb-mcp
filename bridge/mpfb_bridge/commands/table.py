@@ -47,8 +47,10 @@ from . import add_asset
 from . import add_rig
 from . import apply_expressions
 from . import create_human
+from . import create_export_copy
 from . import create_human_from_preset
 from . import generate_rigify_rig
+from . import export_character
 from . import get_character_summary
 from . import get_expression
 from . import get_face_units
@@ -104,6 +106,12 @@ COMMANDS = {
         params=apply_expressions.PARAMS,
         requires_mpfb=True,
         summary=apply_expressions.SUMMARY),
+    "create_export_copy": Command(
+        name="create_export_copy",
+        handler=create_export_copy.create_export_copy,
+        params=create_export_copy.PARAMS,
+        requires_mpfb=True,
+        summary=create_export_copy.SUMMARY),
     "create_human": Command(
         name="create_human",
         handler=create_human.create_human,
@@ -121,6 +129,15 @@ COMMANDS = {
         params=create_human_from_preset.PARAMS,
         requires_mpfb=True,
         summary=create_human_from_preset.SUMMARY),
+    "export_character": Command(
+        name="export_character",
+        handler=export_character.export_character,
+        params=export_character.PARAMS,
+        # True, and the first command that writes a file **another application**
+        # opens. The file's name comes from the request; its directory never
+        # does - export_directory.py reads it from this add-on's preferences.
+        requires_mpfb=True,
+        summary=export_character.SUMMARY),
     "generate_rigify_rig": Command(
         name="generate_rigify_rig",
         handler=generate_rigify_rig.generate_rigify_rig,

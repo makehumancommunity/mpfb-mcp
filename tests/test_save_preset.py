@@ -241,12 +241,12 @@ class NameRuleDriftTests(unittest.TestCase):
     socket is reachable by anything on this machine and not only by mpfb-mcp.
     So both are run over one table of names and held to the same verdicts.
 
-    **Both nouns.** Until FR 027 the rule was the preset rule, in
+    **All three nouns.** Until FR 027 the rule was the preset rule, in
     ``preset_names.py`` and ``shared/preset_files.py``. FR 027 generalised it on
-    each side rather than copying it for saved expressions, so the check now
-    runs every name as a ``"preset"`` and as an ``"expression"``: a gap between
-    the two sides for either artifact would let a file be written under a name
-    that cannot be addressed back.
+    each side rather than copying it for saved expressions, so the check runs
+    every name as a ``"preset"`` and as an ``"expression"``, and since FR 039 as
+    an ``"export"`` too: a gap between the two sides for any artifact would let a
+    file be written under a name that cannot be addressed back.
 
     It lived in ``tests/test_codegen.py`` and ran as **three** until FR 033
     deleted the generated path, which carried a third copy. The reason the check
@@ -268,7 +268,7 @@ class NameRuleDriftTests(unittest.TestCase):
         None, 3, True, 1.5, [], {},
     )
 
-    NOUNS = ("preset", "expression")
+    NOUNS = ("preset", "expression", "export")
 
     def setUp(self) -> None:
         self.bridge_namespace = _bridge_shared_namespace("artifact_names.py")
@@ -291,11 +291,12 @@ class NameRuleDriftTests(unittest.TestCase):
                                      self.bridge_rejection(name, noun))
 
     def test_the_verdict_does_not_depend_on_the_noun(self) -> None:
-        # One rule, two artifacts: only the sentence may differ.
+        # One rule, three artifacts: only the sentence may differ.
         for name in self.NAMES:
             with self.subTest(name=name):
-                self.assertEqual(artifact_names.name_rejection(name, "preset") is None,
-                                 artifact_names.name_rejection(name, "expression") is None)
+                verdicts = set(artifact_names.name_rejection(name, noun) is None
+                               for noun in self.NOUNS)
+                self.assertEqual(len(verdicts), 1)
 
     def test_the_preset_wrapper_is_the_rule_with_the_preset_noun(self) -> None:
         for name in self.NAMES:
@@ -313,9 +314,11 @@ class NameRuleDriftTests(unittest.TestCase):
         # The property the rule exists for, asserted rather than inferred from
         # the pattern: os.path.join of the directory and each artifact's
         # filename stays inside the directory, for every name either side
-        # accepts. The two filename shapes are the two commands' own.
+        # accepts. The filename shapes are the three commands' own.
         directory = os.path.abspath(os.path.join("/tmp", "mpfb", "somewhere"))
-        shapes = (lambda name: "human." + name + ".json", lambda name: name + ".json")
+        shapes = (lambda name: "human." + name + ".json", lambda name: name + ".json",
+                  lambda name: name + ".fbx", lambda name: name + ".glb",
+                  lambda name: name + ".usdz")
         for name in self.NAMES:
             if self.bridge_rejection(name, "preset") is not None:
                 continue

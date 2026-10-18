@@ -174,9 +174,18 @@ posing answer.
   uses the neighbouring `get_world_space_location_of_pose_bone`, which the effort checks for the
   same fault and reports alongside.
 - **The test fixtures have no sub-rig.** `_fixtures.py`'s `ponytail.mhclo` is a plain MHCLO.
-  Requirements 13–14 need an MHCLO with a `.rig.json` beside it, written as real MPFB sub-rig data
+  Requirements 13–14 need an MHCLO with a sub-rig file beside it, written as real MPFB sub-rig data
   rather than a convenient stand-in ([testing.md](../../specifications/testing.md)). That fixture is
-  built here, and the sub-rig request will need it too.
+  built here, and the sub-rig request will need it too. *Corrected after
+  [FR 039](../done/039-exporting-characters/README.md):* MPFB looks for `<mhclo basename>.mpfbskel`,
+  not a `.rig.json` (`ClothesService.set_up_rigging()`); the installed example is
+  `hair/ponytail01/ponytail01.mpfbskel`. FR 039's `ddd_mutating/create_export_copy_test.py` builds
+  only the *shape* - a garment parented to a `Subrig`-typed armature parented to the rig - which is
+  enough for a family walk and not for this request's binding.
+- **The family is walked once, in `shared/blender_data.with_descendants()`** (added by FR 039), the
+  root and every descendant, recursively because a sub-rigged garment is a grandchild. A character
+  whose basemesh an export copy removed has a body proxy as its body, and `mpfb_export_character`
+  finds its root through the proxy; placement should accept the same character.
 
 ## Affected specifications
 

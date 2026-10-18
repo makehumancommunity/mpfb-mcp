@@ -149,13 +149,20 @@ other: locally, and in the command's parameter contract (`choices`), which the d
 before the handler runs. `mpfb_get_material_settings`' `section` is the second such vocabulary: its
 three values are the preset's own keys as this package names them, not a name MPFB's node trees
 hold ([FR 040](../feature-requests/done/040-procedural-material-settings/README.md)).
+[FR 039](../feature-requests/done/039-exporting-characters/README.md) added four more:
+`mpfb_create_export_copy`'s `mask_modifiers` and `subdiv_modifiers` (`KEEP`, `REMOVE`, `BAKE`)
+and `material_type`, and `mpfb_export_character`'s `format` and `target_engine`. The first two look
+like MPFB's - they are the Export copy panel's enum, spelled as it spells them - but no MPFB function
+receives them: the panel's operator branches on them, and so does the command that reproduces it.
+What decides the case is who consumes the value, not where its spelling came from.
 
 **An argument that becomes a path is a shape, not a vocabulary, and it is checked here.**
 `mpfb_save_preset` and `mpfb_create_human_from_preset` take a `preset_name` that resolves to
-`human.<preset_name>.json` in MPFB's user config directory, and `mpfb_save_expression` takes an
+`human.<preset_name>.json` in MPFB's user config directory, `mpfb_save_expression` takes an
 `expression_name` that resolves to `<expression_name>.json` in the expressions directory of MPFB's
-user data - one rule
-for both, in `mpfbmcp.artifact_names`, with the noun in the refusal as its only argument; and a name carrying `/`, `\` or `..` would
+user data, and `mpfb_export_character` takes an `export_name` that resolves to
+`<export_name>.fbx`, `.glb` or `.usdz` in the export directory - one rule
+for all three, in `mpfbmcp.artifact_names`, with the noun in the refusal as its only argument; and a name carrying `/`, `\` or `..` would
 address — and on the saving side *write* — a file outside it. Which characters may appear in a
 filename cannot drift from anything on the user's disk, so this is the ordinary rule rather than an
 exception to it, and it is deliberately stricter than MPFB's own panel (which rejects only an empty
@@ -165,8 +172,9 @@ MPFB would also accept, so the two never disagree about what exists — and wher
 the catalogue tool flags it (`mpfb_list_presets`' `addressable`) rather than letting a caller meet
 it as a refusal. The rule is also restated on the add-on side, as the last statement before
 `open()`, because a listening socket is reachable by anything on the machine; the two
-implementations are run over one table of names, as both nouns, by `tests/test_save_preset.py` so
-they cannot drift. What that buys is in
+implementations are run over one table of names, as all three nouns, by `tests/test_save_preset.py` so
+they cannot drift. **No tool takes a directory**: where an export lands is chosen by the person
+running the bridge, so the only part of a path a caller supplies is a name. What that buys is in
 [a tool whose effect is outside the `.blend`](mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more).
 
 **Structured input is taken as flat scalar arguments, not as a nested dict.** `mpfb_create_human`
@@ -350,20 +358,26 @@ dictionaries, so they were checked by the FR's own `census.py --check` instead.
 | Concept | Spelling | Not |
 |---|---|---|
 | The object a tool operates on | `name` — always a Blender object name, and optional wherever the active object will do | a file's name |
-| A file-backed artifact the tool reads or writes by name | `<artifact>_name`: `preset_name`, `expression_name` | `name` |
+| A file-backed artifact the tool reads or writes by name | `<artifact>_name`: `preset_name`, `expression_name`, `export_name` | `name` |
 | An object that does not exist yet | `generated_rig_name`, a basename the answer's `rig_object_name` reports the outcome of | `rig_name` |
 | An object named in an answer | `<role>_name`: `basemesh_name`, `metarig_name`, `bodyproxy_name`, `subject_name` | `object_name` |
 | …when the role also has a catalogue name | `<role>_object_name`: `rig_object_name`, `asset_object_name`, `subrig_object_name` | `rig_name` |
 | An object inside a record *of* objects | `name` (`list_objects`, `related_objects`, `equipped_assets`) | `object_name` |
 | An object inside a record *about something on* it | `object_name` (`materials_destroyed`, `vertex_groups_left_behind`) | |
 | How the subject was resolved | `subject_resolved_by: "active" \| "name"` | `resolved_from` |
-| How a file path was found | `path_resolved_by`, beside `resolved_path` | a bare `resolved_by` |
+| How a file path was found | `path_resolved_by`, beside `resolved_path` (which identifier: `"path"`, `"fragment"`), or beside `path` for an export (who chose the directory: `"command_line"`, `"preferences"`, `"default"`) | a bare `resolved_by` |
 | The subject could not be resolved | `blocked_by: "subject_not_found"` | `not_found` |
 | A tool's success | its verb beside `performed` ([mutating-tools.md](mutating-tools.md#the-flag-a-caller-branches-on-is-called-performed)) | |
 | A batch tool's per-entry writes | `changes`, with `change_count` | `applied`, `changed` — both are other tools' verbs |
 | What MPFB identified an object as | `<thing>_identified_as`: `rig_identified_as`, `material_identified_as` | `rig_type`, `material_type` |
 | MPFB's type string for an object | `object_type`, wherever it is passed or reported | `asset_type` |
 | A value before and after, in a per-entry record | `previous_value` / `new_value` | `previous` / `new` |
+| A reference moved from one object to another, in a per-entry record | `previous_object_name` / `new_object_name` (`copy_repairs.references_retargeted`) | `from` / `to` |
+| The effective value of every option a tool takes many of | `options_used` (`mpfb_create_export_copy`, keyed by argument name), `exporter_options` (`mpfb_export_character`, keyed as Blender's exporter takes them) | twelve `requested_*` keys |
+| A file format, and the engine a preset is for | `format`: `"fbx"`, `"gltf"`, `"usd"`, echoed as `requested_format` beside the `format` used; `target_engine`: `"generic"`, `"unity"`, `"unreal"`, `"godot"`, with `known_formats_for_target_engine` | `file_type`, `engine`, `glb` |
+| Load a set of shape keys onto an export copy | `load_microsoft_visemes`, `load_meta_visemes`, `load_arkit_face_units` - "face unit" is two words, as everywhere else | MPFB's `visemes_microsoft`, `faceunits_arkit` |
+| Put the copy in MPFB's "export copy" collection | `in_export_collection`, a bool | MPFB's `collection`, which reads as a collection's name |
+| An export copy's processing of a modifier type | `mask_modifiers`, `subdiv_modifiers`: `"KEEP"`, `"REMOVE"`, `"BAKE"`, the panel's own spelling | lower case |
 | A whole field before and after | `<field>_before` / `<field>_after` | `previous_<field>`, `current_<field>` |
 | Adding to what is there, or making it exactly this | `mode: "merge" \| "replace"`, and what a replace dropped is `removed_by_replace` | `clear_first` |
 | The echo of an argument `X` | `requested_X`, `X_recognized`, `known_Xs` — `X` the argument's own name | a shortened `X` |
@@ -417,6 +431,11 @@ says why, and which of MPFB's spellings are kept.
 - **character frame**: `forward`, `left` (the character's own, the `.L` side) and `up`, taken from
   the rig object and not from the pose; see
   [responses.md](responses.md#a-position-on-a-character-is-in-the-character-frame).
+- **copy**, **export copy**: a character duplicated by `mpfb_create_export_copy` - every object in
+  the family, under the `suffix` - and processed for another application. It is a character of its
+  own, which every other tool treats as one; the **original** is the character it was made from,
+  which the copy never changes. Not "duplicate", which is Blender's word for one object.
+- **export**: one file `mpfb_export_character` writes, holding one character.
 - **mesh asset**: anything equipped on a character from an MHCLO file, which is one of three kinds:
   a **garment** (MPFB's `Clothes` type), a **body part** (eyes, eyebrows, eyelashes, hair, teeth,
   tongue) or the **body proxy** (`Proxymeshes`). "Clothes" appears only where MPFB's own word is
@@ -427,6 +446,9 @@ says why, and which of MPFB's spellings are kept.
 
 Each of these looks like a divergence and is not:
 
+- **`bake_shapekeys`**: MPFB's panel's option, kept whole. "Shapekey" is one word here as in
+  `shapekey_name`, which is MPFB's spelling too; the answer keys say `shape_keys_baked` and
+  `shape_keys_loaded`, Blender's two words, because they report what is on the mesh.
 - **`refresh`** always means "bypass a cache this tool reads"; which cache, and what it costs, is
   per tool and is said in each description.
 - **`path` / `fragment` / `identifier`** are different identifiers for different things

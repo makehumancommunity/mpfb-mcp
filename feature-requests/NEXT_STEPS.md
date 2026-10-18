@@ -23,11 +23,15 @@ last predate FR 037.
   That heading contains a markdown link, so its generated anchor is not the one written; an explicit
   `<a id>` above it would fix this and any other link to it.
 - `specifications/architecture.md` links to `CLAUDE.md#the-twenty-five-tools`; the heading is "The
-  thirty-nine tools" now.
+  forty-one tools" now, and changes with every tool added - an explicit `<a id="the-tools">` would
+  stop the drift.
 - `HISTORY.md` links to `NEXT_STEPS.md#should-the-bridge-serve-its-own-test-harness`.
 - `bridge/mpfb_bridge/commands/list_asset_materials.py` links to
   `specifications/architecture.md#shared-fragments`, a section that was renamed when shared
   fragments became shared modules.
+- `specifications/mutating-tools.md` and `HISTORY.md` linked to
+  `NEXT_STEPS.md#selection-restore-covers-one-object` after the entry was pruned;
+  [FR 039](done/039-exporting-characters/README.md) restored it, with what is left of it.
 - `HISTORY.md`'s FR 036 entry links to `NEXT_STEPS.md#resolved-from-and-subject-resolved-by`, the
   entry FR 037 closed and removed. HISTORY is not rewritten, so this one may be left, or repointed at
   FR 037's entry.
@@ -66,8 +70,11 @@ to start.
 
 The rest of `FaceService`, deliberately excluded from both expression requests
 ([FR 026](done/026-face-units/README.md#not-visemes),
-[FR 027](done/027-expression-library/README.md)): `MICROSOFT_VISEMES` and `META_VISEMES`,
-`load_targets`, `interpolate_targets` and `configure_lip_sync`.
+[FR 027](done/027-expression-library/README.md)). **Loading and interpolating landed with
+[FR 039](done/039-exporting-characters/README.md)**, on an export copy only:
+`mpfb_create_export_copy` calls `load_targets` and `interpolate_targets` as MPFB's Export copy panel
+does. What is left is visemes on a character being worked on rather than copied for export, and
+`configure_lip_sync`.
 
 This is speech animation rather than expression — a different vocabulary, different asset packs
 (`visemes01` / `visemes02`), and a different propagation mechanism: `interpolate_targets` transfers
@@ -208,9 +215,57 @@ In the same session the stylised character got its rig before its targets, and h
 `mpfb_create_human`, in the same shape `mpfb_set_targets` takes, would make building in the right
 order the easy thing to do.
 
-## Exporting characters
+<a id="selection-restore-covers-one-object"></a>
 
-Scoped as [FR 039](039-exporting-characters/README.md) (Proposed):
-`mpfb_create_export_copy`, which mirrors MPFB's Export copy panel (`src/mpfb/ui/operations/exportops`),
-and `mpfb_export_character`, which writes FBX, glTF or USD into a directory the human sets in
-the bridge's preferences.
+## Selection restore covers one object
+
+Ten mutating commands put the caller's selection back with `shared/selection.py`'s `restored()`,
+which restores the active object and the **borrowed** object's own selection and nothing else, so an
+object an operator selected on the way - a new armature, an imported garment - is left selected.
+[FR 039](done/039-exporting-characters/README.md) added `restored_all()`, which records every
+object's selection and the active object, puts them back however the block ends, and leaves what
+the block created deselected; `mpfb_create_export_copy` and `mpfb_export_character` use it, the
+first because MPFB's bake selects and deselects throughout, the second because an exporter writes
+the selection. What is left is moving the other ten onto it. It changes what each leaves behind,
+so each command's bridge test has to say what the selection is after a call, which none does today.
+
+<a id="subdivision-on-mesh-assets-beside-shape-keys"></a>
+
+## Subdivision on a mesh asset, beside the shape keys `interpolate` gave it
+
+Found by [FR 039](done/039-exporting-characters/README.md)'s round trip. `mpfb_create_export_copy`'s
+`subdiv_modifiers` and `mask_modifiers` act where MPFB's panel acts: on the basemesh, and when
+baking on the body proxy. A garment or eyebrows keep the Subdivision `mpfb_add_asset` gave them,
+and with visemes or face units interpolated onto them that is a topology-changing modifier beside
+shape keys - which FBX resolves by dropping the keys. `mpfb_export_character`'s `readiness` names
+each such mesh, and no tool removes the modifier. The options are an extension of the two strategies
+to every copied mesh (a departure from the panel, to be named as one), or a modifier option on
+`mpfb_export_character` that applies to the exporters only, where FBX's own `use_mesh_modifiers`
+already lives. And the same refusal MPFB's proxy bake needs (`proxy_cannot_be_baked`) would apply
+to any mesh baked under interpolated keys.
+
+<a id="the-export-copys-bake-in-a-crowded-file"></a>
+
+## The export copy's bake in a crowded file
+
+[FR 039](done/039-exporting-characters/README.md) measured the worst case of `mpfb_create_export_copy`
+at 7 s headless with one character and 77 s in a windowed Blender whose file held 1,876 objects:
+MPFB's `ExportService._apply_modifiers_keep_shapekeys()` duplicates the body and runs
+`bpy.ops.object.modifier_apply` once per shape key, and every operator pays for the whole file. 77 s
+is under a third of mpfb-mcp's 300 s socket timeout, and a larger file is not. Rebuilding the keys
+through the data API rather than an operator per key would be MPFB's change, worth proposing
+upstream with these numbers; on this side, the choices are a longer timeout for this one command or
+a progress-free warning in the answer when the shape key count and the file size predict a long
+call.
+
+<a id="viseme-pack-probes"></a>
+
+## An install probe for the viseme packs, in MPFB
+
+`FaceService.is_faceunits01_installed()` exists and is cached; nothing similar exists for
+`visemes01` or `visemes02`, so [FR 039](done/039-exporting-characters/README.md) probes each with one
+target, the silence viseme, resolved through `TargetService.target_full_path()` - the target MPFB's
+`configure_lip_sync()` tests for. A request to MPFB, not a defect: `is_visemes01_installed()` and
+`is_visemes02_installed()` beside the face units' probe would let this package use MPFB's own
+definition, as [mpfb-integration.md](../specifications/mpfb-integration.md#a-capability-that-depends-on-an-optional-asset-pack)
+prefers.
