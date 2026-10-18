@@ -174,6 +174,38 @@ class ValidatedBodyPartsTests(unittest.TestCase):
         self.assertEqual(str(raised.exception), "body_parts names face more than once")
 
 
+class ValidatedNamesTests(unittest.TestCase):
+    """The rule behind body_parts and roles, worded with each argument's own name."""
+
+    def test_omitted_means_the_default(self) -> None:
+        self.assertIsNone(arguments.validated_names(None, "roles", "every role"))
+
+    def test_a_list_is_returned_as_given_vocabulary_unchecked(self) -> None:
+        self.assertEqual(arguments.validated_names(["pole", "elbow"], "roles", "every role"),
+                         ["pole", "elbow"])
+
+    def test_not_a_list(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            arguments.validated_names("pole", "roles", "every role")
+        self.assertEqual(str(raised.exception),
+                         "roles must be a list of strings or omitted, got 'pole'")
+
+    def test_empty_names_what_omitting_it_means(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            arguments.validated_names([], "roles", "every role")
+        self.assertEqual(str(raised.exception), "roles must not be empty; omit it for every role")
+
+    def test_an_entry_that_is_not_a_name(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            arguments.validated_names(["pole", 3], "roles", "every role")
+        self.assertEqual(str(raised.exception), "roles[1] must be a non-empty string, got 3")
+
+    def test_a_repeated_name(self) -> None:
+        with self.assertRaises(ValueError) as raised:
+            arguments.validated_names(["tweak", "pole", "tweak"], "roles", "every role")
+        self.assertEqual(str(raised.exception), "roles names tweak more than once")
+
+
 class RefuseUndeclaredTests(unittest.TestCase):
     def test_declared_arguments_pass(self) -> None:
         arguments.refuse_undeclared("mpfb_list_docs", {"topic", "keyword"}, {"topic": "x"})

@@ -740,3 +740,36 @@ then reset and restored to within 1e-6, and a `game_engine` rig snapped both way
 `mpfb_set_pose_bones`' answer is about 3.4 KB plus 350-480 B a change, so a 14-change stance is
 8.3 KB; `restore_with`'s worst case, all 278 `human_toes` controls posed, is 45 KB. 39 new bridge
 tests (501), 31 new unit tests (537), three smoke items; the smoke run is 41 of 41.
+
+<a id="narrower-pose-controls"></a>
+
+## [FR 043](done/043-narrower-pose-controls/README.md) — narrower `mpfb_get_pose_controls`: hidden controls left out, `roles`, `compact`
+
+FR 041 measured the controls answer at 63 KB on a generated `human_toes` rig, and most of it was
+controls a first pass never touches. **The default now lists only what a person posing the rig
+starts with**: a control `hidden_by_default` is left out unless `include_hidden`, as Rigify's own
+UI does. `roles` lists only the named roles and `compact` only what names a control and says what
+it is for. The filters intersect, the switches are cut by body part alone, and every cut is
+counted - `counts_by_role` (the requested parts, before the role and hidden filters) and
+`hidden_by_body_part` beside the unchanged `counts_by_body_part` - so listed plus left out is
+every control in the requested parts. A compact entry drops keys rather than nulling them, which
+[responses.md](../specifications/responses.md#how-tools-bound-a-large-answer) now allows for a
+shape the caller chose and the answer echoes.
+
+**`hidden_by_default` means the same on both generated families.** `game_engine` has no
+collections to read it off, so it is derived by role there, from the set Rigify hides on
+`human_toes` outside the face - which turned out not to be roles alone: the request's three roles
+missed the five `spine_fk` bones, which MPFB's meta-rig puts in `Torso (Tweak)`. The rule adds the
+torso's `_fk` controls, and a bridge test holds it to `human_toes`' collections control for
+control. Requirement 12's check found that 373 of the 450 internal bones `mpfb_set_pose_bones` can
+point a `not_a_control` refusal at map to a hidden control; that message now says so and names
+`include_hidden`, and nothing else in any writer changed.
+
+Verified by [`live_check.py`](done/043-narrower-pose-controls/live_check.py) on FR 041's karate
+character: every bone the session moved is in the default answer with its role, the counts explain
+every listing on all three rigs, and reading changes nothing. Measured on `human_toes`: default
+31 KB (71 of 180), `include_hidden` 64 KB, compact 18 KB, and the blocking pass
+(`roles: ["ik_control", "pole"]`, compact) 10.9 KB - **over the 8 KB line by its switches alone**,
+which are 8.0 KB of it and were recorded rather than trimmed. The default missed the 25 KB
+estimate for the same reason. 12 new bridge tests (513), 10 new unit tests (547), and the
+description budget up 350 B for three arguments; the smoke run is 41 of 41.

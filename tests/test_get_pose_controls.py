@@ -5,13 +5,15 @@ socket.
 
 Two layers (see ``tests/test_list_objects.py``, the template): the wrapper with
 ``send_command`` mocked below the seam, and the bridge path against
-``tests/fake_bridge.py``. Only the shape of the two arguments is checked here.
-``body_parts`` is a list of distinct non-empty strings, and **its vocabulary is
-deliberately not checked**, per
+``tests/fake_bridge.py``. Only the shape of the arguments is checked here.
+``body_parts`` and ``roles`` are lists of distinct non-empty strings, and
+**their vocabulary is deliberately not checked**, per
 [validate the shape, never the vocabulary](../specifications/tool-interface.md#validate-before-crossing-the-socket):
-the body parts are the bridge's, which names them when one is wrong.
+the body parts and roles are the bridge's, which names them when one is wrong.
+``include_hidden`` and ``compact`` are real bools
+([FR 043](../feature-requests/done/043-narrower-pose-controls/README.md)).
 
-Everything the tool answers - the classification of every rig family, the character frame, the switches with their parent names, the helpers and what they drive, the refusals, and that nothing is changed - is checked against a real MPFB in
+Everything the tool answers - the classification of every rig family, the character frame, the switches with their parent names, the helpers and what they drive, the filters and the counts that explain them, the refusals, and that nothing is changed - is checked against a real MPFB in
 ``bridge/test/tests/ccc_reading/get_pose_controls_test.py``.
 
 Run with::
@@ -54,16 +56,50 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_a_default_call_asks_about_the_active_object_with_the_default_body_parts(self):
         # None, not a list: the default (every part but the face) is the
         # bridge's to fill in, so that it is defined in one place.
-        self.assertEqual(self._sent(), {"name": None, "body_parts": None})
+        # The hidden default and the full entry are the bridge's too, but
+        # false/false is sent rather than left out, so the wire says what was
+        # asked.
+        self.assertEqual(self._sent(), {"name": None, "body_parts": None, "roles": None,
+                                        "include_hidden": False, "compact": False})
 
     def test_body_parts_reach_the_wire_as_given(self):
         self.assertEqual(self._sent(name="Human", body_parts=["left_arm", "face"]),
-                         {"name": "Human", "body_parts": ["left_arm", "face"]})
+                         {"name": "Human", "body_parts": ["left_arm", "face"], "roles": None,
+                          "include_hidden": False, "compact": False})
+
+    def test_the_narrowing_arguments_reach_the_wire_as_given(self):
+        self.assertEqual(
+            self._sent(roles=["ik_control", "pole"], include_hidden=True, compact=True),
+            {"name": None, "body_parts": None, "roles": ["ik_control", "pole"],
+             "include_hidden": True, "compact": True})
 
     def test_an_unknown_body_part_is_not_checked_here(self):
         # The vocabulary is the bridge's: "elbows" crosses the socket and comes
         # back as unknown_body_parts with known_body_parts beside it.
         self.assertEqual(self._sent(body_parts=["elbows"])["body_parts"], ["elbows"])
+
+    def test_an_unknown_role_is_not_checked_here(self):
+        # As with body parts: "elbow" comes back as unknown_roles with
+        # known_roles beside it.
+        self.assertEqual(self._sent(roles=["elbow"])["roles"], ["elbow"])
+
+    def test_a_badly_shaped_roles_is_rejected_locally(self):
+        for bad in ("pole", [], ["pole", "pole"], [""], ["  "], [1], [None],
+                    True, {"pole": True}):
+            with self.subTest(value=bad):
+                with mock.patch.object(bridge_connection, "send_command") as send_command:
+                    with self.assertRaises(ValueError):
+                        self.tool(roles=bad)
+                send_command.assert_not_called()
+
+    def test_the_two_flags_must_be_real_bools(self):
+        for argument in ("include_hidden", "compact"):
+            for bad in ("false", "true", 0, 1, None, []):
+                with self.subTest(argument=argument, value=bad):
+                    with mock.patch.object(bridge_connection, "send_command") as send_command:
+                        with self.assertRaises(ValueError):
+                            self.tool(**{argument: bad})
+                    send_command.assert_not_called()
 
     def test_a_badly_shaped_body_parts_is_rejected_locally(self):
         for bad in ("left_arm", [], ["left_arm", "left_arm"], [""], ["  "], [1], [None],
@@ -108,7 +144,8 @@ class GetPoseControlsOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
         self.assertEqual(self.bridge.commands()[-1], "get_pose_controls")
         self.assertEqual(self.bridge.decoded_requests()[-1]["params"],
-                         {"name": "Human", "body_parts": ["left_hand"]})
+                         {"name": "Human", "body_parts": ["left_hand"], "roles": None,
+                          "include_hidden": False, "compact": False})
 
     def test_the_answer_comes_back_as_the_add_on_wrote_it(self) -> None:
         response = self.call()

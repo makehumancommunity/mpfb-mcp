@@ -141,7 +141,17 @@ import mpfbmcp
 # caller cannot discover from an answer - what each change kind means, which
 # switches snap, and that `restore_with` is the undo. The ceiling moves by what
 # the three cost, and the paragraph of headroom stays a paragraph.
-DESCRIPTION_CEILING = 80450
+#
+# Raised from 80,450 to 80,800 by
+# [FR 043](../feature-requests/done/043-narrower-pose-controls/README.md), which
+# gave `mpfb_get_pose_controls` three arguments - `roles`, `include_hidden`,
+# `compact` - and the three counts that explain what they leave out: 2,105 B to
+# 2,438 B. It lost the "~60 KB" warning the default answer no longer earns, and
+# names seven of the fifteen roles rather than all of them, since
+# `counts_by_role` names every role on every classified answer. A compact entry
+# drops keys rather than nulling them, so the description has to list the keys
+# it keeps, which is most of the rest. The ceiling moves by what that cost.
+DESCRIPTION_CEILING = 80800
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -177,7 +187,10 @@ DESCRIPTION_CEILING = 80450
 # Raised from 13,700 to 14,650 by FR 042: 944 B across three tools - two
 # batched lists of objects, the array-of-object shape `mpfb_set_targets` pays
 # for, and `mpfb_reset_pose`'s `body_parts` and `include_switches`.
-SCHEMA_CEILING = 14650
+#
+# Raised from 14,650 to 14,900 by FR 043: 250 B for `mpfb_get_pose_controls`'
+# nullable `roles` list and its two bools.
+SCHEMA_CEILING = 14900
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.

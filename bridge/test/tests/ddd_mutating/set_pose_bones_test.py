@@ -196,6 +196,12 @@ def test_a_bone_that_is_not_in_charge_is_refused_naming_the_write_that_would_wor
         "axis": {"up": 1.0}, "degrees": 10.0}}])
     assert error["reason"] == "not_a_control"
     assert error["write_instead"] == {"bone": "forearm_fk.L"}
+    assert "include_hidden" not in error["message"], "forearm_fk.L is listed by default"
+    # FR 043, R12: a pointer at a control the default listing leaves out says so.
+    (error,) = _refused(basemesh, [{"bone": "DEF-f_index.02.L", "rotate_by": {
+        "axis": {"up": 1.0}, "degrees": 10.0}}])
+    assert error["write_instead"] == {"bone": "f_index.02.L"}
+    assert "hidden by default" in error["message"] and "include_hidden" in error["message"]
     (error,) = _refused(basemesh, [{"bone": "forearm_fk.L", "rotate_by": {
         "axis": {"up": 1.0}, "degrees": 10.0}}])
     assert error["reason"] == "chain_not_in_charge"

@@ -40,8 +40,14 @@ gets ``classified: false`` and its bones as a plain hierarchy - never a guess.
   what its "do collections and suffixes suffice" question was for: they do
   not). Its body parts come from :data:`_GAME_ENGINE_BODY_PARTS`, keyed on the
   meta-rig bone a control is named for - the names in MPFB's
-  ``rig.game_engine.json`` - and nothing is hidden by default, because Rigify
-  hid nothing.
+  ``rig.game_engine.json``. Rigify hides nothing there, so
+  ``hidden_by_default`` is **derived by role** instead (:data:`HIDDEN_ROLES`,
+  :func:`hidden_by_role`), from the set the qualifiers hide on ``human_toes``
+  outside the face: the tweaks, the finger and toe segments and the FK spine.
+  The rule rests on that equivalence, which ``bbb_shared/pose_controls_test.py``
+  asserts on ``human_toes``
+  ([FR 043](../../../feature-requests/done/043-narrower-pose-controls/README.md)).
+  The default rig hides nothing: MPFB shows every bone there.
 - **The default rig** (``default``, ``default_no_toes``) has one collection,
   ``Bones``, so it is classified from :data:`_DEFAULT_TABLE`: the arm, leg and
   finger chains MPFB's ``Default*Helpers`` name, plus the spine, neck and head.
@@ -81,14 +87,17 @@ __all__ = (
     "BODY_PARTS",
     "CLASSIFIED_RIGS",
     "DEFAULT_BODY_PARTS",
+    "HIDDEN_ROLES",
     "ROLES",
     "classify",
     "find_rig",
+    "hidden_by_role",
     "parent_switch_target",
     "requested_body_parts",
     "resolve_posing_subject",
     "side_of",
     "unknown_body_parts",
+    "unknown_roles",
 )
 
 import re
@@ -125,6 +134,10 @@ ROLES = (
     "look_target",     # where the eyes look, or an eye itself
     "face_control",    # anything in the face
 )
+
+# The roles Rigify hides on human_toes outside the face, for a game_engine rig,
+# which has no collections to say so; hidden_by_role() adds the FK spine.
+HIDDEN_ROLES = ("tweak", "finger_segment", "toe_segment")
 
 # What identify_rig() answers, mapped to how the rig is classified.
 _RIGIFY = "rigify"
@@ -233,6 +246,29 @@ def unknown_body_parts(body_parts):
     if body_parts is None:
         return []
     return [part for part in body_parts if not isinstance(part, str) or part not in BODY_PARTS]
+
+
+def unknown_roles(roles):
+    """Whatever in ``roles`` is not a role, as given, in order.
+
+    Called by ``get_pose_controls`` itself, not by :func:`resolve_posing_subject`,
+    which the writers share and which takes no roles.
+    """
+    if roles is None:
+        return []
+    return [role for role in roles if not isinstance(role, str) or role not in ROLES]
+
+
+def hidden_by_role(name, body_part, role):
+    """Whether a generated Rigify control is hidden by default, judged by its role alone.
+
+    :data:`HIDDEN_ROLES`, plus the spine's FK controls, which ``human_toes`` has
+    in ``Torso (Tweak)``. Rigify's ``_fk`` naming (``spine_fk``,
+    ``spine_01_fk``, ``pelvis_fk``) tells them from the breasts, which are shown.
+    """
+    if role in HIDDEN_ROLES:
+        return True
+    return body_part == "torso" and role == "fk" and _unsided(name).endswith("_fk")
 
 
 def resolve_posing_subject(services, requested_name, body_parts, not_done=None):
@@ -368,7 +404,7 @@ _GAME_ENGINE_BODY_PARTS = {
 
 
 def _game_engine_body_part(bone):
-    """``(body_part, chain, hidden_by_default)`` for one control on a game_engine rig."""
+    """``(body_part, chain)`` for one control on a game_engine rig; hidden comes from the role."""
     name = _unsided(bone.name)
     if name.startswith("tweak_"):
         name = name[len("tweak_"):]
@@ -381,7 +417,7 @@ def _game_engine_body_part(bone):
             chain = "fk"
         elif "_ik" in name:
             chain = "ik"
-    return (kind, chain, False)
+    return (kind, chain)
 
 
 _SWITCH_PARENT_OF = re.compile(r"^Switch parent of (.+)$")
@@ -878,7 +914,8 @@ def _classify_rigify(rig_object, family):
         if family == _RIGIFY:
             body_part, chain, hidden = _rigify_collection_body_part(bone)
         else:
-            body_part, chain, hidden = _game_engine_body_part(bone)
+            body_part, chain = _game_engine_body_part(bone)
+            hidden = None
         if body_part is None:
             unassigned.append(bone.name)
             continue
@@ -890,6 +927,8 @@ def _classify_rigify(rig_object, family):
             chain = "ik"
         if role == "tweak":
             chain = None
+        if hidden is None:  # human_toes reads its collections; the rule is checked on them
+            hidden = hidden_by_role(bone.name, body_part, role)
         controls[bone.name] = _control(body_part, role, chain, "rigify", hidden)
     return (controls, unassigned)
 

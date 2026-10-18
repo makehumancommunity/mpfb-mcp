@@ -1,8 +1,8 @@
 # Narrower pose controls: hidden controls left out, a roles filter, and a compact form
 
-**Status:** Accepted
+**Status:** Done
 
-[FR 041](../done/041-pose-controls-and-read-back/README.md) measured `mpfb_get_pose_controls` at
+[FR 041](../041-pose-controls-and-read-back/README.md) measured `mpfb_get_pose_controls` at
 63 KB by default on a generated `human_toes` rig, 92 KB with the face, and 46 KB on a generated
 `game_engine` rig. The request allowed this because the answer is read once per character. But
 `body_parts` is the only way to narrow it, and most of what a caller pays for is controls it will
@@ -23,9 +23,10 @@ Three cuts go across body parts, and each answers a different caller:
   that only needs to know which bones exist and what they are for. It is also the only cut that
   helps an unclassified rig, whose answer lists every bone.
 
-All three keep the [bounded-answer rules](../../specifications/responses.md#how-tools-bound-a-large-answer):
+All three keep the [bounded-answer rules](../../../specifications/responses.md#how-tools-bound-a-large-answer):
 whatever a filter leaves out is still visible as a number, and the filter as applied is echoed
-back. Listed in [NEXT_STEPS](../NEXT_STEPS.md#narrower-pose-controls).
+back. Scoped from a NEXT_STEPS entry, which moved to
+[HISTORY](../../HISTORY.md#narrower-pose-controls) when this landed.
 
 ## Goals
 
@@ -138,13 +139,13 @@ back. Listed in [NEXT_STEPS](../NEXT_STEPS.md#narrower-pose-controls).
 
 ## Architecture
 
-- **Tool side** ([tools/get_pose_controls.py](../../src/mpfbmcp/tools/get_pose_controls.py)):
+- **Tool side** ([tools/get_pose_controls.py](../../../src/mpfbmcp/tools/get_pose_controls.py)):
   three new parameters. `include_hidden` and `compact` go through the existing real-`bool`
   validator. `roles` needs the shape check `body_parts` has. Generalise
   `arguments.validated_body_parts` into a list-of-distinct-names validator that takes the argument
   name for its refusal, and keep `validated_body_parts` as the call the posing tools already make,
   so that the two refusals cannot drift apart. The vocabulary is **not** checked here.
-- **Bridge command** ([commands/get_pose_controls.py](../../bridge/mpfb_bridge/commands/get_pose_controls.py)):
+- **Bridge command** ([commands/get_pose_controls.py](../../../bridge/mpfb_bridge/commands/get_pose_controls.py)):
   three new `Param`s. Filtering, counting and the compact projection belong in the command, because
   no other command lists controls. `_control_entry` takes `compact`, and so does `_bone_entry` for
   the unclassified case. The `unknown_roles` check goes in the command after
@@ -153,7 +154,7 @@ back. Listed in [NEXT_STEPS](../NEXT_STEPS.md#narrower-pose-controls).
   shared signature for one caller. `pose_controls` should export the role vocabulary and an
   `unknown_roles()` beside `unknown_body_parts()`, so that the list and the check live in one
   place.
-- **Classification** ([shared/pose_controls.py](../../bridge/mpfb_bridge/shared/pose_controls.py)):
+- **Classification** ([shared/pose_controls.py](../../../bridge/mpfb_bridge/shared/pose_controls.py)):
   `_game_engine_body_part` returns `False` for hidden today, and its module docstring says that is
   "because Rigify hid nothing". The hidden flag on that family moves to after the role is known, in
   `_classify_rigify`, and is derived from a named tuple of hidden roles. **Rewrite that docstring
@@ -173,30 +174,30 @@ back. Listed in [NEXT_STEPS](../NEXT_STEPS.md#narrower-pose-controls).
 
 ## Affected specifications
 
-- [responses.md](../../specifications/responses.md#how-tools-bound-a-large-answer): the
+- [responses.md](../../../specifications/responses.md#how-tools-bound-a-large-answer): the
   pose-controls paragraph gains a second hidden-by-default filter, `counts_by_role` and
   `hidden_by_body_part` as the counts that cover it, and the new measurements beside FR 041's. It
   should also record the rule that a caller-chosen compact form may *drop* keys rather than null
   them, with its reason, or a reason to do otherwise.
-- [tool-interface.md](../../specifications/tool-interface.md): the glossary gains `roles` (the
+- [tool-interface.md](../../../specifications/tool-interface.md): the glossary gains `roles` (the
   argument, beside `role` in an answer), `include_hidden` under the `include_<part>` row, `compact`,
   and the `unknown_roles`/`known_roles` refusal.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md): the FR 041 section says
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md): the FR 041 section says
   `hidden_by_default` comes from Rigify's collection qualifiers. It has to say that on
   `game_engine` the flag is derived by role, from the set those qualifiers produce on
   `human_toes`, and that this is checked.
-- The root [CLAUDE.md](../../CLAUDE.md): the `mpfb_get_pose_controls` row ("`face` only when named,
+- The root [CLAUDE.md](../../../CLAUDE.md): the `mpfb_get_pose_controls` row ("`face` only when named,
   always counted") gains the hidden default, and the test-table row gains the new arguments'
   shapes. These are map edits only.
 
 ## Tests
 
-- **Unit, [tests/test_get_pose_controls.py](../../tests/test_get_pose_controls.py):** `roles` shape
+- **Unit, [tests/test_get_pose_controls.py](../../../tests/test_get_pose_controls.py):** `roles` shape
   (absent, empty, not a list, a non-string, a repeat), all refused before sending; a role name that
   is not one *reaches the wire*; `include_hidden` and `compact` must be real bools; the defaults
-  arrive as `false`/`false`/`null`. [tests/test_arguments.py](../../tests/test_arguments.py) pins
+  arrive as `false`/`false`/`null`. [tests/test_arguments.py](../../../tests/test_arguments.py) pins
   the generalised validator's refusal sentences for both argument names.
-  [tests/test_vocabulary.py](../../tests/test_vocabulary.py) needs nothing new. It is worth
+  [tests/test_vocabulary.py](../../../tests/test_vocabulary.py) needs nothing new. It is worth
   confirming that `roles` carries one JSON type across the server.
 - **Bridge, `ccc_reading/get_pose_controls_test.py`**, on one character per family: no hidden
   control is listed by default and all of them are with `include_hidden`; `counts_by_body_part` is
@@ -214,11 +215,84 @@ back. Listed in [NEXT_STEPS](../NEXT_STEPS.md#narrower-pose-controls).
   rig, for the default call, `include_hidden`, `compact`, and the blocking-pass call; reading still
   changes nothing.
 
+## Decisions taken during the effort
+
+- **Requirement 3's equivalence did not hold on the roles alone, and the rule was settled before it
+  was written.** On a generated `human_toes` rig, outside the face, the 109 hidden controls are the
+  26 tweaks, 40 finger segments, 38 toe segments **and the five `spine_fk` bones**: MPFB's meta-rig
+  gives Rigify's spine `Torso (Tweak)` as its FK collection, so the FK spine is hidden while
+  `torso`, `hips` and `chest` are not. `game_engine` has the same FK spine (`spine_01_fk`,
+  `pelvis_fk`, `spine_02_fk`, `spine_03_fk`). The torso's `fk` role cannot be the rule, because the
+  breasts are torso `fk` on `human_toes` and shown; Rigify's `_fk` naming tells the two apart on
+  both families. So the rule is `HIDDEN_ROLES` (`tweak`, `finger_segment`, `toe_segment`) plus a
+  torso `fk` control named `_fk`, in `pose_controls.hidden_by_role()`, and
+  `bbb_shared/pose_controls_test.py` asserts it equals the collection reading control for control
+  on `human_toes`. On `game_engine` 70 of 122 controls are now hidden.
+- **Requirement 12: a `write_instead` did point at controls the default leaves out, and now says
+  so.** `mpfb_set_pose_bones`' `not_a_control` refusal maps an internal bone to the control named
+  for it, and on `human_toes` 373 of the 450 internal bones that map to a control map to a hidden
+  one (`DEF-spine` to `spine_fk`, `DEF-f_index.02.L` to `f_index.02.L`). That refusal's message now
+  ends "It is hidden by default; mpfb_get_pose_controls lists it with include_hidden." whenever the
+  control it names is hidden, and only then. Nothing else in any writer changed: no argument, no
+  key, no other refusal. `driven_by_helper` names an MPFB helper on the default rig, which hides
+  nothing, and `chain_not_in_charge` names a tool rather than a bone.
+- **`unknown_roles` is refused on an unclassified rig too**, as `unknown_body_parts` is, because a
+  misspelt role is a mistake whatever the rig; only applying the filter needs a classification.
+- **`requested_roles` is echoed in vocabulary order**, as `requested_body_parts` is in body-part
+  order, so two calls naming the same roles echo the same list.
+- **The message names each cut and the argument that undoes it**: the face (`body_parts`), other
+  roles (`counts_by_role`), and hidden controls (`include_hidden`). On an unclassified rig it says
+  that neither `roles` nor `include_hidden` was applied.
+- **`arguments.validated_names()`** is the generalised rule; `validated_body_parts()` stays as the
+  call the five posing tools make, so FR 042's three writers did not change.
+- **The description budget rose by 350 B and the schema budget by 250 B**
+  ([test_description_budget.py](../../../tests/test_description_budget.py)): the description went
+  from 2,105 to 2,438 B for three arguments, three counts and the keys a compact entry keeps, net of
+  the "~60 KB" warning it lost and of naming only seven roles, since `counts_by_role` names all
+  fifteen in every classified answer.
+- **The smoke item asserts `counts_by_role` beside its other keys**, and is otherwise unchanged.
+
+## Verification
+
+Both halves of "verified" hold. The bridge suite gained twelve tests, 513 in all: the hidden
+default and its counts on both generated families, `counts_by_body_part` unchanged across filter
+combinations, the strict intersection, `unknown_roles`, switches unchanged by the new filters,
+compact keys on both Rigify families and on a default rig with helpers, compact `bones` and `null`
+echoes on `mixamo` (`ccc_reading/get_pose_controls_test.py`); the hidden-by-role rule against
+`human_toes`' collections and on `game_engine` (`bbb_shared/pose_controls_test.py`); and the
+refusal pointing at a hidden finger segment (`ddd_mutating/set_pose_bones_test.py`). Three existing
+tests now pass `include_hidden`, since they compare a listing against every control. The unit suite
+gained ten (547). The smoke run is 41 of 41.
+
+The live check, [live_check.py](live_check.py), ran on 2026-10-18 against a windowed Blender 5.1
+with MPFB, the bridge (reloaded to pick the change up) and the community blender-mcp add-on, and
+passed every check. On FR 041's karate character, every `KARATE_BONES` entry is in the default
+answer with its role. On every call measured on all three rigs, what is listed plus what the
+counts say was left out is every control in the requested parts. Reading changed no mode, active
+object, selection or pose. Every `write_instead` at a hidden control said so, and one was confirmed
+over the socket.
+
+Measured, as JSON envelopes:
+
+| Rig | default | `include_hidden` | `compact` | blocking pass |
+|-----|---------|------------------|-----------|---------------|
+| `human_toes` | 31.0 KB (71 of 180) | 63.6 KB | 17.6 KB | 10.9 KB (8 controls) |
+| `game_engine` | 25.0 KB (52 of 122) | 46.1 KB | 15.2 KB | 10.5 KB |
+| default rig | 31.4 KB (106) | 31.4 KB | 14.9 KB | 2.0 KB (no IK controls without helpers) |
+
+**The default came in at 31 KB, not the 25 KB estimated**, because the estimate left out the
+switches: 8.0 KB on `human_toes` and 7.7 KB on `game_engine`, carried whatever is filtered.
+**The blocking pass misses the 8 KB line by the switches alone**: 10.9 KB, of which 8.0 KB is
+switches and 2.9 KB everything else. As the request asked, that is recorded rather than trimmed;
+the switches are what `mpfb_set_pose_switches` is called with. A switches filter would be the next
+cut if a blocking pass has to fit the line.
+
 ## References
 
-- [FR 041](../done/041-pose-controls-and-read-back/README.md): the tool, the role vocabulary,
+- [FR 041](../041-pose-controls-and-read-back/README.md): the tool, the role vocabulary,
   `hidden_by_default`, and the 63/92/46 KB measurements; its
-  [live_check.py](../done/041-pose-controls-and-read-back/live_check.py) has the karate bones.
-- [FR 042](../done/042-posing-bones-switches-and-reset/README.md): the writers this must leave
+  [live_check.py](../041-pose-controls-and-read-back/live_check.py) has the karate bones.
+- [FR 042](../042-posing-bones-switches-and-reset/README.md): the writers this must leave
   unchanged, and `write_instead`.
-- [NEXT_STEPS: More filters on `mpfb_get_pose_controls`](../NEXT_STEPS.md#narrower-pose-controls).
+- [HISTORY: FR 043](../../HISTORY.md#narrower-pose-controls), which replaced NEXT_STEPS' "More filters
+  on `mpfb_get_pose_controls`".

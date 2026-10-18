@@ -15,6 +15,16 @@ The rest is what the table cannot show on its own: that every bone of a real
 default rig is classified, that the helpers MPFB adds are recognised and what
 they drive is read off the constraints, and that a helper MPFB records as
 installed but which is missing from the armature is reported.
+
+**The rule that hides controls on a ``game_engine`` rig is checked against the
+rig where Rigify hides them**
+([FR 043](../../../../feature-requests/done/043-narrower-pose-controls/README.md)).
+``human_toes`` reads ``hidden_by_default`` off its collections and
+``game_engine`` derives it by role; on ``human_toes``, outside the face, the
+two must agree control for control, or the flag would mean different things on
+the two families. FR 043 found they did not agree on the roles alone: the
+spine's FK controls are in ``Torso (Tweak)``, which is why
+``hidden_by_role()`` names them.
 """
 
 import json
@@ -183,3 +193,40 @@ def test_helper_modes_are_unknown_rather_than_guessed_without_mpfbs_ui():
         assert classification["helper_modes"] is None
         assert "RigHelpersProperties" in classification["helper_modes_reason"]
         assert classification["helpers_missing"] == []
+
+
+def test_the_hidden_rule_is_what_rigify_hides_on_human_toes_outside_the_face():
+    """pose_controls.hidden_by_role against human_toes' collection qualifiers"""
+    services = services_or_skip()
+    with Character() as character:
+        rig = rigged_character(services, character, "generated:human_toes")
+        controls = _pose_controls().classify(
+            mpfb_root(), rig, "rigify_generated.human_toes")["controls"]
+
+        outside_the_face = {name: control for name, control in controls.items()
+                            if control["body_part"] != "face"}
+        by_collection = {name for name, control in outside_the_face.items()
+                         if control["hidden_by_default"]}
+        by_role = {name for name, control in outside_the_face.items()
+                   if _pose_controls().hidden_by_role(name, control["body_part"], control["role"])}
+        assert by_collection == by_role
+        assert len(by_collection) == 109
+        assert {"spine_fk", "spine_fk.004"} <= by_collection
+        assert not {"torso", "hips", "chest", "breast.L"} & by_collection
+
+
+def test_the_hidden_flag_on_game_engine_follows_the_role():
+    """pose_controls.classify on a generated game_engine rig, which has no collections to read"""
+    services = services_or_skip()
+    with Character() as character:
+        rig = rigged_character(services, character, "generated:game_engine")
+        controls = _pose_controls().classify(
+            mpfb_root(), rig, "rigify_generated.game_engine")["controls"]
+
+        hidden_roles = set(_pose_controls().HIDDEN_ROLES)
+        for name, control in controls.items():
+            expected = control["role"] in hidden_roles or (
+                control["body_part"] == "torso" and control["role"] == "fk")
+            assert control["hidden_by_default"] is expected, name
+        assert {control["role"] for control in controls.values()
+                if control["hidden_by_default"]} == {"tweak", "finger_segment", "fk"}

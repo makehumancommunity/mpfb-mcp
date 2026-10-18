@@ -126,17 +126,6 @@ Pose loading is the natural next step, now that there is a reset to fall back on
 `rotate_to` takes what a saved pose would hold. Like the posing tools, it is Blender-side logic in
 bridge commands that reimplements what MPFB's UI does.
 
-<a id="narrower-pose-controls"></a>
-
-## More filters on `mpfb_get_pose_controls`
-
-Scoped as [FR 043](043-narrower-pose-controls/README.md) (Accepted): hidden controls left out by
-default (`include_hidden`), with `hidden_by_default` derived by role on `game_engine` so both
-generated families hide the same kinds of control; a `roles` filter with `counts_by_role`; and a
-`compact` form. [FR 041](done/041-pose-controls-and-read-back/README.md) measured the answer at
-63 KB by default on a generated `human_toes` rig, of which 109 of the 180 controls outside the face
-are hidden by default. `mpfb_get_pose` takes none of the new filters.
-
 <a id="placing-a-character"></a>
 
 ## Placing a character

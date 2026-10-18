@@ -33,6 +33,26 @@ that never asked for ``face`` can still see that it exists and how large it is,
 and ``requested_body_parts`` echoes the filter that was applied. Switches are
 filtered with their body part.
 
+**Three narrower cuts go across body parts**
+([FR 043](../../../feature-requests/done/043-narrower-pose-controls/README.md)),
+because most of a default answer was controls a first pass never touches.
+``include_hidden`` (default false) leaves out what ``hidden_by_default`` marks,
+which is what Rigify's own UI does; ``roles`` lists only controls of the named
+roles; ``compact`` keeps only what names a control and says what it is for. The
+filters intersect: naming ``finger_segment`` does not override the hidden
+default. Every cut stays visible as a number - ``counts_by_body_part``
+(every part, unfiltered), ``counts_by_role`` (the requested parts, before the
+role and hidden filters) and ``hidden_by_body_part`` (what passed the role
+filter and is hidden) - and every filter is echoed, so no short ``controls``
+reads as complete. **Switches follow ``body_parts`` alone**: an agent placing
+``hand_ik.L`` must learn that ``IK_FK`` puts the arm in IK without having
+thought to ask for the ``switches`` role. A compact entry *drops* keys rather
+than nulling them, because the caller chose the shape and the echo says which;
+``driven_by`` stays on the default rig, since it is what says a rotation will
+not last. ``unknown_roles`` is checked here, after
+``pose_controls.resolve_posing_subject()``, which the writers share and which
+takes no roles.
+
 **Switches are listed with what each end means.** Rigify keeps them as custom
 properties on hidden-looking bones, and its own description says what a switch
 is but never which end is which; ``ends`` says that ``IK_FK`` 0.0 is IK. A
@@ -60,6 +80,7 @@ from ..shared import pose_controls
 from ..shared.character_frame import Frame
 from ..validation import Param
 from ..validation import TYPE_ARRAY
+from ..validation import TYPE_BOOLEAN
 from ..validation import TYPE_STRING
 
 _LOG = get_logger("commands.getposecontrols")
@@ -71,6 +92,14 @@ PARAMS = (
     Param("body_parts", TYPE_ARRAY, default=None, nullable=True,
           description="Which body parts to list, from: {:s}. Omit for every part except "
                       "face.".format(", ".join(pose_controls.BODY_PARTS))),
+    Param("roles", TYPE_ARRAY, default=None, nullable=True,
+          description="Which roles to list, from: {:s}. Omit for every role.".format(
+              ", ".join(pose_controls.ROLES))),
+    Param("include_hidden", TYPE_BOOLEAN, default=False,
+          description="Also list the controls marked hidden_by_default."),
+    Param("compact", TYPE_BOOLEAN, default=False,
+          description="List each control by name and labels only, without its rest position, "
+                      "rotation mode, locks or settings."),
 )
 
 SUMMARY = ("List the controls that pose a character, grouped by body part, with each one's "
@@ -118,11 +147,16 @@ def _rest(frame, bone):
     }
 
 
-def _control_entry(frame, rig_object, name, control, family):
-    bone = rig_object.data.bones[name]
-    pose_bone = rig_object.pose.bones[name]
+def _control_entry(frame, rig_object, name, control, family, compact):
     entry = {"bone": name, "role": control["role"], "chain": control["chain"],
              "source": control["source"]}
+    if compact:
+        entry["hidden_by_default"] = control["hidden_by_default"]
+        if family == "default":
+            entry["driven_by"] = control["driven_by"]
+        return entry
+    bone = rig_object.data.bones[name]
+    pose_bone = rig_object.pose.bones[name]
     entry.update(_rest(frame, bone))
     entry["rotation_mode"] = pose_bone.rotation_mode
     entry["locked"] = _locked(pose_bone)
@@ -134,26 +168,37 @@ def _control_entry(frame, rig_object, name, control, family):
     return entry
 
 
-def _bone_entry(frame, bone, pose_bone):
+def _bone_entry(frame, bone, pose_bone, compact):
     entry = {"bone": bone.name, "parent": None if bone.parent is None else bone.parent.name,
              "deform": bool(bone.use_deform)}
+    if compact:
+        return entry
     entry.update(_rest(frame, bone))
     entry["rotation_mode"] = pose_bone.rotation_mode
     return entry
 
 
-def _message_for(rig, identified, classification, counts, requested):
+def _message_for(rig, identified, classification, tally):
     if not classification["classified"]:
         return ("'{:s}' is identified as '{!s}', which these tools do not classify, so its {:d} "
-                "bones are listed as a hierarchy with no body part or role. Classified rigs are "
-                "{:s}.".format(rig.name, identified, len(rig.data.bones),
-                               ", ".join(pose_controls.CLASSIFIED_RIGS)))
-    listed = sum(counts[part] for part in requested)
+                "bones are listed as a hierarchy with no body part or role, and neither roles "
+                "nor include_hidden is applied. Classified rigs are {:s}.".format(
+                    rig.name, identified, len(rig.data.bones),
+                    ", ".join(pose_controls.CLASSIFIED_RIGS)))
+    counts = tally["counts_by_body_part"]
+    requested = tally["requested"]
     parts = ["'{:s}' ({:s}) has {:d} control(s); {:d} listed for {:s}.".format(
-        rig.name, identified, sum(counts.values()), listed, ", ".join(requested))]
+        rig.name, identified, sum(counts.values()), tally["listed"], ", ".join(requested))]
     if "face" not in requested and counts["face"]:
         parts.append(" {:d} face control(s) are left out unless body_parts names 'face'.".format(
             counts["face"]))
+    if tally["other_roles"]:
+        parts.append(" {:d} control(s) of other roles are left out; counts_by_role says which "
+                     "roles they have.".format(tally["other_roles"]))
+    hidden = sum(tally["hidden_by_body_part"].values())
+    if hidden and not tally["include_hidden"]:
+        parts.append(" {:d} hidden control(s) are left out; pass include_hidden to list "
+                     "them.".format(hidden))
     if classification["family"] == "default":
         modes = classification["helper_modes"] or {}
         installed = [mode for mode, value in modes.items() if value != "NONE"]
@@ -171,10 +216,57 @@ def _message_for(rig, identified, classification, counts, requested):
     return "".join(parts)
 
 
+def _unknown_roles(resolved, roles):
+    """``resolved`` turned into the ``unknown_roles`` refusal, or ``None`` when every role is one."""
+    unknown = pose_controls.unknown_roles(roles)
+    if not unknown:
+        return None
+    blocked = dict(resolved)
+    blocked.update(
+        blocked_by="unknown_roles",
+        message="roles names {:s}, which {:s} not a role. The roles are: {:s}.".format(
+            ", ".join(repr(role) for role in unknown), "is" if len(unknown) == 1 else "are",
+            ", ".join(pose_controls.ROLES)),
+        extra={"unknown_roles": unknown, "known_roles": list(pose_controls.ROLES)})
+    return blocked
+
+
+def _listing(frame, rig, classification, params, requested):
+    """``controls`` and the counts that explain whatever it leaves out, filtered as asked."""
+    roles = params["roles"]
+    include_hidden = params["include_hidden"]
+    counts = {part: 0 for part in pose_controls.BODY_PARTS}
+    by_role = {role: 0 for role in pose_controls.ROLES}
+    hidden = {part: 0 for part in requested}
+    grouped = {part: [] for part in requested}
+    other_roles = 0
+    for name, control in classification["controls"].items():
+        part = control["body_part"]
+        counts[part] += 1
+        if part not in grouped:
+            continue
+        by_role[control["role"]] += 1
+        if roles is not None and control["role"] not in roles:
+            other_roles += 1
+            continue
+        if control["hidden_by_default"]:
+            hidden[part] += 1
+            if not include_hidden:
+                continue
+        grouped[part].append(_control_entry(frame, rig, name, control, classification["family"],
+                                            params["compact"]))
+    return {"controls": grouped, "counts_by_body_part": counts, "counts_by_role": by_role,
+            "hidden_by_body_part": hidden, "other_roles": other_roles, "requested": requested,
+            "include_hidden": include_hidden,
+            "listed": sum(len(entries) for entries in grouped.values())}
+
+
 def get_pose_controls(params, resolution):  # pylint: disable=too-many-locals
     """List one character's controls, or its bones when its rig is not classified."""
     resolved = pose_controls.resolve_posing_subject(
         resolution.services, params["name"], params["body_parts"])
+    if resolved["blocked_by"] is None:
+        resolved = _unknown_roles(resolved, params["roles"]) or resolved
     if resolved["blocked_by"] is not None:
         _LOG.debug("get_pose_controls: refused %r", resolved["blocked_by"])
         return _blocked(resolved)
@@ -197,37 +289,40 @@ def get_pose_controls(params, resolution):  # pylint: disable=too-many-locals
         classified=classification["classified"],
         classified_rigs=list(pose_controls.CLASSIFIED_RIGS),
         character_frame=frame.describe(),
+        compact=params["compact"],
     )
 
     if not classification["classified"]:
         answer.update(
             requested_body_parts=None,
+            requested_roles=None,
+            include_hidden=None,
             counts_by_body_part=None,
+            counts_by_role=None,
+            hidden_by_body_part=None,
             controls=None,
             switches=None,
             helper_modes=None,
             helper_modes_reason=None,
             helpers_missing=None,
             unassigned_bones=None,
-            bones=[_bone_entry(frame, bone, rig.pose.bones[bone.name])
+            bones=[_bone_entry(frame, bone, rig.pose.bones[bone.name], params["compact"])
                    for bone in rig.data.bones],
-            message=_message_for(rig, identified, classification, None, None),
+            message=_message_for(rig, identified, classification, None),
         )
         return answer
 
     requested = pose_controls.requested_body_parts(params["body_parts"])
-    controls = classification["controls"]
-    counts = {part: 0 for part in pose_controls.BODY_PARTS}
-    grouped = {part: [] for part in requested}
-    for name, control in controls.items():
-        counts[control["body_part"]] += 1
-        if control["body_part"] in grouped:
-            grouped[control["body_part"]].append(
-                _control_entry(frame, rig, name, control, classification["family"]))
+    tally = _listing(frame, rig, classification, params, requested)
     answer.update(
         requested_body_parts=list(requested),
-        counts_by_body_part=counts,
-        controls=grouped,
+        requested_roles=None if params["roles"] is None else [
+            role for role in pose_controls.ROLES if role in params["roles"]],
+        include_hidden=params["include_hidden"],
+        counts_by_body_part=tally["counts_by_body_part"],
+        counts_by_role=tally["counts_by_role"],
+        hidden_by_body_part=tally["hidden_by_body_part"],
+        controls=tally["controls"],
         switches=[switch for switch in classification["switches"] or ()
                   if switch["body_part"] in requested],
         helper_modes=classification["helper_modes"],
@@ -235,8 +330,8 @@ def get_pose_controls(params, resolution):  # pylint: disable=too-many-locals
         helpers_missing=classification["helpers_missing"],
         unassigned_bones=classification["unassigned"],
         bones=None,
-        message=_message_for(rig, identified, classification, counts, requested),
+        message=_message_for(rig, identified, classification, tally),
     )
-    _LOG.debug("get_pose_controls: %d controls, %d listed", len(controls),
-               sum(len(entries) for entries in grouped.values()))
+    _LOG.debug("get_pose_controls: %d controls, %d listed", len(classification["controls"]),
+               tally["listed"])
     return answer

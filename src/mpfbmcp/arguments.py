@@ -48,6 +48,7 @@ __all__ = (
     "validated_count",
     "validated_flag",
     "validated_mode",
+    "validated_names",
     "validated_subject",
     "validated_text",
 )
@@ -156,30 +157,42 @@ def validated_text(value: object, argument: str, hint: str) -> str | None:
     return value
 
 
-def validated_body_parts(value: object) -> list[str] | None:
-    """An optional, non-empty list of distinct body part names; ``None`` means the tool's default.
+def validated_names(value: object, argument: str, omitted: str) -> list[str] | None:
+    """An optional, non-empty list of distinct names; ``None`` means the tool's default.
 
-    Shape only: which names are body parts is answered by the bridge, which
-    lists them when one is not. An empty list is refused rather than read as
-    "none", because no posing tool has anything to say about no body parts and
-    the caller almost certainly meant the default. A repeated name is refused
-    because it can only be a mistake. Shared by every posing tool, since FR 042
-    takes the same argument FR 041 introduced.
+    Shape only: which names are valid is answered by the bridge, which lists
+    them when one is not. An empty list is refused rather than read as "none",
+    because no tool taking such a filter has anything to say about nothing and
+    the caller almost certainly meant the default; ``omitted`` says what the
+    default is. A repeated name is refused because it can only be a mistake.
+    One rule for ``body_parts`` and ``roles``
+    ([FR 043](../../feature-requests/done/043-narrower-pose-controls/README.md)),
+    so the two refusals cannot drift apart.
     """
     if value is None:
         return None
     if not isinstance(value, list):
-        raise ValueError("body_parts must be a list of strings or omitted, got {!r}".format(value))
+        raise ValueError("{:s} must be a list of strings or omitted, got {!r}".format(
+            argument, value))
     if not value:
-        raise ValueError("body_parts must not be empty; omit it for the default body parts")
-    for position, part in enumerate(value):
-        if not isinstance(part, str) or not part.strip():
-            raise ValueError("body_parts[{}] must be a non-empty string, got {!r}".format(
-                position, part))
-    repeated = sorted(set(part for part in value if value.count(part) > 1))
+        raise ValueError("{:s} must not be empty; omit it for {:s}".format(argument, omitted))
+    for position, name in enumerate(value):
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("{:s}[{}] must be a non-empty string, got {!r}".format(
+                argument, position, name))
+    repeated = sorted(set(name for name in value if value.count(name) > 1))
     if repeated:
-        raise ValueError("body_parts names {} more than once".format(", ".join(repeated)))
+        raise ValueError("{:s} names {} more than once".format(argument, ", ".join(repeated)))
     return list(value)
+
+
+def validated_body_parts(value: object) -> list[str] | None:
+    """``body_parts``, as every posing tool takes it: :func:`validated_names` with its wording.
+
+    Shared by every posing tool, since FR 042 takes the same argument FR 041
+    introduced.
+    """
+    return validated_names(value, "body_parts", "the default body parts")
 
 
 # A spelling a tool no longer takes, per tool, and the one that replaced it.

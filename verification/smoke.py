@@ -413,7 +413,8 @@ def _posable(envelope: dict) -> dict:
     return envelope
 
 
-@_item("mpfb_get_pose_controls", "controls", "counts_by_body_part", "character_frame")
+@_item("mpfb_get_pose_controls", "controls", "counts_by_body_part", "counts_by_role",
+       "character_frame")
 def _get_pose_controls(run: _Run) -> dict:
     # After generation, so a run with Rigify lists the generated rig's controls
     # rather than being refused a meta-rig.

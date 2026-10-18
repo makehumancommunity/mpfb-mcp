@@ -311,7 +311,15 @@ standard rig into one. So the posing tools read the generated rig itself, in the
   `rigify_generated.game_engine` rig - which MPFB makes only through its legacy convert-to-Rigify
   operator - has **every control in one collection**, `Bones`, and `_l`/`_r` sides; collections and
   suffixes are not enough there (established live during FR 041). Its body parts come from a token
-  table keyed on the meta-rig bone each control is named for. The default rig has one collection
+  table keyed on the meta-rig bone each control is named for. With no qualifiers to read,
+  **`hidden_by_default` is derived by role** there
+  ([FR 043](../feature-requests/done/043-narrower-pose-controls/README.md)): `tweak`,
+  `finger_segment`, `toe_segment`, and the torso's `_fk` controls - the FK spine, which MPFB's
+  meta-rig puts in `Torso (Tweak)` while the breasts, also torso `fk`, are shown. The rule is the
+  set the qualifiers hide on `human_toes` outside the face; FR 043 found the roles alone missed the
+  FK spine, and the bridge test asserts the two agree control for control on a generated
+  `human_toes` rig, which keeps reading its collections so that there is something to check the
+  rule against. The default rig hides nothing: MPFB shows every bone there. The default rig has one collection
   too, and is classified from a table of the chains MPFB's `Default*Helpers` name; the bridge test
   reads those classes out of `sys.modules` and fails if MPFB renames a bone. Which helpers a default
   rig carries is MPFB's own record (`RigHelpersProperties`, read off its UI package as

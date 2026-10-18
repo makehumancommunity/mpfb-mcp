@@ -13,9 +13,13 @@ at this description rather than repeating it, which is how
 [a concept several tools share](../../../specifications/tool-interface.md#a-tool-description-is-call-time-instruction-with-a-budget)
 is paid for once.
 
-**``body_parts`` is validated for shape only**: a list of distinct, non-empty
-strings, or omitted. Which names are body parts is answered inside Blender,
-which lists them when one is not. Everything about what the answer holds - the
+**``body_parts`` and ``roles`` are validated for shape only**: a list of
+distinct, non-empty strings, or omitted, by one rule
+(:func:`arguments.validated_names`). Which names are body parts and roles is
+answered inside Blender, which lists them when one is not.
+``include_hidden`` and ``compact``
+([FR 043](../../../feature-requests/done/043-narrower-pose-controls/README.md))
+are real bools. Everything about what the answer holds - the
 classification, the frame, the switches - is decided and tested in
 ``bridge/mpfb_bridge/shared/pose_controls.py`` and its bridge tests.
 """
@@ -44,7 +48,10 @@ def register(mcp: FastMCP) -> None:
         )
     )
     def mpfb_get_pose_controls(name: str | None = None,
-                               body_parts: list[str] | None = None) -> dict[str, object]:
+                               body_parts: list[str] | None = None,
+                               roles: list[str] | None = None,
+                               include_hidden: bool = False,
+                               compact: bool = False) -> dict[str, object]:
         """
         List the bones that pose a MakeHuman character: its rig's controls,
         grouped by body part. Call once per character before posing; check the
@@ -59,35 +66,46 @@ def register(mcp: FastMCP) -> None:
         `body_parts`: any of `root`, `torso`, `head`, `face`, `left_arm`,
         `right_arm`, `left_hand`, `right_hand`, `left_leg`, `right_leg` (feet
         and toes belong to the leg). Omitted, every part **except `face`**,
-        which must be named. `counts_by_body_part` always covers every part.
+        which must be named. `roles` lists only those roles. Controls
+        `hidden_by_default` (Rigify's tweaks, finger and toe segments, FK
+        spine) are left out unless `include_hidden`, even when their role is
+        named. What is left out is counted: `counts_by_body_part` (every
+        part), `counts_by_role` (requested parts only), `hidden_by_body_part`.
 
         In `result`, `controls` maps each body part to its controls: `bone` (the name to
         pass back), `role`, `chain` (`ik`/`fk` on a limb), `source` (`rigify`,
         `rig`, or `mpfb_helper` for an IK helper MPFB added), rest `head` and
-        `direction`, `rotation_mode`, `locked` channels and
-        `hidden_by_default` (Rigify's tweak and detail controls - start with
-        the others). Roles: `ik_control` places a hand or foot, `pole` aims the
-        elbow or knee, `fk` is rotated directly, `body` is Rigify's
-        torso/hips/chest, `finger_master`/`toe_master` bend a whole digit,
-        `switches` carries a limb's switches, `look_target` aims the eyes.
+        `direction`, `rotation_mode`, `locked` channels, `hidden_by_default`.
+        `compact: true` keeps only `bone`, `role`, `chain`, `source`,
+        `hidden_by_default` (and `driven_by`); other keys are absent. Roles:
+        `ik_control` places a hand or foot, `pole` aims the elbow or knee,
+        `fk` is rotated directly, `body` is Rigify's torso/hips/chest,
+        `finger_master`/`toe_master` bend a whole digit, `switches` carries a
+        limb's switches, `look_target` aims the eyes; `counts_by_role` names
+        every role.
 
-        `switches` (Rigify only): per body part, each custom property such as
-        `IK_FK`, `IK_Stretch`, `pole_vector`, `IK_parent`, with `range`,
-        `default`, `ends` (what each end means: `IK_FK` 0.0 is IK) and, for a
-        parent switch, `parent_names` (the parent each integer selects).
+        `switches` (Rigify only, by body part, never cut by the other
+        filters): each custom property such as `IK_FK`, `IK_Stretch`,
+        `pole_vector`, `IK_parent`, with `range`, `default`, `ends` (what each
+        end means: `IK_FK` 0.0 is IK) and, for a parent switch,
+        `parent_names` (the parent each integer selects).
 
         On a default rig, `helper_modes` reports MPFB's IK helpers and an FK
         bone a helper holds has `driven_by`: rotating it does nothing; move the
         helper. A rig that is not classified (`classified: false`) is listed
         as plain `bones` instead; `classified_rigs` says which are. Refusals:
         `rig_not_found`, `rigify_not_generated` (call
-        `mpfb_generate_rigify_rig`), `unknown_body_parts`. A full answer for a
-        generated Rigify rig is ~60 KB; name the body parts you will pose.
+        `mpfb_generate_rigify_rig`), `unknown_body_parts`, `unknown_roles`.
         """
         return backend.send(
             "get_pose_controls",
             params={
                 "name": arguments.validated_subject(name),
                 "body_parts": arguments.validated_body_parts(body_parts),
+                "roles": arguments.validated_names(roles, "roles", "every role"),
+                # A truthy "false" would list a hundred hidden controls, and a
+                # falsy 0 would drop every key a caller then reads.
+                "include_hidden": arguments.validated_flag(include_hidden, "include_hidden"),
+                "compact": arguments.validated_flag(compact, "compact"),
             },
         )

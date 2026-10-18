@@ -132,11 +132,52 @@ something is only honest if the hidden part is still visible as a number, so
 `counts_by_body_part` always covers all ten parts whatever was asked, `requested_body_parts` echoes
 the filter as applied, and the description says the face must be named. `mpfb_get_pose`'s
 `at_rest` is about the whole character for the same reason: a posed face behind the default filter
-must not read as a character at rest. Measured: the controls answer for a generated `human_toes`
-rig is 63 KB by default and 92 KB with the face, two arms alone 13 KB - an answer read once per
-character, and its description says to name the parts being posed; the pose read-back, read after
-every change, holds near the 8 KB line (7.2 KB for 13 posed controls; about 290 B per posed
-control on 3.8 KB of fixed sections, so 20 posed controls is 9.6 KB).
+must not read as a character at rest.
+
+`mpfb_get_pose_controls` has **a second default cut, and two more filters across body parts**
+([FR 043](../feature-requests/done/043-narrower-pose-controls/README.md)), because most of what its
+default answer cost was controls a first pass never touches. `include_hidden` defaults to false,
+so a control `hidden_by_default` is not listed - Rigify's own UI starts the same way. `roles` lists
+only the named roles. `compact` keeps only what names a control and says what it is for. The filters
+**intersect**: naming `finger_segment` does not override the hidden default, so that a call's
+meaning never depends on which filters it combined. Each cut has a count that covers it:
+`counts_by_role` counts the requested parts per role *before* the role and hidden filters, with
+every role present as 0 if need be, which makes `roles` discoverable as `counts_by_body_part` makes
+`body_parts`; and `hidden_by_body_part` counts, per requested part, what passed the role filter and
+is hidden, present whatever `include_hidden` is, so the size of the cut is visible as well as the
+fact. Listed plus left out is then every control in the requested parts, by the answer's own
+numbers, and the message names the argument that brings each cut back. **The switches are cut by
+`body_parts` alone**: an agent placing `hand_ik.L` has to learn that `IK_FK` puts the arm in IK
+without having thought to ask for the `switches` role.
+
+**A compact form the caller chose may drop keys rather than null them.** Elsewhere a field that does
+not apply is `null` rather than absent - a section left out above, `truncated` when false - because
+a caller inferring a field from its absence will misread it. A compact entry is the exception, and only because the caller asked for that shape and
+the answer echoes `compact`: nulling `head`, `direction`, `rotation_mode`, `locked` and `settings`
+on every entry would spend a key per control on saying nothing, which is the cost the form exists
+to remove. The description lists the keys a compact entry keeps. The one dropped field that changes
+what a write does, `locked`, is safe to drop because `mpfb_set_pose_bones` checks locks after it
+writes and refuses rather than misleads; `driven_by` stays on the default rig, because it is what
+says that rotating the bone does nothing that lasts.
+
+Measured, as JSON envelopes, on a generated `human_toes` rig:
+
+| Call | FR 041 | FR 043 |
+|------|--------|--------|
+| default | 63 KB (180 controls) | 31 KB (71 listed, 109 hidden) |
+| `include_hidden` (FR 041's default) | - | 64 KB |
+| `compact` | - | 18 KB |
+| `roles: ["ik_control", "pole"]`, `compact` (a blocking pass) | - | 10.9 KB, of which 8.0 KB is switches |
+| every part, face included | 92 KB | - |
+
+On a generated `game_engine` rig the default is 25 KB (52 of 122), `include_hidden` 46 KB (FR 041
+measured 46 KB, when nothing was hidden there), compact 15 KB and the blocking pass 10.5 KB; on the
+default rig, which hides nothing, 31 KB and 15 KB compact. The blocking pass misses the 8 KB line
+by its switches alone - about 7.7 to 8 KB on either Rigify family, which `mpfb_set_pose_switches`
+needs as they are - and what is not switches is 2.9 KB; the request said to record that rather
+than trim the switches. The pose read-back, read after every change, holds near the 8 KB line
+(7.2 KB for 13 posed controls; about 290 B per posed control on 3.8 KB of fixed sections, so 20
+posed controls is 9.6 KB), and takes none of these filters: it lists only what is posed.
 
 ## How tools report a derived rather than recorded fact
 

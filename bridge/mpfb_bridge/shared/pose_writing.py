@@ -564,10 +564,16 @@ def charge_refusal(classification, in_charge, name):
     control = controls.get(name)
     if control is None:
         instead = _control_for_internal(controls, name)
+        pointer = ""
+        if instead is not None:
+            # A finger segment or the FK spine is named here, and the default
+            # mpfb_get_pose_controls listing leaves both out (FR 043, R12).
+            pointer = " Write '{:s}' instead.{:s}".format(
+                instead, " It is hidden by default; mpfb_get_pose_controls lists it with "
+                         "include_hidden." if controls[instead]["hidden_by_default"] else "")
         return ("not_a_control",
                 "'{:s}' is not a control: the rig moves it itself, from its controls, and a "
-                "write would be overwritten on the next evaluation.{:s}".format(
-                    name, "" if instead is None else " Write '{:s}' instead.".format(instead)),
+                "write would be overwritten on the next evaluation.{:s}".format(name, pointer),
                 None if instead is None else {"bone": instead})
     if control["driven_by"]:
         helper = control["driven_by"][0]
