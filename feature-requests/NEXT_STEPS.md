@@ -130,14 +130,15 @@ bridge commands that reimplements what MPFB's UI does.
 
 ## Placing a character
 
-Found by the line-up session ([FULL_SESSION.md](FULL_SESSION.md)). No tool puts a character
-anywhere but the origin: `mpfb_create_human` has no `location`, and `mpfb_add_rig` moves the
-basemesh back to the origin anyway. So six characters were built on top of each other and spread
-out by hand through blender mcp, which is the first thing any multi-character scene needs. A
-`location`/`rotation` on `mpfb_create_human`, or a `mpfb_move_character` that moves the rig (or
-the basemesh when there is none), would cover it. Moving by hand also runs into
-[the sub-rig defect](#sub-rig-child-of-breaks-away-from-the-origin), so a tool that moves a
-character would have to handle that too, rather than leaving it to the caller.
+Scoped as [FR 045](045-placing-a-character/README.md) (Proposed): `mpfb_place_character`, which
+sets a character's world `position` and its `facing` (or turns it to `face_toward` a point or an
+object), and reports a `footprint` for spacing characters. It also adds a `placement` section to
+`mpfb_get_character_summary`. Found by the line-up session ([FULL_SESSION.md](FULL_SESSION.md)),
+which built six characters at the origin and spread them out by hand through blender mcp. Scoping
+corrected one claim made here: `mpfb_add_rig` does not send the character back to the origin. The
+rig takes the basemesh's location. What it may drop is the basemesh's *rotation*, which the request
+checks first. Sub-rigs are reported by that request, not repaired; the repair stays
+[below](#sub-rig-child-of-breaks-away-from-the-origin).
 
 <a id="sub-rig-child-of-breaks-away-from-the-origin"></a>
 
@@ -146,12 +147,15 @@ character would have to handle that too, rather than leaving it to the caller.
 Found by the line-up session. This is an MPFB defect, and belongs upstream as well as here.
 `ponytail01` ships a sub-rig, and its `root` bone gets a `CHILD_OF` constraint on the main rig's
 `head` with `owner_space = POSE`, `target_space = WORLD` and `set_inverse_pending = True`
-(`mpfb2/src/mpfb/entities/rig.py:577`). That is right only while the main rig's object transform
+(`mpfb2/src/mpfb/entities/rig.py:599`). That is right only while the main rig's object transform
 is identity. On a character that had been moved and turned, 2355 of the hair's 3718 vertices were
 dragged two metres toward the world origin. Setting both spaces to `WORLD` and recomputing the
-inverse fixed it, but only until the rig was moved again. Until MPFB is fixed, `mpfb_add_asset`
-could report a sub-rig created on a character whose rig is not at the origin, and a
-[placing tool](#placing-a-character) would have to repair every sub-rig it moves.
+inverse fixed it, but only until the rig was moved again. [FR 045](045-placing-a-character/README.md) makes
+the break visible but does not repair it: `mpfb_place_character` and `mpfb_add_asset` both report
+`subrigs_broken_by_move`, and FR 045 builds a sub-rig test fixture this effort can reuse. What is
+left here is the repair itself, in the bridge and upstream. Its first question is whether a binding
+exists, `POSE`/`POSE` being the candidate, that survives a move made by hand rather than only by the
+tool.
 
 <a id="license-in-the-catalogues"></a>
 
