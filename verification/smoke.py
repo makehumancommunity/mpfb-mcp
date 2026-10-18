@@ -425,6 +425,47 @@ def _get_pose(run: _Run) -> dict:
     return _posable(run.tools["mpfb_get_pose"](name=_character(run)))
 
 
+def _pose_control(run: _Run) -> str:
+    """A bone every rig lets a write move: the root of a classified rig, or its first bone."""
+    controls = run("mpfb_get_pose_controls", name=_character(run))["result"]
+    if controls.get("blocked_by") is not None:
+        raise Skipped("the character's rig cannot be posed here ({})".format(
+            controls["blocked_by"]))
+    if not controls.get("classified"):
+        return controls["bones"][0]["bone"]
+    for entries in (controls.get("controls") or {}).values():
+        for control in entries:
+            if control["role"] == "root":
+                return control["bone"]
+    raise Skipped("the character's rig has no root control")
+
+
+@_item("mpfb_set_pose_bones", "changes", "landmarks", "limbs", "resolution_errors")
+def _set_pose_bones(run: _Run) -> dict:
+    # mpfb_reset_pose below puts it back, so the run leaves the pose as it found it.
+    return run.tools["mpfb_set_pose_bones"](
+        name=_character(run), bones=[{"bone": _pose_control(run), "move_by": {"up": 0.05}}])
+
+
+@_item("mpfb_set_pose_switches", "changes", "landmarks", "limbs")
+def _set_pose_switches(run: _Run) -> dict:
+    if run.rig_family != "rigify":
+        raise Skipped("only a generated Rigify rig has switches, and this run's rig is "
+                      "{}".format(run.rig_family))
+    # IK to FK, snapped: the switch changes and the arm does not move.
+    return _posable(run.tools["mpfb_set_pose_switches"](
+        name=_character(run),
+        switches=[{"body_part": "left_arm", "switch": "IK_FK", "value": 1.0}]))
+
+
+@_item("mpfb_reset_pose", "restore_with", "bones_reset", "not_restorable")
+def _reset_pose(run: _Run) -> dict:
+    # include_switches is the one argument not left at its default, because it
+    # is what returns the switch the item above changed, and so what lets the
+    # run leave the pose as it found it.
+    return _posable(run.tools["mpfb_reset_pose"](name=_character(run), include_switches=True))
+
+
 @_item("mpfb_remove_asset", "asset_object_name", "object_type", "basemesh_name",
        "objects_removed")
 def _remove_asset(run: _Run) -> dict:

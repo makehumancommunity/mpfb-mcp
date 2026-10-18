@@ -200,6 +200,15 @@ the asset's containing directory name against the asset names in the installed p
   charge. FR 041's live check found that Rigify's IK chain gives a little even with `IK_Stretch`
   at 0.0 (17 mm on a 480 mm arm), so a message says how much longer a limb is rather than blaming a
   switch.
+- **Requested beside achieved, with a tolerance, wherever a write can be deflected.** A constraint,
+  an IK chain or a limit can stop a bone short of where it was sent, and nothing records that it
+  did. So `mpfb_set_pose_bones` reports each bone's evaluated position and rotation after the
+  whole batch, `achieved` (within 1 mm, 0.5 degrees and 0.001 of a scale factor) and, when not,
+  `deviation` by how much; `achieved_measure` carries the definition in every answer, and the
+  tolerances live in one module (`shared/pose_writing.py`). The same tolerance decides when a
+  locked channel counts as changed: an axis read back to three decimals and sent again leaks about
+  5e-4 rad into a locked Euler component, which is rounding to put back, not a request to refuse
+  ([FR 042](../feature-requests/done/042-posing-bones-switches-and-reset/README.md)).
 
 ## A response says which source answered it
 
@@ -283,6 +292,16 @@ millimetre, unit vectors to three decimals, angles to a tenth of a degree, all i
   vectors in world space, so a world position is one transform away for a caller who wants one. A
   world position is never reported in its place: it changes every time the character is placed,
   and an agent cannot reason with it.
+- **A write takes exactly what a read reports**
+  ([FR 042](../feature-requests/done/042-posing-bones-switches-and-reset/README.md)): `move_to` is
+  `mpfb_get_pose`'s `head` and `rotate_to` its `rotation`, so a read-back is a valid write and a
+  reset's `restore_with` is made of them. A vector argument is an object with any of the three
+  keys, a missing key 0.0. Relative changes (`move_by`, `rotate_by`) start from the bone's own
+  transform **before its constraints**, so an IK solver's rotation of a chain's first bone is never
+  baked into the bone's channels; on a control with no constraints - every Rigify control - that is
+  where the bone is. `aim` swings a bone from its **rest** orientation, so one `aim` and `twist`
+  always give the same orientation. Scale is the one input not in the frame: factors in the bone's
+  own axes, because scale only means something along a bone.
 - **Where the body is, is measured on deforming bones.** A landmark (`hips`, `head`, the hands and
   feet) is the head of a `DEF-` bone on Rigify, or of the bone itself on the default rig, never of a
   control: `hand_ik.L` and the hand differ exactly when a limb is in FK or cannot reach.

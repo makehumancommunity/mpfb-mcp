@@ -6,7 +6,7 @@ lists what can be moved and ``get_pose`` labels what has been; per
 [a summary is never a second opinion](../../../specifications/responses.md#a-summary-is-never-a-second-opinion)
 the two must not classify separately, or a bone could be ``left_hand`` in one
 answer and nothing in the other. The transform tool
-([FR 042](../../../feature-requests/042-posing-bones-switches-and-reset/README.md))
+([FR 042](../../../feature-requests/done/042-posing-bones-switches-and-reset/README.md))
 reads it too, to decide which bones are in charge.
 
 **The vocabulary is for an agent, not a rigger.** A bone is labelled with a
@@ -84,6 +84,7 @@ __all__ = (
     "ROLES",
     "classify",
     "find_rig",
+    "parent_switch_target",
     "requested_body_parts",
     "resolve_posing_subject",
     "side_of",
@@ -234,10 +235,6 @@ def unknown_body_parts(body_parts):
     return [part for part in body_parts if not isinstance(part, str) or part not in BODY_PARTS]
 
 
-def _so(not_done):
-    return "" if not_done is None else ", so {:s}".format(not_done)
-
-
 def resolve_posing_subject(services, requested_name, body_parts, not_done=None):
     """The character, its rig and the first refusal that applies, as one dict.
 
@@ -271,7 +268,7 @@ def resolve_posing_subject(services, requested_name, body_parts, not_done=None):
             message="'{:s}' is rigged with the Rigify meta-rig '{:s}' ({:s}), which is a "
                     "template for generating a rig rather than a rig to pose{:s}. Call "
                     "mpfb_generate_rigify_rig first, then pose the rig it generates.".format(
-                        basemesh.name, metarig.name, identified, _so(not_done)),
+                        basemesh.name, metarig.name, identified, subject_resolution.so_clause(not_done)),
             extra={"metarig_name": metarig.name})
         return answer
     if rig is None:
@@ -279,7 +276,7 @@ def resolve_posing_subject(services, requested_name, body_parts, not_done=None):
             blocked_by="rig_not_found",
             message="'{:s}' has no rig: no armature modifier on the basemesh points at an "
                     "armature{:s}. Add one with mpfb_add_rig.".format(
-                        basemesh.name, _so(not_done)))
+                        basemesh.name, subject_resolution.so_clause(not_done)))
         return answer
     unknown = unknown_body_parts(body_parts)
     if unknown:
@@ -287,7 +284,7 @@ def resolve_posing_subject(services, requested_name, body_parts, not_done=None):
             blocked_by="unknown_body_parts",
             message="body_parts names {:s}, which {:s} not a body part{:s}. The body parts "
                     "are: {:s}.".format(", ".join(repr(part) for part in unknown),
-                                        "is" if len(unknown) == 1 else "are", _so(not_done),
+                                        "is" if len(unknown) == 1 else "are", subject_resolution.so_clause(not_done),
                                         ", ".join(BODY_PARTS)),
             extra={"unknown_body_parts": unknown, "known_body_parts": list(BODY_PARTS)})
     return answer
@@ -387,6 +384,20 @@ def _game_engine_body_part(bone):
     return (kind, chain, False)
 
 
+_SWITCH_PARENT_OF = re.compile(r"^Switch parent of (.+)$")
+
+
+def parent_switch_target(description):
+    """The bone a parent switch moves, from Rigify's own description of it, or ``None``.
+
+    Rigify writes ``"Switch parent of hand_ik.L"``; this is the one place the
+    sentence is parsed, for :func:`classify` and for the command that keeps
+    that bone in place while the switch changes.
+    """
+    match = _SWITCH_PARENT_OF.match(str(description or ""))
+    return match.group(1) if match else None
+
+
 def _switch_targets(pose_bones):
     """The bones Rigify names as a limb's IK control and pole, from the switches' own text.
 
@@ -400,10 +411,9 @@ def _switch_targets(pose_bones):
         for prop, found in (("IK_parent", ik_controls), ("pole_parent", poles)):
             if prop not in pose_bone.keys():
                 continue
-            description = _property_ui(pose_bone, prop).get("description") or ""
-            match = re.match(r"^Switch parent of (.+)$", str(description))
-            if match and match.group(1) in pose_bones:
-                found[match.group(1)] = pose_bone.name
+            target = parent_switch_target(_property_ui(pose_bone, prop).get("description"))
+            if target is not None and target in pose_bones:
+                found[target] = pose_bone.name
     return (ik_controls, poles)
 
 
@@ -768,6 +778,10 @@ def _rigify_limbs(rig_object, controls):
     their depth in the ORG hierarchy, the first two are the chain whose reach is
     measured and the third is its tip; their deforming bones are ``DEF-`` plus
     the same name, and Rigify's numbered segments (``DEF-upper_arm.L.001``).
+    ``fk_chain`` is the FK controls in that same order, root to toe, which is
+    the chain Rigify's IK/FK snaps write and read
+    (``commands/set_pose_switches.py`` derives the rest of a snap's chains from
+    it).
     """
     bones = rig_object.data.bones
     limbs = {}
@@ -778,12 +792,14 @@ def _rigify_limbs(rig_object, controls):
                           None)
         pole = next((name for name in members if controls[name]["role"] == "pole"), None)
         orgs = []
+        fk_by_org = {}
         for name in members:
             if controls[name]["role"] != "fk" or controls[name]["chain"] != "fk":
                 continue
             org = "ORG-" + name.replace("_fk", "", 1)
             if org in bones:
                 orgs.append(org)
+                fk_by_org[org] = name
         orgs.sort(key=lambda org: _depth(bones[org]))
         segments = []
         for org in orgs[:2]:
@@ -799,6 +815,7 @@ def _rigify_limbs(rig_object, controls):
             "pole": pole,
             "segments": [name for name in segments if bones[name].use_deform],
             "tip": tip,
+            "fk_chain": [fk_by_org[org] for org in orgs],
         }
     return limbs
 
@@ -824,6 +841,7 @@ def _default_limbs(rig_object):
                 "pole": pole_name if pole_name in bones else None,
                 "segments": [name + suffix for name in segments if name + suffix in bones],
                 "tip": tip + suffix if tip + suffix in bones else None,
+                "fk_chain": None,
             }
     return limbs
 

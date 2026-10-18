@@ -16,7 +16,7 @@ character whose torso is twisted still faces where its rig object faces, so
 definition under which a later relative move (``move_by: {"forward": 0.2}``)
 means the same thing at the start and the end of a posing session, and it is
 why this module exists before it has a second user: the transform tool
-([FR 042](../../../feature-requests/042-posing-bones-switches-and-reset/README.md))
+([FR 042](../../../feature-requests/done/042-posing-bones-switches-and-reset/README.md))
 converts the other way through these same functions, and a ``forward`` that
 disagreed between reading and writing would be a silent and very visible
 defect.
@@ -169,6 +169,48 @@ class Frame:
         if degrees == 0.0:
             return {"axis": None, "degrees": 0.0}
         return {"axis": self.armature_direction(axis), "degrees": degrees}
+
+    # ------------------------------------------------------------------
+    # Frame -> armature space, for the writers. Unrounded: a value a caller
+    # sent is used as sent.
+
+    def to_armature_point(self, frame_point):
+        """``{forward, left, up}`` (a missing key is 0.0) as a position in armature space."""
+        return self._armature_to_world.inverted() @ self.world_point(frame_point)
+
+    def to_armature_vector(self, frame_vector):
+        """``{forward, left, up}`` as a displacement in armature space, metres for metres."""
+        return self._armature_to_world.inverted().to_3x3() @ self.world_vector(frame_vector)
+
+    def to_armature_direction(self, frame_vector):
+        """``{forward, left, up}`` as a unit direction in armature space, or ``None`` if zero.
+
+        Through the rig object's rotation alone, so a scaled rig object does not
+        skew a direction; :meth:`armature_direction` is the inverse.
+        """
+        vector = self._armature_rotation().inverted() @ self.world_vector(frame_vector)
+        if vector.length == 0.0:
+            return None
+        return vector.normalized()
+
+    def to_armature_rotation(self, frame_rotation):
+        """``{"axis": {forward, left, up} | None, "degrees": d}`` as an armature-space ``Quaternion``.
+
+        The inverse of :meth:`rotation`: an ``axis`` of ``null`` (or ``degrees``
+        of 0) is no rotation at all, which is how a read-back reports a bone at
+        rest.
+        """
+        axis = frame_rotation.get("axis")
+        degrees = float(frame_rotation.get("degrees", 0.0))
+        if axis is None or degrees == 0.0:
+            return Quaternion()
+        direction = self.to_armature_direction(axis)
+        if direction is None:
+            return Quaternion()
+        return Quaternion(direction, math.radians(degrees))
+
+    def _armature_rotation(self):
+        return self._armature_to_world.to_quaternion()
 
     def describe(self):
         """The frame itself, in world space: what every answer reports as ``character_frame``."""

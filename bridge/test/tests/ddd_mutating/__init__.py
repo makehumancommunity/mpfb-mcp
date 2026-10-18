@@ -1,7 +1,8 @@
 """
 The commands that **change** a .blend, against a real MPFB - thirteen when this
 directory was made, sixteen since FR 026 and FR 027 added the face commands,
-seventeen since FR 040 added ``set_material_settings``.
+seventeen since FR 040 added ``set_material_settings``, twenty since FR 042 added
+the three pose writers.
 
 **A layer, after the add-on itself and the read-only commands.** A module here
 may assume that everything under ``aaa_addon/`` and ``ccc_reading/`` passed, and

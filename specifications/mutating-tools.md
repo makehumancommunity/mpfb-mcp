@@ -111,6 +111,12 @@ by omission.
   genuinely *cannot* — `RigService.generate_rigify_rig()`'s own final act is to select and activate
   the rig it produced, so there is no state left to restore to — say what the selection now is
   (`active_object_after`) rather than quietly leaving the caller to assume nothing moved.
+- **A write that preserves something reports how well it did**, as a measured number rather than
+  that it ran. `mpfb_set_pose_switches` snaps a limb so that changing a switch does not move it,
+  and reports `snap_error`: the furthest any joint of the limb's deforming chain moved
+  ([FR 042](../feature-requests/done/042-posing-bones-switches-and-reset/README.md)). A snap that failed then shows up as millimetres, which the effort
+  found is not hypothetical: a limb `IK_Stretch` has stretched snaps back to IK a millimetre or
+  two out, because Blender's stretching IK shares the stretch between the segments differently.
 
 ## The flag a caller branches on is called `performed`
 
@@ -299,6 +305,18 @@ is written, and if any entry fails, none of them are applied.**
   layered skin almost every region colour is linked from the `color` group, so the refusal carries
   `write_instead` - the group and socket that drive it - and the caller's one action is to resend
   with that. Where the driver is not something a caller can set, such as a texture, it is `null`.
+- **A refusal may name an entry for another tool.** `mpfb_set_pose_bones` refuses an FK bone while
+  `IK_FK` hands the limb to IK - writing it would change nothing visible - and its `write_instead`
+  is `{"tool": "mpfb_set_pose_switches", "switches": [...]}`, the call that puts the bone in
+  charge. A `write_instead` without `tool` names an entry for the same tool, as before.
+- **The second form: snapshot, write, check, restore.** Some checks can only be made after
+  writing: whether a pose bone's `move_to` touches a locked channel depends on where its parents
+  ended up, and `pose_bone.matrix`, the only setter that takes "where the bone should be", ignores
+  locks. So `mpfb_set_pose_bones` copies every channel of every bone it will touch, writes, checks,
+  and **on any failure puts the copy back exactly** and answers as if resolution had failed. That
+  form is allowed **only where what is written can be put back exactly**: pose basis data is plain
+  numbers and can be, a rebuilt mesh or a loaded target cannot, and the first form stays the rule
+  for those ([FR 042](../feature-requests/done/042-posing-bones-switches-and-reset/README.md)).
 - **A range is enforced where it protects something, and not where MPFB contradicts it.** A
   built-in node's factor is clamped by Blender without a word, so a value outside it is refused
   rather than stored as something else. A group node's input range is only an interface hint -
@@ -367,3 +385,15 @@ different tabs and a human sees sliders move. Across MCP there is no such feedba
   was settled.
 - **Stay quiet when nothing is lost.** An empty `discarded_face_units` and no sentence about it,
   per the rule above: a tool that warns on every call trains an agent to ignore it.
+- **Where nothing else records the change, the answer is the undo.** Blender's undo stack does not
+  see a bridge command's writes, and MPFB keeps no record of a pose. So `mpfb_reset_pose` answers
+  with `restore_with`: the arguments for `mpfb_set_pose_switches` and `mpfb_set_pose_bones`, keyed
+  by tool name, that put back exactly what it reset - as `mpfb_save_expression`'s `apply_with` is
+  the call that makes a face durable. It is **never capped**, because a capped undo restores
+  nothing (its worst case, every control of a generated `human_toes` rig posed, measured 45 KB);
+  it is **exact**, read before each bone's own constraints and kept to more digits than a read-back,
+  so a live round trip put every channel back to within 1e-6; and **a reset bone the writer would
+  refuse is named rather than included** (`not_restorable`), because one refused entry fails the
+  writer's whole batch. Each such bone had no visible effect when it was reset - a chain `IK_FK`
+  had handed away, an FK bone a helper drives - so the visible pose still comes back whole
+  ([FR 042](../feature-requests/done/042-posing-bones-switches-and-reset/README.md)).

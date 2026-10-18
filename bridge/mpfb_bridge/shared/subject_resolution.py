@@ -48,12 +48,18 @@ directory does.
 __all__ = (
     "resolve_basemesh",
     "resolve_subject",
+    "so_clause",
 )
 
 import bpy
 
 
-def _so(not_done):
+def so_clause(not_done):
+    """``", so <not_done>"``, or nothing: how a refusal's sentence says what was not done.
+
+    Public because :mod:`pose_controls`' posing refusals finish their sentences
+    the same way, and two copies of a clause are two places for it to drift.
+    """
     return "" if not_done is None else ", so {:s}".format(not_done)
 
 
@@ -72,7 +78,7 @@ def resolve_subject(requested_name, not_done=None, select="a MakeHuman object"):
             return (None, resolved_by,
                     "No object name was given and no object is active in this Blender "
                     "session{:s}. Select {:s}, or call mpfb_list_objects and pass one of its "
-                    "names.".format(_so(not_done), select))
+                    "names.".format(so_clause(not_done), select))
         return (subject, resolved_by, None)
 
     subject = bpy.data.objects.get(requested_name)
@@ -84,7 +90,7 @@ def resolve_subject(requested_name, not_done=None, select="a MakeHuman object"):
         return (None, resolved_by,
                 "No object named '{:s}' exists in this .blend file{:s}. Call mpfb_list_objects "
                 "to see what the current scene holds.".format(str(requested_name),
-                                                              _so(not_done)))
+                                                              so_clause(not_done)))
     return (subject, resolved_by, None)
 
 

@@ -1,9 +1,9 @@
 # Posing a character: moving its controls, setting Rigify's switches, and returning to rest
 
-**Status:** Accepted
+**Status:** Done
 
-This is the second part of [Posing support](../NEXT_STEPS.md#posing-support), and it depends on
-the first. [FR 041](../done/041-pose-controls-and-read-back/README.md) adds the read-only tools: which
+This is the second part of [Posing support](../../NEXT_STEPS.md#posing-support), and it depends on
+the first. [FR 041](../041-pose-controls-and-read-back/README.md) adds the read-only tools: which
 controls a rig has, what each one does, what the pose is now, and whether a limb is stretched.
 This request adds the tools that change a pose.
 
@@ -58,11 +58,11 @@ and no limb that jumps when a switch changes.
 
 - **Hand shapes as named presets** (`fist`, `open`, `relaxed`, a curl per finger). `scale_to` on
   the finger masters is enough for a fist on Rigify. A helper that hides the difference between
-  Rigify and the default rig stays in [NEXT_STEPS](../NEXT_STEPS.md#posing-support) as its own
+  Rigify and the default rig stays in [NEXT_STEPS](../../NEXT_STEPS.md#posing-support) as its own
   effort.
 - **Keyframes.** No tool here inserts, deletes or edits a keyframe. A write to an animated channel
   is reported, not refused (FR 9).
-- **Saving and loading poses** ([Loading poses](../NEXT_STEPS.md#loading-poses)) and retargeting.
+- **Saving and loading poses** ([Loading poses](../../NEXT_STEPS.md#loading-poses)) and retargeting.
 - **Adding or removing MPFB's IK helpers** on the default rig. That changes the rig, not the pose.
   The helpers are respected (FR 7) but not managed.
 - **Garment sub-rigs**, as in FR 041.
@@ -146,7 +146,7 @@ and no limb that jumps when a switch changes.
     before and after where either is not 1; and `achieved`. `achieved` is false when the bone ended
     more than 1 mm or 0.5° from what was asked, because of a constraint, an IK chain or a limit,
     and then the answer also gives the deviation. These are
-    [derived facts](../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact),
+    [derived facts](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact),
     and the answer says how they were measured. An entry whose channels an action animates is
     flagged `overwritten_on_frame_change` (spelling to be settled), because the next frame change
     puts the keyed value back.
@@ -199,7 +199,7 @@ and no limb that jumps when a switch changes.
     The default is read live from the property (`id_properties_ui(...).as_dict()["default"]`), not
     from a table. Switches are reset raw and before the transforms, so snapping is moot.
 19. **The answer is a way back.** This tool destroys a pose it did not create, so per
-    [what that owes the caller](../../specifications/mutating-tools.md#a-tool-that-destroys-state-it-did-not-create-owes-the-caller-a-list)
+    [what that owes the caller](../../../specifications/mutating-tools.md#a-tool-that-destroys-state-it-did-not-create-owes-the-caller-a-list)
     it returns `restore_with`: the `mpfb_set_pose_bones` arguments (with `move_to`, `rotate_to`
     and `scale_to`) and, when `switches` was set, the `mpfb_set_pose_switches` arguments (with
     `raw: true`) that put back what it reset. This follows `mpfb_save_expression`'s `apply_with`.
@@ -226,7 +226,7 @@ and no limb that jumps when a switch changes.
 ## Architecture
 
 - **Three bridge commands**, `set_pose_bones`, `set_pose_switches` and `reset_pose`, and the three
-  tool modules, with the usual touch points listed in [CLAUDE.md](../../CLAUDE.md). There is no
+  tool modules, with the usual touch points listed in [CLAUDE.md](../../../CLAUDE.md). There is no
   MPFB service to wrap: `RigService.set_pose_from_dict()` goes through `bpy.ops.pose.select_all`
   and `transforms_clear`, which need pose mode and a selection. That makes this, like
   `mpfb_set_asset_material`, a reimplementation, and this time it is of **Rigify's** UI as well as
@@ -240,7 +240,7 @@ and no limb that jumps when a switch changes.
   - computes FR 11's landmarks, reach and stretch, reports each limb's `in_charge` (`ik`, `fk` or
   `blend`, from `IK_FK` or the default rig's helpers), which is what FR 7's "in charge" check can
   read, and `off_rest()`, which is FR 17's `left_off_rest` test.
-  [A summary is never a second opinion](../../specifications/responses.md#a-summary-is-never-a-second-opinion)
+  [A summary is never a second opinion](../../../specifications/responses.md#a-summary-is-never-a-second-opinion)
   applies just as much to a mutating tool's after-report.
 - **A new shared module, `pose_writing.py`**, used by all three commands: writing a bone from a
   frame-space target through `pose_bone.matrix` with a depsgraph update, the snapshot and restore
@@ -286,8 +286,8 @@ and no limb that jumps when a switch changes.
 
 ## Affected specifications
 
-- [mutating-tools.md](../../specifications/mutating-tools.md):
-  - [a batch resolves before it writes](../../specifications/mutating-tools.md#a-batched-mutating-tool-resolves-before-it-writes)
+- [mutating-tools.md](../../../specifications/mutating-tools.md):
+  - [a batch resolves before it writes](../../../specifications/mutating-tools.md#a-batched-mutating-tool-resolves-before-it-writes)
     gains its second form: snapshot, write, check, restore. That form is allowed only where what
     is written can be put back exactly, and pose basis data can be;
   - a write that **preserves** a derived state (the snap) reports the measured error, not only
@@ -295,17 +295,17 @@ and no limb that jumps when a switch changes.
   - `write_instead` can name an entry for **another tool**, which is new;
   - the case where neither Blender's undo stack nor MPFB records the change, and the tool's own
     answer is the undo (`restore_with`).
-- [tool-interface.md](../../specifications/tool-interface.md#the-glossary): `move_by`, `move_to`,
+- [tool-interface.md](../../../specifications/tool-interface.md#the-glossary): `move_by`, `move_to`,
   `rotate_by`, `rotate_to`, `aim`, `twist`, `scale_to`, `raw`, `snapped`, `switch`,
   `restore_with`, and `symmetry` as a per-entry flag beside `mpfb_set_targets`' call-level one
   (the same concept, so the same spelling). Also the new `blocked_by` values.
-- [responses.md](../../specifications/responses.md): requested beside achieved, with a tolerance,
+- [responses.md](../../../specifications/responses.md): requested beside achieved, with a tolerance,
   as the rule for any tool whose write a constraint can deflect.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md): reimplementing a third-party
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md): reimplementing a third-party
   add-on's UI operators (Rigify's) and not only MPFB's, and why calling them is not an option.
-- [architecture.md](../../specifications/architecture.md#shared-modules-and-what-warrants-one):
+- [architecture.md](../../../specifications/architecture.md#shared-modules-and-what-warrants-one):
   `pose_writing.py`.
-- [vision.md](../../specifications/vision.md#target-tool-catalog): Creation and modification goes
+- [vision.md](../../../specifications/vision.md#target-tool-catalog): Creation and modification goes
   from 18 tools to 21. The area's "undo a mistake" gains its first tool built for that purpose.
 
 ## Tests
@@ -320,7 +320,7 @@ and no limb that jumps when a switch changes.
   - `raw`, `symmetry` and `switches` are real booleans.
 
   **No bone, body part or switch vocabulary is checked here**, per
-  [validate the shape, never the vocabulary](../../specifications/tool-interface.md#validate-before-crossing-the-socket).
+  [validate the shape, never the vocabulary](../../../specifications/tool-interface.md#validate-before-crossing-the-socket).
   Add all three tools to `test_vocabulary.py` and the description budget.
 - **Bridge suite** (`bridge/test/tests/ddd_mutating/`), against FR 041's fixtures:
   - each kind of change on a rig object that has been **moved and turned**, which is what tests
@@ -376,18 +376,105 @@ All asked on 2026-10-17 unless marked otherwise.
 
 ## Open questions
 
-- **Where the snap chains come from** (see [Architecture](#architecture)): naming conventions
-  checked against `rig_ui.py` in a test, or `rig_ui.py` read as data at runtime. FR 041 faces the
-  same question for the parent switches' names and is settled first. Its answer should be this
-  one's.
-- **Whether `scale_to` should exist on rigs other than Rigify.** On the default rig, scaling a
-  finger bone deforms the finger, and does not curl it. It is still a legitimate write. The
-  question is whether the description should say so.
+Both were answered during the effort; see the next section.
+
+- **Where the snap chains come from**: Rigify's naming, checked against `rig_ui.py` by a test.
+- **Whether `scale_to` should exist on rigs other than Rigify**: it does, and the description and
+  the command docstring say that on the default rig a scaled finger is a deformed finger, not a
+  curled one.
+
+## Decisions taken during the effort
+
+- **The snap chains follow from Rigify's naming**, which settles the open question the way FR 041
+  settled the parent names: from a limb's FK controls (`pose_controls`' new `fk_chain`) Rigify's
+  `make_derived_name` gives the IK chain, its `MCH-` result bones, the toe's tail and the extras.
+  `ddd_mutating/set_pose_switches_test.py` reads each generated `rig_ui.py` as data and requires
+  every chain to match, on `human_toes` and on `game_engine`; both did on the first run.
+  `rig_ui.py` is never read at runtime. A pole's parent switch keeps only its location, as the
+  script's `locks` says.
+- **The port departs from Rigify in four places**, each in the command docstring: no keyframes; a
+  quaternion IK base is twisted through its quaternion rather than switched to `ZXY` for good;
+  middle IK controls are not handled (MPFB's limbs have none); and the twist search stops at a
+  tenth of a degree rather than one.
+- **Relative changes start from the bone's own transform, before its constraints.** Starting from
+  the evaluated matrix baked an IK solver's rotation into `upper_arm_ik.L`'s locked X and Z, so a
+  twist about the bone's own axis was refused as a lock violation. On a control with no constraints
+  - every Rigify control - the two are the same. `aim` swings from **rest**, so one `aim` and
+  `twist` always give the same orientation.
+- **A locked channel counts as changed only beyond `achieved`'s tolerance**, and smaller drift is
+  put back: an axis read back to three decimals and sent again leaked about 5e-4 rad into a locked
+  Euler component, five times the off-rest threshold. Refusing that would refuse the read-back the
+  writer exists to accept.
+- **"Parent first" means whatever moves a bone first**: its parent and every bone a constraint on
+  it or an ancestor reads. A Rigify pole hangs from an `MCH-` bone a parent switch moves after
+  `chest`, which is no ancestor of it; ordering by depth alone wrote the pole first, and the
+  restore test caught it 0.2 m out.
+- **`restore_with` is keyed by the tool to call**, holds `mpfb_set_pose_switches`' arguments first
+  when switches were reset, is read before each bone's own constraints and kept to six decimals, so
+  a round trip restores channels to within 1e-6. **A reset bone the writer would refuse is named in
+  `not_restorable` rather than included**, because one refused entry fails the whole batch; every
+  such bone (a chain `IK_FK` had handed away, a helper-driven FK bone, a locked or driven channel
+  off rest) moved nothing visible when it was reset.
+- **`switches` on the reset is `include_switches`**, because `mpfb_set_pose_switches` takes
+  `switches` as a list and `tests/test_vocabulary.py` holds one argument name to one JSON type.
+- **The refusal slugs** are `rig_in_edit_mode`, `rig_has_no_switches` and `rig_not_classified`
+  (a reset by body part on an unclassified rig), beside FR 041's. Per-entry reasons are
+  `not_a_control`, `chain_not_in_charge`, `driven_by_helper`, `locked_channel`, `driven_channel`,
+  `unknown_bone`, `no_counterpart`, `counterpart_named`, `duplicate_bone`, and for switches
+  `unknown_switch`, `invalid_value`, `duplicate_switch` and `snap_chain_not_found`.
+  `overwritten_on_frame_change` kept its proposed spelling and lists the animated kinds.
+- **A rig showing its rest position is posed in `POSE` for the duration of the call** and put back,
+  because in `REST` every `pose_bone.matrix` is the rest matrix and a target computed from it would
+  be wrong. Nothing else is borrowed.
+- **`reset` is the reset's verb**, a bool beside `performed`, because a reset of switches alone
+  resets no bone; `bones_reset` is the list.
+- **What three writers share went into one module**, `shared/pose_writing.py`, including the answer
+  shape every writer starts with; the snaps stayed in `set_pose_switches`. Re-running FR 036's
+  `census.py --check`, which was already failing on two names, turned up one true copy - `_is_number`
+  in five modules, two of them FR 040's - now `validation.is_number()` and
+  `arguments.is_finite_number()`, and FR 041's second `_so`, now `subject_resolution.so_clause()`.
+  The per-command builders the writers repeat by name (`_error`, `_change`, ...) are listed as a
+  convention.
+- **The smoke items**: `mpfb_set_pose_bones` moves the root, `mpfb_set_pose_switches` flips the left
+  arm to FK (snapped, so nothing moves) and skips on a rig without switches, and `mpfb_reset_pose`
+  takes `include_switches: true`, its one non-default argument, so the run leaves the pose as it
+  found it.
+
+## Verification
+
+Both halves of "verified" hold. The bridge suite tests the three commands on a generated
+`human_toes` rig moved and turned away from the origin, a generated `game_engine` rig, a default rig
+with helpers and `mixamo` (`ddd_mutating/set_pose_bones_test.py`, `set_pose_switches_test.py`,
+`reset_pose_test.py`), and `pose_writing.py` directly (`bbb_shared/pose_writing_test.py`): 39 new
+tests, 501 in all. The unit suite has 31 new tests (537). The smoke run is 41 of 41.
+
+The live check, [live_check.py](live_check.py), ran on 2026-10-18 against a windowed Blender 5.1
+with MPFB, the bridge (reloaded to pick the new commands up) and the community blender-mcp add-on,
+and passed all of its checks. On a `human_toes` character at (-2, 1.5, 0) turned 150 degrees, with
+mpfb-mcp tools alone: `IK_parent` switched to `Torso` and the poles turned on, every snap 0.0 mm;
+`IK_Stretch` off; fists by `scale_to` with symmetry; a guard placed in the character frame with the
+elbows brought in; the hips lowered 0.25 m with **both fists following by exactly 0.25 m**; the
+feet in a stance. No arm stretched, every write achieved, both legs reaching. A screenshot from the
+character's front and left agreed with the read-back: facing the camera, left fist forward of the
+right, left foot forward, knees bent, elbows in. A reset with switches and its `restore_with` put
+every channel back to within 8.9e-7 and every switch exactly. A generated `game_engine` rig snapped
+IK to FK and back within 0.1 mm. A write changed no mode, active object or selection.
+
+Measured, through a windowed Blender's bridge, where every call takes about a second whatever it
+does: the 14-change guard batch 1.2 s and **8.3 KB**, a 30-bone batch 0.75 s and 14.4 KB - about
+3.4 KB of fixed sections plus about 350-480 B per change, so `mpfb_set_pose_bones` holds FR 041's
+8 KB line to about a dozen changes and goes past it for a whole stance in one call, which was
+judged the right trade: the per-change before and after is what makes the answer checkable. The
+reset 5.9 KB for the stance. **`restore_with`'s worst case**, every one of the 278 controls of a
+generated `human_toes` rig posed, face included, is **45 KB** (a 55 KB answer), with 43 bones in
+`not_restorable`, every one of them a chain `IK_FK` had handed away or a locked channel; it is not
+capped, by design. An IK->FK snap costs about 250 ms in a headless Blender, the twist search being
+most of it.
 
 ## References
 
-- [NEXT_STEPS: Posing support](../NEXT_STEPS.md#posing-support), and
-  [FR 041](../done/041-pose-controls-and-read-back/README.md), which this builds on.
+- [NEXT_STEPS: Posing support](../../NEXT_STEPS.md#posing-support), and
+  [FR 041](../041-pose-controls-and-read-back/README.md), which this builds on.
 - Blender: `scripts/addons_core/rigify/rigs/limbs/limb_rigs.py` (`make_property` for `IK_FK`,
   `IK_Stretch`, `pole_vector` and `FK_limb_follow`; `add_global_buttons`; `RigifyLimbIk2FkBase`;
   `RigifyLimbTogglePoleBase`), `scripts/addons_core/rigify/utils/switch_parent.py` (`IK_parent`

@@ -41,6 +41,7 @@ from __future__ import annotations
 __all__ = (
     "MODES",
     "RETIRED_ARGUMENTS",
+    "is_finite_number",
     "refuse_undeclared",
     "validated_asset_name",
     "validated_body_parts",
@@ -50,6 +51,20 @@ __all__ = (
     "validated_subject",
     "validated_text",
 )
+
+import math
+
+
+def is_finite_number(value: object) -> bool:
+    """An ``int`` or ``float`` that is not a ``bool``, not NaN and not infinite.
+
+    A predicate rather than a validator, because the batched tools word their
+    own refusal for an entry inside a list. ``True`` is an ``int``, and NaN
+    compares false against every bound, which is why both are excluded here
+    rather than at each call site.
+    """
+    return (not isinstance(value, bool) and isinstance(value, (int, float))
+            and math.isfinite(value))
 
 
 def validated_subject(value: object, argument: str = "name") -> str | None:

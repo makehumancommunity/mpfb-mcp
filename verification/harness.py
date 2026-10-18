@@ -53,7 +53,7 @@ from mpfbmcp import build_server
 
 # The verb each mutating tool reports beside the uniform ``performed`` flag
 # (FR 014). ``None`` is mpfb_create_human, which has no verb of its own: it
-# creates a character or comes back as an error envelope. Four batch tools
+# creates a character or comes back as an error envelope. The batch tools
 # have no verb either, only their list of per-entry writes, ``changes``
 # (FR 037, R3), which is what the flag is audited against for them.
 #
@@ -80,6 +80,9 @@ MUTATING_VERBS = {
     "mpfb_remove_asset": "removed",
     "mpfb_set_skin": "applied",
     "mpfb_set_asset_material": "applied",
+    "mpfb_set_pose_bones": "changes",
+    "mpfb_set_pose_switches": "changes",
+    "mpfb_reset_pose": "reset",
 }
 
 

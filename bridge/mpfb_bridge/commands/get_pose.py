@@ -9,7 +9,7 @@ and checked each change by looking, and found the arms stretching and the fists
 left in the air only that way. Each of those is now a field here.
 
 **Four readings, each from a shared module the writing tools will also use**
-([FR 042](../../../feature-requests/042-posing-bones-switches-and-reset/README.md)):
+([FR 042](../../../feature-requests/done/042-posing-bones-switches-and-reset/README.md)):
 
 - ``posed``: every control off rest, by MPFB's own threshold **plus scale**,
   which ``RigService.get_pose_as_dict()`` does not record. A Rigify fist is

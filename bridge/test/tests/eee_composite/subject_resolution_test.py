@@ -1,7 +1,7 @@
 """
-All twenty-two commands that take a subject, asked about the same three misses.
+All twenty-five commands that take a subject, asked about the same three misses.
 
-The claim is about twenty-two commands at once, which is why it is here: every
+The claim is about twenty-five commands at once, which is why it is here: every
 command that takes a subject resolves it the same way, because all of them go
 through ``shared/subject_resolution.py``
 ([FR 036](../../../../feature-requests/done/036-subject-resolver-and-duplication/README.md)).
@@ -50,7 +50,7 @@ SUBJECT_ONLY = ("get_object_info", "generate_rigify_rig")
 
 
 def _calls(subject):
-    """The twenty-two commands, each with the least that passes its parameter contract."""
+    """The twenty-five commands, each with the least that passes its parameter contract."""
     return {
         "get_object_info": dict(name=subject),
         "get_macro_details": dict(name=subject),
@@ -76,6 +76,10 @@ def _calls(subject):
         "get_material_settings": dict(name=subject),
         "get_pose_controls": dict(name=subject),
         "get_pose": dict(name=subject),
+        "set_pose_bones": dict(name=subject, bones=[dict(bone="root", move_by=dict(up=0.1))]),
+        "set_pose_switches": dict(name=subject, switches=[
+            dict(body_part="left_arm", switch="IK_FK", value=1.0)]),
+        "reset_pose": dict(name=subject),
         "set_material_settings": dict(name=subject, eyes=[
             dict(socket="IrisMajorColor", color=[0.1, 0.4, 0.1, 1.0])]),
     }

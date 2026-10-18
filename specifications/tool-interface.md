@@ -377,6 +377,14 @@ dictionaries, so they were checked by the FR's own `census.py --check` instead.
 | What a control is for, on a classified rig | `role`: `root`, `body`, `fk`, `ik_control`, `pole`, `ik_chain`, `foot_roll`, `switches`, `finger_master`, `finger_segment`, `toe_master`, `toe_segment`, `tweak`, `look_target`, `face_control` | `type`, `kind` |
 | Which of a limb's chains a control belongs to | `chain`: `"ik"`, `"fk"`, or `null` off a limb | `mode` |
 | A position or direction on a character | an object with `forward`, `left`, `up`, in metres from the rig object's origin ([the character frame](responses.md#a-position-on-a-character-is-in-the-character-frame)); a rotation is `{"axis": <that>, "degrees": n}` | a world-space `[x, y, z]` |
+| A change to a pose bone, in an entry of `bones` | a position as `move_by` (an offset) or `move_to` (where the head goes, as `mpfb_get_pose` reports `head`); a rotation as `rotate_by` (about the head), `rotate_to` (from rest, as `mpfb_get_pose` reports `rotation`) or `aim` (head-to-tail direction) with `twist` (degrees about the bone's own axis); `scale_to`, factors keyed `x`/`y`/`z` in the bone's own axes. At most one of each kind | `translate`, `location`, `rotation` as an argument |
+| Also apply to the other side | `symmetry`, a bool: call-level in `mpfb_set_targets`, per entry in `mpfb_set_pose_bones` - one concept, one spelling | `mirror` |
+| A Rigify switch, addressed | `body_part` and `switch` (Rigify's property name, as `mpfb_get_pose_controls` lists it); its value `value`; `raw: true` to skip the snap | the bone it lives on, which is reported and never asked for |
+| Whether a write kept the limb where it was, and how well | `snapped`, with `snap_reason` when false, and `snap_error` (metres) when true | |
+| Whether a write ended where it was sent | `achieved`, with `deviation` when false and `achieved_measure` saying how it was measured | |
+| The arguments that undo what a tool did | `restore_with`, keyed by the tool to call (`apply_with` is the save's: the call that makes something durable) | `undo` |
+| Also do the optional part of a reset | `include_<part>`: `include_switches` - FR 042 named it `switches`, which `mpfb_set_pose_switches` already takes as a list, and one name carries one JSON type | `switches` as a bool |
+| A rig a writer cannot act on | `blocked_by: "rig_in_edit_mode"` / `"rig_has_no_switches"` (only a generated Rigify rig has them) / `"rig_not_classified"` (a reset by body part on a rig with none) | |
 | The character has no rig to pose / only a Rigify meta-rig / a body part that is not one | `blocked_by: "rig_not_found"` / `"rigify_not_generated"` / `"unknown_body_parts"`, with `known_body_parts` | `no_rig`, `no_armature_found` (which `mpfb_generate_rigify_rig` keeps for a different question: no armature at all among the relatives) |
 
 Where MPFB's own spelling disagrees with a row here, the row wins;
@@ -460,5 +468,10 @@ Each of these looks like a divergence and is not:
   `mpfb_get_pose`: the first is a list of definitions (range, ends, parent names), the others are
   the current values as maps keyed by body part and switch, read after every pose change. One name
   for both would carry two shapes.
+- **`value` in a `mpfb_set_pose_switches` entry is a number or a bool**, because the switches are:
+  `pole_vector` is on or off and the rest are numbers. It is inside an entry, not an argument, and
+  the rule that an argument name carries one JSON type is about arguments.
+- **`head_before`/`head_after`, `rotation_before`/`rotation_after`, `scale_before`/`scale_after`**
+  in a pose change: the whole-field form, since each is an object rather than a value.
 - **Tool names.** A renamed tool breaks every client configuration and saved transcript, which a
   renamed key does not.

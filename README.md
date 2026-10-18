@@ -16,7 +16,7 @@ you can speed up things and save some tokens.
 
 ## Status
 
-Early beta. Thirty-six tools are implemented.
+Early beta. Thirty-nine tools are implemented.
 
 **Introspection** — read-only, and each of them always answers rather than failing:
 
@@ -71,6 +71,12 @@ Early beta. Thirty-six tools are implemented.
 - `mpfb_set_asset_material` — recolour an equipped asset, or restore its own material.
 - `mpfb_set_material_settings` — change iris colours, the layered skin and the tint of hair and
   garments, batched, in a way a preset keeps.
+- `mpfb_set_pose_bones` — pose a character: move, rotate, aim and scale its controls in the
+  character's own forward, left and up, batched, and say where each one actually ended up.
+- `mpfb_set_pose_switches` — change a generated Rigify rig's IK/FK, pole, parent and stretch
+  switches, keeping each limb where it is as Rigify's own buttons do.
+- `mpfb_reset_pose` — put a character back at rest, and answer with the calls that put the pose
+  back: Blender's own undo does not see what these tools do.
 - `mpfb_save_preset` / `mpfb_create_human_from_preset` — keep a character past this Blender
   session, and build a new one from a saved character. These and `mpfb_save_expression` are the
   only tools here that write a file, and nothing in Blender can undo it, so both saving tools

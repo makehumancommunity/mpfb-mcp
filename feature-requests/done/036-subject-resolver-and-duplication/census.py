@@ -72,7 +72,10 @@ _CONVENTIONAL = frozenset(("register",))
 # judged it belongs in neither this table nor a shared module. ``--check``
 # fails on any group of copies that is neither.
 KEPT = {
+    "_apply": "census.md#kept-a-convention",
     "_blocked": "census.md#kept-a-convention",
+    "_change": "census.md#kept-a-convention",
+    "_error": "census.md#kept-a-convention",
     "_entry": "census.md#kept-a-convention",
     "_message": "census.md#kept-a-convention",
     "_message_for": "census.md#kept-a-convention",
@@ -81,7 +84,10 @@ KEPT = {
     "_resolve": "census.md#kept-a-convention",
     "_resolve_arguments": "census.md#kept-a-convention",
     "_rig_refit_blocker": "census.md#kept-a-convention",
+    "_shape_error": "census.md#kept-a-convention",
     "_shapekey_present": "census.md#kept-with-a-reason",
+    "_targets": "census.md#kept-a-convention",
+    "_validated_entry": "census.md#kept-a-convention",
     "_validated_source": "census.md#kept-with-a-reason",
 }
 

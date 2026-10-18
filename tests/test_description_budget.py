@@ -4,7 +4,7 @@
 The preloaded tool surface, measured and capped.
 
 An MCP client downloads every tool's description and parameter schema before
-any work happens, so the thirty-six docstrings in ``src/mpfbmcp/tools/`` are a
+any work happens, so the thirty-nine docstrings in ``src/mpfbmcp/tools/`` are a
 call-time cost paid by every session whether or not a tool is used.
 [FR 013](../feature-requests/done/013-live-verification/review.md) measured it
 for the first time and found 66.7 KB of descriptions against an estimate of
@@ -131,7 +131,17 @@ import mpfbmcp
 # the roles - once, as FR 027 did for the face; the read-back, which an agent
 # calls after every pose change, points there and is well under. The ceiling
 # moves by what the two cost, and the paragraph of headroom stays a paragraph.
-DESCRIPTION_CEILING = 76450
+#
+# Raised from 76,450 to 80,450 by
+# [FR 042](../feature-requests/done/042-posing-bones-switches-and-reset/README.md),
+# which added `mpfb_set_pose_bones`, `mpfb_set_pose_switches` and
+# `mpfb_reset_pose` - 1,672, 1,356 and 955 B, all under the per-tool average.
+# None restates the posing vocabulary: the frame, the body parts and the roles
+# stay in `mpfb_get_pose_controls`, and the writers spend their bytes on what a
+# caller cannot discover from an answer - what each change kind means, which
+# switches snap, and that `restore_with` is the undo. The ceiling moves by what
+# the three cost, and the paragraph of headroom stays a paragraph.
+DESCRIPTION_CEILING = 80450
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -163,7 +173,11 @@ DESCRIPTION_CEILING = 76450
 #
 # Raised from 13,150 to 13,700 by FR 041: 545 B across two tools, each a
 # nullable `name` and a nullable list of strings, `body_parts`.
-SCHEMA_CEILING = 13700
+#
+# Raised from 13,700 to 14,650 by FR 042: 944 B across three tools - two
+# batched lists of objects, the array-of-object shape `mpfb_set_targets` pays
+# for, and `mpfb_reset_pose`'s `body_parts` and `include_switches`.
+SCHEMA_CEILING = 14650
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.
@@ -215,7 +229,7 @@ class DescriptionBudgetTests(unittest.TestCase):
         self.measured = measure()
 
     def test_every_registered_tool_is_measured(self) -> None:
-        self.assertEqual(36, len(self.measured))
+        self.assertEqual(39, len(self.measured))
 
     def test_total_description_size_is_under_the_ceiling(self) -> None:
         total = sum(entry["description_bytes"] for entry in self.measured)

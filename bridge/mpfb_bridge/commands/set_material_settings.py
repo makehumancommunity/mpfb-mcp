@@ -68,7 +68,6 @@ __all__ = (
 )
 
 import difflib
-import math
 
 import bpy
 
@@ -78,6 +77,7 @@ from ..shared import mpfb_surface
 from ..shared import subject_resolution
 from ..shared.performed import with_performed
 from ..validation import Param
+from ..validation import is_number
 from ..validation import TYPE_ARRAY
 from ..validation import TYPE_STRING
 
@@ -106,11 +106,6 @@ SUMMARY = ("Write a character's procedural eye, layered skin and colour-adjustme
 _OWNER_KEYS = {"eyes": None, "skin": "group", "color_adjustments": "object_name"}
 
 
-def _is_number(value):
-    return (not isinstance(value, bool) and isinstance(value, (int, float))
-            and math.isfinite(value))
-
-
 def _entry_shape_error(section, entry):
     """Why an entry is malformed, or ``None``. mpfb-mcp checks this too; other clients may not."""
     if not isinstance(entry, dict):
@@ -126,11 +121,11 @@ def _entry_shape_error(section, entry):
             return "'{:s}' must be a non-empty string".format(key)
     if ("value" in entry) == ("color" in entry):
         return "exactly one of 'value' and 'color' is required"
-    if "value" in entry and not _is_number(entry["value"]):
+    if "value" in entry and not is_number(entry["value"]):
         return "'value' must be a finite number"
     if "color" in entry:
         color = entry["color"]
-        if not isinstance(color, list) or not all(_is_number(channel) for channel in color):
+        if not isinstance(color, list) or not all(is_number(channel) for channel in color):
             return "'color' must be a list of four finite numbers"
         if len(color) != 4:
             return "'color' must have four components, scene-linear RGBA; alpha is required"

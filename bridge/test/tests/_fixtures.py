@@ -58,6 +58,7 @@ __all__ = (
     "with_helpers",
     "redirected_locations",
     "resolution_module",
+    "rest_pose",
     "result",
     "services_or_skip",
     "supplied_resolution",
@@ -988,3 +989,29 @@ def posing_state(rig_object):
         "selected": sorted(blender_object.name for blender_object in bpy.context.selected_objects),
         "bones": bones,
     }
+
+
+def rest_pose(rig_object):
+    """Every pose bone at rest and every switch at its default, for a rig shared by a module.
+
+    The posing fixtures build one rig per module, because generating Rigify
+    takes most of a second; each test then puts it back with this, through
+    plain ``bpy``, so that what puts a rig back is never the command under test.
+    """
+    for pose_bone in rig_object.pose.bones:
+        pose_bone.location = (0.0, 0.0, 0.0)
+        pose_bone.rotation_quaternion = (1.0, 0.0, 0.0, 0.0)
+        pose_bone.rotation_euler = (0.0, 0.0, 0.0)
+        pose_bone.rotation_axis_angle = (0.0, 0.0, 1.0, 0.0)
+        pose_bone.scale = (1.0, 1.0, 1.0)
+        for key in pose_bone.keys():
+            if not isinstance(pose_bone[key], (bool, int, float)):
+                continue
+            try:
+                default = pose_bone.id_properties_ui(key).as_dict().get("default")
+            except (TypeError, KeyError):
+                continue
+            if default is not None:
+                pose_bone[key] = type(pose_bone[key])(default)
+    rig_object.data.pose_position = "POSE"
+    bpy.context.view_layer.update()

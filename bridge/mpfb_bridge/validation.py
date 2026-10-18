@@ -48,6 +48,7 @@ __all__ = (
     "KNOWN_TYPES",
     "InvalidParams",
     "Param",
+    "is_number",
     "validate_params",
 )
 
@@ -189,6 +190,17 @@ def _type_matches(value, value_type):
     if value_type == TYPE_ARRAY:
         return isinstance(value, list)
     return isinstance(value, dict)
+
+
+def is_number(value):
+    """A finite ``int`` or ``float`` that is not a ``bool``: what ``TYPE_NUMBER`` accepts.
+
+    Public for the batched commands, whose entries are objects inside one array
+    parameter and so are checked by the command rather than by
+    :func:`validate_params`; one rule, so that an entry and a parameter cannot
+    disagree about whether ``true`` or ``NaN`` is a number.
+    """
+    return _type_matches(value, TYPE_NUMBER)
 
 
 def _describe(value):

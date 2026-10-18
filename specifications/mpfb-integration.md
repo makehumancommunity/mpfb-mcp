@@ -320,6 +320,34 @@ standard rig into one. So the posing tools read the generated rig itself, in the
 - **Any other rig is answered unclassified**, its bones as a hierarchy with no body part or role.
   A wrong `left_hand` is worse than none.
 
+## A third-party add-on's UI operators are reimplemented, never called
+
+Rigify gives every generated rig snap operators of its own - `pose.rigify_limb_ik2fk_<rig_id>`,
+`pose.rigify_limb_toggle_pole_<rig_id>`, `pose.rigify_switch_parent_<rig_id>` - and they cannot be
+relied on from a bridge command. They are registered by the `rig_ui.py` text block generation
+writes into the `.blend`, which runs after a reload only if Python auto-run is allowed and at all
+only in a Blender with a UI; and the bone chains each one works on are baked into that script as
+operator properties rather than stored on the rig. So `mpfb_set_pose_switches`
+([FR 042](../feature-requests/done/042-posing-bones-switches-and-reset/README.md)) **ports** the
+snaps into its command module, crediting Rigify (GPL-2.0-or-later, compatible with the bridge's
+licence) - the same rule as for MPFB's own UI operators
+([when mpfb-mcp models a concept MPFB's UI has but its services do not](#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not)),
+applied for the first time to another add-on.
+
+- **A port drops what only a UI wants.** No keyframe is ever inserted; a quaternion IK base is
+  twisted through its quaternion rather than switched to `ZXY` for good, as Rigify's
+  `correct_rotation` does; and the twist search stops at a tenth of a degree rather than one, since
+  a degree at the shoulder is several millimetres at the elbow.
+- **The chains come from Rigify's naming, checked against the script, never read from it at
+  runtime** - FR 041's answer for parent names, given again for the chains. A limb's FK controls
+  give the rest by Rigify's `make_derived_name`: `upper_arm_fk.L` -> `upper_arm_ik.L` and
+  `MCH-upper_arm_ik_target.L`, `forearm_fk.L` -> `MCH-forearm_ik.L`, `toe_fk.L` -> `toe_ik.L`, and the
+  heel and spin controls are the extras an IK->FK snap returns to rest. The bridge test reads each
+  generated `rig_ui.py` as data and requires every chain to match, on `human_toes` (`.L`) and on
+  `game_engine` (`_l`); a pole's parent switch keeps only its location, as the script's `locks`
+  says. A rig whose bones the rule names but the rig lacks is a resolution error naming them, with
+  `raw: true` as the way to write the bare value.
+
 ## Reading MPFB's data files directly
 
 Not everything a tool needs is behind a service. `mpfb_list_targets` reports `target.json`, the

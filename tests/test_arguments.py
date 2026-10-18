@@ -74,6 +74,19 @@ class ValidatedAssetNameTests(unittest.TestCase):
             "or mpfb_add_asset reports it. It is required: this tool deletes an object.")
 
 
+class IsFiniteNumberTests(unittest.TestCase):
+
+    def test_ints_and_floats_are_numbers(self):
+        for value in (0, -3, 1.5, -0.0, 1e300):
+            with self.subTest(value=value):
+                self.assertTrue(arguments.is_finite_number(value))
+
+    def test_a_bool_nan_infinity_or_text_is_not(self):
+        for value in (True, False, float("nan"), float("inf"), -float("inf"), "1", None, [1]):
+            with self.subTest(value=value):
+                self.assertFalse(arguments.is_finite_number(value))
+
+
 class ValidatedFlagTests(unittest.TestCase):
     def test_a_bool_is_returned(self) -> None:
         self.assertIs(arguments.validated_flag(False, "refresh"), False)

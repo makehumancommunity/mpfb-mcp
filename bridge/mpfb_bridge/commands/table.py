@@ -71,12 +71,15 @@ from . import list_targets
 from . import list_urls
 from . import refit_human
 from . import remove_asset
+from . import reset_pose
 from . import save_expression
 from . import save_preset
 from . import set_asset_material
 from . import set_face_units
 from . import set_macro_details
 from . import set_material_settings
+from . import set_pose_bones
+from . import set_pose_switches
 from . import set_skin
 from . import set_targets
 from . import symmetrize_targets
@@ -278,6 +281,12 @@ COMMANDS = {
         params=remove_asset.PARAMS,
         requires_mpfb=True,
         summary=remove_asset.SUMMARY),
+    "reset_pose": Command(
+        name="reset_pose",
+        handler=reset_pose.reset_pose,
+        params=reset_pose.PARAMS,
+        requires_mpfb=True,
+        summary=reset_pose.SUMMARY),
     "save_expression": Command(
         name="save_expression",
         handler=save_expression.save_expression,
@@ -314,6 +323,18 @@ COMMANDS = {
         params=set_material_settings.PARAMS,
         requires_mpfb=True,
         summary=set_material_settings.SUMMARY),
+    "set_pose_bones": Command(
+        name="set_pose_bones",
+        handler=set_pose_bones.set_pose_bones,
+        params=set_pose_bones.PARAMS,
+        requires_mpfb=True,
+        summary=set_pose_bones.SUMMARY),
+    "set_pose_switches": Command(
+        name="set_pose_switches",
+        handler=set_pose_switches.set_pose_switches,
+        params=set_pose_switches.PARAMS,
+        requires_mpfb=True,
+        summary=set_pose_switches.SUMMARY),
     "set_skin": Command(
         name="set_skin",
         handler=set_skin.set_skin,

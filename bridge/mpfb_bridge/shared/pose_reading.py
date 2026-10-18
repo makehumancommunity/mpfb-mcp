@@ -3,7 +3,7 @@ What a character's pose is now: what is off rest, where the body is, and whether
 stretched.
 
 **A third shared module beside the two FR 041 named**, for the reason the other
-two exist: [FR 042](../../../feature-requests/042-posing-bones-switches-and-reset/README.md)'s
+two exist: [FR 042](../../../feature-requests/done/042-posing-bones-switches-and-reset/README.md)'s
 writing tools report the same reach, stretch and landmarks after every write,
 "under ``mpfb_get_pose``'s own keys and computed by the same shared code", and
 its reset reports what is still off rest by the same test. A read-back and a

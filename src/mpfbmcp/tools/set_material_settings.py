@@ -32,8 +32,6 @@ __all__ = (
     "register",
 )
 
-import math
-
 from mcp.server.fastmcp import FastMCP  # pylint: disable=import-error,no-name-in-module
 from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in-module
 
@@ -47,13 +45,8 @@ _OWNER_KEYS = {"eyes": None, "skin": "group", "color_adjustments": "object_name"
 MAX_ENTRIES = 400
 
 
-def _is_number(value: object) -> bool:
-    return (not isinstance(value, bool) and isinstance(value, (int, float))
-            and math.isfinite(value))
-
-
 def _validated_color(where: str, color: object) -> list[float]:
-    if not isinstance(color, list) or not all(_is_number(channel) for channel in color):
+    if not isinstance(color, list) or not all(arguments.is_finite_number(channel) for channel in color):
         raise ValueError(
             "{} color must be a list of four finite numbers, scene-linear RGBA, got {!r}".format(
                 where, color))
@@ -76,7 +69,7 @@ def _validated_value(where: str, entry: dict) -> dict[str, object]:
             "socket)".format(where))
     if "color" in entry:
         return {"color": _validated_color(where, entry["color"])}
-    if not _is_number(entry["value"]):
+    if not arguments.is_finite_number(entry["value"]):
         raise ValueError("{} value must be a finite number, got {!r}".format(
             where, entry["value"]))
     return {"value": float(entry["value"])}

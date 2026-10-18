@@ -763,6 +763,14 @@ now four parts, and it applies on both sides of the socket:
   writers report a limb after a write under the read's keys and by the read's code. A third module
   where the request named two, because the classification is what a bone is and the reading is what
   the pose is, and the writers need the second without the first's tables.
+  [FR 042](../feature-requests/done/042-posing-bones-switches-and-reset/README.md)'s three writers
+  added `pose_writing.py`: the write through `pose_bone.matrix` and the order it needs (parent, and
+  whatever a constraint reads, first), the lock and driver checks that setter does not make, the
+  snapshot and exact restore that let a batch check after writing, who may be written
+  (`charge_refusal`), the entry that undoes a reset (`restore_entry`), and the shape every writer's
+  answer starts with. One copy, because a writer that honoured a lock another ignored would be the
+  silent disagreement the rule exists for. The snaps ported from Rigify are not in it: they have one
+  user, `set_pose_switches`.
 
 **The evidence for the rule is FR 036's census**, not the census of generated programs that
 stood here before: those programs were deleted by
@@ -784,7 +792,7 @@ four module-level names through `mpfb_surface.py` once rather than at every use.
 neither, because they read nothing out of MPFB's services: `performed.py` works on a dict the
 command has finished building, `artifact_names.py` on a name and a path, `expression_panel.py` on
 MPFB's root package name, and `selection.py` and `blender_data.py` on plain Blender state.
-`character_frame.py` and `pose_reading.py` read only Blender too; `pose_controls.py`'s rig lookup
+`character_frame.py`, `pose_reading.py` and `pose_writing.py` read only Blender too; `pose_controls.py`'s rig lookup
 takes `services`, and its classification takes the root package name for the one name it reads off
 MPFB's UI package.
 `subject_resolution.py` is half of each: its subject step reads only the view layer and `bpy.data`,

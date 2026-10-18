@@ -691,3 +691,52 @@ Measured: the controls answer is 63 KB by default on `human_toes` (92 KB with th
 two arms) - its ceiling, written into responses.md - and the pose read-back 7.2 KB for a 13-control
 pose, about 290 B per posed control on 3.8 KB of fixed sections. 48 new bridge tests (462), 22 new
 unit tests (506), and two smoke items; the smoke run is 36 of 36.
+
+## [FR 042](done/042-posing-bones-switches-and-reset/README.md) — `mpfb_set_pose_bones`, `mpfb_set_pose_switches` and `mpfb_reset_pose`
+
+The second part of [Posing support](NEXT_STEPS.md#posing-support), and the writers FR 041 built the
+frame and the vocabulary for. The karate session posed through `execute_blender_code` with a
+helper that set `pose_bone.matrix` from world-space moves, watched the elbows splay until it found
+`pole_vector`, the fists stay in the air because `IK_parent` hung them on `root`, and had no way
+back to rest. Three tools now take all of that off the caller: thirty-nine tools, thirty-eight
+commands, and a fourth posing module, `shared/pose_writing.py`.
+
+**`mpfb_set_pose_bones` writes in the character frame, in the read-back's own shape**: `move_to`
+is `mpfb_get_pose`'s `head` and `rotate_to` its `rotation`, so a read-back is a write. Batched,
+parent first, and refused per entry when a bone is not the one in charge - with `write_instead`
+naming the write that works, for a chain `IK_FK` has handed away **an entry for another tool**.
+`pose_bone.matrix` ignores locks, so locks are checked after writing and **the batch is snapshotted
+and put back exactly on any failure**, a second form of "resolve before writing" that
+[mutating-tools.md](../specifications/mutating-tools.md#a-batched-mutating-tool-resolves-before-it-writes)
+now allows only where what is written can be restored exactly. Each change reports where the bone
+actually ended up, `achieved` with a tolerance.
+
+**`mpfb_set_pose_switches` keeps each limb in place, as Rigify's buttons do, without them.** The
+operators live in the generated `rig_ui.py` and are missing whenever it has not run, so the snaps -
+IK to FK and back, the pole, parent switches - are **ported from Rigify** into the command, and
+each answer measures the result as `snap_error`. The chains they read come from Rigify's naming,
+and a bridge test checks them against `rig_ui.py` on `human_toes` and `game_engine`: FR 042's open
+question, answered as FR 041 answered it for parent names.
+
+**`mpfb_reset_pose` is the undo Blender's stack cannot give**: back to rest by body part (the face
+included by default), and `restore_with`, the two writers' arguments that put back exactly what it
+reset - never capped, read before each bone's constraints, and leaving out only what the writer
+would refuse and what moved nothing.
+
+What the effort found: relative changes must start from a bone's own transform before its
+constraints, or an IK solver's rotation is baked into locked channels; a locked channel must count
+as changed only beyond the achieved tolerance, or an axis read back to three decimals is refused;
+"parent first" must mean "whatever moves it first", because a Rigify pole hangs from a bone a
+constraint moves after `chest`; and a limb `IK_Stretch` has stretched snaps back a millimetre or two
+out, which `snap_error` reports. FR 036's census check was failing on two names before this effort
+and on nine during it; `_is_number` (five copies) and `_so` are now shared, and the batch commands'
+builders are listed as a convention.
+
+Verified by [`live_check.py`](done/042-posing-bones-switches-and-reset/live_check.py): the karate
+stance rebuilt with mpfb-mcp tools alone on a character moved and turned 150 degrees - poles on and
+fists parented to the torso with every snap at 0.0 mm, fists by `scale_to`, a guard, the hips down
+0.25 m with both fists following by exactly that, no arm stretched - confirmed against a screenshot,
+then reset and restored to within 1e-6, and a `game_engine` rig snapped both ways. Measured:
+`mpfb_set_pose_bones`' answer is about 3.4 KB plus 350-480 B a change, so a 14-change stance is
+8.3 KB; `restore_with`'s worst case, all 278 `human_toes` controls posed, is 45 KB. 39 new bridge
+tests (501), 31 new unit tests (537), three smoke items; the smoke run is 41 of 41.
