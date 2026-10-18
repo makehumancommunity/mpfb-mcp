@@ -60,12 +60,20 @@ _UNDECLARED = "not_an_argument_of_any_tool"
 
 
 def _json_type(schema: dict) -> str:
-    """The JSON type a property takes, with an optional argument's ``null`` left out."""
-    if "type" in schema:
-        return schema["type"]
+    """The JSON type a property takes, with an optional argument's ``null`` left out.
+
+    An array is told apart by what it holds: ``switches`` is
+    ``mpfb_set_pose_switches``' list of objects, and a list of strings under the
+    same name would be the collision FR 044 named its filter ``switch_names``
+    to avoid. Both are JSON arrays, so without their items it would pass.
+    """
+    options = [schema] if "type" in schema else [
+        option for option in schema.get("anyOf", ())
+        if option.get("type") not in (None, "null")]
     return "|".join(sorted(
-        option["type"] for option in schema.get("anyOf", ())
-        if option.get("type") not in (None, "null")))
+        "array of {:s}".format(option.get("items", {}).get("type", "anything"))
+        if option["type"] == "array" else option["type"]
+        for option in options))
 
 
 class DeclaredArgumentsTests(unittest.TestCase):
@@ -126,6 +134,21 @@ class DeclaredArgumentsTests(unittest.TestCase):
         collisions = {name: {kind: sorted(tools) for kind, tools in by_type.items()}
                       for name, by_type in types.items() if len(by_type) > 1}
         self.assertEqual(collisions, _KNOWN_TYPE_COLLISIONS)
+
+    def test_a_list_of_objects_and_a_list_of_names_are_two_types(self) -> None:
+        # What test_no_argument_name_has_two_json_types relies on to see a
+        # `switches` list of names beside mpfb_set_pose_switches' list of objects.
+        self.assertEqual(_json_type({"type": "array", "items": {"type": "object"}}),
+                         "array of object")
+        self.assertEqual(
+            _json_type({"anyOf": [{"type": "array", "items": {"type": "string"}},
+                                  {"type": "null"}]}),
+            "array of string")
+        declared = {tool.name: tool.inputSchema.get("properties", {}) for tool in self.tools}
+        self.assertEqual(_json_type(declared["mpfb_set_pose_switches"]["switches"]),
+                         "array of object")
+        self.assertEqual(_json_type(declared["mpfb_get_pose_controls"]["switch_names"]),
+                         "array of string")
 
 
 class RefusalReachesTheClientTests(unittest.TestCase):

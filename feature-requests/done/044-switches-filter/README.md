@@ -1,8 +1,8 @@
 # A switches filter for mpfb_get_pose_controls, and compact switch entries
 
-**Status:** Proposed
+**Status:** Done
 
-[FR 043](../done/043-narrower-pose-controls/README.md) cut the default `mpfb_get_pose_controls`
+[FR 043](../043-narrower-pose-controls/README.md) cut the default `mpfb_get_pose_controls`
 answer on a generated `human_toes` rig from 63 KB to 31 KB. Its blocking pass is
 `roles: ["ik_control", "pole"]` with `compact: true`, and it lists eight controls. It still came to
 **10.9 KB against an 8 KB target, and 8.0 KB of that is the switches**. FR 043's requirement 7
@@ -39,7 +39,7 @@ puts the arm in IK without having thought to ask.
   more, but a switch entry would then need another key before it could be read, and the name
   filter already saves more than that (see [Architecture](#architecture)).
 - **Not a goal:** a way to ask for no switches at all. A list of names cannot be empty
-  ([`arguments.validated_names`](../../src/mpfbmcp/arguments.py)). A caller that wants no switches
+  ([`arguments.validated_names`](../../../src/mpfbmcp/arguments.py)). A caller that wants no switches
   is posing a part with none, such as a hand, and gets none already.
 
 ## Functional requirements
@@ -87,7 +87,7 @@ puts the arm in IK without having thought to ask.
    `range`, `ends` and `parent_names`, plus `parent_names_reason` when `parent_names` is `null`,
    because that reason explains the `null`. It drops `bone`, `default` and `description`, and **a
    dropped key is absent, not `null`**, by
-   [the rule FR 043 recorded](../../specifications/responses.md#how-tools-bound-a-large-answer).
+   [the rule FR 043 recorded](../../../specifications/responses.md#how-tools-bound-a-large-answer).
    - `bone` is reported and never asked for: the glossary addresses a switch by `body_part` and
      `switch`.
    - `default` is what `mpfb_reset_pose` with `include_switches` puts back.
@@ -121,11 +121,11 @@ puts the arm in IK without having thought to ask.
 
 ## Architecture
 
-- **Tool side** ([tools/get_pose_controls.py](../../src/mpfbmcp/tools/get_pose_controls.py)):
+- **Tool side** ([tools/get_pose_controls.py](../../../src/mpfbmcp/tools/get_pose_controls.py)):
   one new parameter, checked by `arguments.validated_names(switch_names, "switch_names",
   "every switch")`. That is FR 043's generalised rule, so the three list refusals cannot drift
   apart. The vocabulary is **not** checked here.
-- **Bridge command** ([commands/get_pose_controls.py](../../bridge/mpfb_bridge/commands/get_pose_controls.py)):
+- **Bridge command** ([commands/get_pose_controls.py](../../../bridge/mpfb_bridge/commands/get_pose_controls.py)):
   one new `Param`. The switch filter, `counts_by_switch` and the compact switch projection belong
   in the command, next to FR 043's `_listing()`, since no other command lists switch definitions.
   The `unknown_switch_names` check needs the rig's switches, so it runs **after `classify()`**,
@@ -150,25 +150,25 @@ puts the arm in IK without having thought to ask.
 
 ## Affected specifications
 
-- [responses.md](../../specifications/responses.md#how-tools-bound-a-large-answer): the
+- [responses.md](../../../specifications/responses.md#how-tools-bound-a-large-answer): the
   pose-controls paragraphs gain `switch_names` and `counts_by_switch` as the count that covers
   them. The sentence on switches being cut by `body_parts` alone is narrowed as above. The compact
   paragraph says it reaches switch entries and which keys they keep. The new measurements go
   beside FR 043's table.
-- [tool-interface.md](../../specifications/tool-interface.md): the glossary gains `switch_names`
+- [tool-interface.md](../../../specifications/tool-interface.md): the glossary gains `switch_names`
   (the argument, beside `switch` in an entry, and why it is not `switches`), `counts_by_switch`,
   and the `unknown_switch_names`/`known_switch_names` refusal, with the note that its vocabulary
   is the rig's. The "A Rigify switch, addressed" row already says the bone is reported and never
   asked for, and that is why compact drops it.
-- The root [CLAUDE.md](../../CLAUDE.md): the `mpfb_get_pose_controls` row and its test-table row
+- The root [CLAUDE.md](../../../CLAUDE.md): the `mpfb_get_pose_controls` row and its test-table row
   gain the argument. These are map edits only.
 
 ## Tests
 
-- **Unit, [tests/test_get_pose_controls.py](../../tests/test_get_pose_controls.py):**
+- **Unit, [tests/test_get_pose_controls.py](../../../tests/test_get_pose_controls.py):**
   `switch_names` shape (absent, empty, not a list, a non-string, a repeat), all refused before
   sending. A name that is not a switch *reaches the wire*. The default arrives as `null`.
-  [tests/test_arguments.py](../../tests/test_arguments.py) needs nothing new, because the rule is
+  [tests/test_arguments.py](../../../tests/test_arguments.py) needs nothing new, because the rule is
   FR 043's. `tests/test_vocabulary.py` should confirm that `switch_names` is a new name, not a
   second type for an old one.
 - **Bridge, `ccc_reading/get_pose_controls_test.py`**, on `human_toes` and `game_engine`:
@@ -194,13 +194,56 @@ puts the arm in IK without having thought to ask.
     `mpfb_set_pose_switches` sets `IK_parent` and `pole_vector` from what the compact entries say;
   - reading still changes nothing.
 
+## Verification
+
+Both halves of "verified" hold. The bridge suite gained twelve tests, 525 in all. In
+`ccc_reading/get_pose_controls_test.py`, on both generated families: the switches of a call with
+neither new argument are the shared module's records, whole; `switch_names` lists exactly the
+named switches of the requested parts, `counts_by_switch` names every switch the rig has and adds
+up to what is listed plus what is left out, and the count does not move with the filter; a name in
+a part not requested lists nothing and counts 0; a compact switch carries exactly its keys. Once:
+`parent_switch` is listed on `human_toes` and refused on `game_engine` with `known_switch_names`;
+`unknown_roles` is refused first; a default rig and `mixamo` neither apply nor refuse the filter.
+FR 043's "switches follow body parts alone" test became "roles and include_hidden leave the
+switches alone", since `compact` now reaches them. In `ddd_mutating/set_pose_switches_test.py`,
+requirement 9: every `(body_part, switch)` of a compact every-part listing, on both families, is
+written back at its current value with `raw: true`, accepted with no resolution error and no change
+to the pose. The unit suite gained three (550), and `tests/test_vocabulary.py` now tells an array of
+names from an array of objects, so a `switches` list of names would be caught as the collision it
+is. The smoke run is 41 of 41.
+
+The live check, [live_check.py](live_check.py), ran on 2026-10-18 against a windowed Blender 5.1
+with MPFB, the bridge (reloaded to pick the change up) and the community blender-mcp add-on, and
+passed all 28 checks. On every call measured on both families, the controls and the switches
+listed plus what the counts say was left out are everything in the requested parts. Reading
+changed nothing. Driven by its own compact answer, the blocking pass set `IK_parent` to the index
+of `Torso` in `parent_names` and `pole_vector` to the end whose `ends` says the pole aims the
+elbow, placed the hands with `mpfb_set_pose_bones` and lowered the hips 0.4 m: the hands went down
+0.400 m with them and neither arm stretched (`reach_ratio` 0.794), where FR 041's karate session
+had fists left in the air and both arms stretched to 1.119.
+
+Measured, as JSON envelopes:
+
+| Rig | default | `compact` | FR 043's blocking pass | FR 044's blocking pass |
+|-----|---------|-----------|------------------------|------------------------|
+| `human_toes` | 31.2 KB, switches 8.0 KB | 15.6 KB, switches 5.7 KB | 8.8 KB, switches 5.7 KB | **5.7 KB**, switches 2.4 KB (12) |
+| `game_engine` | 25.2 KB, switches 7.7 KB | 13.2 KB, switches 5.5 KB | 8.6 KB, switches 5.5 KB | **5.6 KB**, switches 2.4 KB (12) |
+
+The blocking pass is about 350 B over the 5.3 KB estimated, which is `counts_by_switch` (every
+switch name of the rig, on every Rigify answer) and the echo, and 2.5 KB under the line. FR 043's
+pass with compact switches came in at the 8.6 KB estimated for `game_engine` and 8.8 KB for
+`human_toes`, recorded rather than a target. The description grew 198 B (2,438 to 2,636 B) and fit
+under the existing ceiling; the schema ceiling rose 100 B, to 15,000, for the `switch_names` list.
+
 ## References
 
-- [FR 043](../done/043-narrower-pose-controls/README.md): requirement 7, the compact rule, the
+- [FR 043](../043-narrower-pose-controls/README.md): requirement 7, the compact rule, the
   blocking pass, and the measurement that found the switches were 8.0 KB of it. Its
-  [live_check.py](../done/043-narrower-pose-controls/live_check.py) is the one to extend.
-- [FR 042](../done/042-posing-bones-switches-and-reset/README.md): `mpfb_set_pose_switches`, how a
+  [live_check.py](../043-narrower-pose-controls/live_check.py) is the one to extend.
+- [FR 042](../042-posing-bones-switches-and-reset/README.md): `mpfb_set_pose_switches`, how a
   switch is addressed, and why `include_switches` is not called `switches`.
-- [FR 041](../done/041-pose-controls-and-read-back/README.md): the switch records, `ends` and
+- [FR 041](../041-pose-controls-and-read-back/README.md): the switch records, `ends` and
   `parent_names`, and the karate session that needed `IK_parent` and `pole_vector`.
 - Bridge: `shared/pose_controls.py` (`_collect_switches`, `_switch_record`, `SWITCH_ENDS`).
+- [HISTORY: FR 044](../../HISTORY.md#switches-filter), which replaced NEXT_STEPS' "A switches filter
+  on `mpfb_get_pose_controls`".

@@ -190,7 +190,12 @@ DESCRIPTION_CEILING = 80800
 #
 # Raised from 14,650 to 14,900 by FR 043: 250 B for `mpfb_get_pose_controls`'
 # nullable `roles` list and its two bools.
-SCHEMA_CEILING = 14900
+#
+# Raised from 14,900 to 15,000 by
+# [FR 044](../feature-requests/done/044-switches-filter/README.md): 124 B for
+# `mpfb_get_pose_controls`' nullable `switch_names` list, the same shape as
+# `roles`.
+SCHEMA_CEILING = 15000
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.

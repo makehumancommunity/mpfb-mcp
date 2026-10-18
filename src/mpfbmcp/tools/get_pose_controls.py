@@ -13,10 +13,17 @@ at this description rather than repeating it, which is how
 [a concept several tools share](../../../specifications/tool-interface.md#a-tool-description-is-call-time-instruction-with-a-budget)
 is paid for once.
 
-**``body_parts`` and ``roles`` are validated for shape only**: a list of
-distinct, non-empty strings, or omitted, by one rule
+**``body_parts``, ``roles`` and ``switch_names`` are validated for shape
+only**: a list of distinct, non-empty strings, or omitted, by one rule
 (:func:`arguments.validated_names`). Which names are body parts and roles is
-answered inside Blender, which lists them when one is not.
+answered inside Blender, which lists them when one is not, and which names are
+switches is the rig's own: ``human_toes`` has ``parent_switch`` and
+``game_engine`` does not, so there is no list this side could check against.
+``switch_names`` is not called ``switches``
+([FR 044](../../../feature-requests/done/044-switches-filter/README.md)),
+because ``switches`` is ``mpfb_set_pose_switches``' list of objects and the key
+of this answer, and one argument name with two shapes is what FR 042 renamed
+``include_switches`` to avoid.
 ``include_hidden`` and ``compact``
 ([FR 043](../../../feature-requests/done/043-narrower-pose-controls/README.md))
 are real bools. Everything about what the answer holds - the
@@ -50,6 +57,7 @@ def register(mcp: FastMCP) -> None:
     def mpfb_get_pose_controls(name: str | None = None,
                                body_parts: list[str] | None = None,
                                roles: list[str] | None = None,
+                               switch_names: list[str] | None = None,
                                include_hidden: bool = False,
                                compact: bool = False) -> dict[str, object]:
         """
@@ -84,18 +92,22 @@ def register(mcp: FastMCP) -> None:
         limb's switches, `look_target` aims the eyes; `counts_by_role` names
         every role.
 
-        `switches` (Rigify only, by body part, never cut by the other
-        filters): each custom property such as `IK_FK`, `IK_Stretch`,
+        `switches` (Rigify only, by body part, not cut by `roles` or
+        `include_hidden`): each custom property such as `IK_FK`, `IK_Stretch`,
         `pole_vector`, `IK_parent`, with `range`, `default`, `ends` (what each
         end means: `IK_FK` 0.0 is IK) and, for a parent switch,
-        `parent_names` (the parent each integer selects).
+        `parent_names` (the parent each integer selects). `switch_names` lists
+        only those; `counts_by_switch` counts the requested parts' switches
+        under the rig's own names. `compact` drops `bone`, `default`,
+        `description`.
 
         On a default rig, `helper_modes` reports MPFB's IK helpers and an FK
         bone a helper holds has `driven_by`: rotating it does nothing; move the
         helper. A rig that is not classified (`classified: false`) is listed
         as plain `bones` instead; `classified_rigs` says which are. Refusals:
         `rig_not_found`, `rigify_not_generated` (call
-        `mpfb_generate_rigify_rig`), `unknown_body_parts`, `unknown_roles`.
+        `mpfb_generate_rigify_rig`), `unknown_body_parts`, `unknown_roles`,
+        `unknown_switch_names`.
         """
         return backend.send(
             "get_pose_controls",
@@ -103,6 +115,8 @@ def register(mcp: FastMCP) -> None:
                 "name": arguments.validated_subject(name),
                 "body_parts": arguments.validated_body_parts(body_parts),
                 "roles": arguments.validated_names(roles, "roles", "every role"),
+                "switch_names": arguments.validated_names(switch_names, "switch_names",
+                                                          "every switch"),
                 # A truthy "false" would list a hundred hidden controls, and a
                 # falsy 0 would drop every key a caller then reads.
                 "include_hidden": arguments.validated_flag(include_hidden, "include_hidden"),

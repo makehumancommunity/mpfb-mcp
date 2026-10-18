@@ -126,16 +126,6 @@ Pose loading is the natural next step, now that there is a reset to fall back on
 `rotate_to` takes what a saved pose would hold. Like the posing tools, it is Blender-side logic in
 bridge commands that reimplements what MPFB's UI does.
 
-<a id="a-switches-filter"></a>
-
-## A switches filter on `mpfb_get_pose_controls`
-
-Scoped as [FR 044](044-switches-filter/README.md) (Proposed). [FR 043](done/043-narrower-pose-controls/README.md)'s
-blocking pass came to 10.9 KB against an 8 KB target, and 8.0 KB of that was the switches, which
-follow `body_parts` alone. The request adds an opt-in `switch_names` filter, counted by
-`counts_by_switch`, and lets `compact` drop `bone`, `default` and `description` from switch entries.
-The two together are measured at 5.3 KB for that pass. The default is unchanged.
-
 <a id="placing-a-character"></a>
 
 ## Placing a character

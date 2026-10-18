@@ -15,6 +15,11 @@ What only a real rig can establish, and so is asserted here:
   switch: ``snap_error`` under a millimetre. The same switches with ``raw: true``
   move the limb.
 - **Switches without a snap** are written as given and say why.
+- **A compact ``get_pose_controls`` answer is enough to write every switch**
+  ([FR 044](../../../../feature-requests/done/044-switches-filter/README.md)'s
+  requirement 9), on both families: each ``(body_part, switch)`` it lists,
+  every body part included, is accepted, written back at its current value with
+  ``raw: true`` so that nothing moves.
 - **Refusals change nothing**: an unknown switch, a value of the wrong type or
   outside the live range, a switch named twice, and a rig that has no switches
   at all (a default rig, ``mixamo``).
@@ -146,8 +151,44 @@ def test_the_snap_chains_are_rigifys_own_on_human_toes(human_toes):
             "a pole's parent switch keeps only its location, as the command assumes"
 
 
+def _check_every_compact_switch_is_accepted(basemesh, rig):
+    """Every switch a compact listing names, written back as it is: accepted, and nothing moves."""
+    every_part = ["root", "torso", "head", "face", "left_arm", "right_arm", "left_hand",
+                  "right_hand", "left_leg", "right_leg"]
+    compact = _fixture_result("get_pose_controls", {"name": basemesh, "body_parts": every_part,
+                                                    "compact": True})["switches"]
+    # The compact entry has no bone, so the current value is read through the
+    # full listing's; the write itself is addressed from the compact entry alone.
+    bones = {(entry["body_part"], entry["switch"]): entry["bone"]
+             for entry in _fixture_result("get_pose_controls", {
+                 "name": basemesh, "body_parts": every_part})["switches"]}
+    assert compact and len(compact) == len(bones)
+    switches = []
+    for entry in compact:
+        value = rig.pose.bones[bones[(entry["body_part"], entry["switch"])]][entry["switch"]]
+        if entry["type"] == "bool":
+            assert entry["range"] == [False, True]
+        else:
+            assert entry["range"][0] <= value <= entry["range"][1], entry
+        switches.append({"body_part": entry["body_part"], "switch": entry["switch"],
+                         "value": value, "raw": True})
+    before = posing_state(rig)
+    answer = _result({"name": basemesh, "switches": switches})
+    assert answer["resolution_errors"] == [], answer["resolution_errors"]
+    assert len(answer["changes"]) == len(compact)
+    assert all(change["previous_value"] == change["new_value"] for change in answer["changes"])
+    assert answer["performed"] is False, "every value was already there"
+    assert posing_state(rig) == before
+
+
+def test_every_switch_in_a_compact_listing_is_accepted_on_human_toes(rigify):
+    """set_pose_switches with every (body_part, switch) a compact get_pose_controls lists"""
+    _check_every_compact_switch_is_accepted(*rigify)
+
+
 def test_the_snap_chains_are_rigifys_own_on_game_engine_and_its_snaps_hold():
-    """set_pose_switches on a generated game_engine rig, with its _l/_r names"""
+    """set_pose_switches on a generated game_engine rig, with its _l/_r names, and every
+    switch a compact get_pose_controls lists accepted"""
     services = services_or_skip()
     with Character() as character:
         rig = rigged_character(services, character, "generated:game_engine")
@@ -162,6 +203,7 @@ def test_the_snap_chains_are_rigifys_own_on_game_engine_and_its_snaps_hold():
             for change in answer["changes"]:
                 assert change["snapped"] is True
                 assert change["snap_error"] < _MM, change
+        _check_every_compact_switch_is_accepted(name, rig)
 
 
 def _snapped(answer):

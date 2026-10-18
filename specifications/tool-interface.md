@@ -339,7 +339,9 @@ rather than reopening it.
 
 The mechanical part is checked by `tests/test_vocabulary.py`: every tool refuses an undeclared
 argument (see [above](#validate-before-crossing-the-socket)), `arguments.RETIRED_ARGUMENTS` is
-coherent with what each tool declares, and no argument name carries two JSON types. Answer keys are
+coherent with what each tool declares, and no argument name carries two JSON types - an array
+counted by what it holds, so a list of names and a list of objects under one name are two
+([FR 044](../feature-requests/done/044-switches-filter/README.md)). Answer keys are
 built bridge-side as dicts, and a permanent check over that source would also match internal
 dictionaries, so they were checked by the FR's own `census.py --check` instead.
 
@@ -381,13 +383,14 @@ dictionaries, so they were checked by the FR's own `census.py --check` instead.
 | A position or direction on a character | an object with `forward`, `left`, `up`, in metres from the rig object's origin ([the character frame](responses.md#a-position-on-a-character-is-in-the-character-frame)); a rotation is `{"axis": <that>, "degrees": n}` | a world-space `[x, y, z]` |
 | A change to a pose bone, in an entry of `bones` | a position as `move_by` (an offset) or `move_to` (where the head goes, as `mpfb_get_pose` reports `head`); a rotation as `rotate_by` (about the head), `rotate_to` (from rest, as `mpfb_get_pose` reports `rotation`) or `aim` (head-to-tail direction) with `twist` (degrees about the bone's own axis); `scale_to`, factors keyed `x`/`y`/`z` in the bone's own axes. At most one of each kind | `translate`, `location`, `rotation` as an argument |
 | Also apply to the other side | `symmetry`, a bool: call-level in `mpfb_set_targets`, per entry in `mpfb_set_pose_bones` - one concept, one spelling | `mirror` |
-| A Rigify switch, addressed | `body_part` and `switch` (Rigify's property name, as `mpfb_get_pose_controls` lists it); its value `value`; `raw: true` to skip the snap | the bone it lives on, which is reported and never asked for |
+| A Rigify switch, addressed | `body_part` and `switch` (Rigify's property name, as `mpfb_get_pose_controls` lists it); its value `value`; `raw: true` to skip the snap | the bone it lives on, which is reported and never asked for - which is why a compact switch entry drops it |
+| Which switches to list, by name | `switch_names` (`mpfb_get_pose_controls` only, [FR 044](../feature-requests/done/044-switches-filter/README.md)), echoed sorted as `requested_switch_names`, counted by `counts_by_switch` under every switch name the rig has. Its vocabulary is the rig's own, not this package's: `human_toes` has `parent_switch` and `game_engine` does not | `switches`, which is `mpfb_set_pose_switches`' list of objects and the key of the answer - one name, one JSON type, as with `include_switches` |
 | Whether a write kept the limb where it was, and how well | `snapped`, with `snap_reason` when false, and `snap_error` (metres) when true | |
 | Whether a write ended where it was sent | `achieved`, with `deviation` when false and `achieved_measure` saying how it was measured | |
 | The arguments that undo what a tool did | `restore_with`, keyed by the tool to call (`apply_with` is the save's: the call that makes something durable) | `undo` |
 | Also do or list the optional part | `include_<part>`: `include_switches` (a reset) - FR 042 named it `switches`, which `mpfb_set_pose_switches` already takes as a list, and one name carries one JSON type; `include_hidden` (`mpfb_get_pose_controls`, FR 043) | `switches` as a bool, `show_hidden` |
 | A rig a writer cannot act on | `blocked_by: "rig_in_edit_mode"` / `"rig_has_no_switches"` (only a generated Rigify rig has them) / `"rig_not_classified"` (a reset by body part on a rig with none) | |
-| The character has no rig to pose / only a Rigify meta-rig / a body part that is not one / a role that is not one | `blocked_by: "rig_not_found"` / `"rigify_not_generated"` / `"unknown_body_parts"`, with `known_body_parts` / `"unknown_roles"`, with `known_roles`, refused after `unknown_body_parts` | `no_rig`, `no_armature_found` (which `mpfb_generate_rigify_rig` keeps for a different question: no armature at all among the relatives) |
+| The character has no rig to pose / only a Rigify meta-rig / a body part that is not one / a role that is not one / a switch name the rig has nowhere | `blocked_by: "rig_not_found"` / `"rigify_not_generated"` / `"unknown_body_parts"`, with `known_body_parts` / `"unknown_roles"`, with `known_roles`, refused after `unknown_body_parts` / `"unknown_switch_names"`, with `known_switch_names` (every switch name the rig has, sorted), refused after `unknown_roles` and only on a rig that has switches; a name the rig has outside the requested parts is not a mistake and counts 0 | `no_rig`, `no_armature_found` (which `mpfb_generate_rigify_rig` keeps for a different question: no armature at all among the relatives) |
 
 Where MPFB's own spelling disagrees with a row here, the row wins;
 [mpfb-integration.md](mpfb-integration.md#where-mpfbs-spelling-disagrees-with-the-glossary-the-glossary-wins)

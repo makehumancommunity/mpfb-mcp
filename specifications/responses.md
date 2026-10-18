@@ -147,8 +147,16 @@ every role present as 0 if need be, which makes `roles` discoverable as `counts_
 is hidden, present whatever `include_hidden` is, so the size of the cut is visible as well as the
 fact. Listed plus left out is then every control in the requested parts, by the answer's own
 numbers, and the message names the argument that brings each cut back. **The switches are cut by
-`body_parts` alone**: an agent placing `hand_ik.L` has to learn that `IK_FK` puts the arm in IK
-without having thought to ask for the `switches` role.
+`body_parts`, and by `switch_names` when the caller names them**
+([FR 044](../feature-requests/done/044-switches-filter/README.md)), never by `roles` or
+`include_hidden`: an agent placing `hand_ik.L` has to learn that `IK_FK` puts the arm in IK without
+having thought to ask for the `switches` role, so only a caller that names switches gets fewer. The
+count that covers the name filter is `counts_by_switch`: the requested parts' switches per name,
+*before* the name filter, keyed by every switch name the rig has, as 0 if need be. Its keys are the
+rig's, not a fixed list - `human_toes` has `parent_switch` and `game_engine` does not - and it is
+`null`, with `switch_names` neither applied nor refused, on a rig that has no switches (the default
+rig, an unclassified one), so one call sent across characters with different rigs fails only for a
+real mistake.
 
 **A compact form the caller chose may drop keys rather than null them.** Elsewhere a field that does
 not apply is `null` rather than absent - a section left out above, `truncated` when false - because
@@ -158,24 +166,32 @@ on every entry would spend a key per control on saying nothing, which is the cos
 to remove. The description lists the keys a compact entry keeps. The one dropped field that changes
 what a write does, `locked`, is safe to drop because `mpfb_set_pose_bones` checks locks after it
 writes and refuses rather than misleads; `driven_by` stays on the default rig, because it is what
-says that rotating the bone does nothing that lasts.
+says that rotating the bone does nothing that lasts. **`compact` reaches the switches too**
+(FR 044): a compact switch entry keeps `body_part`, `switch`, `type`, `range`, `ends` and
+`parent_names` (with `parent_names_reason` when that is `null`, since the reason explains the
+`null`), which is everything `mpfb_set_pose_switches` needs, and drops `bone` (reported, never
+asked for), `default` (what `mpfb_reset_pose` puts back) and `description` (Rigify's text, which
+says what a switch is but never which end is which - `ends` and `parent_names` say that).
 
 Measured, as JSON envelopes, on a generated `human_toes` rig:
 
-| Call | FR 041 | FR 043 |
-|------|--------|--------|
-| default | 63 KB (180 controls) | 31 KB (71 listed, 109 hidden) |
-| `include_hidden` (FR 041's default) | - | 64 KB |
-| `compact` | - | 18 KB |
-| `roles: ["ik_control", "pole"]`, `compact` (a blocking pass) | - | 10.9 KB, of which 8.0 KB is switches |
-| every part, face included | 92 KB | - |
+| Call | FR 041 | FR 043 | FR 044 |
+|------|--------|--------|--------|
+| default | 63 KB (180 controls) | 31 KB (71 listed, 109 hidden) | 31 KB |
+| `include_hidden` (FR 041's default) | - | 64 KB | - |
+| `compact` | - | 18 KB | 15.6 KB (switches compact) |
+| `roles: ["ik_control", "pole"]`, `compact` (a blocking pass) | - | 10.9 KB, of which 8.0 KB is switches | 8.8 KB, of which 5.7 KB is switches |
+| the same, `switch_names: ["IK_FK", "IK_parent", "pole_vector"]` | - | - | **5.7 KB**, of which 2.4 KB is switches |
+| every part, face included | 92 KB | - | - |
 
 On a generated `game_engine` rig the default is 25 KB (52 of 122), `include_hidden` 46 KB (FR 041
 measured 46 KB, when nothing was hidden there), compact 15 KB and the blocking pass 10.5 KB; on the
 default rig, which hides nothing, 31 KB and 15 KB compact. The blocking pass misses the 8 KB line
-by its switches alone - about 7.7 to 8 KB on either Rigify family, which `mpfb_set_pose_switches`
-needs as they are - and what is not switches is 2.9 KB; the request said to record that rather
-than trim the switches. The pose read-back, read after every change, holds near the 8 KB line
+by its switches alone - about 7.7 to 8 KB on either Rigify family - and what is not switches is
+2.9 KB; FR 043 recorded that rather than trim what `mpfb_set_pose_switches` needs. FR 044 cut it by
+naming the switches and compacting them: the blocking pass that names three is 5.7 KB on
+`human_toes` and 5.6 KB on `game_engine`, and the one that names none, which is what the default
+protects, 8.8 and 8.6 KB. The pose read-back, read after every change, holds near the 8 KB line
 (7.2 KB for 13 posed controls; about 290 B per posed control on 3.8 KB of fixed sections, so 20
 posed controls is 9.6 KB), and takes none of these filters: it lists only what is posed.
 

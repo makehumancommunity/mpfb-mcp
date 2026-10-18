@@ -773,3 +773,30 @@ every listing on all three rigs, and reading changes nothing. Measured on `human
 which are 8.0 KB of it and were recorded rather than trimmed. The default missed the 25 KB
 estimate for the same reason. 12 new bridge tests (513), 10 new unit tests (547), and the
 description budget up 350 B for three arguments; the smoke run is 41 of 41.
+
+<a id="switches-filter"></a>
+
+## [FR 044](done/044-switches-filter/README.md) — a `switch_names` filter for `mpfb_get_pose_controls`, and compact switch entries
+
+FR 043's blocking pass came to 10.9 KB against an 8 KB line, and 8.0 KB of it was the switches,
+which followed `body_parts` alone. **`switch_names` now lists only the named switches**, counted by
+`counts_by_switch` - the requested parts' switches per name before the filter, keyed by every
+switch name the rig has - so listed plus left out is still every switch, and the message says how
+many were left out. The vocabulary is the rig's own (`human_toes` has `parent_switch`,
+`game_engine` does not), so `unknown_switch_names` is checked bridge-side after classification and
+after `unknown_roles`; on a default or unclassified rig the filter is neither applied nor refused.
+**`compact` now reaches the switches**: an entry keeps what `mpfb_set_pose_switches` needs and drops
+`bone`, `default` and `description`. The argument is not called `switches`, which is the setter's
+list of objects; `tests/test_vocabulary.py` now tells an array of names from an array of objects,
+so that collision would fail there rather than pass as two arrays. The default is unchanged apart
+from the two new keys.
+
+Verified by [`live_check.py`](done/044-switches-filter/live_check.py), 28 of 28, on FR 041's karate
+character and a generated `game_engine`: the counts explain every listing, reading changes
+nothing, and a blocking pass driven by its own compact answer - `IK_parent` on `Torso`, the pole
+on, hands placed, hips lowered 0.4 m - kept the hands with the hips and both arms unstretched,
+which is what the karate session lacked. Measured: the blocking pass naming `IK_FK`, `IK_parent`
+and `pole_vector` is **5.7 KB on `human_toes` and 5.6 KB on `game_engine`**, about 350 B over the
+estimate for `counts_by_switch`; without the names, 8.8 and 8.6 KB. 12 new bridge tests (525),
+3 new unit tests (550), the description 198 B larger under the existing ceiling and the schema
+ceiling up 100 B; the smoke run is 41 of 41.

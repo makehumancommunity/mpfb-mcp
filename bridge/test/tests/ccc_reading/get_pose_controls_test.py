@@ -28,8 +28,14 @@ What only a real rig can establish, and so is asserted here:
   a hidden control is left out by default and listed with ``include_hidden``,
   ``roles`` and the hidden default intersect, ``counts_by_body_part`` does not
   move whatever is asked, and ``counts_by_role`` and ``hidden_by_body_part``
-  add up to what is listed plus what is left out. Switches are cut by body part
-  alone, and a compact entry carries exactly its keys.
+  add up to what is listed plus what is left out. A compact entry carries
+  exactly its keys.
+- **Switches are cut by body part, and by name only when named**
+  ([FR 044](../../../../feature-requests/done/044-switches-filter/README.md)):
+  ``counts_by_switch`` names every switch the rig has and adds up to what is
+  listed plus what the name filter left out, the vocabulary is each rig's own
+  (``parent_switch`` is ``human_toes``' and not ``game_engine``'s), and a
+  default or unclassified rig neither applies ``switch_names`` nor refuses it.
 - **Nothing is changed**: mode, active object, selection, every bone's pose and
   every switch, before and after.
 """
@@ -40,6 +46,7 @@ import re
 import bpy
 import pytest
 
+from .. import bridge_module
 from .._fixtures import Character
 from .._fixtures import dispatch
 from .._fixtures import posing_state
@@ -251,6 +258,11 @@ def test_an_unclassified_rig_is_listed_and_never_guessed():
         assert len(filtered["bones"]) == len(rig.data.bones)
         assert all(set(bone) == {"bone", "parent", "deform"} for bone in filtered["bones"])
         assert "neither roles nor include_hidden" in filtered["message"]
+        named = _result({"name": character.basemesh.name, "switch_names": ["IK_FKK"]})
+        assert named["ready"] is True, "not applied, so not refused"
+        assert named["switches"] is None
+        assert named["requested_switch_names"] is None and named["counts_by_switch"] is None
+        assert "switch_names is not applied" in named["message"]
 
 
 def test_a_meta_rig_is_refused_naming_the_tool_that_generates():
@@ -378,14 +390,146 @@ def test_requested_roles_are_echoed_in_vocabulary_order(human_toes):
     assert _result({"name": basemesh})["requested_roles"] is None
 
 
-def test_switches_follow_body_parts_alone(human_toes):
-    """commands.get_pose_controls: roles, include_hidden and compact leave the switches alone"""
+def test_roles_and_include_hidden_leave_the_switches_alone(human_toes):
+    """commands.get_pose_controls: roles and include_hidden never cut a switch"""
     basemesh, _rig = human_toes
     switches = _result({"name": basemesh})["switches"]
     assert switches
-    for params in ({"roles": ["ik_control"]}, {"include_hidden": True}, {"compact": True},
-                   {"roles": ["tweak"], "compact": True}):
+    for params in ({"roles": ["ik_control"]}, {"include_hidden": True},
+                   {"roles": ["tweak"], "include_hidden": True}):
         assert _result(dict(params, name=basemesh))["switches"] == switches, params
+    compact = _result({"name": basemesh, "roles": ["tweak"], "compact": True})["switches"]
+    assert [(entry["body_part"], entry["switch"]) for entry in compact] == \
+        [(entry["body_part"], entry["switch"]) for entry in switches]
+
+
+def _classification(rig, identified):
+    root = bridge_module("mpfb_resolution").resolve().module.__name__
+    return bridge_module("shared.pose_controls").classify(root, rig, identified)
+
+
+IDENTIFIED = {"human_toes": "rigify_generated.human_toes",
+              "game_engine": "rigify_generated.game_engine"}
+
+
+@pytest.mark.parametrize("family", ["human_toes", "game_engine"])
+def test_without_the_new_arguments_the_switches_are_the_records(family, request):
+    """commands.get_pose_controls: no switch_names and no compact lists every record whole"""
+    basemesh, rig = request.getfixturevalue(family)
+    answer = _result({"name": basemesh})
+    records = _classification(rig, IDENTIFIED[family])["switches"]
+    assert answer["switches"] == [record for record in records
+                                  if record["body_part"] in answer["requested_body_parts"]]
+    assert answer["requested_switch_names"] is None
+    assert "switch(es) of other names" not in answer["message"]
+
+
+def _check_the_switch_counts_explain_the_listing(answer, rig_switch_names):
+    """Every switch name the rig has is counted, and listed plus left out is every switch."""
+    assert list(answer["counts_by_switch"]) == rig_switch_names
+    named = answer["requested_switch_names"] or rig_switch_names
+    assert len(answer["switches"]) == sum(answer["counts_by_switch"][name] for name in named)
+    left_out = sum(answer["counts_by_switch"].values()) - len(answer["switches"])
+    if left_out:
+        assert "{:d} switch(es) of other names are left out".format(left_out) in answer["message"]
+    for entry in answer["switches"]:
+        assert entry["body_part"] in answer["requested_body_parts"]
+        assert answer["requested_switch_names"] is None or \
+            entry["switch"] in answer["requested_switch_names"]
+
+
+@pytest.mark.parametrize("family", ["human_toes", "game_engine"])
+def test_switch_names_lists_exactly_the_named_switches_and_counts_the_rest(family, request):
+    """commands.get_pose_controls' switch_names, on both generated families"""
+    basemesh, rig = request.getfixturevalue(family)
+    rig_switch_names = sorted(set(record["switch"] for record in _classification(
+        rig, IDENTIFIED[family])["switches"]))
+    everything = _result({"name": basemesh, "body_parts": EVERY_PART})
+    _check_the_switch_counts_explain_the_listing(everything, rig_switch_names)
+
+    named = ["pole_vector", "IK_parent", "IK_FK"]
+    answer = _result({"name": basemesh, "switch_names": named})
+    assert answer["requested_switch_names"] == sorted(named)
+    assert {(entry["body_part"], entry["switch"]) for entry in answer["switches"]} == {
+        (part, name) for part in ("left_arm", "right_arm", "left_leg", "right_leg")
+        for name in named}
+    assert "switch(es) of other names are left out; counts_by_switch says which" in \
+        answer["message"]
+    _check_the_switch_counts_explain_the_listing(answer, rig_switch_names)
+    assert answer["counts_by_switch"] == _result({"name": basemesh})["counts_by_switch"], \
+        "counted before the name filter"
+    # The controls are not cut by switch names, nor the switches by roles.
+    assert answer["controls"] == _result({"name": basemesh})["controls"]
+    with_roles = _result({"name": basemesh, "switch_names": named, "roles": ["tweak"],
+                          "include_hidden": True})
+    assert with_roles["switches"] == answer["switches"]
+
+
+@pytest.mark.parametrize("family", ["human_toes", "game_engine"])
+def test_a_name_in_a_part_not_requested_lists_nothing_and_counts_zero(family, request):
+    """commands.get_pose_controls: switch_names IK_FK with body_parts that have none"""
+    basemesh, _rig = request.getfixturevalue(family)
+    answer = _result({"name": basemesh, "body_parts": ["left_hand", "head"],
+                      "switch_names": ["IK_FK"]})
+    assert answer["ready"] is True
+    assert answer["switches"] == []
+    assert answer["counts_by_switch"]["IK_FK"] == 0
+    assert answer["requested_switch_names"] == ["IK_FK"]
+
+
+def test_switch_names_are_each_rigs_own(human_toes, game_engine):
+    """commands.get_pose_controls: parent_switch is human_toes', and refused on game_engine"""
+    toes = _result({"name": human_toes[0], "switch_names": ["parent_switch"]})
+    assert toes["ready"] is True
+    assert toes["switches"] and {entry["switch"] for entry in toes["switches"]} == \
+        {"parent_switch"}
+
+    answer = _result({"name": game_engine[0], "switch_names": ["IK_FK", "parent_switch"]})
+    assert (answer["ready"], answer["blocked_by"]) == (False, "unknown_switch_names")
+    assert answer["unknown_switch_names"] == ["parent_switch"]
+    assert "IK_FK" in answer["known_switch_names"]
+    assert answer["known_switch_names"] == sorted(answer["known_switch_names"])
+    assert answer["rig_object_name"] == game_engine[1].name
+    assert "'parent_switch'" in answer["message"]
+
+
+def test_unknown_switch_names_is_refused_after_unknown_roles(human_toes):
+    """commands.get_pose_controls: the refusal order is body parts, roles, then switch names"""
+    basemesh, _rig = human_toes
+    both = _result({"name": basemesh, "roles": ["elbow"], "switch_names": ["IK_FKK"]})
+    assert both["blocked_by"] == "unknown_roles"
+    alone = _result({"name": basemesh, "switch_names": ["IK_FKK"]})
+    assert alone["blocked_by"] == "unknown_switch_names"
+    assert alone["unknown_switch_names"] == ["IK_FKK"]
+
+
+def test_switch_names_on_a_default_rig_is_not_applied(default_with_helpers):
+    """commands.get_pose_controls with switch_names on a rig that has no switches"""
+    basemesh, _rig = default_with_helpers
+    answer = _result({"name": basemesh, "switch_names": ["IK_FKK"], "compact": True})
+    assert answer["ready"] is True, "not applied, so not refused"
+    assert answer["switches"] == []
+    assert answer["requested_switch_names"] is None and answer["counts_by_switch"] is None
+    assert "switch_names is not applied" in answer["message"]
+    assert "switch_names" not in _result({"name": basemesh})["message"]
+
+
+COMPACT_SWITCH_KEYS = {"body_part", "switch", "type", "range", "ends", "parent_names"}
+
+
+@pytest.mark.parametrize("family", ["human_toes", "game_engine"])
+def test_a_compact_switch_carries_exactly_its_keys(family, request):
+    """commands.get_pose_controls' compact switch entries, on both generated families"""
+    basemesh, _rig = request.getfixturevalue(family)
+    full = _result({"name": basemesh, "body_parts": EVERY_PART})["switches"]
+    compact = _result({"name": basemesh, "body_parts": EVERY_PART, "compact": True})["switches"]
+    assert len(compact) == len(full)
+    for whole, entry in zip(full, compact):
+        expected = set(COMPACT_SWITCH_KEYS)
+        if "parent_names_reason" in whole:
+            expected.add("parent_names_reason")
+        assert set(entry) == expected, entry
+        assert all(entry[key] == whole[key] for key in entry), entry
 
 
 def test_a_compact_entry_carries_exactly_its_keys(human_toes, game_engine):

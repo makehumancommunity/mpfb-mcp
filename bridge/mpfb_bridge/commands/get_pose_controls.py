@@ -44,14 +44,34 @@ default. Every cut stays visible as a number - ``counts_by_body_part``
 (every part, unfiltered), ``counts_by_role`` (the requested parts, before the
 role and hidden filters) and ``hidden_by_body_part`` (what passed the role
 filter and is hidden) - and every filter is echoed, so no short ``controls``
-reads as complete. **Switches follow ``body_parts`` alone**: an agent placing
+reads as complete. **Switches follow ``body_parts``, and ``switch_names`` when
+the caller names them**, never ``roles`` or ``include_hidden``: an agent placing
 ``hand_ik.L`` must learn that ``IK_FK`` puts the arm in IK without having
-thought to ask for the ``switches`` role. A compact entry *drops* keys rather
+thought to ask for the ``switches`` role, so only a caller that names switches
+gets fewer. A compact entry *drops* keys rather
 than nulling them, because the caller chose the shape and the echo says which;
 ``driven_by`` stays on the default rig, since it is what says a rotation will
 not last. ``unknown_roles`` is checked here, after
 ``pose_controls.resolve_posing_subject()``, which the writers share and which
 takes no roles.
+
+**``switch_names`` names the rig's switches, not a fixed list**
+([FR 044](../../../feature-requests/done/044-switches-filter/README.md)):
+``human_toes`` has ``parent_switch`` and ``game_engine`` does not. So
+``unknown_switch_names`` can only be checked after ``classify()``, later than
+``unknown_roles``, and refuses only a name the rig has nowhere; a name the rig
+has outside the requested parts lists nothing and counts 0.
+``counts_by_switch`` covers the requested parts before the name filter, keyed
+by every switch name the rig has, which makes the filter as discoverable as
+``counts_by_role`` makes ``roles``. On a rig with no switches - the default rig,
+an unclassified one - the filter is neither applied nor refused, so one call
+sent across characters with different rigs fails only for a real mistake. A
+compact switch entry drops ``bone`` (reported, never asked for), ``default``
+(what a reset puts back) and ``description`` (Rigify's text, which ``ends`` and
+``parent_names`` say better), and keeps everything ``mpfb_set_pose_switches``
+needs. The filter and the projection live here rather than in
+``shared/pose_controls.py``, because ``get_pose`` and the writers read the same
+switch records unprojected.
 
 **Switches are listed with what each end means.** Rigify keeps them as custom
 properties on hidden-looking bones, and its own description says what a switch
@@ -95,6 +115,9 @@ PARAMS = (
     Param("roles", TYPE_ARRAY, default=None, nullable=True,
           description="Which roles to list, from: {:s}. Omit for every role.".format(
               ", ".join(pose_controls.ROLES))),
+    Param("switch_names", TYPE_ARRAY, default=None, nullable=True,
+          description="Which switches to list, by name (IK_FK, IK_parent, ...), from the rig's "
+                      "own switches. Omit for every switch of the requested body parts."),
     Param("include_hidden", TYPE_BOOLEAN, default=False,
           description="Also list the controls marked hidden_by_default."),
     Param("compact", TYPE_BOOLEAN, default=False,
@@ -178,12 +201,22 @@ def _bone_entry(frame, bone, pose_bone, compact):
     return entry
 
 
-def _message_for(rig, identified, classification, tally):
+_SWITCH_NAMES_NOT_APPLIED = (" switch_names is not applied: only a generated Rigify rig has "
+                             "switches.")
+
+
+def _has_switches(classification):
+    """Whether the rig is one whose switches are listed: generated Rigify, of either family."""
+    return classification["family"] not in (None, "default")
+
+
+def _message_for(rig, identified, classification, tally, switch_names):
     if not classification["classified"]:
         return ("'{:s}' is identified as '{!s}', which these tools do not classify, so its {:d} "
                 "bones are listed as a hierarchy with no body part or role, and neither roles "
-                "nor include_hidden is applied. Classified rigs are {:s}.".format(
+                "nor include_hidden is applied.{:s} Classified rigs are {:s}.".format(
                     rig.name, identified, len(rig.data.bones),
+                    "" if switch_names is None else _SWITCH_NAMES_NOT_APPLIED,
                     ", ".join(pose_controls.CLASSIFIED_RIGS)))
     counts = tally["counts_by_body_part"]
     requested = tally["requested"]
@@ -199,7 +232,12 @@ def _message_for(rig, identified, classification, tally):
     if hidden and not tally["include_hidden"]:
         parts.append(" {:d} hidden control(s) are left out; pass include_hidden to list "
                      "them.".format(hidden))
+    if tally["other_switches"]:
+        parts.append(" {:d} switch(es) of other names are left out; counts_by_switch says "
+                     "which.".format(tally["other_switches"]))
     if classification["family"] == "default":
+        if switch_names is not None:
+            parts.append(_SWITCH_NAMES_NOT_APPLIED)
         modes = classification["helper_modes"] or {}
         installed = [mode for mode, value in modes.items() if value != "NONE"]
         if installed:
@@ -231,6 +269,57 @@ def _unknown_roles(resolved, roles):
     return blocked
 
 
+def _unknown_switch_names(resolved, classification, switch_names):
+    """``resolved`` turned into the ``unknown_switch_names`` refusal, or ``None``.
+
+    Only a generated Rigify rig has switches to check against; on any other the
+    filter is not applied, and so nothing in it can be a mistake.
+    """
+    if switch_names is None or not _has_switches(classification):
+        return None
+    known = _switch_names(classification)
+    unknown = [name for name in switch_names if name not in known]
+    if not unknown:
+        return None
+    blocked = dict(resolved)
+    blocked.update(
+        blocked_by="unknown_switch_names",
+        message="switch_names names {:s}, which {:s} not a switch anywhere on '{:s}'. Its "
+                "switches are: {:s}.".format(
+                    ", ".join(repr(name) for name in unknown),
+                    "is" if len(unknown) == 1 else "are", resolved["rig"].name,
+                    ", ".join(known)),
+        extra={"unknown_switch_names": unknown, "known_switch_names": known})
+    return blocked
+
+
+def _switch_names(classification):
+    """Every switch name the rig has, in any body part, sorted."""
+    return sorted(set(switch["switch"] for switch in classification["switches"]))
+
+
+def _switch_entry(switch, compact):
+    """A switch as listed: whole, or without what ``mpfb_set_pose_switches`` never needs."""
+    if not compact:
+        return switch
+    return {key: value for key, value in switch.items()
+            if key not in ("bone", "default", "description")}
+
+
+def _switch_listing(classification, params, requested):
+    """``switches`` and ``counts_by_switch``, filtered by body part and then by name."""
+    switch_names = params["switch_names"]
+    counts = {name: 0 for name in _switch_names(classification)}
+    listed = []
+    for switch in classification["switches"]:
+        if switch["body_part"] not in requested:
+            continue
+        counts[switch["switch"]] += 1
+        if switch_names is None or switch["switch"] in switch_names:
+            listed.append(_switch_entry(switch, params["compact"]))
+    return listed, counts
+
+
 def _listing(frame, rig, classification, params, requested):
     """``controls`` and the counts that explain whatever it leaves out, filtered as asked."""
     roles = params["roles"]
@@ -255,10 +344,13 @@ def _listing(frame, rig, classification, params, requested):
                 continue
         grouped[part].append(_control_entry(frame, rig, name, control, classification["family"],
                                             params["compact"]))
+    switches, by_switch = _switch_listing(classification, params, requested)
     return {"controls": grouped, "counts_by_body_part": counts, "counts_by_role": by_role,
             "hidden_by_body_part": hidden, "other_roles": other_roles, "requested": requested,
             "include_hidden": include_hidden,
-            "listed": sum(len(entries) for entries in grouped.values())}
+            "listed": sum(len(entries) for entries in grouped.values()),
+            "switches": switches, "counts_by_switch": by_switch,
+            "other_switches": sum(by_switch.values()) - len(switches)}
 
 
 def get_pose_controls(params, resolution):  # pylint: disable=too-many-locals
@@ -275,8 +367,12 @@ def get_pose_controls(params, resolution):  # pylint: disable=too-many-locals
     rig = resolved["rig"]
     identified = resolved["rig_identified_as"]
 
-    frame = Frame(rig)
     classification = pose_controls.classify(resolution.module.__name__, rig, identified)
+    blocked = _unknown_switch_names(resolved, classification, params["switch_names"])
+    if blocked is not None:
+        _LOG.debug("get_pose_controls: refused %r", blocked["blocked_by"])
+        return _blocked(blocked)
+    frame = Frame(rig)
     answer: dict = dict(
         found=True,
         ready=True,
@@ -296,9 +392,11 @@ def get_pose_controls(params, resolution):  # pylint: disable=too-many-locals
         answer.update(
             requested_body_parts=None,
             requested_roles=None,
+            requested_switch_names=None,
             include_hidden=None,
             counts_by_body_part=None,
             counts_by_role=None,
+            counts_by_switch=None,
             hidden_by_body_part=None,
             controls=None,
             switches=None,
@@ -308,29 +406,33 @@ def get_pose_controls(params, resolution):  # pylint: disable=too-many-locals
             unassigned_bones=None,
             bones=[_bone_entry(frame, bone, rig.pose.bones[bone.name], params["compact"])
                    for bone in rig.data.bones],
-            message=_message_for(rig, identified, classification, None),
+            message=_message_for(rig, identified, classification, None,
+                                 params["switch_names"]),
         )
         return answer
 
     requested = pose_controls.requested_body_parts(params["body_parts"])
     tally = _listing(frame, rig, classification, params, requested)
+    has_switches = _has_switches(classification)
     answer.update(
         requested_body_parts=list(requested),
         requested_roles=None if params["roles"] is None else [
             role for role in pose_controls.ROLES if role in params["roles"]],
+        requested_switch_names=None if params["switch_names"] is None or not has_switches
+        else sorted(params["switch_names"]),
         include_hidden=params["include_hidden"],
         counts_by_body_part=tally["counts_by_body_part"],
         counts_by_role=tally["counts_by_role"],
+        counts_by_switch=tally["counts_by_switch"] if has_switches else None,
         hidden_by_body_part=tally["hidden_by_body_part"],
         controls=tally["controls"],
-        switches=[switch for switch in classification["switches"] or ()
-                  if switch["body_part"] in requested],
+        switches=tally["switches"],
         helper_modes=classification["helper_modes"],
         helper_modes_reason=classification["helper_modes_reason"],
         helpers_missing=classification["helpers_missing"],
         unassigned_bones=classification["unassigned"],
         bones=None,
-        message=_message_for(rig, identified, classification, tally),
+        message=_message_for(rig, identified, classification, tally, params["switch_names"]),
     )
     _LOG.debug("get_pose_controls: %d controls, %d listed", len(classification["controls"]),
                tally["listed"])
