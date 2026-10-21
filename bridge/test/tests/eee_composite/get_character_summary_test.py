@@ -43,11 +43,12 @@ from .._fixtures import result
 from .._fixtures import services_or_skip
 from .._fixtures import supplied_resolution
 from .._fixtures import write_loadable_mhclo
+from .._fixtures import write_subrigged_mhclo
 
 COMMAND = "get_character_summary"
 
 SECTIONS = ("phenotype", "rig", "equipped_assets", "skin", "targets", "face",
-            "material_settings")
+            "material_settings", "placement")
 
 # Four categories MPFB itself ships in target.json, two of them sided, so the
 # rollup has entries and asymmetries to report. Values chosen distinct in
@@ -216,6 +217,40 @@ def test_material_colours_agree_with_get_material_settings(tmp_path):
         "SkinColor"].startswith("#")
 
 
+def test_placement_agrees_with_place_character(tmp_path):
+    """The summary's placement, beside the answer of the call that placed the character
+
+    One reading in ``shared/placement.py`` answers both (FR 045), and the
+    character is placed and *then* given a garment with a sub-rig, which
+    binds it wrong, so that ``subrigs_broken`` has something to agree about.
+    The place command's ``position_after`` and ``facing_after`` are the
+    summary's ``position`` and ``facing``; the place call that is compared is
+    the second, made after the garment.
+    """
+    services = services_or_skip()
+    with Character() as character:
+        result("add_rig", {"name": character.basemesh.name, "identifier": "default"})
+        result("place_character", {"name": character.basemesh.name,
+                                   "position": {"x": 1.0, "y": -2.0}, "facing": 33.0})
+        mhclo = write_subrigged_mhclo(os.path.join(str(tmp_path), "clothes", "tail", "tail.mhclo"))
+        with redirected_locations(services, user_data=str(tmp_path)):
+            equipped = result("add_asset", {"name": character.basemesh.name, "path": mhclo,
+                                            "object_type": "Clothes"})
+        placed = result("place_character", {"name": equipped["asset_object_name"],
+                                            "position": {"y": -1.0}})
+        summary = result(COMMAND, {"name": equipped["asset_object_name"]})
+
+    assert summary["placement"] == {
+        "root_name": placed["root_name"],
+        "position": placed["position_after"],
+        "facing": placed["facing_after"],
+        "tilted": placed["tilted"],
+        "footprint": placed["footprint"],
+        "subrigs_broken": placed["subrigs_broken"],
+    }
+    assert len(summary["placement"]["subrigs_broken"]) == 1
+
+
 def test_a_bare_basemesh_has_empty_sections_not_missing_ones():
     with Character() as character:
         summary = _assert_agreement(character.basemesh.name)
@@ -226,6 +261,10 @@ def test_a_bare_basemesh_has_empty_sections_not_missing_ones():
     assert summary["face"]["face_units"] == []
     assert summary["face"]["matches_stack"] is True
     assert summary["phenotype"]["macro_drift"] is False
+    assert summary["placement"]["root_name"] == summary["basemesh_name"]
+    assert summary["placement"]["position"] == {"x": 0.0, "y": 0.0, "z": 0.0}
+    assert summary["placement"]["facing"] == 0.0
+    assert summary["placement"]["subrigs_broken"] == []
 
 
 def test_a_generated_rigify_rig_is_the_rig():

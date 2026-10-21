@@ -1,7 +1,7 @@
 """
-All twenty-seven commands that take a subject, asked about the same three misses.
+All twenty-eight commands that take a subject, asked about the same three misses.
 
-The claim is about twenty-seven commands at once, which is why it is here: every
+The claim is about twenty-eight commands at once, which is why it is here: every
 command that takes a subject resolves it the same way, because all of them go
 through ``shared/subject_resolution.py``
 ([FR 036](../../../../feature-requests/done/036-subject-resolver-and-duplication/README.md)).
@@ -33,7 +33,8 @@ these misses were ever resolved to a character, so they run with MPFB's user
 directories and the export directory redirected into ``tmp_path``, per the rule
 in ``ddd_mutating/__init__.py``. ``export_character`` also accepts a character
 with a body proxy and no basemesh, and says so in the middle of the third
-sentence, whose start and end it shares.
+sentence, whose start and end it shares; so, since FR 045, does
+``place_character``.
 """
 
 import os
@@ -54,7 +55,7 @@ SUBJECT_ONLY = ("get_object_info", "generate_rigify_rig")
 
 
 def _calls(subject):
-    """The twenty-seven commands, each with the least that passes its parameter contract."""
+    """The twenty-eight commands, each with the least that passes its parameter contract."""
     return {
         "get_object_info": dict(name=subject),
         "get_macro_details": dict(name=subject),
@@ -88,6 +89,7 @@ def _calls(subject):
             dict(socket="IrisMajorColor", color=[0.1, 0.4, 0.1, 1.0])]),
         "create_export_copy": dict(name=subject),
         "export_character": dict(export_name="bridge_test_never_written", name=subject),
+        "place_character": dict(name=subject, position=dict(x=1.0)),
     }
 
 
@@ -191,7 +193,7 @@ def test_a_name_that_does_not_exist(tmp_path):
 
 
 def test_an_object_with_no_basemesh(tmp_path):
-    """The third sentence from twenty-five commands, and a found subject from two."""
+    """The third sentence from twenty-six commands, and a found subject from two."""
     import bpy  # pylint: disable=import-outside-toplevel
     cube = linked_plain_object(CUBE)
     try:

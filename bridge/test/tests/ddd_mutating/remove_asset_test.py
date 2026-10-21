@@ -181,6 +181,32 @@ def test_what_mpfb_leaves_behind_is_reported_rather_than_claimed_clean():
                 "{!r} was reported as left behind but is not on the body".format(name)
 
 
+def _same_world(first, second, tolerance=1e-5):
+    return all(abs(first[row][column] - second[row][column]) <= tolerance
+               for row in range(4) for column in range(4))
+
+
+def test_a_placed_character_stays_where_it_is_when_an_asset_comes_off():
+    """commands.remove_asset on a rigged character moved and turned first (FR 045)"""
+    services = _services_or_skip()
+    root = os.path.join(bpy.app.tempdir, "remove-asset-placed")
+    with _Character() as character:
+        services["ObjectService"].activate_blender_object(character.basemesh)
+        rig = services["HumanService"].add_builtin_rig(
+            character.basemesh, "default", import_weights=True)
+        added = _equip(services, character, root)
+        _fixture_result("place_character", {
+            "name": rig.name, "position": {"x": 2.5, "y": -1.0}, "facing": 75.0})
+        worlds = {blender_object.name: blender_object.matrix_world.copy()
+                  for blender_object in (rig, character.basemesh)}
+
+        result = _result({"name": added["asset_object_name"]})
+
+        assert result["removed"] is True, result["message"]
+        for name, before in worlds.items():
+            assert _same_world(bpy.data.objects[name].matrix_world, before), name
+
+
 def test_the_name_is_required_by_the_contract():
     """commands.remove_asset with no name at all
 

@@ -62,7 +62,10 @@ library, three with the character summary, four with
 [FR 036](../../../feature-requests/done/036-subject-resolver-and-duplication/README.md), and
 ``material_settings`` with
 [FR 040](../../../feature-requests/done/040-procedural-material-settings/README.md), which
-both material settings commands and the character summary must agree about.
+both material settings commands and the character summary must agree about, and
+``placement`` with
+[FR 045](../../../feature-requests/done/045-placing-a-character/README.md), which the
+place command, the summary and ``add_asset`` must agree about.
 """
 
 __all__ = ()

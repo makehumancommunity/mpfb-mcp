@@ -238,6 +238,14 @@ affected** — rather than either failing or staying silent.
   `mpfb_generate_rigify_rig`'s `meta_rig_action: "delete"` leaves a character that can never be
   refitted again, which `mpfb_refit_human` can only report after the fact. `refit_will_be_possible`
   is that same fact, knowable in advance.
+- **Dress before placing, and say so where it was not done.** A garment's sub-rig equipped on a
+  character that stands away from the origin is bound wrong by MPFB and drags its vertices away -
+  5.7 m for `ponytail01` in [FR 045](../feature-requests/done/045-placing-a-character/README.md)'s
+  live check - and stays wrong wherever the character goes next; one equipped at the origin
+  survives every move. `mpfb_add_asset` reports it the moment it happens and
+  `mpfb_place_character` and the summary go on reporting it (`subrigs_broken`, measured), each
+  naming `mpfb_refit_human`, which re-binds it. Neither refuses: the asset is equipped, and the
+  repair is one call.
 - **Splitting a tool can be what makes the order expressible.** Rigify generation is a tool of its
   own rather than a flag on `mpfb_add_rig` precisely because the correct order — meta rig, then
   garments, then generate — cannot be written as a single call.
@@ -410,7 +418,11 @@ different tabs and a human sees sliders move. Across MCP there is no such feedba
 - **Stay quiet when nothing is lost.** An empty `discarded_face_units` and no sentence about it,
   per the rule above: a tool that warns on every call trains an agent to ignore it.
 - **Where nothing else records the change, the answer is the undo.** Blender's undo stack does not
-  see a bridge command's writes, and MPFB keeps no record of a pose. So `mpfb_reset_pose` answers
+  see a bridge command's writes, and MPFB keeps no record of a pose, nor of where a character
+  stood. `mpfb_place_character` answers with the call that puts the character back - `position` and
+  `facing`, kept to six and four decimals so that every object in the family returns to within
+  1e-5, and `position` alone for a tilted root, since a turn would be refused on it
+  ([FR 045](../feature-requests/done/045-placing-a-character/README.md)). And `mpfb_reset_pose` answers
   with `restore_with`: the arguments for `mpfb_set_pose_switches` and `mpfb_set_pose_bones`, keyed
   by tool name, that put back exactly what it reset - as `mpfb_save_expression`'s `apply_with` is
   the call that makes a face durable. It is **never capped**, because a capped undo restores

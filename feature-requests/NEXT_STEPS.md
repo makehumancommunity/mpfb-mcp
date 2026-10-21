@@ -133,36 +133,45 @@ Pose loading is the natural next step, now that there is a reset to fall back on
 `rotate_to` takes what a saved pose would hold. Like the posing tools, it is Blender-side logic in
 bridge commands that reimplements what MPFB's UI does.
 
-<a id="placing-a-character"></a>
-
-## Placing a character
-
-Scoped as [FR 045](045-placing-a-character/README.md) (Proposed): `mpfb_place_character`, which
-sets a character's world `position` and its `facing` (or turns it to `face_toward` a point or an
-object), and reports a `footprint` for spacing characters. It also adds a `placement` section to
-`mpfb_get_character_summary`. Found by the line-up session ([FULL_SESSION.md](FULL_SESSION.md)),
-which built six characters at the origin and spread them out by hand through blender mcp. Scoping
-corrected one claim made here: `mpfb_add_rig` does not send the character back to the origin. The
-rig takes the basemesh's location. What it may drop is the basemesh's *rotation*, which the request
-checks first. Sub-rigs are reported by that request, not repaired; the repair stays
-[below](#sub-rig-child-of-breaks-away-from-the-origin).
-
 <a id="sub-rig-child-of-breaks-away-from-the-origin"></a>
 
-## A garment's sub-rig breaks when its character is away from the origin
+## A garment's sub-rig is bound wrong when it is equipped away from the origin
 
-Found by the line-up session. This is an MPFB defect, and belongs upstream as well as here.
-`ponytail01` ships a sub-rig, and its `root` bone gets a `CHILD_OF` constraint on the main rig's
-`head` with `owner_space = POSE`, `target_space = WORLD` and `set_inverse_pending = True`
-(`mpfb2/src/mpfb/entities/rig.py:599`). That is right only while the main rig's object transform
-is identity. On a character that had been moved and turned, 2355 of the hair's 3718 vertices were
-dragged two metres toward the world origin. Setting both spaces to `WORLD` and recomputing the
-inverse fixed it, but only until the rig was moved again. [FR 045](045-placing-a-character/README.md) makes
-the break visible but does not repair it: `mpfb_place_character` and `mpfb_add_asset` both report
-`subrigs_broken_by_move`, and FR 045 builds a sub-rig test fixture this effort can reuse. What is
-left here is the repair itself, in the bridge and upstream. Its first question is whether a binding
-exists, `POSE`/`POSE` being the candidate, that survives a move made by hand rather than only by the
-tool.
+Found by the line-up session, and **re-diagnosed by [FR 045](HISTORY.md#placing-a-character)**,
+whose live check measured it: the anchor above keeps the old title's slug, which said "breaks away
+from the origin", and that turned out to be the wrong cause. `ponytail01` ships a sub-rig, and its
+`root` bone gets a `CHILD_OF` on the main rig's `head` with `set_inverse_pending = True`
+(`mpfb2/src/mpfb/entities/rig.py:599`). Blender resolves that inverse while the new sub-rig still
+stands at the world origin, before `ClothesService.set_up_rigging()` parents it to the rig. On a
+character at the origin that is right, and **the binding then survives every move**. On a
+character already placed, it is off by the rig's whole transform: the hair was dragged 5.7 m, and
+stayed 5.7 m out after the character was moved back to the origin. `mpfb_refit_human` re-binds it,
+and it then survives moves too. The line-up session had equipped the ponytail on a character it had
+already moved; its hand repair (both spaces `WORLD`, inverse recomputed) then broke on the next move
+because it was a different binding.
+
+What FR 045 delivered: `mpfb_add_asset`, `mpfb_place_character` and the summary report each badly
+bound sub-rig as `subrigs_broken`, measured, naming the refit; the tool description says to dress
+before placing; the defect is filed in `mpfb2/features/MCP_DISCOVERED_BUGS.md`; and
+`_fixtures.write_subrigged_mhclo()` is a real sub-rig fixture that reproduces it. **What is left is
+small**: whether `add_asset` should re-bind a sub-rig itself - setting the inverse pending again once
+the sub-rig is parented, which is what a refit does - rather than name the refit, and whether to
+propose that one-line ordering change upstream.
+
+<a id="windowed-bridge-answers-once-a-second"></a>
+
+## A windowed bridge answers once a second when Blender has nothing to do
+
+Measured during [FR 045](HISTORY.md#placing-a-character): in a windowed Blender whose event loop
+was idle, a `bpy.app.timers` callback asking for 0.05 s fired once a second, so every tool took
+1.0 s - the smoke run 52 s where a headless bridge takes 2.1 s - although the bridge's own idle
+countdown was at its active rate. [architecture.md](../specifications/architecture.md#the-bridge)
+records the measurement. What is not known is why: whether Blender's window manager sleeps between
+events and wakes timers late, whether it depends on the window being focused or on the platform,
+and whether anything an add-on may do (a modal operator, `wm.event_simulate`-style wakes, a
+redraw) shortens it without costing CPU while idle. FR 029 and FR 030 measured 50-58 ms per call
+through the same timer, so this has not always been so. Worth an effort only if agents drive a windowed
+Blender for long sessions; the headless bridge is unaffected.
 
 <a id="license-in-the-catalogues"></a>
 

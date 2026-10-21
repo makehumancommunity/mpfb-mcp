@@ -307,7 +307,12 @@ asymmetry above is there because leaving it out is how a branch stops being test
 
 **When a live finding can be pushed down into a fixture, it must be.** A defect found by a run
 against a real Blender that a fixture could have exposed is a gap in the fixture, and closing it is
-part of the fix rather than follow-up work.
+part of the fix rather than follow-up work. [FR 045](../feature-requests/done/045-placing-a-character/README.md)
+found on the real `ponytail01` that a sub-rig equipped on a placed character is bound wrong, and
+`_fixtures.write_subrigged_mhclo()` reproduces it: an MHCLO with a `.mpfbskel` beside it in MPFB's
+own format, holding `ponytail01`'s one bone and one `CHILD_OF`. FR 039's sub-rig fixture had built
+only the *shape* - a typed armature between a garment and the rig - which was enough for a family
+walk and could not be bound wrong.
 
 ## What the suite can never establish
 

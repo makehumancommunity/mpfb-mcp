@@ -563,6 +563,45 @@ copy.
   is one implementation, and its comment and its code disagree. Where the stated intent is not
   clear, report rather than repair.
 
+### A character away from the origin: repair what MPFB visibly intends, report what it does not
+
+MPFB builds every character at the origin, and several of its functions behave as if one stays
+there. [FR 045](../feature-requests/done/045-placing-a-character/README.md), which added the tool
+that places a character, checked each on a moved and turned character against a running install.
+
+- **Where MPFB already carries the placement half way, the bridge carries the rest.**
+  `add_builtin_rig()` and `add_custom_rig()` give the new armature the basemesh's location and zero
+  the basemesh's, so the character stays where it stood - and drop its rotation, fitting an
+  unrotated rig to the mesh's local vertices: a forearm bone 0.46 m from its forearm on a character
+  turned 90 degrees. `add_rig` moves the rotation to the rig as MPFB moves the location
+  (`basemesh_rotation_moved_to_rig`). `generate_rigify_rig()` keeps the meta rig's parent and drops
+  its transform - Rigify builds the rig at the origin, and MPFB re-parents the body onto it - so the
+  command gives the generated rig the meta rig's world matrix (`metarig_placement_moved_to_rig`).
+  The generation repair calls MPFB first and repairs after, doing nothing when the two already
+  agree, so an MPFB that fixes it makes the flag false rather than the answer wrong; the rig repair
+  has to act before the call, because MPFB fits the bones as it adds the armature. This is the
+  [stated-intent rule](#where-a-service-falls-short-of-what-its-own-code-says-it-does-follow-the-stated-intent)
+  applied to a placement: keeping the character where it was is what the location half already
+  says.
+- **Where the repair is MPFB's own call, name it instead of making it.** A garment's sub-rig
+  equipped on a placed character is bound wrong - MPFB resolves the root's `CHILD_OF` inverse
+  before parenting the sub-rig, while it stands at the origin - and stays wrong wherever the
+  character goes, the origin included; a move neither breaks nor repairs one, and
+  `HumanService.refit()` re-binds it. So it is measured and reported (`subrigs_broken`, by
+  `add_asset`, `place_character` and the summary), with `mpfb_refit_human` named as the repair.
+  The scoping had read this as a break caused by moving; it is reported as what was measured.
+- **Where a helper is wrong and nothing calls it, leave it uncalled.**
+  `RigService.find_pose_bone_head_world_location()` and its `_tail_` twin add only the armature's
+  location, 0.47 m out on a rig turned 90 degrees; the bridge never calls them, and every position
+  it reports goes through [the character frame](responses.md#a-position-on-a-character-is-in-the-character-frame).
+  `get_world_space_location_of_pose_bone()`, which MPFB's OpenPose export uses, applies the whole
+  world matrix and is right.
+
+All four are filed in `MCP_DISCOVERED_BUGS.md`. The generation repair has a bridge test that fails
+once MPFB no longer needs it; the rig repair does not, because the command takes the rotation off
+before MPFB sees it, so a fixed MPFB is found by FR 045's live check calling `add_builtin_rig()`
+directly.
+
 The general case of the section above — two MPFB *code paths* that disagree, rather than a UI
 concept the services lack — is
 [Where MPFB's own code paths disagree, mpfb-mcp picks one and names it](#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it).

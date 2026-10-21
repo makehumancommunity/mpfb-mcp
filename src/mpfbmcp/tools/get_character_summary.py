@@ -68,6 +68,8 @@ def register(mcp: FastMCP) -> None:
             `mpfb_get_expression` (`applied_expressions`, `matches_stack`,
             `unexplained_face_units`). A non-empty `unexplained_face_units` is
             composed work the next `mpfb_apply_expressions` call destroys.
+          - `placement` - `mpfb_place_character`'s `root_name`, `position`,
+            `facing`, `tilted`, `footprint` and `subrigs_broken`.
 
         On a miss `found` is false and every section is `null` or empty.
         """

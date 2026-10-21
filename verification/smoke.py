@@ -476,8 +476,18 @@ def _remove_asset(run: _Run) -> dict:
     return run.tools["mpfb_remove_asset"](name=_asset_object(run))
 
 
+@_item("mpfb_place_character", "placed", "root_name", "position_after", "facing_after",
+       "footprint", "restore_with", "subrigs_broken")
+def _place_character(run: _Run) -> dict:
+    # A placement that leaves the character where it stands: x is written as
+    # the 0.0 it already is. Every item below and the next run then meet the
+    # character where the items above built it, and the summary that follows
+    # still reads a placement.
+    return run.tools["mpfb_place_character"](name=_character(run), position={"x": 0.0})
+
+
 @_item("mpfb_get_character_summary", "phenotype", "rig", "equipped_assets", "skin", "targets",
-       "face")
+       "face", "placement")
 def _get_character_summary(run: _Run) -> dict:
     # Here rather than beside the other readers, so that what it summarizes is
     # the character every item above built: rigged, skinned, morphed, with an

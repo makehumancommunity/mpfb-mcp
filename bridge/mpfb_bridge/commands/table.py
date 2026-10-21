@@ -71,6 +71,7 @@ from . import list_presets
 from . import list_rigs
 from . import list_targets
 from . import list_urls
+from . import place_character
 from . import refit_human
 from . import remove_asset
 from . import reset_pose
@@ -286,6 +287,12 @@ COMMANDS = {
         # valuable.
         requires_mpfb=False,
         summary=list_urls.SUMMARY),
+    "place_character": Command(
+        name="place_character",
+        handler=place_character.place_character,
+        params=place_character.PARAMS,
+        requires_mpfb=True,
+        summary=place_character.SUMMARY),
     "refit_human": Command(
         name="refit_human",
         handler=refit_human.refit_human,

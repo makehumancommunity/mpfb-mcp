@@ -163,6 +163,9 @@ def build_server() -> FastMCP:
             "which bones to move, by body part, in a frame that turns with the "
             "character - and read the result back with mpfb_get_pose rather "
             "than from a screenshot. "
+            "MPFB builds every character at the origin: lay several out with "
+            "mpfb_place_character, spaced by the footprint it and "
+            "mpfb_get_character_summary report. "
             "A character exists only in the running .blend until it is saved "
             "as an MPFB preset: mpfb_save_preset writes one - a file, and not "
             "undoable - mpfb_list_presets says which exist, and "
@@ -211,7 +214,7 @@ def build_server() -> FastMCP:
         get_macro_details, get_material_settings, get_object_info, get_pose, get_pose_controls,
         get_status, get_target_stack,
         list_asset_materials, list_assets, list_docs, list_expressions, list_objects,
-        list_presets, list_rigs, list_targets, list_urls, refit_human, remove_asset, reset_pose,
+        list_presets, list_rigs, list_targets, list_urls, place_character, refit_human, remove_asset, reset_pose,
         save_expression, save_preset, set_asset_material, set_face_units, set_macro_details,
         set_material_settings, set_pose_bones, set_pose_switches, set_skin, set_targets,
         symmetrize_targets)
@@ -242,6 +245,7 @@ def build_server() -> FastMCP:
     list_rigs.register(mcp)
     list_targets.register(mcp)
     list_urls.register(mcp)
+    place_character.register(mcp)
     refit_human.register(mcp)
     remove_asset.register(mcp)
     reset_pose.register(mcp)

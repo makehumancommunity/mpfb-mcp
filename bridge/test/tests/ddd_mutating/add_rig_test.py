@@ -243,6 +243,57 @@ def test_the_callers_selection_and_active_object_are_restored():
         assert character.basemesh.select_get() is False
 
 
+def _forearm_mismatch(basemesh, rig):
+    """How far ``lowerarm01.L``'s head is from the middle of the forearm it moves, in metres."""
+    head = rig.matrix_world @ rig.data.bones["lowerarm01.L"].head_local
+    group = basemesh.vertex_groups["lowerarm01.L"].index
+    weighted = [basemesh.matrix_world @ vertex.co for vertex in basemesh.data.vertices
+                if any(element.group == group and element.weight > 0.9
+                       for element in vertex.groups)]
+    assert weighted, "the default rig's weights should give the forearm vertices"
+    centre = sum(weighted, weighted[0] * 0.0) / len(weighted)
+    return (head - centre).length
+
+
+def test_a_turned_character_keeps_its_turn_and_gets_a_rig_that_fits():
+    """commands.add_rig on a basemesh moved and turned before it had a rig
+
+    FR 045's requirement 16, and the premise its live check confirmed first:
+    MPFB carries the basemesh's location over to the armature and drops its
+    rotation, fitting the bones to the mesh's local coordinates, so the rig
+    faced -Y while the mesh faced +X - the forearm bone 0.35 m from the
+    forearm. The command carries the rotation over as MPFB carries the
+    location.
+    """
+    _services_or_skip()
+    with _Character() as character:
+        basemesh = character.basemesh
+        basemesh.location = (3.0, 1.0, 0.0)
+        basemesh.rotation_euler = (0.0, 0.0, 1.5707963267948966)
+        bpy.context.view_layer.update()
+
+        result = _result({"name": basemesh.name, "identifier": "default"})
+
+        assert result["basemesh_rotation_moved_to_rig"] is True
+        assert "rotation was moved to the armature" in result["message"]
+        rig = bpy.data.objects[result["rig_object_name"]]
+        assert tuple(basemesh.rotation_euler) == (0.0, 0.0, 0.0), \
+            "the turn is the rig's now, so the basemesh carries none of its own"
+        assert abs(rig.rotation_euler.z - 1.5707963267948966) < 1e-6
+        assert result["rig_location"] == [3.0, 1.0, 0.0]
+        assert _forearm_mismatch(basemesh, rig) < 0.05, \
+            "the forearm bone must sit in the forearm it moves"
+
+
+def test_an_unturned_character_has_no_rotation_to_carry():
+    """commands.add_rig on a basemesh at its default rotation"""
+    _services_or_skip()
+    with _Character() as character:
+        result = _result({"name": character.basemesh.name, "identifier": "default"})
+        assert result["basemesh_rotation_moved_to_rig"] is False
+        assert "rotation was moved" not in result["message"]
+
+
 def test_the_identifier_is_required_by_the_contract():
     """commands.add_rig with no identifier at all"""
     _services_or_skip()

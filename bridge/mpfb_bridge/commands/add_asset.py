@@ -58,6 +58,17 @@ The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
 arrived here from the generated program this command replaced, where it had
 been established against a real install; a reimplementation that fixed one
 would be changing what the tool answers under cover of a migration.
+
+**A sub-rig equipped on a placed character is bound wrong from the start**,
+and the answer says so (``subrigs_broken``,
+[FR 045](../../../feature-requests/done/045-placing-a-character/README.md)):
+MPFB's ``CHILD_OF`` inverse on the sub-rig's root is resolved before the
+sub-rig is parented to the rig, which is right only while the rig is at the
+origin facing 0. FR 045's live check saw it drag ``ponytail01`` 5.7 m, and stay
+that far off after the character was moved back to the origin;
+``mpfb_refit_human`` re-binds it. It is the same measured list
+``place_character`` reports, read by [`shared/placement.py`](../shared/placement.py),
+so it names every badly bound sub-rig on the character, not only a new one.
 """
 
 # The local bindings below are spelled with MPFB's own capitalisation, which is
@@ -79,6 +90,7 @@ from ..log import get_logger
 from ..shared import asset_sections
 from ..shared import blender_data
 from ..shared import mpfb_surface
+from ..shared import placement
 from ..shared import selection
 from ..shared import subject_resolution
 from ..shared.performed import with_performed
@@ -507,7 +519,7 @@ def _warnings_for(params, request, names_material, existing_rig, weights_beside,
 
 
 def _message_for(request, basemesh, asset_object, existing_rig, set_up_rigging,
-                 delete_group_name, warnings):
+                 delete_group_name, subrig, subrigs_broken, warnings):
     """What happened, said once, in the order a reader wants it."""
     parts = ["Equipped '{:s}' on '{:s}' as '{:s}', of type {:s}.".format(
         os.path.basename(request.resolved_path), basemesh.name,
@@ -523,6 +535,13 @@ def _message_for(request, basemesh, asset_object, existing_rig, set_up_rigging,
     if delete_group_name is None:
         parts.append(" The MHCLO defines no delete group, so no part of the body is masked "
                      "under it.")
+    for record in subrigs_broken:
+        if subrig is not None and record["subrig_object_name"] == subrig.name:
+            parts.append(" Its sub-rig '{:s}' was bound while the character stood away from the "
+                         "origin, which MPFB gets wrong, so in a render the asset's "
+                         "sub-rig-weighted vertices are dragged {:.2f} m away (subrigs_broken). "
+                         "Call mpfb_refit_human to re-bind it.".format(
+                             subrig.name, record["displacement"]))
     if warnings:
         parts.append(" {:d} warning(s); see 'warnings'.".format(len(warnings)))
     return "".join(parts)
@@ -672,6 +691,9 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
     _warnings_for(params, request, names_material, existing_rig, weights_beside,
                   rig_is_generated_rigify, warnings)
 
+    bpy.context.view_layer.update()
+    subrigs_broken = placement.subrigs_broken(services, placement.root_of(basemesh))
+
     _LOG.debug("add_asset: equipped %r as %r", request.resolved_path,
                None if asset_object is None else asset_object.name)
 
@@ -706,6 +728,7 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
             else asset_object.parent.name),
         armature_modifier_targets=armature_modifier_targets,
         subrig_object_name=None if subrig is None else subrig.name,
+        subrigs_broken=subrigs_broken,
         delete_group_name=delete_group_name,
         delete_group_applied_to=delete_group_applied_to,
         vertex_groups_created_on_basemesh=groups_added,
@@ -716,7 +739,8 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
         objects_created=sorted(blender_data.object_names() - names_before),
         warnings=warnings,
         message=_message_for(request, basemesh, asset_object, existing_rig,
-                             params["set_up_rigging"], delete_group_name, warnings),
+                             params["set_up_rigging"], delete_group_name, subrig,
+                             subrigs_broken, warnings),
     )
 
     # The verb is "added". See shared/performed.py.

@@ -123,7 +123,7 @@ Test renders at 960×540 and 48 samples took about 3 s each.
 
 ### Placement
 `mpfb_create_human` has no `location`, and `mpfb_add_rig` moves the basemesh back to the origin
-anyway, so all six characters were built on top of each other at the origin. **No mpfb-mcp tool
+anyway (*not so: the rig takes the basemesh's place, see [FR 045](done/045-placing-a-character/README.md)*), so all six characters were built on top of each other at the origin. **No mpfb-mcp tool
 moves a character**, so each rig's location and a small ±4–8° turn were set by hand. The spacing
 was computed with `world_to_camera_view` over each character's evaluated vertices, since only
 Blender can say where things land in the frame.
@@ -146,6 +146,11 @@ and turned a few degrees, all different per character. No pose asset is involved
   and they needed nothing.
 
 ### MPFB defect: sub-rig CHILD_OF breaks once a character is not at the origin
+
+*Corrected by [FR 045](done/045-placing-a-character/README.md#decisions-taken-during-the-effort),
+which measured it:* a move breaks no sub-rig. Equipping one on a character that already stands away
+from the origin binds it wrong, wherever the character goes after, and `mpfb_refit_human` re-binds
+it. This session equipped the ponytail on a character it had already moved, which is that case.
 
 `ponytail01` ships a sub-rig (`ponytail01.rig.json`), and `mpfb_add_asset` imported it as
 `Human.ponytail01.rig`, object-parented to the main rig. Its `root` bone has a `CHILD_OF`

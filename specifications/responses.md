@@ -257,6 +257,14 @@ the asset's containing directory name against the asset names in the installed p
   charge. FR 041's live check found that Rigify's IK chain gives a little even with `IK_Stretch`
   at 0.0 (17 mm on a 480 mm arm), so a message says how much longer a limb is rather than blaming a
   switch.
+- **A binding nothing records as wrong is measured, and the cause is not presumed.** Whether a
+  garment's sub-rig follows the character is recorded nowhere; FR 045 had planned to infer it from
+  where the character stands, and its live check found that inference wrong both ways - a move
+  breaks no sub-rig, and one equipped on a placed character stays broken at the origin. So
+  `subrigs_broken` measures each sub-rig root against where its `CHILD_OF` target puts it (the
+  target's pose relative to its rest, applied to the root's rest and pose channels), reports a
+  root more than 1 cm out with its `displacement`, and keeps the tolerance in one module
+  (`shared/placement.py`). A healthy sub-rig measures 0.0 posed or not; a broken one, metres.
 - **Requested beside achieved, with a tolerance, wherever a write can be deflected.** A constraint,
   an IK chain or a limit can stop a bone short of where it was sent, and nothing records that it
   did. So `mpfb_set_pose_bones` reports each bone's evaluated position and rotation after the
@@ -359,6 +367,15 @@ millimetre, unit vectors to three decimals, angles to a tenth of a degree, all i
   where the bone is. `aim` swings a bone from its **rest** orientation, so one `aim` and `twist`
   always give the same orientation. Scale is the one input not in the frame: factors in the bone's
   own axes, because scale only means something along a bone.
+- **The frame's origin is something a tool moves.** `mpfb_place_character`
+  ([FR 045](../feature-requests/done/045-placing-a-character/README.md)) writes the root's world
+  matrix, so every frame answer about a posed character is the same before and after a move but
+  `character_frame` itself - the bridge test asserts it with `mpfb_get_pose` on either side of a
+  move. **Where the character stands is the one place world space is the answer**: `position`,
+  `facing` and the `footprint` are for laying characters out in a scene, which has no frame of its
+  own, so they are world values in world axes. The footprint's `width` and `depth` are along world
+  X and Y, not the character's own axes, for the same reason; a caller wanting the character's own
+  extent turns it to `facing` 0 first.
 - **Where the body is, is measured on deforming bones.** A landmark (`hips`, `head`, the hands and
   feet) is the head of a `DEF-` bone on Rigify, or of the bone itself on the default rig, never of a
   control: `hand_ik.L` and the hand differ exactly when a limb is in FK or cannot reach.
@@ -381,6 +398,11 @@ contract it set applies to any other:
   bridge ([a summary and its detailed tool are one implementation](architecture.md#shared-modules-and-what-warrants-one)),
   and a bridge test dispatches both and compares, to keep it true after the reason is forgotten.
   It also rules out composing the summary by calling the other commands' handlers.
+- **A section may drop the `_after` its detailed tool needs.** `placement`
+  ([FR 045](../feature-requests/done/045-placing-a-character/README.md)) carries
+  `mpfb_place_character`'s `position_after` and `facing_after` as `position` and `facing`: a
+  reading has no before, and both are read by `shared/placement.py`'s one `describe()`, so the
+  values cannot differ. The other four keys are the place answer's own.
 - **It reports no fact a detailed tool does not.** It selects and it counts; it does not derive. A
   finding that joins two sections — "the rig cannot be refitted *and* there are garments on it" —
   would be the one part of the answer the caller could not check against another tool, so it is

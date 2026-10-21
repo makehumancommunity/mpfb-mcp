@@ -68,6 +68,7 @@ __all__ = (
     "write_mhclo",
     "write_mhmat",
     "write_png",
+    "write_subrigged_mhclo",
     "write_target",
 )
 
@@ -344,6 +345,59 @@ def write_loadable_mhclo(path, material=True, uuid=None, mhmat_lines=()):
     write(os.path.join(os.path.dirname(path), name + ".obj"),
           "v 0.0 0.0 0.0\nv 1.0 0.0 0.0\nv 0.0 1.0 0.0\nf 1 2 3\n")
     return write(path, "\n".join(lines) + "\n")
+
+
+# One bone of MPFB's sub-rig format, shaped as ``hair/ponytail01/ponytail01.mpfbskel``
+# ships it: a ``root`` placed on the garment's own vertices (strategy MEAN),
+# bound by a CHILD_OF to the parent rig's ``head``, found through the
+# basemesh's ``joint-head`` joints. Vertex indices 0-2 are the three every
+# loadable fixture garment has.
+_SUBRIG_ROOT_BONE = {
+    "constraints": [{
+        "name": "Child Of",
+        "owner_space": "POSE",
+        "set_inverse_pending": False,
+        "subtarget": "head",
+        "target": {"joint_head": "joint-head", "joint_tail": "joint-head-2",
+                   "strategy": "JOINTS"},
+        "type": "CHILD_OF",
+        "use_location_x": True, "use_location_y": True, "use_location_z": True,
+        "use_rotation_x": True, "use_rotation_y": True, "use_rotation_z": True,
+        "use_scale_x": True, "use_scale_y": True, "use_scale_z": True,
+    }],
+    "head": {"default_position": [0.0, 0.5, 0.0], "strategy": "MEAN", "vertex_indices": [0, 1]},
+    "tail": {"default_position": [0.5, 0.5, 0.0], "strategy": "MEAN", "vertex_indices": [1, 2]},
+    "inherit_scale": "FULL",
+    "layers": [True] + [False] * 31,
+    "parent": "",
+    "rigify": {},
+    "roll": 0.0,
+    "use_connect": False,
+    "use_inherit_rotation": True,
+    "use_local_location": True,
+}
+
+
+def write_subrigged_mhclo(path, uuid=None):
+    """A loadable MHCLO with a **sub-rig** beside it, as ``ponytail01`` ships one.
+
+    :func:`write_loadable_mhclo`, plus ``<basename>.mpfbskel``, which is the
+    file ``ClothesService.set_up_rigging()`` looks for (not a ``.rig.json``,
+    which the line-up session first took it for): MPFB then builds a ``Subrig``
+    armature, parents the garment to it and the sub-rig to the character's rig.
+    The data is MPFB's own format, with the one bone and the one constraint
+    that make ``ponytail01`` break away from the origin - not a stand-in shaped
+    to pass ([FR 045](../../../feature-requests/done/045-placing-a-character/README.md)).
+    Equip it on a character that has a rig, from a redirected data root.
+    """
+    written = write_loadable_mhclo(path, uuid=uuid)
+    write(os.path.splitext(path)[0] + ".mpfbskel", json.dumps({
+        "bones": {"root": _SUBRIG_ROOT_BONE},
+        "is_subrig": True,
+        "rigify_ui": None,
+        "version": 100,
+    }, indent=1))
+    return written
 
 
 def build_asset_library(root):

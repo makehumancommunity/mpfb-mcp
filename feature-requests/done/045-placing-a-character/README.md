@@ -1,9 +1,9 @@
 # Placing a character: where it stands and which way it faces
 
-**Status:** Proposed
+**Status:** Done
 
 No tool puts a character anywhere but the origin. The line-up session
-([FULL_SESSION.md](../FULL_SESSION.md#placement)) built six characters on top of each other and
+([FULL_SESSION.md](../../FULL_SESSION.md#placement)) built six characters on top of each other and
 spread them out by hand through blender mcp, setting each rig's location and a ±4–8° turn. Any
 scene with more than one character starts with that step. To space them, the session also computed
 each character's extent from its evaluated vertices, because no tool says how much room a character
@@ -15,7 +15,8 @@ location to the basemesh's and then zero the basemesh's own location
 (`humanservice.py:1683`, `:1738`). The basemesh is parented to the armature, so the character
 stays where it was in the world. The bridge's `add_rig` already reports this as
 `basemesh_moved_to_origin`, and its message says the armature took the old location. **What the
-functions do not carry over is rotation.** `Rig.create_armature_and_fit_to_basemesh()` adds the
+functions do not carry over is rotation** - confirmed by the live check, and repaired (see
+[Decisions taken during the effort](#decisions-taken-during-the-effort)). `Rig.create_armature_and_fit_to_basemesh()` adds the
 armature at the basemesh's location with no rotation and fits the bones to the basemesh's *local*
 vertex coordinates. The basemesh keeps its own rotation under an unrotated parent. From reading the
 source, a turned character that has no rig yet would therefore get a rig that does not match the
@@ -23,9 +24,12 @@ mesh. This has not been observed. It is the first thing the effort checks, becau
 is what would create such characters.
 
 **A garment's sub-rig breaks when its character is moved**
-([its own entry](../NEXT_STEPS.md#sub-rig-child-of-breaks-away-from-the-origin)). Repairing that is
-a separate effort. This request only makes sure the break is reported rather than silent. The
-character frame ([FR 041](../done/041-pose-controls-and-read-back/README.md)) already makes every
+([its own entry](../../NEXT_STEPS.md#sub-rig-child-of-breaks-away-from-the-origin)). Repairing that is
+a separate effort. This request only makes sure the break is reported rather than silent.
+*Corrected by the effort:* a move breaks no sub-rig. Equipping one on a character that is away from
+the origin does, and `mpfb_refit_human` repairs it; the report is a measurement, `subrigs_broken`
+(requirements 13-14). The
+character frame ([FR 041](../041-pose-controls-and-read-back/README.md)) already makes every
 posing tool independent of where the character stands, so moving a posed character changes no
 posing answer.
 
@@ -39,9 +43,10 @@ posing answer.
 - **Secondary:** every tool that adds to a character (`mpfb_add_rig`, `mpfb_generate_rigify_rig`,
   `mpfb_add_asset`, `mpfb_refit_human`) leaves a placed character where it was and facing the way
   it was. Each one is checked on a placed character, not assumed.
-- **Secondary:** a move that leaves a sub-rig broken says so, naming the garment.
+- **Secondary:** a sub-rig left broken is reported, naming the garment. (Scoped as "a move that
+  leaves a sub-rig broken"; the effort found that a move breaks none.)
 - **Not a goal:** repairing sub-rigs, which is
-  [its own entry](../NEXT_STEPS.md#sub-rig-child-of-breaks-away-from-the-origin). Nor relative moves
+  [its own entry](../../NEXT_STEPS.md#sub-rig-child-of-breaks-away-from-the-origin). Nor relative moves
   (`move_by`/`turn_by`), a full 3D rotation, scaling, placement arguments on the creating tools,
   arranging several characters in one call, finding a floor surface or framing a camera (see
   [Decisions taken while scoping](#decisions-taken-while-scoping)).
@@ -56,7 +61,7 @@ posing answer.
    character's root object there. Any key left out keeps its current value. So `{"x": 2.0}` slides
    the character sideways without lifting it off the floor.
 3. **It takes `facing`, degrees about the world's up axis.** `0` faces world `-Y`, the way MPFB
-   builds every character (the [character frame's](../../specifications/responses.md#a-position-on-a-character-is-in-the-character-frame)
+   builds every character (the [character frame's](../../../specifications/responses.md#a-position-on-a-character-is-in-the-character-frame)
    `forward` on an unturned rig). Positive values turn counter-clockwise seen from above, which is
    Blender's own sign for a rotation about Z. The answer normalises it to `(-180, 180]`.
 4. **It takes `face_toward` as the alternative to `facing`**: either a world point `{"x", "y"}` or
@@ -86,7 +91,7 @@ posing answer.
 
 ### What the answer says
 
-9. **Before and after**, per the [mutating-tools rule](../../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after):
+9. **Before and after**, per the [mutating-tools rule](../../../specifications/mutating-tools.md#a-mutating-tool-reports-before-and-after):
    `position_before`/`position_after`, `facing_before`/`facing_after`, the `root_name` that was
    moved, and the objects that moved with it as `moved_with` (a kept meta-rig; an empty list
    otherwise).
@@ -99,22 +104,25 @@ posing answer.
     footprint is for spacing characters in a scene. This is the number the line-up session computed
     by hand to space six characters edge to edge.
 12. **`restore_with`**: the `mpfb_place_character` call that puts the character back, keyed by the
-    tool as [the glossary](../../specifications/tool-interface.md#arguments-and-answer-keys) says.
+    tool as [the glossary](../../../specifications/tool-interface.md#arguments-and-answer-keys) says.
     It always uses `position` and `facing`, never `face_toward`.
-13. **`subrigs_broken_by_move`**: one record per sub-rig on the character, with
-    `subrig_object_name` and the garment's `asset_object_name`, whenever the character's root ends
-    up anywhere but the origin facing `0`. It is an empty list when there are none, never absent.
-    The answer's message says what will happen in a render: the garment's sub-rig-weighted vertices
-    are dragged toward the world origin. The tool does not repair this, and the description says
-    so in one sentence. A sub-rig is an armature whose `object_type` is `Subrig` (`rig.py:247`).
-14. **`mpfb_add_asset` reports the same `subrigs_broken_by_move` when it adds a sub-rig to a
-    character that is not at the origin facing `0`.** That is the other order in which the defect
-    is reached, and today it is silent too.
+13. **`subrigs_broken`** (scoped as `subrigs_broken_by_move`): one record per sub-rig on the
+    character whose binding is off, with `subrig_object_name`, the garment's `asset_object_name`
+    and the measured `displacement` in metres. It is an empty list when there are none, never
+    absent. The answer's message says what will happen in a render: the garment's
+    sub-rig-weighted vertices are dragged away, and `mpfb_refit_human` re-binds them. A sub-rig is
+    an armature whose `object_type` is `Subrig` (`rig.py:247`). *Changed during the effort*: the
+    request reported every sub-rig whenever the root was anywhere but the origin facing `0`; the
+    live check found that condition wrong both ways (see
+    [Decisions taken during the effort](#decisions-taken-during-the-effort)).
+14. **`mpfb_add_asset` reports the same `subrigs_broken`.** Equipping a sub-rig on a character
+    that is away from the origin is what breaks it, so this is where a break first appears, and
+    today it is silent.
 
 ### Reading where a character is
 
 15. **`mpfb_get_character_summary` gains a `placement` section**: `position`, `facing`, `tilted`,
-    `root_name`, `footprint` and `subrigs_broken_by_move`, under the same names as the place tool's
+    `root_name`, `footprint` and `subrigs_broken`, under the same names as the place tool's
     answer and read by the same shared module. That keeps the summary's rule of never giving a
     second opinion. A caller laying out a scene reads each character once, and the summary stays
     under its 8 KB line.
@@ -129,16 +137,16 @@ posing answer.
 17. **`mpfb_generate_rigify_rig`, `mpfb_refit_human`, `mpfb_add_asset` and `mpfb_remove_asset`**
     each leave a placed character's root where it was, facing the way it did. Each is checked live
     on a character that has been moved and turned. Any that does not gets the same treatment as
-    requirement 16, and is named in [HISTORY](../HISTORY.md) when this lands.
+    requirement 16, and is named in [HISTORY](../../HISTORY.md) when this lands.
 
 ## Non-functional requirements
 
 - **Honest about what it cannot fix.** A placed character must look the same as the same character
-  at the origin. Where it cannot, which today means a sub-rig, the answer says so. The session's
-  ponytail was a visible defect that no answer reported.
+  at the origin. Where it cannot, which today means a sub-rig equipped while it was placed, the
+  answer says so. The session's ponytail was a visible defect that no answer reported.
 - **Cheap.** A move is one round trip with no MPFB recalculation. Placing six characters should
   take well under two seconds. That is why no batched form is proposed: a batch is justified by
-  per-call cost ([mutating-tools.md](../../specifications/mutating-tools.md#a-batched-mutating-tool-resolves-before-it-writes)),
+  per-call cost ([mutating-tools.md](../../../specifications/mutating-tools.md#a-batched-mutating-tool-resolves-before-it-writes)),
   and this tool has little.
 - **Small description.** Three arguments besides `name`. The description says what `facing` `0`
   means and that a sub-rig is not repaired, and leaves the frame to the specification it links.
@@ -150,9 +158,10 @@ posing answer.
   summary's new section and `add_asset`'s new key.
 - **A new shared module, `shared/placement.py`.** It finds the character's root (rig, else
   basemesh, plus a kept meta-rig), reads `position`, `facing`, `tilted`, `footprint` and the
-  sub-rigs a move breaks, and writes a placement. It has three users: the place command, the
+  sub-rigs bound wrong, and writes a placement. It has three users: the place command, the
   summary's `placement` section and `add_asset`'s report. Like `character_frame.py`, it reads
-  nothing out of MPFB and takes no `services`. The future sub-rig request will extend its
+  nothing out of MPFB and takes no `services` (*not so in the end*: it takes `services` for two
+  questions only MPFB can answer, see below). The future sub-rig request will extend its
   sub-rig half, or move it to a module of its own.
 - **Write `matrix_world`, then update the depsgraph before reading anything back.** That is how
   requirement 7's external parent stays untouched, and how the footprint is read from the moved
@@ -175,9 +184,9 @@ posing answer.
   same fault and reports alongside.
 - **The test fixtures have no sub-rig.** `_fixtures.py`'s `ponytail.mhclo` is a plain MHCLO.
   Requirements 13–14 need an MHCLO with a sub-rig file beside it, written as real MPFB sub-rig data
-  rather than a convenient stand-in ([testing.md](../../specifications/testing.md)). That fixture is
+  rather than a convenient stand-in ([testing.md](../../../specifications/testing.md)). That fixture is
   built here, and the sub-rig request will need it too. *Corrected after
-  [FR 039](../done/039-exporting-characters/README.md):* MPFB looks for `<mhclo basename>.mpfbskel`,
+  [FR 039](../039-exporting-characters/README.md):* MPFB looks for `<mhclo basename>.mpfbskel`,
   not a `.rig.json` (`ClothesService.set_up_rigging()`); the installed example is
   `hair/ponytail01/ponytail01.mpfbskel`. FR 039's `ddd_mutating/create_export_copy_test.py` builds
   only the *shape* - a garment parented to a `Subrig`-typed armature parented to the rig - which is
@@ -189,21 +198,22 @@ posing answer.
 
 ## Affected specifications
 
-- [tool-interface.md](../../specifications/tool-interface.md#the-glossary): a new glossary row,
+- [tool-interface.md](../../../specifications/tool-interface.md#the-glossary): a new glossary row,
   **"Where a character stands in the scene"**: `position` as world `{"x","y","z"}`, `facing` in
   degrees with its zero and sign, and `face_toward`. The existing row that says "not a world-space
   `[x, y, z]`" is about a position *on* a character. Both rows must say which one they cover, so
   that neither reads as contradicting the other. The new `blocked_by` values `character_tilted`,
-  `face_toward_not_found` and `face_toward_has_no_direction`, and `subrigs_broken_by_move`.
-- [responses.md](../../specifications/responses.md#a-position-on-a-character-is-in-the-character-frame):
+  `face_toward_not_found` and `face_toward_has_no_direction`, and `subrigs_broken` (scoped as
+  `subrigs_broken_by_move`).
+- [responses.md](../../../specifications/responses.md#a-position-on-a-character-is-in-the-character-frame):
   the frame's origin is now something a tool moves, and `footprint` is world-space by necessity.
-- [mutating-tools.md](../../specifications/mutating-tools.md): `restore_with` gains a second user.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md): the rotation the adding
+- [mutating-tools.md](../../../specifications/mutating-tools.md): `restore_with` gains a second user.
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md): the rotation the adding
   functions drop (if confirmed) and how it is carried over, the sub-rig defect as a reported
   circumstance, and the location-only world helpers.
-- [architecture.md](../../specifications/architecture.md#shared-modules-and-what-warrants-one):
+- [architecture.md](../../../specifications/architecture.md#shared-modules-and-what-warrants-one):
   `shared/placement.py` and the rule it rests on.
-- [vision.md](../../specifications/vision.md#target-tool-catalog): the new tool.
+- [vision.md](../../../specifications/vision.md#target-tool-catalog): the new tool.
 
 ## Tests
 
@@ -220,8 +230,9 @@ posing answer.
   - `restore_with` puts the character back exactly;
   - an external parent left untouched, and a tilted root refused for turning and allowed to move;
   - the footprint against the evaluated vertices of the body and its assets;
-  - `subrigs_broken_by_move` on a character carrying the sub-rig fixture, from both the place
-    tool and `add_asset`, and empty again once the character is back at the origin.
+  - `subrigs_broken` on a character carrying the sub-rig fixture, from both the place tool and
+    `add_asset` (as built: empty after a move, reported after equipping on a placed character and
+    still at the origin, empty again after a refit).
 - **`bbb_shared/placement_test.py`**: the root rule, yaw and tilt read through every rotation mode,
   and scale preserved exactly.
 - **The summary's `placement` section equals the place tool's answer** for the same character, in
@@ -233,7 +244,7 @@ posing answer.
   `face_toward`. One of them carries the real `ponytail01`, and the script checks that it is
   reported. Before anything else is written, the script runs `mpfb_add_rig` on a turned, unrigged
   character, which settles requirement 16's premise.
-- **One smoke item** in [verification/](../../verification/) for `mpfb_place_character`.
+- **One smoke item** in [verification/](../../../verification/) for `mpfb_place_character`.
 
 ## Decisions taken while scoping
 
@@ -246,15 +257,106 @@ posing answer.
   to `position_after` and `facing_after` itself.
 - **Sub-rigs are reported, not repaired.** The repair, including whether a binding exists that
   survives a move made by hand, stays in
-  [its own entry](../NEXT_STEPS.md#sub-rig-child-of-breaks-away-from-the-origin), which this
+  [its own entry](../../NEXT_STEPS.md#sub-rig-child-of-breaks-away-from-the-origin), which this
   request updates to point here. Rejected: repairing them in this effort, and fixing MPFB's
   `rig.py` in the same effort.
 - **Placement is read from the summary**, not from a new layout tool. A no-op move cannot stand in
   for a read, since a call that changes nothing is refused.
 
+## Decisions taken during the effort
+
+- **The premise of requirement 16 held, and the rotation is carried over.** Before anything was
+  written, MPFB's own `add_builtin_rig()` on a basemesh moved to `(-6, 3)` and turned 90 degrees
+  gave an unrotated armature and a `lowerarm01.L` head **0.46 m** from the middle of the forearm
+  vertices it moves. `add_rig` now zeroes the basemesh's rotation before adding and gives the rig
+  that rotation in the rig's own rotation mode, the way MPFB carries the location; the same bone
+  is then 0.03 m from its forearm, and `basemesh_rotation_moved_to_rig` reports it.
+- **Rigify generation drops the meta-rig's whole placement**, which the request had not suspected
+  (requirement 17). A meta-rig moved to `(4, -2)` and turned -45 degrees generated a rig at the
+  origin, unturned, with its bones in the meta-rig's own space, and the body and garments went to
+  the origin with it. `generate_rigify_rig` gives the generated rig the meta-rig's world matrix as
+  it was before the call, when the two differ, and reports `metarig_placement_moved_to_rig`.
+  `mpfb_add_asset`, `mpfb_refit_human` and `mpfb_remove_asset` leave a placed character where it
+  was, each checked in its own bridge module; the refit also on a generated Rigify character
+  whose hidden meta-rig moved with it.
+- **A move breaks no sub-rig; equipping one away from the origin does.** On the real `ponytail01`,
+  measured as the furthest hair vertex from the head bone (0.24 m when it hangs right): dressed at
+  the origin and then moved anywhere, 0.24 m. Equipped on a character standing at `(-4, -4)` turned
+  60 degrees, **5.74 m** - and still 5.74 m after moving that character to the origin facing 0.
+  `mpfb_refit_human` brought it to 0.24 m, and it stayed there through later moves. This matches
+  MPFB's code: `set_inverse_pending` on the sub-rig root's `CHILD_OF` is resolved while the new
+  sub-rig still stands at the world origin, before `ClothesService.set_up_rigging()` parents it to
+  the rig, and a refit sets it pending again once everything is in place. The line-up session's
+  ponytail was equipped on a character already moved and turned, which is the case that breaks.
+  So the request's condition - broken whenever the root is away from the origin - would have
+  reported a healthy ponytail on every placed character and missed a broken one at the origin.
+  The report is a measurement instead: each sub-rig root's distance from where its `CHILD_OF`
+  target puts it (the target's pose relative to its rest, applied to the root's rest and pose
+  channels), over 1 cm. A healthy sub-rig measured 0.0 with the head and the sub-rig posed; the
+  broken one 5.72 m. It is called `subrigs_broken`, because `_by_move` named the wrong cause, and
+  each record carries the `displacement`. The tool description tells a caller to dress before
+  placing, which is the one ordering mistake a sub-rig does not survive.
+- **`shared/placement.py` takes `services`**, where the request said it would take none like
+  `character_frame.py`: which meta-rig moves along must be the one `HumanService.refit()` refits,
+  which is `ObjectService.find_rigify_metarig_by_rig()`'s answer, and which armature is a sub-rig
+  is MPFB's `object_type`. Two answers to either could disagree with MPFB's.
+- **The root is the armature the body is parented to, else the body.** A body proxy stands in for
+  a removed basemesh, as in `export_character`.
+- **Tilt is measured on the root's up axis**, with 0.1 degrees of tolerance. A rig turned by hand in
+  the windowed Blender with `transform.rotate` about global Z, five times in each of `XYZ`, `ZXY`,
+  `QUATERNION` and `AXIS_ANGLE`, measured **0.0** degrees of tilt, so the tolerance has margin to
+  spare; rotating about a view axis tilted it 70.7 degrees, which is a tilt.
+- **`restore_with` keeps positions to six decimals and the facing to four.** Blender stores a
+  rotation channel as a 32-bit float, so 170 degrees reads back as 169.99998, and the fifth
+  decimal of a facing is storage noise. Putting a character back then restores every family
+  member's world matrix to within 1e-5.
+- **A shape refusal on the far side is `invalid_arguments`**, one slug for the empty call, both of
+  `facing` and `face_toward`, and a misshapen object: mpfb-mcp refuses all of them before sending,
+  so only another client meets it.
+- **`face_toward` accepts a `z` and ignores it**, so a `position` can be passed as a target.
+- **The summary's placement is not a new tool**, as scoped. It is 1.8-2.0 KB of JSON on the
+  live check's characters, well under the 8 KB line.
+
+## Verification
+
+Both halves of "verified" hold. The bridge suite has 34 new tests (587):
+`bbb_shared/placement_test.py` (9: the root rule, yaw and tilt in four rotation modes, folding,
+writes in each mode with scale kept exactly, a move that keeps the rotation channels exactly, an
+external parent, a carried object, `facing_toward`), `ddd_mutating/place_character_test.py` (16:
+every rig family and the hidden meta-rig, `face_toward` a point and an object and both refusals,
+`get_pose` before and after a move, `restore_with`, an external parent, a tilted root, the
+footprint against the evaluated vertices, the sub-rig sequence above on a fixture, the shape
+refusals, nothing borrowed), and the placed-character cases in `add_rig_test.py`,
+`generate_rigify_rig_test.py`, `refit_human_test.py`, `remove_asset_test.py`, `add_asset_test.py`
+and `eee_composite/get_character_summary_test.py`. `_fixtures.write_subrigged_mhclo()` is a real
+MPFB sub-rig: an MHCLO with a `.mpfbskel` beside it holding `ponytail01`'s one bone and one
+constraint, which reproduces the break. The unit suite has 14 new tests (584). The smoke run is 44
+of 44.
+
+The live check, [live_check.py](live_check.py), ran on 2026-10-21 against a windowed Blender 5.1
+with MPFB, the bridge (reloaded to pick the command up) and the community blender-mcp add-on, and
+passed all 24 checks: the premise and its repair above; three characters - the default rig with
+the real `ponytail01`, a generated `human_toes` rig with its meta-rig hidden, and the default rig
+in a dress - turned toward the scene camera with `face_toward` and spaced edge to edge from their
+footprints in a second call each, the Rigify one carrying its meta-rig; the summary equal to each
+place answer; `get_pose` unchanged by a move of a posed character and `restore_with` putting it
+back; the ponytail sequence; generation on a placed meta-rig; and MPFB's world helpers.
+
+**What a placement costs.** One call runs in **10 ms** inside Blender (dispatch, the write, the
+footprint of a dressed character), and a round trip to a headless bridge took **4-6 ms**. In the
+windowed Blender every call, `mpfb_list_objects` included, took **1.0 s**: Blender fired a test
+timer that asked for 0.05 s once a second, with nothing for its event loop to do. The live check
+therefore compares a placement with a call that does nothing, and they matched.
+
+**MPFB's world helpers, on a rig turned 90 degrees.** `RigService.find_pose_bone_head_world_location()`
+and `..._tail_...` were 0.47 m and 0.57 m out, since they add only the armature's location; nothing
+in the bridge calls them. `get_world_space_location_of_pose_bone()`, which MPFB's OpenPose export
+uses, applies the whole world matrix and so has no such fault; its head and tail are swapped, as its
+own docstring says. The first and the sub-rig binding are filed in `MCP_DISCOVERED_BUGS.md`.
+
 ## References
 
-- [FULL_SESSION.md](../FULL_SESSION.md): the line-up session, its placement step and the sub-rig
+- [FULL_SESSION.md](../../FULL_SESSION.md): the line-up session, its placement step and the sub-rig
   defect.
 - `mpfb2/src/mpfb/services/humanservice.py:1683`, `:1738`: the adding functions moving the location
   to the rig.
@@ -263,5 +365,5 @@ posing answer.
 - `mpfb2/src/mpfb/entities/rig.py:428`, `:599`: `set_inverse_pending = True` on every `CHILD_OF`.
 - `mpfb2/src/mpfb/services/rigservice.py:1265`: the generated Rigify rig takes the meta-rig's
   parent.
-- [`bridge/mpfb_bridge/shared/character_frame.py`](../../bridge/mpfb_bridge/shared/character_frame.py):
+- [`bridge/mpfb_bridge/shared/character_frame.py`](../../../bridge/mpfb_bridge/shared/character_frame.py):
   the frame every position on a character is converted through.

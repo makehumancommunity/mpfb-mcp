@@ -164,7 +164,20 @@ import mpfbmcp
 # 1,552) spends most of its bytes on the one thing a caller must not guess at,
 # that the directory is not theirs to choose. The readiness facts are named and
 # not explained: they are in every answer.
-DESCRIPTION_CEILING = 84050
+#
+# Raised from 84,050 to 85,500 by
+# [FR 045](../feature-requests/done/045-placing-a-character/README.md), for one
+# tool and three lines elsewhere: `mpfb_place_character` (1,320 B, well under
+# the average) says what `facing` 0 means and which way is positive, since
+# neither is discoverable from an answer before the call, and - because the
+# live check found it - that a garment must be equipped before the character is
+# placed, which is the one ordering mistake a sub-rig does not survive; the
+# frame is left to the specification. `mpfb_get_character_summary` grew 126 B
+# for the `placement` section's line, `mpfb_add_asset` 51 B for
+# `subrigs_broken`, and `mpfb_add_rig` shrank 27 B where a false claim
+# - that adding a rig moves a placed character - became the true one. The
+# ceiling moves by what that cost.
+DESCRIPTION_CEILING = 85500
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -212,7 +225,10 @@ DESCRIPTION_CEILING = 84050
 # Raised from 15,000 to 16,600 by FR 039: 1,612 B across two tools, of which
 # 1,143 B is `mpfb_create_export_copy`'s thirteen flat optional arguments - the
 # panel's options, flat as the tool interface requires rather than nested.
-SCHEMA_CEILING = 16600
+#
+# Raised from 16,600 to 17,100 by FR 045: 486 B for `mpfb_place_character`'s
+# four nullable arguments, two of them objects.
+SCHEMA_CEILING = 17100
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.
@@ -264,7 +280,7 @@ class DescriptionBudgetTests(unittest.TestCase):
         self.measured = measure()
 
     def test_every_registered_tool_is_measured(self) -> None:
-        self.assertEqual(41, len(self.measured))
+        self.assertEqual(42, len(self.measured))
 
     def test_total_description_size_is_under_the_ceiling(self) -> None:
         total = sum(entry["description_bytes"] for entry in self.measured)

@@ -269,6 +269,63 @@ def test_the_callers_selection_and_active_object_are_restored():
             "the basemesh was not selected before the call and must not be after it"
 
 
+def _same_world(first, second, tolerance=1e-5):
+    return all(abs(first[row][column] - second[row][column]) <= tolerance
+               for row in range(4) for column in range(4))
+
+
+def test_a_placed_character_is_refitted_where_it_stands():
+    """commands.refit_human on a dressed, rigged character moved and turned first
+
+    FR 045's requirement 17: a refit fits in each object's own space, so a
+    placed character's root, body and garment stay where they were.
+    """
+    services = _services_or_skip()
+    with _Character() as character:
+        root = os.path.join(bpy.app.tempdir, "refit-placed")
+        services["ObjectService"].activate_blender_object(character.basemesh)
+        rig = services["HumanService"].add_builtin_rig(
+            character.basemesh, "default", import_weights=True)
+        equipped = _equip(services, character, root)
+        placed = _fixture_result("place_character", {
+            "name": rig.name, "position": {"x": -2.0, "y": 3.0}, "facing": 135.0})
+        assert placed["performed"] is True, placed["message"]
+        worlds = {blender_object.name: blender_object.matrix_world.copy()
+                  for blender_object in (rig, character.basemesh, equipped)}
+
+        with redirected_locations(services, user_data=root):
+            result = _result({"name": character.basemesh.name})
+
+        assert result["refit_performed"] is True, result["message"]
+        for name, before in worlds.items():
+            assert _same_world(bpy.data.objects[name].matrix_world, before), name
+
+
+def test_a_placed_generated_rigify_character_refits_through_the_metarig_that_moved_with_it():
+    """commands.refit_human on a generated human_toes character placed with its meta-rig hidden"""
+    services = _services_or_skip()
+    if not services["SystemService"].check_for_rigify():
+        pytest.skip("Rigify is not enabled in this Blender")
+    with _Character() as character:
+        services["ObjectService"].activate_blender_object(character.basemesh)
+        meta_rig = services["HumanService"].add_builtin_rig(
+            character.basemesh, "rigify.human_toes", import_weights=True)
+        generated = services["RigService"].generate_rigify_rig(meta_rig, meta_rig_action="hide")
+        if services["ObjectService"].find_rigify_metarig_by_rig(generated) is None:
+            pytest.skip("this MPFB cannot find a generated rig's meta-rig, so nothing refits it")
+        placed = _fixture_result("place_character", {
+            "name": generated.name, "position": {"x": 1.0, "y": 1.0}, "facing": -60.0})
+        assert placed["moved_with"] == [meta_rig.name]
+        worlds = {blender_object.name: blender_object.matrix_world.copy()
+                  for blender_object in (generated, meta_rig, character.basemesh)}
+
+        result = _result({"name": character.basemesh.name})
+
+        assert result["refit_performed"] is True, result["message"]
+        for name, before in worlds.items():
+            assert _same_world(bpy.data.objects[name].matrix_world, before), name
+
+
 def test_a_basemesh_in_edit_mode_is_a_refusal_rather_than_an_attempt():
     """commands.refit_human while the basemesh is open in edit mode"""
     services = _services_or_skip()

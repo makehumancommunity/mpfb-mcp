@@ -257,6 +257,45 @@ def test_the_callers_selection_and_active_object_are_restored():
         assert character.basemesh.select_get() is False
 
 
+def _same_world(first, second, tolerance=1e-5):
+    return all(abs(first[row][column] - second[row][column]) <= tolerance
+               for row in range(4) for column in range(4))
+
+
+def test_a_placed_character_is_dressed_where_it_stands():
+    """commands.add_asset on a rigged character moved and turned first (FR 045)
+
+    The garment is fitted in the basemesh's own space and parented to the rig,
+    so it lands on the character wherever the character is, and nothing about
+    the character moves. A garment without a sub-rig has nothing to bind wrong;
+    one with a sub-rig is ``place_character_test.py``'s.
+    """
+    services = _services_or_skip()
+    root = os.path.join(bpy.app.tempdir, "add-asset-placed")
+    mhclo = _library(root)
+    with _Character() as character:
+        services["ObjectService"].activate_blender_object(character.basemesh)
+        rig = services["HumanService"].add_builtin_rig(
+            character.basemesh, "default", import_weights=True)
+        _fixture_result("place_character", {
+            "name": rig.name, "position": {"x": -1.5, "y": 4.0}, "facing": -120.0})
+        worlds = {blender_object.name: blender_object.matrix_world.copy()
+                  for blender_object in (rig, character.basemesh)}
+
+        with redirected_locations(services, user_data=root):
+            result = _result({"name": character.basemesh.name,
+                              "path": mhclo, "object_type": "Clothes"})
+
+        assert result["added"] is True, result["message"]
+        # A newly parented object's world matrix is stale until the depsgraph runs.
+        bpy.context.view_layer.update()
+        for name, before in worlds.items():
+            assert _same_world(bpy.data.objects[name].matrix_world, before), name
+        assert _same_world(bpy.data.objects[result["asset_object_name"]].matrix_world,
+                           rig.matrix_world), "the garment sits on the rig, not at the origin"
+        assert result["subrigs_broken"] == []
+
+
 def test_the_object_type_is_required_by_the_contract():
     """commands.add_asset with no object_type at all
 

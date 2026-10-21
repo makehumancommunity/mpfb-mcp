@@ -834,3 +834,48 @@ and `pole_vector` is **5.7 KB on `human_toes` and 5.6 KB on `game_engine`**, abo
 estimate for `counts_by_switch`; without the names, 8.8 and 8.6 KB. 12 new bridge tests (525),
 3 new unit tests (550), the description 198 B larger under the existing ceiling and the schema
 ceiling up 100 B; the smoke run is 41 of 41.
+
+<a id="placing-a-character"></a>
+
+## [FR 045](done/045-placing-a-character/README.md) — `mpfb_place_character`, and a placed character every tool leaves in place
+
+MPFB builds every character at the origin, and the line-up session spread six of them out by hand.
+**`mpfb_place_character`** sets where a character's root stands (`position`, world metres, a key left
+out kept) and which way it faces (`facing`, degrees from world -Y counter-clockwise, or
+`face_toward` a point or an object, from where the same call puts it). The root is the rig, else the
+body, and a generated rig's hidden meta-rig moves with it, so a refit or a regeneration builds where
+the character is. It writes yaw only: a tilted root is refused a turn. It answers with the
+`footprint` a caller spaces characters by, the character frame after the move, and `restore_with`.
+**`mpfb_get_character_summary` gained a `placement` section**, read by the same new shared module,
+`shared/placement.py`.
+
+**The live check corrected the request twice and found one defect it had not suspected.** Its
+premise held: MPFB's adding functions carry a basemesh's location over to the new rig and drop its
+rotation, so a rig added to a turned character faced the other way (a forearm bone 0.46 m from its
+forearm); `mpfb_add_rig` now moves the rotation to the rig as MPFB moves the location. Unsuspected:
+Rigify generation builds the rig at the origin, and MPFB re-parents the character onto it, so a
+placed meta-rig sent its character back to the origin; `mpfb_generate_rigify_rig` now gives the
+generated rig the meta-rig's place. And the sub-rig: **a move breaks no sub-rig**. On the real
+`ponytail01`, dressed at the origin and then moved, the hair stayed on the head; equipped on a
+character already placed, it was dragged 5.7 m and stayed 5.7 m out at the origin, until
+`mpfb_refit_human` re-bound it. That was the line-up session's order. So the report the request
+scoped as `subrigs_broken_by_move` - every sub-rig on a character away from the origin - would have
+been wrong both ways; it is `subrigs_broken`, a measurement of each sub-rig root against its
+`CHILD_OF` target, in `mpfb_add_asset`, `mpfb_place_character` and the summary, naming the refit,
+and the description tells a caller to dress before placing. `mpfb_add_asset`, `mpfb_refit_human`
+and `mpfb_remove_asset` leave a placed character where it is. Four MPFB defects are filed in
+`mpfb2/features/MCP_DISCOVERED_BUGS.md`: the two placements dropped, the sub-rig binding, and
+`RigService.find_pose_bone_*_world_location()`, which ignore the rig's rotation and which nothing
+calls. The sub-rig repair, as a binding MPFB makes right, stays in
+[NEXT_STEPS](NEXT_STEPS.md#sub-rig-child-of-breaks-away-from-the-origin).
+
+Verified by [`live_check.py`](done/045-placing-a-character/live_check.py), 24 of 24, in a windowed
+Blender on the real install: three characters - one with `ponytail01`, a generated `human_toes` with
+its meta-rig hidden, one in a dress - turned to the scene camera and spaced edge to edge from their
+footprints, the summary equal to each place answer at 1.8-2.0 KB, `get_pose` unchanged by a move.
+A placement runs in 10 ms inside Blender and 4-6 ms over a headless bridge; the windowed Blender
+fired its timers once a second, so every tool there took 1.0 s, and the check compares a placement
+with a call that does nothing. A rig turned by hand about global Z measured 0.0 degrees of tilt in
+all four rotation modes, against a 0.1 degree tolerance. 34 new bridge tests (587), with a real
+sub-rig fixture that reproduces the binding; 14 new unit tests (584); the description budget up
+1,450 B, the new tool at 1,320 B; the smoke run is 44 of 44, 2.1 s headless.

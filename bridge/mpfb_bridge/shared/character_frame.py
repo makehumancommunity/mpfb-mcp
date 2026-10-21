@@ -49,6 +49,7 @@ __all__ = (
     "AXES",
     "Frame",
     "rounded_degrees",
+    "rounded_metres",
 )
 
 import math
@@ -81,6 +82,15 @@ def _clean(value, digits):
 def rounded_degrees(radians):
     """An angle in radians as degrees, rounded the way every angle here is."""
     return _clean(math.degrees(radians), _DEGREE_DIGITS)
+
+
+def rounded_metres(value):
+    """A distance or a world coordinate in metres, rounded the way every position here is.
+
+    Public since FR 045, whose placement answers are in world space rather than
+    in the frame and are still rounded here, once.
+    """
+    return _clean(value, _POSITION_DIGITS)
 
 
 class Frame:

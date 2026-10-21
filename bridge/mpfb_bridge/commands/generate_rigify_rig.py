@@ -46,6 +46,18 @@ The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
 arrived here from the generated program this command replaced, where it had
 been established against a real install; a reimplementation that fixed one
 would be changing what the tool answers under cover of a migration.
+
+**One departure, and it is a repair**
+([FR 045](../../../feature-requests/done/045-placing-a-character/README.md)).
+Generation drops the meta rig's place in the world: on a meta rig moved to
+``(4, -2, 0)`` and turned -45 degrees, FR 045's live check found the generated
+rig at the origin, unturned, with its bones in the meta rig's own space - and
+the body and garments, re-parented onto it with identity transforms, went back
+to the origin with it. So once MPFB has generated, the command gives the
+generated rig the meta rig's world matrix as it was before the call, and the
+character is where it was. It checks first and does nothing when the two
+already agree, so an MPFB or a Rigify that stops dropping the transform makes
+``metarig_placement_moved_to_rig`` false rather than wrong.
 """
 
 __all__ = (
@@ -211,6 +223,12 @@ def _refusal(services, subject, subject_resolved_by, message,
     return None
 
 
+def _differs(first, second):
+    """Whether two world matrices differ by more than float noise."""
+    return any(abs(first[row][column] - second[row][column]) > 1e-6
+               for row in range(4) for column in range(4))
+
+
 def _message_for(generated, rig_object, metarig_name_before, metarig_name_after,
                  disposition, mesh_assets_present):
     """What happened, said once, in the order a reader wants it."""
@@ -276,6 +294,7 @@ def generate_rigify_rig(params, resolution):  # pylint: disable=too-many-locals
     ]
     basemesh = object_service.find_object_of_type_amongst_nearest_relatives(meta_rig, "Basemesh")
     metarig_name_before = meta_rig.name
+    metarig_world = meta_rig.matrix_world.copy()
 
     rig_object = services["RigService"].generate_rigify_rig(
         meta_rig,
@@ -284,6 +303,11 @@ def generate_rigify_rig(params, resolution):  # pylint: disable=too-many-locals
     )
 
     generated = rig_object is not None
+    placement_moved = generated and _differs(rig_object.matrix_world, metarig_world)
+    if placement_moved:
+        # Taken before the call, because "delete" removes the meta rig.
+        rig_object.matrix_world = metarig_world
+        bpy.context.view_layer.update()
     metarig_deleted = bool(generated and meta_rig_action == "delete")
     # Readable in every case but one: with "delete" the datablock is gone by the
     # time control returns here, and the rename that preceded it cannot be
@@ -324,13 +348,16 @@ def generate_rigify_rig(params, resolution):  # pylint: disable=too-many-locals
         refit_will_be_possible=refit_will_be_possible,
         refit_impossible_reason=None if refit_will_be_possible else REFIT_IMPOSSIBLE_REASON,
         mesh_assets_present=mesh_assets_present,
+        metarig_placement_moved_to_rig=placement_moved,
         # Generation selects and activates its own result, so unlike every other
         # mutating command here there is nothing to restore. Saying what the
         # selection now is beats silently leaving the user's scene rearranged.
         active_object_after=_active_object_name(),
         selection_restored=False,
         message=_message_for(generated, rig_object, metarig_name_before, metarig_name_after,
-                             disposition, mesh_assets_present),
+                             disposition, mesh_assets_present) + (
+            " Rigify generated the rig at the origin; it was given the meta rig's place in the "
+            "world, so the character stays where it was." if placement_moved else ""),
     )
 
     # The verb is "generated", which is false when Rigify rejected the meta

@@ -51,6 +51,22 @@ The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
 arrived here from the generated program this command replaced, where it had
 been established against a real install; a reimplementation that fixed one
 would be changing what the tool answers under cover of a migration.
+
+**One departure, and it is a repair rather than a tidying**
+([FR 045](../../../feature-requests/done/045-placing-a-character/README.md)).
+Both adding functions carry the basemesh's *location* over to the rig - the
+armature is added there and the basemesh zeroed under it, so the character
+stays where it was - and drop its *rotation*:
+``Rig.create_armature_and_fit_to_basemesh()`` adds an unrotated armature and
+fits the bones to the basemesh's local vertex coordinates, while the basemesh
+keeps its own rotation under it. A turned character therefore got a rig that
+faced the other way from its mesh; FR 045's live check measured a forearm bone
+0.35 m from the forearm it should move. So the command does for the rotation
+what MPFB does for the location: it zeroes the basemesh's rotation before
+adding, then gives the rig that rotation, written through
+[`shared/placement.py`](../shared/placement.py) in the rig's own rotation mode.
+``basemesh_rotation_moved_to_rig`` reports it, beside
+``basemesh_moved_to_origin``.
 """
 
 __all__ = (
@@ -62,10 +78,12 @@ __all__ = (
 import os
 
 import bpy
+from mathutils import Quaternion  # pylint: disable=import-error
 
 from ..log import get_logger
 from ..shared import blender_data
 from ..shared import mpfb_surface
+from ..shared import placement
 from ..shared import rig_lookup
 from ..shared import selection
 from ..shared import subject_resolution
@@ -136,6 +154,11 @@ def _is_origin(location):
         if abs(value) > 1e-06:
             return False
     return True
+
+
+# A rotation smaller than this - a ten-thousandth of a degree - is float noise,
+# not a turn worth carrying over.
+_ROTATION_NOISE_RADIANS = 1e-6
 
 
 def _armature_modifier_for(mesh_object, armature_object):
@@ -292,7 +315,7 @@ def _refusal(services, subject, basemesh, subject_resolved_by, requested_identif
 
 def _message_for(requested_family, requested_identifier, basemesh, rig_object, import_weights,
                  resolution, mesh_assets_not_rigged, subrigs_not_rigged,
-                 basemesh_location_before, is_metarig):
+                 basemesh_location_before, rotation_moved, is_metarig):
     """What happened, said once, in the order a reader wants it."""
     parts = ["Added the {:s} rig '{!s}' to '{:s}' as '{:s}'.".format(
         requested_family, requested_identifier, basemesh.name,
@@ -311,6 +334,9 @@ def _message_for(requested_family, requested_identifier, basemesh, rig_object, i
     if not _is_origin(basemesh_location_before):
         parts.append(" The basemesh was moved to the origin and the armature took its previous "
                      "location, which is what both adding functions do.")
+    if rotation_moved:
+        parts.append(" The basemesh's rotation was moved to the armature too, which MPFB does not "
+                     "do: its rig would otherwise face the other way from the mesh.")
     if mesh_assets_not_rigged or subrigs_not_rigged:
         parts.append(
             " {:d} asset(s) were already on this character before the rig existed and are NOT "
@@ -365,6 +391,14 @@ def add_rig(params, resolution_context):  # pylint: disable=too-many-locals
     basemesh_location_before = _location_of(basemesh)
     names_before = blender_data.object_names()
 
+    # Taken off the basemesh before the rig is built and given to the rig
+    # afterwards, as MPFB does with the location. See the module docstring.
+    basemesh_rotation = placement.local_rotation(basemesh)
+    rotation_moved = basemesh_rotation.angle > _ROTATION_NOISE_RADIANS
+    if rotation_moved:
+        placement.set_local_rotation(basemesh, Quaternion())
+        bpy.context.view_layer.update()
+
     rig_object = None
     assertion_message = None
     with selection.restored(basemesh):
@@ -388,8 +422,18 @@ def add_rig(params, resolution_context):  # pylint: disable=too-many-locals
                 "internal check on the new armature failed. This is an AssertionError with no "
                 "message inside HumanService.add_builtin_rig(). The rig was not attached to the "
                 "character.")
+        except Exception:
+            # Whatever else MPFB raises is a command_failed, and the rotation
+            # this command took off the basemesh must not be what it leaves
+            # behind as well.
+            if rotation_moved:
+                placement.set_local_rotation(basemesh, basemesh_rotation)
+            raise
 
     if assertion_message is not None:
+        if rotation_moved:
+            placement.set_local_rotation(basemesh, basemesh_rotation)
+            bpy.context.view_layer.update()
         stray = sorted(blender_data.object_names() - names_before)
         return _blocked(
             subject, basemesh, subject_resolved_by, requested_identifier, requested_family,
@@ -406,6 +450,10 @@ def add_rig(params, resolution_context):  # pylint: disable=too-many-locals
         # rig up a second way.
         rig_object = object_service.find_object_of_type_amongst_nearest_relatives(
             basemesh, "Skeleton")
+
+    if rotation_moved and rig_object is not None:
+        placement.set_local_rotation(rig_object, basemesh_rotation)
+        bpy.context.view_layer.update()
 
     is_metarig = requested_family == "rigify"
     weights_loaded = bool(import_weights and resolution["weights_available"])
@@ -444,12 +492,14 @@ def add_rig(params, resolution_context):  # pylint: disable=too-many-locals
         basemesh_location_before=basemesh_location_before,
         basemesh_moved_to_origin=(
             not _is_origin(basemesh_location_before) and _is_origin(basemesh_location_after)),
+        basemesh_rotation_moved_to_rig=bool(rotation_moved and rig_object is not None),
         rig_location=None if rig_object is None else _location_of(rig_object),
         mesh_assets_not_rigged=mesh_assets_not_rigged,
         subrigs_not_rigged=subrigs_not_rigged,
         message=_message_for(requested_family, requested_identifier, basemesh, rig_object,
                              import_weights, resolution, mesh_assets_not_rigged,
-                             subrigs_not_rigged, basemesh_location_before, is_metarig),
+                             subrigs_not_rigged, basemesh_location_before,
+                             bool(rotation_moved and rig_object is not None), is_metarig),
     )
 
     # The verb is "added". See shared/performed.py.

@@ -206,6 +206,51 @@ def test_mesh_assets_present_at_generation_time_are_named():
                 result["mesh_assets_present"])
 
 
+def test_a_placed_metarig_generates_a_rig_where_it_stands():
+    """commands.generate_rigify_rig on a meta rig moved and turned, garment on
+
+    FR 045's requirement 17. Generation leaves the generated rig at the origin,
+    unturned, with its bones in the meta rig's space - and the character,
+    re-parented onto it, goes back to the origin with it. The command gives the
+    generated rig the meta rig's world matrix, so the body and its garment end
+    where they were.
+    """
+    services = _services_or_skip()
+    _rigify_or_skip(services)
+    with _Character() as character:
+        meta_rig = _with_metarig(services, character)
+        garment = typed_child(services, meta_rig, "PlacedGarment", "Clothes")
+        meta_rig.location = (4.0, -2.0, 0.0)
+        meta_rig.rotation_euler = (0.0, 0.0, -0.7853981633974483)
+        bpy.context.view_layer.update()
+        body_world = character.basemesh.matrix_world.copy()
+        garment_world = garment.matrix_world.copy()
+
+        result = _result({"name": character.basemesh.name})
+
+        assert result["generated"] is True, result["message"]
+        assert result["metarig_placement_moved_to_rig"] is True
+        generated = bpy.data.objects[result["rig_object_name"]]
+        assert (generated.matrix_world.to_translation()
+                - meta_rig.matrix_world.to_translation()).length < 1e-6
+        for blender_object, before in ((character.basemesh, body_world),
+                                       (garment, garment_world)):
+            after = blender_object.matrix_world
+            assert all(abs(after[row][column] - before[row][column]) < 1e-5
+                       for row in range(4) for column in range(4)), blender_object.name
+
+
+def test_a_metarig_at_the_origin_needs_no_placement_carried():
+    """commands.generate_rigify_rig on an unmoved meta rig"""
+    services = _services_or_skip()
+    _rigify_or_skip(services)
+    with _Character() as character:
+        _with_metarig(services, character)
+        result = _result({"name": character.basemesh.name})
+        assert result["generated"] is True, result["message"]
+        assert result["metarig_placement_moved_to_rig"] is False
+
+
 def test_an_unresolvable_name_is_an_answer():
     """commands.generate_rigify_rig naming an object that does not exist"""
     _services_or_skip()

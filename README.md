@@ -16,13 +16,13 @@ you can speed up things and save some tokens.
 
 ## Status
 
-Early beta. Forty-one tools are implemented.
+Early beta. Forty-two tools are implemented.
 
 **Introspection** — read-only, and each of them always answers rather than failing:
 
 - `mpfb_get_status` — is MPFB present, initialized and correctly configured?
 - `mpfb_get_character_summary` — what is this character, in one call: phenotype, rig, assets,
-  skin, morphs and face, each exactly as the detailed tool below would report it?
+  skin, morphs, face and where it stands, each exactly as the detailed tool below would report it?
 - `mpfb_list_objects` — which MakeHuman objects are in the current scene?
 - `mpfb_get_object_info` — what is this object, what was it made from, and what belongs with it?
 - `mpfb_get_macro_details` — what is this character's phenotype?
@@ -77,6 +77,9 @@ Early beta. Forty-one tools are implemented.
   switches, keeping each limb where it is as Rigify's own buttons do.
 - `mpfb_reset_pose` — put a character back at rest, and answer with the calls that put the pose
   back: Blender's own undo does not see what these tools do.
+- `mpfb_place_character` — stand a character somewhere in the scene, facing a direction or a
+  point or the camera, and say how much room it takes up, so that several can be lined up. MPFB
+  builds every character at the origin.
 - `mpfb_save_preset` / `mpfb_create_human_from_preset` — keep a character past this Blender
   session, and build a new one from a saved character.
 - `mpfb_create_export_copy` / `mpfb_export_character` — take a character to a game engine or
@@ -88,8 +91,10 @@ Early beta. Forty-one tools are implemented.
 `mpfb_save_preset`, `mpfb_save_expression` and `mpfb_export_character` are the only tools here
 that write a file, and nothing in Blender can undo it, so each refuses to overwrite unless told to.
 
-**Order matters and MPFB reports no error when it is wrong**: add the rig before the garments, and
-generate a Rigify rig after them. The tools report the violation they can see rather than
+**Order matters and MPFB reports no error when it is wrong**: add the rig before the garments,
+generate a Rigify rig after them, and dress a character before placing it - a garment with its own
+sub-rig, such as a ponytail, equipped on a character away from the origin is bound wrong until the
+character is refitted. The tools report the violation they can see rather than
 enforcing it.
 
 See [src/mpfbmcp](src/mpfbmcp) and [CLAUDE.md](CLAUDE.md) for how they work and how to run them.

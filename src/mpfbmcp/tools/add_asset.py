@@ -153,7 +153,8 @@ def register(mcp: FastMCP) -> None:
         `basemesh_name`, `resolved_path`/`path_resolved_by`/`asset_source`,
         `object_type_recorded`, `material_type_used`,
         `material_created`/`material_name`, `rigged_to` or `parented_to`,
-        `subrig_object_name`, `delete_group_name` and
+        `subrig_object_name` with `subrigs_broken` (see
+        `mpfb_place_character`), `delete_group_name` and
         `delete_group_applied_to`, `subdiv_modifier_added`, `warnings` for what
         MPFB only logs, and `proxy_extras` - the four things a `Proxymeshes`
         asset gets from MPFB's `.mhm` loading path, which this follows rather

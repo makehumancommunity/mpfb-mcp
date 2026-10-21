@@ -35,6 +35,14 @@ names:
   where the other keeps it. **Three socket names are written here**, which the
   detailed command never does: they are what the section is for, and a socket
   MPFB renames is reported as ``null`` rather than dropped.
+- ``placement`` - [`placement.py`](../shared/placement.py), as ``place_character``
+  reports a character after placing it: ``root_name``, ``position``, ``facing``,
+  ``tilted``, ``footprint`` and ``subrigs_broken``
+  ([FR 045](../../../feature-requests/done/045-placing-a-character/README.md)).
+  ``place_character`` spells the first two ``position_after`` and
+  ``facing_after``, beside their ``_before``; a reading has no before. Placement
+  is read here rather than by a tool of its own, because a caller laying out a
+  scene reads each character once, and a no-op move cannot stand in for a read.
 
 **So it reports no fact a detailed command does not.** It selects and it
 counts; it does not derive. A finding that joined two sections - "the rig
@@ -84,6 +92,7 @@ from ..shared import asset_info
 from ..shared import macro_reading
 from ..shared import material_settings
 from ..shared import mpfb_surface
+from ..shared import placement
 from ..shared import subject_resolution
 from ..shared import target_categories
 from ..shared import target_rollup
@@ -100,7 +109,7 @@ PARAMS = (
 )
 
 SUMMARY = ("Summarize one character before changing it: phenotype, rig, equipped assets, skin, "
-           "detail morphs and face, each as its detailed command reports it.")
+           "detail morphs, face and placement, each as its detailed command reports it.")
 
 # How many rollup entries the summary carries. Measured rather than guessed, on
 # FR 034's worst-case character: everything else in the answer comes to about
@@ -268,6 +277,7 @@ def get_character_summary(params, resolution):
             targets=None,
             face=None,
             material_settings=None,
+            placement=None,
             message=message,
         )
 
@@ -280,6 +290,7 @@ def get_character_summary(params, resolution):
     targets = _targets(services, basemesh)
     face = _face(services, basemesh)
     materials = _material_settings(services, basemesh)
+    placed = placement.describe(services, placement.root_of(basemesh))
 
     _LOG.debug("get_character_summary: %r, rig %r, %d assets, %d modifiers",
                basemesh.name, None if rig is None else rig["name"], len(assets),
@@ -299,5 +310,6 @@ def get_character_summary(params, resolution):
         targets=targets,
         face=face,
         material_settings=materials,
+        placement=placed,
         message=_message_for(basemesh, rig, assets, targets, face),
     )

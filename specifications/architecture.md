@@ -125,6 +125,14 @@ ending in the same dispatch, the same framing and the same table — **one proto
 once**, which is a deliberate departure from the add-on the transport is modelled on, where the
 background path is a second read loop beside the timer-driven one.
 
+**A windowed Blender sets the pace, not the bridge's poll interval.** Measured during
+[FR 045](../feature-requests/done/045-placing-a-character/README.md): in a windowed Blender whose
+event loop had nothing to do, a `bpy.app.timers` callback that asked for 0.05 s fired once a second,
+so every tool there - `mpfb_list_objects` as much as anything - took 1.0 s, while the same
+placement dispatched inside Blender took 10 ms and a round trip to a headless bridge 4-6 ms. A
+per-call time measured against a windowed Blender is therefore compared with a call that does
+nothing, in the same Blender, before it is read as a command's cost.
+
 **The start operator still refuses background mode, and now says what to use instead.**
 `bpy.app.timers` callbacks are driven by Blender's event loop and a `--background` Blender has
 none, so a server started from the operator there binds a socket, registers a timer that can never
@@ -789,6 +797,18 @@ now four parts, and it applies on both sides of the socket:
   silent disagreement the rule exists for. The snaps ported from Rigify are not in it: they have one
   user, `set_pose_switches`.
 
+- **Where a character stands is one reading for three commands.** `placement.py` came with
+  [FR 045](../feature-requests/done/045-placing-a-character/README.md): `mpfb_place_character`
+  reports a character after placing it, `mpfb_get_character_summary`'s `placement` section reports
+  the same six keys for any character, and `mpfb_add_asset` reports the sub-rigs bound wrong - a
+  summary placing a character somewhere other than where the place tool had just put it, or two
+  tools disagreeing whether a ponytail follows its head, is the silent disagreement rule 1 is
+  about. It also holds the write, and the two rotation helpers `add_rig` uses to move a turned
+  basemesh's rotation to its new rig, so that every rotation the bridge writes on an object lands
+  in that object's own rotation mode the same way. Its rounding is `character_frame.py`'s, now
+  public as `rounded_metres()`, so a placement's position and a frame's origin cannot differ in the
+  last digit.
+
 **The evidence for the rule is FR 036's census**, not the census of generated programs that
 stood here before: those programs were deleted by
 [FR 033](../feature-requests/done/033-retire-the-generated-code-path/README.md), and a rule backed
@@ -809,7 +829,10 @@ four module-level names through `mpfb_surface.py` once rather than at every use.
 neither, because they read nothing out of MPFB's services: `performed.py` works on a dict the
 command has finished building, `artifact_names.py` on a name and a path, `expression_panel.py` on
 MPFB's root package name, and `selection.py` and `blender_data.py` on plain Blender state.
-`character_frame.py`, `pose_reading.py` and `pose_writing.py` read only Blender too; `pose_controls.py`'s rig lookup
+`character_frame.py`, `pose_reading.py` and `pose_writing.py` read only Blender too. `placement.py`
+was scoped to read none either and takes `services` for two questions only MPFB may answer: which
+meta-rig moves with a generated rig (the one `HumanService.refit()` will refit,
+`find_rigify_metarig_by_rig()`'s) and which armature is a sub-rig (its `object_type`). `pose_controls.py`'s rig lookup
 takes `services`, and its classification takes the root package name for the one name it reads off
 MPFB's UI package.
 `subject_resolution.py` is half of each: its subject step reads only the view layer and `bpy.data`,

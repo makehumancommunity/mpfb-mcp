@@ -100,9 +100,9 @@ def register(mcp: FastMCP) -> None:
         resolves weights through a fallback table, so a rig legitimately
         borrowing another's is normal and `weights_loaded: false` is not**),
         `armature_modifier_added`, `basemesh_location_before` with
-        `basemesh_moved_to_origin` and `rig_location` - both adding functions
-        move the basemesh to the origin and give the armature its old location,
-        which visibly moves a character standing anywhere else - and
+        `basemesh_moved_to_origin`, `basemesh_rotation_moved_to_rig` and
+        `rig_location` - the armature takes the basemesh's place and turn, so
+        the character stays where it stood - and
         `mesh_assets_not_rigged` / `subrigs_not_rigged`.
 
         Refusals come back as `added: false` (and so `performed: false`) with a
