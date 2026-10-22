@@ -113,7 +113,14 @@ and `mpfb_get_pose`, with the character frame and the posing vocabulary, and
 karate stance below with mpfb-mcp tools alone. What is left of the entry is two gaps the karate
 session found that neither request took:
 
-- **There is no hand-shape helper.** On Rigify, a fist comes from scaling the finger master bones
+- **There is no hand-shape helper.** The Rigify half is scoped as
+  [FR 047](047-rigify-hand-shapes/README.md) (Proposed): `mpfb_get_rigify_hand_shape` and
+  `mpfb_set_rigify_hand_shape`, with six named shapes and a 0-1 `curl` and a `spread` per finger.
+  It covers only rigs generated from MPFB's Rigify meta-rigs (`human`, `human_toes`). **The default
+  rig and `game_engine`, including its Rigify conversion, are not in it**, and those stay here. The
+  56-rotation cost below was measured on `default_no_toes`, which FR 047 refuses.
+
+  On Rigify, a fist comes from scaling the finger master bones
   on Y (0.45 for a closed fist), not from rotating them, and FR 042's `scale_to` reaches it. On the
   default rig it means rotating three bones per finger. A `hand` argument (`fist`, `open`,
   `relaxed`, or a 0-1 curl per finger) would hide the difference between rigs.
