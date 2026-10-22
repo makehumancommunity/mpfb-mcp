@@ -18,7 +18,11 @@ costs of MPFB's asset cache are
 and the pack attribution is
 [How tools report a derived rather than recorded fact](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact).
 
-Nothing here validates a subdir or pack name. The installed library is the
+``license`` names the argument after the answer key it filters, which shadows
+a Python builtin inside one function body and nowhere else; the glossary's
+rule that an argument is named for what it filters wins over that.
+
+Nothing here validates a subdir, pack or license name. The installed library is the
 authority on both and is only readable from inside Blender; a vocabulary kept on
 this side would drift from it silently.
 """
@@ -57,14 +61,14 @@ def register(mcp: FastMCP) -> None:
     def mpfb_list_assets(asset_subdir: str | None = None,
                          name_contains: str | None = None,
                          pack: str | None = None,
+                         license: str | None = None,  # pylint: disable=redefined-builtin
                          limit: int = 200,
                          offset: int = 0,
                          refresh: bool = False) -> dict[str, object]:
         """
         Find the MakeHuman assets installed in this Blender - garments, hair,
         eyes, eyebrows, eyelashes, teeth, tongue, body proxies, skins,
-        poses - narrowed by subdir, by a keyword in the name, and by asset
-        pack. Adds nothing to the scene. The forward counterpart of
+        poses - narrowed by subdir, name, asset pack and license. Adds nothing to the scene. The forward counterpart of
         `mpfb_get_object_info`, which says what an existing object was made
         from.
 
@@ -84,6 +88,8 @@ def register(mcp: FastMCP) -> None:
             label.
           - `pack` - substring of an installed pack's name, so `"hair03"` finds
             `hair03_ccby`.
+          - `license` - exact, case-insensitive: `"CC0"`, `"CC-BY"`. An asset
+            with no recorded license never matches.
           - `limit` (default 200, max 1000) and `offset` - paging over the
             matched set, sorted by subdir then name.
           - `refresh` - rescan first. Needed only when assets were installed
@@ -94,14 +100,18 @@ def register(mcp: FastMCP) -> None:
 
           - `assets`: this page's entries, each with `name` (filename without
             extension), `label` (MPFB's display text), `fragment`, `path`,
-            `object_type`, `asset_subdir`, `file_type`, `pack`,
-            `pack_ambiguous` and `thumb_path`.
+            `object_type`, `asset_subdir`, `file_type`, `pack` (the claimant
+            your filter matched), `packs`, `pack_ambiguous`, `license`,
+            `author`, `source_url` (the page to credit) and `thumb_path`.
           - `counts_by_asset_subdir`: how many assets each scanned subdir
             holds, ignoring `name_contains`, `pack` and the cap.
+          - `counts_by_license` and `license_unknown_count`: the matches
+            before the `license` filter and the cap.
           - `requested_asset_subdir`/`asset_subdir_recognized`/
             `known_asset_subdirs` and `requested_pack`/`pack_recognized`/
-            `known_packs`, so a misspelling is distinguishable from an empty
-            subdir or pack.
+            `known_packs`/`matched_packs` (per pack, the installed assets it
+            claims; 0 means none on disk) and `requested_license`/
+            `license_recognized`/`known_licenses`, so a misspelling is distinguishable from an empty subdir or pack.
           - `asset_roots_searched`: per subdir, the directories actually
             scanned. A configured data root that does not hold that subdir is
             not searched, which is the usual explanation for "I installed it
@@ -118,10 +128,10 @@ def register(mcp: FastMCP) -> None:
         `object_type` (`"Material"`, `"Pose"`, `"Other"`) says what the asset
         is rather than naming an argument.
 
-        **`pack` is derived from a directory-name convention, not recorded by
-        MPFB.** `pack: null` is ordinary for a hand-installed asset, and
-        `pack_ambiguous: true` means two packs claim the name and the reported
-        one is a coin toss. `total_count` can under-report too: MPFB's cache is
+        **`pack` and `license` are derived from a directory name, not recorded
+        by MPFB.** `null` is ordinary for a hand-installed asset and means
+        unknown, never permissive; `attribution_conflicts` lists claimants that
+        disagree. `total_count` can under-report: MPFB's cache is
         keyed by a label derived from the filename alone, so two assets whose
         filenames differ only in case or underscores collapse into one entry.
         """
@@ -140,6 +150,8 @@ def register(mcp: FastMCP) -> None:
                     "omit it to match every name"),
                 "pack": arguments.validated_text(
                     pack, "pack", "omit it to match assets from every pack"),
+                "license": arguments.validated_text(
+                    license, "license", "omit it to match assets under any license"),
                 "limit": arguments.validated_count(limit, "limit", MAX_LIMIT),
                 "offset": arguments.validated_count(offset, "offset", None),
                 # Not truthiness: refresh="false" would rescan the entire library.

@@ -1,9 +1,9 @@
 # License in the catalogues: who made an asset, and under what terms
 
-**Status:** Proposed
+**Status:** Done
 
 Two sessions in a row were briefed to use CC0 assets only, and neither could find out through this
-server which assets those were. The line-up session ([FULL_SESSION.md](../FULL_SESSION.md)) read
+server which assets those were. The line-up session ([FULL_SESSION.md](../../FULL_SESSION.md)) read
 `data/packs/*.json` by hand. The man-and-woman scene session did the same thing again from scratch:
 ten `mpfb_list_assets` calls, then a join against the pack files. So the cost is paid once per
 session, not once per project. On this install the answer matters. Of 639 installed garments, 226
@@ -14,7 +14,7 @@ MPFB already has the fact. Every pack JSON under the user data `packs/` director
 asset, a `license`, an `author` and a `source` page: 1,606 entries on this install, all with all
 three keys, 1,016 `CC0` and 590 `CC-BY`. `mpfb_list_assets` reads those same files to derive
 `pack`. It joins an asset's containing directory name against the asset names the packs claim
-([responses.md](../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact)),
+([responses.md](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact)),
 and then throws away everything else in the entry it matched.
 
 **The alternative materials are the worse half.** They are not in `mpfb_list_assets`' answer, so a
@@ -50,7 +50,7 @@ this request must report it as unknown rather than guess it.
   is not in a directory named for it, so the join below does not hold for targets; see
   [Decisions taken while scoping](#decisions-taken-while-scoping)). Nor a summary mode for the
   asset catalogue, which is
-  [its own entry](../NEXT_STEPS.md#a-summary-mode-for-the-asset-catalogue). This request gives
+  [its own entry](../../NEXT_STEPS.md#a-summary-mode-for-the-asset-catalogue). This request gives
   that entry its license facet and nothing else. Nor any judgement about what a license permits:
   the tools report what the metadata says, and never say "safe to use".
 
@@ -126,7 +126,7 @@ this request must report it as unknown rather than guess it.
 14. **`mpfb_get_character_summary`'s assets section carries `license` per asset**, and per
     alternative material where one is set. As always it is a subset of the detailed tool's fields
     under the same names
-    ([never a second opinion](../../specifications/responses.md#a-summary-is-never-a-second-opinion)).
+    ([never a second opinion](../../../specifications/responses.md#a-summary-is-never-a-second-opinion)).
     The effort measures what this adds to the 8 KB worst case. If the field does not fit, the summary
     carries a count by license instead.
 
@@ -154,7 +154,7 @@ this request must report it as unknown rather than guess it.
   `list_asset_materials`, `get_object_info` (through `shared/asset_info.py`) and
   `get_character_summary` all need it, and two of them reporting different licenses for one file is
   exactly the disagreement the
-  [shared-module rule](../../specifications/architecture.md#shared-modules-and-what-warrants-one)
+  [shared-module rule](../../../specifications/architecture.md#shared-modules-and-what-warrants-one)
   exists for. `list_assets`' `_read_pack_index` and `_packs_claiming` move into it. Build the index
   once per call and pass it down, as `list_assets` does now. Do not rebuild it per row.
 - **How the metadata is read.** MPFB publishes the pack names and the asset names in each pack
@@ -166,7 +166,7 @@ this request must report it as unknown rather than guess it.
     without license: `pack` and `packs` are still reported, and `license` is `null` with a message
     saying why.
   - Read the JSON files directly, located through `LocationService.get_user_data("packs")`, under
-    [the rules for reading MPFB's data files](../../specifications/mpfb-integration.md#reading-mpfbs-data-files-directly).
+    [the rules for reading MPFB's data files](../../../specifications/mpfb-integration.md#reading-mpfbs-data-files-directly).
     This bypasses MPFB's cache, so `pack` (cached) and `license` (fresh) could describe two
     different scans.
 
@@ -186,22 +186,22 @@ this request must report it as unknown rather than guess it.
 
 ## Affected specifications
 
-- [responses.md](../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact):
+- [responses.md](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact):
   the derived-fact section uses `pack` as its example. It gains license as the second derived field
   read from the same join, the agree-or-null rule for several claimants, and the stem fallback if
   the effort adopts it.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides):
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides):
   pack metadata becomes a cache that two tools invalidate, and the list of caches should say which.
   If `_PACKS` is read, it is a new name read past `SERVICES`, recorded where
-  [architecture.md](../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish)
+  [architecture.md](../../../specifications/architecture.md#reading-module-level-names-mpfb-does-not-publish)
   lists them.
-- [tool-interface.md](../../specifications/tool-interface.md#the-glossary): `license`, `author`,
+- [tool-interface.md](../../../specifications/tool-interface.md#the-glossary): `license`, `author`,
   `source`, `packs` and `known_licenses` are new names for arguments and answer keys. `source` is
   not in the glossary yet, but `asset_source` is an object property that several answers already
   report, and the two mean different things. If `source` reads as a short form of `asset_source`,
   use `source_url` instead.
-- [architecture.md](../../specifications/architecture.md#shared-modules-and-what-warrants-one): one
-  more shared module, and the count in [CLAUDE.md](../../CLAUDE.md) goes with it.
+- [architecture.md](../../../specifications/architecture.md#shared-modules-and-what-warrants-one): one
+  more shared module, and the count in [CLAUDE.md](../../../CLAUDE.md) goes with it.
 
 ## Tests
 
@@ -212,7 +212,7 @@ this request must report it as unknown rather than guess it.
 - **Bridge side**, against a real MPFB:
   - `bbb_shared/` tests the new module directly. Its fixture is a `packs/` directory that
     reproduces this install's shapes rather than a convenient one
-    ([testing.md](../../specifications/testing.md)): two packs claiming one asset (the
+    ([testing.md](../../../specifications/testing.md)): two packs claiming one asset (the
     `hats01`/`hats01_cc0` shape), an asset in an asset root, an asset no pack claims, a material
     in its asset's directory, a material in a directory of its own, an eye-style material keyed by
     file stem, and two claimants that disagree on license, which this install does not have and
@@ -259,14 +259,91 @@ this request must report it as unknown rather than guess it.
   stem join over target names has not been measured. It is left in NEXT_STEPS rather than built on
   an unmeasured convention.
 
+## Decisions taken during the effort
+
+- **The stem fallback is adopted.** The live check walked every `.mhclo`, `.mhmat` and `.proxy`
+  file under nine subdirs' asset roots through the bridge's own module: with the fallback, 1,745
+  of 1,809 files are attributed, without it 1,736. The nine it adds are exactly
+  `eyes/materials/{blue,bluegreen,brown,brownlight,deepblue,green,grey,ice,lightblue}.mhmat`, and
+  it changes the attribution of no file the directory join already attributed (it is only tried
+  where the directory claims nothing). The condition it rests on is in `pack_attribution.py`'s
+  docstring and in [responses.md](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact).
+- **`source_url`, not `source`.** The glossary already has `asset_source`, a fragment; `source`
+  read as its short form. The metadata's own key is `source`, and the module maps it.
+- **Every field follows the agree-or-null rule, not only `license`.** `author` and `source_url`
+  are reported when every claimant agrees on them too, and a field one claim leaves empty while
+  another fills it counts as a disagreement. A disagreement is reported once per answer, in
+  `attribution_conflicts` (each with `path` and every claim), not as a key on every row; it is
+  `[]` on this install. `mpfb_list_asset_materials` carries it too.
+- **The count of unlicensed assets is `license_unknown_count`, beside `counts_by_license`**,
+  since `null` cannot be a JSON key and a sentinel such as `"none"` could collide with a license
+  of that name. "Unknown" rather than "unlicensed", which would be a claim about the asset.
+- **`matched_packs` is `null` without a `pack` filter**, and counts over the whole scan (after the
+  subdir filter, before the name filter), so a registered pack with nothing on disk shows `0`
+  whatever else was asked. On this install `accessories01_cc0` is the one `_cc0` pack at 0. The
+  request suspected about forty packs with entries not on disk; a catalogue filter only reveals
+  the ones a caller asks about, which is the decision taken while scoping.
+- **`source_url` stays on every row.** A default page measured 102,241 B before and 127,898 B
+  after (+25%), and a 1000-row page (938 rows on this install) 459,970 B before and 578,827 B after.
+  `source_url` is 11,900 B of the default page's 25,657 B growth. It stays, because crediting a
+  CC-BY asset needs it, and putting it behind an argument would cost a description line, a schema
+  entry and a second call exactly when a caller has decided to use the asset. The call time did not
+  move: 53 ms for the default page, 55 ms for 1,000 rows, one pack read for the whole call.
+- **The summary carries `license` and `material_license` per asset, and `material_license` on the
+  skin**, not a count by license. A dressed character with eight assets grew from 3,414 B to
+  3,792 B; with the rollup at its caps (FR 034's ~105 B per modifier, ~115 B per asymmetry) that
+  is about 7,340 B, under the 8 KB target. `author` and `packs` stay in `mpfb_get_object_info`.
+- **The skin is attributed as well**, since `asset_info`'s `mhmat_path` is the skin on a basemesh
+  and the alternative material on an asset, and one `material_license` covers both. A mesh asset
+  wearing its own default material has `material_license: null`, as its `material_source` is.
+- **`get_object_info` reads the pack metadata lazily**, on the first mesh asset or material it
+  attributes, and once per call; a rig's answer reads nothing.
+- **`mpfb_list_assets`' description and the two others grew 825 B**, and the description ceiling
+  moved from 85,500 to 86,350, the schema ceiling from 17,100 to 17,200 (89 B for the argument).
+  `tests/test_description_budget.py` says what each tool spent.
+- **The upstream getter is proposed** as `AssetService.get_pack_metadata(pack_name)`, in
+  `mpfb2/features/MCP_DISCOVERED_BUGS.md`, and the module already prefers it when present.
+- **Found, and not this request's: a garment behind a sub-rig is missing from the summary.**
+  `ponytail01` carries its own sub-rig, and MPFB's `find_related_objects()` does not walk past a
+  `Subrig`, so it is in neither the basemesh's `related_objects` nor the summary's
+  `equipped_assets`. The two agree, so "never a second opinion" holds, but a character checked
+  against a brief through the summary would skip its hair. Recorded in
+  [NEXT_STEPS.md](../../NEXT_STEPS.md#a-garment-behind-a-sub-rig-is-missing-from-the-family).
+
+## Verification
+
+Both halves of "verified" hold. The bridge suite has 24 new tests (611):
+`bbb_shared/pack_attribution_test.py` (13: `_PACKS` read off MPFB's scan, two agreeing claimants,
+both material placements, the stem fallback, the asset-root rule against a pack claiming `skins`,
+an unclaimed asset, two disagreeing claimants, the public getter preferred, the names-only
+fallback, the cache until invalidated, and the rule on a hand-built index), five in
+`ccc_reading/list_assets_test.py`, three in `list_asset_materials_test.py`, one in
+`get_object_info_test.py` and one in `eee_composite/get_character_summary_test.py`, each asserting
+an equipped asset's attribution equal to its catalogue's by dispatching both.
+`_fixtures.build_attributed_library()` writes a `packs/` tree in the install's shapes. The unit
+suite has one new test (585). The smoke run is 44 of 44, its two catalogue items now expecting
+`counts_by_license`, `known_licenses` and `attribution_conflicts`.
+
+The live check, [live_check.py](live_check.py), ran on 2026-10-22 against a windowed Blender 5.1
+with MPFB, the bridge (reloaded to pick the change up) and the community blender-mcp add-on, on
+the maintainer's full community install, and passed all 30 checks: `license="CC0"` over `clothes`
+is 226 and the counts are 226 / 392 / 21, case-insensitively; the stem fallback above;
+`pack="_cc0"` reports no row whose `pack` lacks `_cc0` (20 of its rows would have, under the old
+first-claimant rule) and shows `accessories01_cc0` at 0; the five hair materials - the four of the
+line-up and `ricardo2020_long_01_bronze`, by four authors - are `CC0` in their
+`system_hair_materials01`/`03` pack, in `mpfb_list_asset_materials` and, once applied, in
+`mpfb_get_object_info`; nine equipped assets report their catalogue row's attribution; and the
+summary's licenses are `mpfb_get_object_info`'s. The 21 garments with no license are listed in its
+output; they are the community assets installed without a pack the scoping named.
+
 ## References
 
-- [NEXT_STEPS.md: License in the catalogues](../NEXT_STEPS.md#license-in-the-catalogues), the
+- [NEXT_STEPS.md: License in the catalogues](../../NEXT_STEPS.md#license-in-the-catalogues), the
   entry this request scopes, with both sessions' findings.
 - `mpfb2/src/mpfb/services/assetservice.py`: `_PACKS`, `rescan_pack_metadata()`,
   `get_pack_names()`, `get_asset_names_in_pack()`, `update_all_asset_lists()` (which invalidates
   the pack cache) and `invalidate_alternative_materials_cache()` (which does not).
 - `mpfb2/src/mpfb/entities/material/mhmatkeys.py`: the `license` key defaulting to `CC0`.
-- [FR 005](../done/005-list-assets/README.md), which introduced `pack` and `pack_ambiguous`.
-- [FR 018](../done/018-alternative-material-refresh/README.md), which introduced
+- [FR 005](../005-list-assets/README.md), which introduced `pack` and `pack_ambiguous`.
+- [FR 018](../018-alternative-material-refresh/README.md), which introduced
   `mpfb_list_asset_materials`' `refresh`.

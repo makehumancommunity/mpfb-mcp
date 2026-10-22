@@ -24,14 +24,22 @@ no clothes, so the skeleton and mesh-asset shapes are reached by asking about
 objects this suite makes itself rather than by equipping anything: equipping is
 stage 4's territory, and a read-only command's test should not be the first
 place an asset is added.
+
+The attribution an equipped asset reports (FR 046) is checked the way it has
+to hold: by dispatching the catalogue that listed the same file beside this
+command, over a library whose packs record licenses.
 """
+
+import sys
 
 import bpy
 
 from .. import bridge_module
 from .._fixtures import Character
+from .._fixtures import build_attributed_library
 from .._fixtures import dispatch
 from .._fixtures import linked_plain_object
+from .._fixtures import only_these_data_roots
 from .._fixtures import result
 from .._fixtures import services_or_skip
 from .._fixtures import supplied_resolution
@@ -101,7 +109,8 @@ def test_a_basemesh_answers_the_material_question_and_not_the_mhclo_one():
         # The shape *is* the answer. A union with the inapplicable keys nulled
         # would report mhclo_path: null on a basemesh, which reads as "we looked
         # for its mhclo and failed".
-        assert set(info) == {"material_identified_as", "material_source", "mhmat_path"}, \
+        assert set(info) == {"material_identified_as", "material_source", "mhmat_path",
+                             "material_license", "material_author", "material_packs"}, \
             "A Basemesh answers the material question only, got {!r}".format(sorted(info))
         assert info["material_identified_as"] is not None, \
             "identify_material() answers for a mesh even with no material on it"
@@ -241,3 +250,40 @@ def test_the_command_is_refused_rather_than_answered_when_mpfb_is_absent():
     assert answer["error"] == command_server.ERROR_MPFB_UNAVAILABLE, \
         "The refusal should say the install is wrong, not that nothing was found"
     assert "found" not in answer, "An install problem must not be phrased as a missing object"
+
+
+def test_an_equipped_asset_and_its_material_carry_the_catalogues_attribution(tmp_path):
+    """license, author and packs, equal to list_assets' and list_asset_materials' for one file"""
+    services = services_or_skip()
+    system_root, user_root = build_attributed_library(str(tmp_path))
+    general_properties = sys.modules[services["ObjectService"].__module__].GeneralObjectProperties
+    with Character() as character:
+        try:
+            with only_these_data_roots(services, mpfb_data=system_root, user_data=user_root):
+                services["AssetService"].update_all_asset_lists()
+                garment = typed_child(services, character.basemesh, "BridgeTestFedora",
+                                      "Clothes")
+                general_properties.set_value("asset_source", "fedora/fedora.mhclo",
+                                             entity_reference=garment)
+                materials = result("list_asset_materials", {"name": garment.name})
+                green = [entry for entry in materials["materials"]
+                         if entry["name"] == "fedora_green"][0]
+                general_properties.set_value("alternative_material", green["fragment"],
+                                             entity_reference=garment)
+
+                info = result(COMMAND, {"name": garment.name})["asset_info"]
+                listed = [row for row in result("list_assets", {
+                    "asset_subdir": "clothes", "name_contains": "fedora"})["assets"]
+                          if row["name"] == "fedora"][0]
+        finally:
+            # Outside the redirect, so MPFB's caches are rebuilt from the
+            # developer's own library rather than left pointing at this one.
+            services["AssetService"].update_all_asset_lists()
+
+    assert info["mhclo_path"] is not None
+    for key in ("license", "author", "packs"):
+        assert info[key] == listed[key], key
+        assert info["material_" + key] == green[key], key
+    assert info["license"] == "CC0"
+    assert info["material_license"] == "CC-BY", \
+        "the alternative material is the other pack's, and says so"

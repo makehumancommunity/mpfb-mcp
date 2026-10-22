@@ -29,6 +29,18 @@ answer:
   generates through Rigify as a ``Skeleton``, so restricting the question to
   untyped objects would drop the field from the commonest generated rig there
   is.
+- **A mesh asset says whose it is, and so does its material.** ``license``,
+  ``author`` and ``packs`` describe the file at ``mhclo_path``, and
+  ``material_license``, ``material_author`` and ``material_packs`` the one at
+  ``mhmat_path`` - the skin on a basemesh, an alternative material on an
+  asset - read by [`pack_attribution.py`](pack_attribution.py), the module
+  both catalogues use, so a finished character can be checked against a brief
+  without going back to them
+  ([FR 046](../../../feature-requests/done/046-license-in-the-catalogues/README.md)).
+  An unresolved path is attributed to nothing. A mesh asset wearing its own
+  default material has ``material_license: null``, like its
+  ``material_source``: that material sits in the asset's directory, and the
+  asset's ``license`` is what the catalogue would have said about it.
 - **Nothing is selected or activated in order to be inspected.**
   ``ObjectService`` carries destructive and selection-mutating methods; none is
   touched here, because changing what the user has selected in order to answer
@@ -62,6 +74,7 @@ import os
 import bpy
 
 from . import mpfb_surface
+from . import pack_attribution
 
 # What to assume when MPFB stops publishing one of its private type
 # vocabularies. Copies rather than guesses, and the fallback rather than the
@@ -82,7 +95,7 @@ class Lookup:
     """
 
     __slots__ = ("services", "skeleton_types", "mesh_asset_types",
-                 "general_properties", "human_properties")
+                 "general_properties", "human_properties", "_pack_index", "_asset_roots")
 
     def __init__(self, services):
         self.services = services
@@ -94,6 +107,45 @@ class Lookup:
         # HumanObjectProperties is not, and lives on humanservice.py's module.
         self.general_properties = mpfb_surface.general_object_properties(services)
         self.human_properties = mpfb_surface.human_object_properties(services)
+        self._pack_index = None
+        self._asset_roots = dict()
+
+    def pack_index(self):
+        """The pack claims, read on first use and once per call.
+
+        Lazily, because only a mesh asset or a material asks: a rig's
+        ``get_object_info`` should not read a hundred JSON files.
+        """
+        if self._pack_index is None:
+            self._pack_index = pack_attribution.read_index(self.services)
+        return self._pack_index
+
+    def asset_roots(self, asset_subdir):
+        """``AssetService.get_asset_roots()`` for one subdir, once per call."""
+        if asset_subdir not in self._asset_roots:
+            try:
+                roots = self.services["AssetService"].get_asset_roots(asset_subdir) or []
+            except Exception:  # pylint: disable=broad-except
+                roots = []
+            self._asset_roots[asset_subdir] = [str(root) for root in roots]
+        return self._asset_roots[asset_subdir]
+
+
+def _attribution(lookup, path, asset_subdir, prefix):
+    """``license``, ``author`` and ``packs`` for one resolved file, under ``prefix``.
+
+    The catalogues' attribution of the same file, so an equipped asset cannot
+    report a license its catalogue entry does not. No ``source_url``: that is
+    the catalogue's, for a caller choosing an asset; this answer is for one
+    checking a finished character against a brief. A ``None`` path - nothing
+    recorded, or not installed - is attributed to nothing, without a read.
+    """
+    if path is None:
+        attribution = pack_attribution.unattributed()
+    else:
+        attribution = pack_attribution.attribute(
+            lookup.pack_index(), path, lookup.asset_roots(asset_subdir))
+    return {prefix + key: attribution[key] for key in ("license", "author", "packs")}
 
 
 def _rig_definition_path(lookup, rig_type):
@@ -169,12 +221,15 @@ def _material_asset_info(lookup, blender_object, object_type):
     if fragment is None:
         # No fragment means no lookup: the asset-root walk happens only when
         # there is something to resolve.
-        return {"material_source": None, "mhmat_path": None}
-    return {
-        "material_source": fragment,
-        "mhmat_path": mpfb_surface.as_path(
-            lookup.services["AssetService"].find_asset_absolute_path(fragment, asset_subdir)),
-    }
+        info = {"material_source": None, "mhmat_path": None}
+    else:
+        info = {
+            "material_source": fragment,
+            "mhmat_path": mpfb_surface.as_path(
+                lookup.services["AssetService"].find_asset_absolute_path(fragment, asset_subdir)),
+        }
+    info.update(_attribution(lookup, info["mhmat_path"], asset_subdir, "material_"))
+    return info
 
 
 def asset_info_for(lookup, blender_object, object_type):
@@ -209,8 +264,9 @@ def asset_info_for(lookup, blender_object, object_type):
         info = {
             "asset_source": asset_source,
             "mhclo_path": mhclo_path,
-            "material_identified_as": _material_type_of(lookup, blender_object),
         }
+        info.update(_attribution(lookup, mhclo_path, str(object_type).lower(), ""))
+        info["material_identified_as"] = _material_type_of(lookup, blender_object)
         info.update(_material_asset_info(lookup, blender_object, object_type))
         return info
 

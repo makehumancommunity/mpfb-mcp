@@ -20,6 +20,11 @@ names:
   as ``get_object_info``: the rig's entry is the one ``get_object_info`` gives
   the rig among the basemesh's relatives, the equipped assets are those relatives, and
   the skin is the basemesh's own ``asset_info``.
+  Each asset row and the skin carry ``license`` and ``material_license`` from
+  that same ``asset_info``, and not its ``author`` or ``packs``: the summary is
+  for checking a character against a brief, and ``get_object_info`` names who
+  to credit
+  ([FR 046](../../../feature-requests/done/046-license-in-the-catalogues/README.md)).
 - ``targets`` - [`target_rollup.py`](../shared/target_rollup.py), as
   ``get_target_stack`` answers for its **default** arguments.
 - ``face`` - ``FaceService.read_current_expression()`` as ``get_face_units``
@@ -72,9 +77,9 @@ the whole rollup is ``get_target_stack``'s. Nothing else is capped: a character
 wears tens of things, not thousands.
 
 Changes nothing: no recalculation, no refit, no selection change, and no cache
-populated that a detailed command would not also populate - the only one it
-touches is ``FaceService``'s ``faceunits01`` probe, which it reads and never
-busts. A caller who suspects that cache calls ``mpfb_get_face_units`` with
+populated that a detailed command would not also populate - it touches
+``FaceService``'s ``faceunits01`` probe and, as ``get_object_info`` does,
+``AssetService``'s pack metadata, reading both and busting neither. A caller who suspects that cache calls ``mpfb_get_face_units`` with
 ``refresh``.
 """
 
@@ -120,9 +125,10 @@ MODIFIER_CAP = 25
 ASYMMETRY_CAP = 8
 
 _PHENOTYPE_FIELDS = ("macro_details", "race_sum", "race_normalized", "macro_drift")
-_ASSET_FIELDS = ("asset_source", "material_identified_as", "material_source")
+_ASSET_FIELDS = ("asset_source", "license", "material_identified_as", "material_source",
+                 "material_license")
 _RIG_FIELDS = ("rig_identified_as", "rig_definition_path")
-_SKIN_FIELDS = ("material_identified_as", "material_source", "mhmat_path")
+_SKIN_FIELDS = ("material_identified_as", "material_source", "mhmat_path", "material_license")
 _STACK_ROW_FIELDS = ("fragment", "weight", "resolved")
 
 # The colours requirement 8 of FR 040 names, and the only socket names this

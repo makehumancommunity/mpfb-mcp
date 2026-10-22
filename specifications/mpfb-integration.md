@@ -379,7 +379,7 @@ the path and `json.load()` it. Where a tool has to read a bundled data file, thr
 
 ## MPFB caches what it scans, and a tool says what that costs and what it hides
 
-Three of MPFB's own caches sit under this package's catalogue tools, and each one changes what an
+Several of MPFB's own caches sit under this package's catalogue tools, and each one changes what an
 answer means rather than merely how fast it arrives.
 
 - **The asset list.** The first scan of a subdir loads a Blender preview image for every
@@ -398,6 +398,16 @@ answer means rather than merely how fast it arrives.
   `AssetService.invalidate_alternative_materials_cache()`, which is global — it drops every asset's
   cached scan, not only the one named in the call — reported through `cache_invalidated` rather
   than left implicit ([FR 018](../feature-requests/done/018-alternative-material-refresh/README.md)).
+- **The installed packs' metadata**, in `assetservice.py`'s module global `_PACKS`, read once and
+  then kept until `update_all_asset_lists()` or `invalidate_pack_metadata_cache()` drops it. It is
+  what `pack`, `license`, `author` and `source_url` are derived from, in four tools, so a pack
+  installed since Blender started attributes nothing until it is rescanned. **Two tools rescan
+  it**: `mpfb_list_assets`' `refresh`, through `update_all_asset_lists()`, and since
+  [FR 046](../feature-requests/done/046-license-in-the-catalogues/README.md)
+  `mpfb_list_asset_materials`' `refresh` as well, because the alternative materials are exactly the
+  files a newly installed material pack adds and the other catalogue would not have been asked
+  about. That rescan is a reread of about a hundred small JSON files. `mpfb_get_object_info` and
+  `mpfb_get_character_summary` read the cached copy and never drop it.
 - **The list of saved character presets**, in the module global `_EXISTING_PRESETS`, which exactly
   one thing invalidates: a save through `serialize_to_json_file()`. A preset written by MPFB's panel
   in another Blender, by hand, or by an earlier session is invisible until something rescans.

@@ -42,6 +42,7 @@ __all__ = (
     "LONG_USER_TARGET",
     "answer",
     "build_asset_library",
+    "build_attributed_library",
     "build_rig_tree",
     "build_target_tree",
     "dispatch",
@@ -67,6 +68,7 @@ __all__ = (
     "write_expression",
     "write_mhclo",
     "write_mhmat",
+    "write_pack",
     "write_png",
     "write_subrigged_mhclo",
     "write_target",
@@ -435,6 +437,74 @@ def build_asset_library(root):
     # The same basename under a second root: two packs shipping fedora.mhclo.
     write_mhclo(os.path.join(user_root, "clothes", "fedora", "fedora.mhclo"))
 
+    return (system_root, user_root)
+
+
+def write_pack(user_root, pack_name, entries):
+    """One installed pack's metadata, ``<user data>/packs/<pack_name>.json``.
+
+    ``entries`` maps an asset name to ``(license, author, source)``, and each is
+    written with every key a real pack entry carries, since the reading is
+    MPFB's and a fixture reproduces the install rather than a convenient subset.
+    """
+    document = dict()
+    for asset_name, (license_name, author, source) in entries.items():
+        document[asset_name] = {
+            "author": author, "category": "", "changed": "2020-01-01",
+            "created": "2020-01-01", "description": "Bridge test asset",
+            "license": license_name, "original_author": "", "original_source": "",
+            "source": source, "thumbnail": asset_name + ".png", "type": "clothes"}
+    return write(os.path.join(user_root, "packs", pack_name + ".json"), json.dumps(document))
+
+
+def build_attributed_library(root):
+    """:func:`build_asset_library`, plus pack metadata in the shapes a real install has.
+
+    Every shape is one FR 046's attribution has to get right, and each was
+    measured on the maintainer's community install first:
+
+    - ``fedora`` is claimed by **two packs that agree** (``hats01`` and
+      ``hats01_cc0``, as ``hats01``/``hats01_cc0`` do there), and the materials
+      beside it in its own directory take its attribution;
+    - ``fedora/fedora_green/fedora_green.mhmat`` is a material in **a directory
+      of its own**, claimed by a pack of its own under another license, as the
+      ``system_hair_materials`` packs ship theirs;
+    - ``eyes/materials/brown.mhmat`` is claimed only **by its file stem**, as
+      ``makehuman_system_assets`` claims the eye materials;
+    - ``skins/default.mhmat`` lies **directly in an asset root**, and a pack
+      claims an asset called ``skins``, which is exactly what the root rule
+      must not attribute it to;
+    - ``ponytail`` is claimed by **two packs that disagree** on its license,
+      which no install has yet and the rule must still handle;
+    - ``plain`` and ``lowpoly`` are claimed by nothing;
+    - ``capes01_cc0`` is **registered with nothing on disk**, as
+      ``accessories01_cc0``'s capes are there.
+
+    Returns ``(system_root, user_root)``; the metadata is under the user root,
+    the only place MPFB reads it from.
+    """
+    system_root, user_root = build_asset_library(root)
+    write_mhmat(os.path.join(system_root, "clothes", "fedora", "fedora_green",
+                             "fedora_green.mhmat"))
+    write_mhmat(os.path.join(system_root, "eyes", "materials", "brown.mhmat"))
+    write_mhmat(os.path.join(user_root, "skins", "default.mhmat"))
+
+    hats = ("CC0", "hatmaker", "http://www.makehumancommunity.org/node/1")
+    write_pack(user_root, "hats01", {"fedora": hats})
+    write_pack(user_root, "hats01_cc0", {"fedora": hats})
+    write_pack(user_root, "fedora_materials01", {
+        "fedora_green": ("CC-BY", "painter", "http://www.makehumancommunity.org/node/2")})
+    write_pack(user_root, "makehuman_system_assets", {
+        "brown": ("CC0", "makehuman_system", "http://www.makehumancommunity.org"),
+        "young": ("CC0", "makehuman_system", "http://www.makehumancommunity.org")})
+    write_pack(user_root, "odd01", {
+        "skins": ("CC-BY", "someone", "http://www.makehumancommunity.org/node/3")})
+    write_pack(user_root, "hair01", {
+        "ponytail": ("CC0", "barber", "http://www.makehumancommunity.org/node/4")})
+    write_pack(user_root, "hair01_ccby", {
+        "ponytail": ("CC-BY", "barber", "http://www.makehumancommunity.org/node/4")})
+    write_pack(user_root, "capes01_cc0", {
+        "cape_long": ("CC0", "tailor", "http://www.makehumancommunity.org/node/5")})
     return (system_root, user_root)
 
 

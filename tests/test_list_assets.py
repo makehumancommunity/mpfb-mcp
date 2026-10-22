@@ -10,7 +10,8 @@ about the size of an *answer* and are enforced here and nowhere else.
 
 The awkward cases a real install has - an asset claimed by two packs, an asset
 claimed by none, a pack listing an asset that is not installed, two assets whose
-labels collide, an asset sitting directly in the asset root - are each a branch,
+labels collide, an asset sitting directly in the asset root, two claimants that
+disagree about a license - are each a branch,
 and each is asked of a real MPFB in ``bridge/test/tests/ccc_reading/list_assets_test.py``
 over an asset library that test builds.
 
@@ -67,6 +68,7 @@ class ArgumentValidationTests(unittest.TestCase):
             "asset_subdir": None,
             "name_contains": None,
             "pack": None,
+            "license": None,
             "limit": 200,
             "offset": 0,
             "refresh": False,
@@ -75,19 +77,22 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_arguments_are_carried_across_verbatim(self):
         params = self._sent_params(
             asset_subdir="clothes", name_contains="fedora", pack="hair03",
-            limit=10, offset=20, refresh=True)
+            license="cc0", limit=10, offset=20, refresh=True)
 
         self.assertEqual(params, {
             "asset_subdir": "clothes",
             "name_contains": "fedora",
             "pack": "hair03",
+            # Unchanged, case included: the bridge matches it case-insensitively
+            # against the metadata's own spelling, which only it can read.
+            "license": "cc0",
             "limit": 10,
             "offset": 20,
             "refresh": True,
         })
 
     def test_non_string_filters_are_rejected_locally(self):
-        for argument in ("asset_subdir", "name_contains", "pack"):
+        for argument in ("asset_subdir", "name_contains", "pack", "license"):
             for bad in (1, True, [], object()):
                 with self.subTest(argument=argument, value=bad):
                     with mock.patch("mpfbmcp.bridge_connection.send_command") as send_command:
@@ -98,13 +103,20 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_empty_filters_are_rejected_rather_than_treated_as_omitted(self):
         # An explicitly empty value and an omitted one come from different
         # mistakes, and an empty substring filter would match everything.
-        for argument in ("asset_subdir", "name_contains", "pack"):
+        for argument in ("asset_subdir", "name_contains", "pack", "license"):
             for bad in ("", "   ", "\t"):
                 with self.subTest(argument=argument, value=bad):
                     with mock.patch("mpfbmcp.bridge_connection.send_command") as send_command:
                         with self.assertRaises(ValueError):
                             self.tool(**{argument: bad})
                     send_command.assert_not_called()
+
+    def test_no_license_vocabulary_is_checked_here(self):
+        # Pack metadata is the authority on which licenses exist, and it is only
+        # readable inside Blender; the bridge answers license_recognized.
+        for value in ("CC0", "CC-BY", "cc-by-sa-4.0", "no such license"):
+            with self.subTest(license=value):
+                self.assertEqual(self._sent_params(license=value)["license"], value)
 
     def test_bad_limits_and_offsets_are_rejected_locally(self):
         bad_calls = (
@@ -170,17 +182,17 @@ class ListAssetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
 
         self.assertEqual(self.bridge.commands()[-1], "list_assets")
         self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {
-            "asset_subdir": None, "name_contains": None, "pack": None,
+            "asset_subdir": None, "name_contains": None, "pack": None, "license": None,
             "limit": 200, "offset": 0, "refresh": False})
 
     def test_arguments_cross_the_wire_verbatim(self):
         self.tool(asset_subdir="clothes", name_contains="fedora", pack="system",
-                  limit=5, offset=10, refresh=True)
+                  license="CC0", limit=5, offset=10, refresh=True)
 
         request = self.bridge.decoded_requests()[-1]
         self.assertEqual(request["params"], {
             "asset_subdir": "clothes", "name_contains": "fedora", "pack": "system",
-            "limit": 5, "offset": 10, "refresh": True})
+            "license": "CC0", "limit": 5, "offset": 10, "refresh": True})
         # asset_sections.py is a property of how a program is assembled; on the
         # bridge it is a module the command imports.
         self.assertNotIn("asset_sections", str(request))

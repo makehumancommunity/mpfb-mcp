@@ -20,6 +20,12 @@ What is put to MPFB here for the first time:
 - **that ``get_asset_roots()`` drops a data root holding no such subdir**, which
   is the usual explanation for "I installed it and it is not here".
 
+The attribution (FR 046) is asked of an ``attributed`` library whose packs
+record licenses: the filter, the counts beside it, the filter-aware ``pack``, a
+matched pack with nothing installed, and claimants that disagree. How each file
+is attributed is ``bbb_shared/pack_attribution_test.py``'s; what is checked here
+is that the catalogue reports it.
+
 The cap and the paging are checked here rather than on mpfb-mcp's side because
 they are about a real library's ordering: MPFB's cached dict is insertion
 ordered from an ``rglob``, whose order is filesystem-dependent, so "page 2 does
@@ -32,6 +38,7 @@ import pytest
 
 from .. import bridge_module
 from .._fixtures import build_asset_library
+from .._fixtures import build_attributed_library
 from .._fixtures import dispatch
 from .._fixtures import only_these_data_roots
 from .._fixtures import result
@@ -50,6 +57,18 @@ def _with_asset_library(tmp_path):
         # The cached asset lists are per (subdir, type) and survive a root
         # change, so they are rebuilt against this tree on the way in and
         # against the developer's own on the way out.
+        services["AssetService"].update_all_asset_lists()
+        yield {"system": system_root, "user": user_root}
+    services["AssetService"].update_all_asset_lists()
+
+
+@pytest.fixture(name="attributed")
+def _with_attributed_library(tmp_path):
+    """The same, over a library whose packs record licenses (FR 046)."""
+    services = services_or_skip()
+    system_root, user_root = build_attributed_library(str(tmp_path))
+    with only_these_data_roots(services, mpfb_data=system_root, user_data=user_root):
+        # update_all_asset_lists() invalidates the pack metadata cache too.
         services["AssetService"].update_all_asset_lists()
         yield {"system": system_root, "user": user_root}
     services["AssetService"].update_all_asset_lists()
@@ -229,3 +248,87 @@ def test_the_command_is_refused_rather_than_answered_when_mpfb_is_absent():
 
     assert answer["error"] == command_server.ERROR_MPFB_UNAVAILABLE
     assert "count" not in answer, "an install problem must not be phrased as an empty library"
+
+
+def _row(answer, name):
+    rows = [asset for asset in answer["assets"] if asset["name"] == name]
+    assert len(rows) == 1, "expected one {!r}, got {!r}".format(name, _names(answer))
+    return rows[0]
+
+
+def test_every_row_says_who_made_it_and_under_what_license(attributed):
+    """license, author, source_url and packs, from shared/pack_attribution.py"""
+    answer = result(COMMAND, {"limit": 1000})
+
+    fedora = _row(answer, "fedora")
+    assert fedora["license"] == "CC0"
+    assert fedora["author"] == "hatmaker"
+    assert fedora["source_url"] == "http://www.makehumancommunity.org/node/1"
+    assert fedora["packs"] == ["hats01", "hats01_cc0"]
+    assert fedora["pack_ambiguous"] is True, "pack_ambiguous stays len(packs) > 1"
+
+    plain = _row(answer, "plain")
+    assert (plain["license"], plain["author"], plain["source_url"], plain["packs"]) == \
+        (None, None, None, []), "an asset no pack claims is an ordinary null"
+    assert answer["known_licenses"] == ["CC-BY", "CC0"]
+
+
+def test_claimants_that_disagree_are_reported_once_beside_the_page(attributed):
+    answer = result(COMMAND, {"asset_subdir": "hair"})
+
+    ponytail = _row(answer, "ponytail")
+    assert ponytail["license"] is None
+    conflicts = answer["attribution_conflicts"]
+    assert [conflict["path"] for conflict in conflicts] == [ponytail["path"]]
+    assert sorted(claim["pack"] for claim in conflicts[0]["claims"]) == ["hair01", "hair01_ccby"]
+
+
+def test_the_license_filter_is_exact_and_counts_what_it_left_out(attributed):
+    """counts_by_license is taken before the license filter and the cap"""
+    everything = result(COMMAND, {"limit": 1000})
+    cc0 = result(COMMAND, {"license": "cc0", "limit": 1})
+
+    assert cc0["license_recognized"] is True
+    assert cc0["requested_license"] == "cc0"
+    assert cc0["counts_by_license"] == everything["counts_by_license"], \
+        "a filtered call still says what it filtered from"
+    assert cc0["license_unknown_count"] == everything["license_unknown_count"]
+    assert cc0["total_count"] == everything["counts_by_license"]["CC0"]
+    assert cc0["count"] == 1 and cc0["truncated"] is True
+    assert sum(everything["counts_by_license"].values()) + everything["license_unknown_count"] \
+        == everything["total_count"]
+
+    all_cc0 = result(COMMAND, {"license": "CC0", "limit": 1000})
+    assert all(row["license"] == "CC0" for row in all_cc0["assets"])
+    assert "plain" not in _names(all_cc0), "no recorded license never matches"
+    assert "excluded, not checked" in all_cc0["message"]
+
+    assert result(COMMAND, {"license": "CC"})["total_count"] == 0, \
+        "exact, not a substring: 'CC' must not match both CC0 and CC-BY"
+
+
+def test_an_unknown_license_is_flagged_rather_than_silently_empty(attributed):
+    answer = result(COMMAND, {"license": "GPL"})
+
+    assert answer["assets"] == []
+    assert answer["license_recognized"] is False
+    assert "No installed pack records the license" in answer["message"]
+
+
+def test_pack_names_the_claimant_the_filter_matched(attributed):
+    """pack="_cc0" never answers pack: "hats01" """
+    unfiltered = _row(result(COMMAND, {"asset_subdir": "clothes"}), "fedora")
+    assert unfiltered["pack"] == "hats01", "with no filter, the first claimant"
+
+    filtered = result(COMMAND, {"pack": "_cc0"})
+    assert _names(filtered) == ["fedora"]
+    assert _row(filtered, "fedora")["pack"] == "hats01_cc0"
+    assert all("_cc0" in row["pack"] for row in filtered["assets"])
+
+
+def test_a_pack_filter_reports_each_pack_it_matched_and_what_is_installed(attributed):
+    """A pack registered with nothing on disk shows as 0"""
+    answer = result(COMMAND, {"pack": "_cc0"})
+
+    assert answer["matched_packs"] == {"capes01_cc0": 0, "hats01_cc0": 1}
+    assert result(COMMAND)["matched_packs"] is None, "no pack filter, nothing matched"

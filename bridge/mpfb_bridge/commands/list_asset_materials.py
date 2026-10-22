@@ -27,7 +27,11 @@ would be changing what the tool answers under cover of a migration. Three of MPF
   entry along with this one's, since the invalidator takes no arguments and
   there is no per-asset variant. ``cache_invalidated`` says whether this call
   did that, and the message says so too when it did not, since a caller who
-  met the staleness would otherwise read it as a bug here.
+  met the staleness would otherwise read it as a bug here. Since FR 046 it
+  also clears MPFB's **pack metadata** cache, which the license on every entry
+  is read from: without that, a pack installed since Blender started would
+  show its materials as attributed to nothing until ``list_assets`` happened to
+  be refreshed. That rescan rereads about a hundred small JSON files.
 - **``exclude_default`` is accepted by MPFB and never used.** The asset's own
   material is not filtered out, so it normally appears in the list. It is
   flagged with ``is_default`` rather than removed, because removing it would be
@@ -41,12 +45,22 @@ would be changing what the tool answers under cover of a migration. Three of MPF
   which is why this is the one catalogue command in this batch that does not
   use the shared table.
 
+**Every entry, and the default material, carries ``list_assets``' attribution**
+- ``license``, ``author``, ``source_url`` and ``packs`` - from
+[`shared/pack_attribution.py`](../shared/pack_attribution.py), judged against
+``search_roots``, so the two catalogues cannot disagree about one file
+([FR 046](../../../feature-requests/done/046-license-in-the-catalogues/README.md)).
+Alternative materials are the half a hand-made join against ``list_assets``
+could never reach. A material in its asset's own directory takes the asset's
+attribution, and one in a directory of its own (``system_hair_materials01``)
+takes that directory's.
+
 Reading the default material duplicates ``set_asset_material``'s
 ``find_default_material()`` in outline. It is six lines and it is deliberately
 not a shared module: the two answers are allowed to be phrased differently -
 this one reports a reason string as data, that one turns the same reason into a
 refusal - and neither predicts the other's behaviour, which is what
-[architecture.md](../../../specifications/architecture.md#shared-fragments)
+[architecture.md](../../../specifications/architecture.md#shared-modules-and-what-warrants-one)
 requires before sharing is warranted.
 """
 
@@ -62,6 +76,7 @@ import bpy
 
 from ..log import get_logger
 from ..shared import mpfb_surface
+from ..shared import pack_attribution
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
 from ..validation import TYPE_STRING
@@ -72,9 +87,10 @@ PARAMS = (
     Param("name", TYPE_STRING, required=True,
           description="The name of the equipped asset object - the hat, not the character."),
     Param("refresh", TYPE_BOOLEAN, default=False,
-          description="Clear AssetService's alternative-materials cache before scanning. MPFB "
-                      "caches that scan and nothing invalidates it automatically; the clear is "
-                      "global, affecting every asset, not only this one."),
+          description="Clear AssetService's alternative-materials and pack-metadata caches "
+                      "before scanning. MPFB caches both and nothing invalidates them "
+                      "automatically; the clear is global, affecting every asset, not only "
+                      "this one."),
 )
 
 SUMMARY = "List the alternative materials that ship beside one equipped asset."
@@ -134,6 +150,19 @@ def _fragment_for(services, path, asset_subdir):
         return None
 
 
+def _attribution(index, path, search_roots, conflicts):
+    """The attribution fields one material entry carries, as list_assets reports them.
+
+    A disagreement between claimants is appended to ``conflicts`` rather than
+    carried on the entry, as ``list_assets`` reports it.
+    """
+    attribution = pack_attribution.attribute(index, path, search_roots)
+    # The default material is usually in the list as well; report it once.
+    if attribution["claims_disagree"] and all(entry["path"] != path for entry in conflicts):
+        conflicts.append(dict(path=path, claims=attribution["claims"]))
+    return {key: attribution[key] for key in pack_attribution.FIELDS}
+
+
 def _search_roots_for(services, asset_subdir):
     try:
         roots = services["AssetService"].get_asset_roots(asset_subdir)
@@ -156,6 +185,7 @@ def _not_found(requested_name, cache_invalidated):
         materials=[],
         count=0,
         search_roots=[],
+        attribution_conflicts=[],
         cache_invalidated=cache_invalidated,
         message="No object named '{:s}' exists in this .blend file. Call mpfb_list_objects to "
                 "see what the current scene holds; this tool wants the asset's own name, not "
@@ -175,6 +205,7 @@ def _not_an_asset(asset, cache_invalidated):
         materials=[],
         count=0,
         search_roots=[],
+        attribution_conflicts=[],
         cache_invalidated=cache_invalidated,
         message="'{:s}' carries no MPFB object_type, so it was not equipped by MPFB and has no "
                 "asset directory to look in. Call mpfb_get_object_info to see what this object "
@@ -202,14 +233,18 @@ def _message(asset, asset_source, scan_failed, materials, search_roots,
             len(materials), str(asset_source)))
     if cache_invalidated:
         parts.append(
-            " The alternative-materials cache was cleared before this scan (refresh=True), so "
-            "this list reflects the current directory contents. That clear is global - it also "
-            "affects the next call for every other asset, not only this one.")
+            " The alternative-materials and pack-metadata caches were cleared before this scan "
+            "(refresh=True), so this list and its licenses reflect the current files. That "
+            "clear is global - it also affects the next call for every other asset, not only "
+            "this one.")
     elif materials:
         parts.append(
             " This list is a cached snapshot: MPFB caches it per asset and nothing invalidates "
             "that cache, so a material installed after the first call for this asset in this "
             "Blender session will not appear. Pass refresh=True to clear the cache first.")
+    if materials:
+        parts.append(" 'license' is derived from the directory a material sits in, not "
+                     "recorded; a material in its asset's own directory takes the asset's.")
     if default_material is None and asset_source:
         parts.append(
             " The asset's own default material is not known ({:s}), so no entry is flagged as "
@@ -228,7 +263,10 @@ def list_asset_materials(params, resolution):
     if cache_invalidated:
         # Global: this clears every asset's cached scan, not only the one
         # named here. There is no per-asset invalidator to reach for instead.
+        # The pack metadata goes with it, or a pack installed since Blender
+        # started would show its materials as attributed to nothing.
         services["AssetService"].invalidate_alternative_materials_cache()
+        services["AssetService"].invalidate_pack_metadata_cache()
 
     asset = bpy.data.objects.get(requested_name)
     if asset is None:
@@ -247,6 +285,10 @@ def list_asset_materials(params, resolution):
 
     default_material, default_material_reason = _default_material_for(
         services, mhclo_entity, asset_source, asset_subdir)
+    search_roots = _search_roots_for(services, asset_subdir)
+    # Once for the call, and before anything is attributed.
+    index = pack_attribution.read_index(services)
+    conflicts = []
 
     materials = []
     scan_failed = False
@@ -267,6 +309,7 @@ def list_asset_materials(params, resolution):
                 path=path,
                 fragment=_fragment_for(services, path, asset_subdir),
                 name=os.path.splitext(os.path.basename(path))[0],
+                **_attribution(index, path, search_roots, conflicts),
                 # MPFB does not filter the asset's own material out of this
                 # scan, despite alternative_materials_for_asset() taking an
                 # exclude_default argument it never reads. Flagged rather than
@@ -277,8 +320,6 @@ def list_asset_materials(params, resolution):
                     == os.path.normcase(os.path.normpath(default_material))),
             ))
         materials.sort(key=lambda entry: entry["path"])
-
-    search_roots = _search_roots_for(services, asset_subdir)
 
     _LOG.debug("list_asset_materials: %d beside %r in %r",
                len(materials), asset_source, asset_subdir)
@@ -293,12 +334,14 @@ def list_asset_materials(params, resolution):
             None if default_material is None
             else dict(path=default_material,
                       fragment=_fragment_for(services, default_material, asset_subdir),
-                      exists=os.path.isfile(default_material))),
+                      exists=os.path.isfile(default_material),
+                      **_attribution(index, default_material, search_roots, conflicts))),
         default_material_reason=default_material_reason,
         current_alternative_material=current_alternative_material,
         materials=materials,
         count=len(materials),
         search_roots=search_roots,
+        attribution_conflicts=conflicts,
         cache_invalidated=cache_invalidated,
         message=_message(asset, asset_source, scan_failed, materials, search_roots,
                          default_material, default_material_reason, cache_invalidated),

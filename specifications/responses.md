@@ -218,8 +218,27 @@ the asset's containing directory name against the asset names in the installed p
   are not installed.
 - **Know where the convention does not hold.** The join above keys on a containing directory, so an
   asset lying directly in an asset root has no directory of its own to key on, and pack metadata
-  lives only under the user data root, so an asset under another root cannot be attributed even when
-  it did come from a pack. Both are cases to detect and report as `null`, not cases to guess at.
+  is read only from the user data root, so an asset under another root is attributed only when a
+  pack registered there happens to claim its directory name - `null` when its own pack's metadata
+  was never installed, even if the file did come from a pack. Both are cases to report as `null`,
+  not cases to guess at.
+- **A second field read from the same join is the same kind, and owes one rule more: where its
+  sources disagree, it is `null`.** `license`, `author` and `source_url` are read from the pack
+  entry `pack` was matched against
+  ([FR 046](../feature-requests/done/046-license-in-the-catalogues/README.md)), by one module
+  (`shared/pack_attribution.py`) for all four tools that report them. A field is reported only
+  when **every** claimant agrees on it; otherwise it is `null`, and the answer lists every claim in
+  `attribution_conflicts`, once beside the page rather than on each row. `pack_ambiguous` therefore
+  does not make `license` ambiguous: 92 assets on the maintainer's install have two claimants and
+  all 92 agree. A `license: null` means *unknown*, never permissive, and a license filter excludes
+  it and says so rather than counting it as checked. The join has one fallback that `pack` never
+  needed: **where the containing directory claims nothing, the file stem is tried**, because
+  `eyes/materials/brown.mhmat` sits in a directory called `materials` and is claimed as `brown`.
+  Measured on that install, it reaches exactly the nine files under `eyes/materials/` and nothing
+  else; the module's docstring states the condition it rests on. A file directly in an asset root
+  gets no fallback. **Nothing else is a source**: an MHCLO's `license` line is free text, most often
+  MakeClothes' boilerplate about the tool, and MPFB defaults a missing MHMAT `license` to `CC0`,
+  which would report unknown as permissive.
 - **A fact read from the filesystem is this same kind**, and the convention covers it unchanged.
   `mpfb_list_presets` reports `size_bytes` and `modified` per preset; MPFB's own list is bare names
   and records neither, so both come from `os.stat` here and the docstring says so. The three clauses

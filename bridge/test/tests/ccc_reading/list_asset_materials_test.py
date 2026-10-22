@@ -20,6 +20,11 @@ Three more things are put to it here for the first time:
   ``mhclo_names_no_material`` rather than a failure - the branch that decides
   whether ``set_asset_material``'s ``restore_default`` could work at all.
 
+Every material, and the default, carries ``list_assets``' attribution (FR 046),
+asked of an ``attributed`` library: a material in its asset's own directory, one
+in a directory of its own, agreement with the other catalogue on the same file,
+and ``refresh`` reaching the pack metadata cache.
+
 The object this asks about is **typed and property-written by the test** rather
 than equipped: equipping is ``add_asset``'s, which is stage 4's, and a read-only
 command's test should not be the first place an asset is imported.
@@ -32,6 +37,7 @@ import pytest
 from .. import bridge_module
 from .._fixtures import Character
 from .._fixtures import build_asset_library
+from .._fixtures import build_attributed_library
 from .._fixtures import dispatch
 from .._fixtures import linked_plain_object
 from .._fixtures import only_these_data_roots
@@ -40,6 +46,7 @@ from .._fixtures import services_or_skip
 from .._fixtures import supplied_resolution
 from .._fixtures import typed_child
 from .._fixtures import write_mhmat
+from .._fixtures import write_pack
 
 COMMAND = "list_asset_materials"
 
@@ -76,6 +83,28 @@ def _with_an_equipped_asset(tmp_path):
             _set_asset_source(services, garment, "fedora/fedora.mhclo")
             yield {"garment": garment, "system": system_root, "character": character}
     services["AssetService"].invalidate_alternative_materials_cache()
+
+
+@pytest.fixture(name="attributed")
+def _with_an_attributed_asset(tmp_path):
+    """The same, over a library whose packs record licenses (FR 046).
+
+    MPFB's pack metadata and asset lists are rebuilt on the way in and out, not
+    only the alternative materials: all three are module globals that would
+    otherwise carry the developer's install into this test or this test's
+    library out of it, and one test here asks ``list_assets`` too.
+    ``update_all_asset_lists()`` invalidates the other two caches on its way.
+    """
+    services = services_or_skip()
+    system_root, user_root = build_attributed_library(str(tmp_path))
+    with Character() as character:
+        with only_these_data_roots(services, mpfb_data=system_root, user_data=user_root):
+            services["AssetService"].update_all_asset_lists()
+            garment = typed_child(services, character.basemesh, "BridgeTestFedora", "Clothes")
+            _set_asset_source(services, garment, "fedora/fedora.mhclo")
+            yield {"garment": garment, "system": system_root, "user": user_root,
+                   "character": character}
+    services["AssetService"].update_all_asset_lists()
 
 
 def test_the_materials_beside_the_asset_are_listed_with_both_identifiers(equipped):
@@ -251,3 +280,55 @@ def test_the_command_is_refused_rather_than_answered_when_mpfb_is_absent():
 
     assert answer["error"] == command_server.ERROR_MPFB_UNAVAILABLE
     assert "found" not in answer
+
+
+def _material(answer, name):
+    rows = [entry for entry in answer["materials"] if entry["name"] == name]
+    assert len(rows) == 1, "expected one {!r} among {!r}".format(
+        name, [entry["name"] for entry in answer["materials"]])
+    return rows[0]
+
+
+def test_each_material_is_attributed_by_where_it_sits(attributed):
+    """Its asset's directory gives the asset's license; a directory of its own, its own"""
+    answer = result(COMMAND, {"name": attributed["garment"].name})
+
+    red = _material(answer, "fedora_red")
+    assert red["license"] == "CC0" and red["packs"] == ["hats01", "hats01_cc0"], \
+        "a material in its asset's own directory takes the asset's attribution"
+    green = _material(answer, "fedora_green")
+    assert (green["license"], green["author"], green["packs"]) == \
+        ("CC-BY", "painter", ["fedora_materials01"]), \
+        "a material in a directory of its own takes that directory's"
+    assert green["source_url"] == "http://www.makehumancommunity.org/node/2"
+    assert answer["default_material"]["license"] == "CC0"
+    assert answer["default_material"]["packs"] == ["hats01", "hats01_cc0"]
+    assert answer["attribution_conflicts"] == []
+
+
+def test_the_catalogues_agree_about_a_file_they_both_list(attributed):
+    """list_assets and list_asset_materials, one attribution"""
+    materials = result(COMMAND, {"name": attributed["garment"].name})
+    assets = result("list_assets", {"asset_subdir": "clothes", "name_contains": "fedora"})
+    fedora = [row for row in assets["assets"] if row["name"] == "fedora"][0]
+    for key in ("license", "author", "source_url", "packs"):
+        assert materials["default_material"][key] == fedora[key], key
+
+
+def test_refresh_makes_a_newly_installed_pack_visible(attributed):
+    """FR 046 requirement 12: refresh clears the pack metadata as well"""
+    before = result(COMMAND, {"name": attributed["garment"].name})
+    assert _material(before, "fedora_blue")["packs"] == ["hats01", "hats01_cc0"]
+
+    # A pack claiming the stem would not change a file whose directory is
+    # claimed; a pack claiming a directory nothing claimed does. Here the hat's
+    # own directory gains a third claimant.
+    write_pack(attributed["user"], "hats02_cc0", {
+        "fedora": ("CC0", "hatmaker", "http://www.makehumancommunity.org/node/1")})
+    cached = result(COMMAND, {"name": attributed["garment"].name})
+    assert _material(cached, "fedora_blue")["packs"] == ["hats01", "hats01_cc0"], \
+        "MPFB caches pack metadata, and a plain call reads the cache"
+
+    rescanned = result(COMMAND, {"name": attributed["garment"].name, "refresh": True})
+    assert _material(rescanned, "fedora_blue")["packs"] == ["hats01", "hats01_cc0", "hats02_cc0"]
+    assert "pack-metadata" in rescanned["message"]

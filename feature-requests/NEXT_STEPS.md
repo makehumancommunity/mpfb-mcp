@@ -26,9 +26,6 @@ last predate FR 037.
   forty-one tools" now, and changes with every tool added - an explicit `<a id="the-tools">` would
   stop the drift.
 - `HISTORY.md` links to `NEXT_STEPS.md#should-the-bridge-serve-its-own-test-harness`.
-- `bridge/mpfb_bridge/commands/list_asset_materials.py` links to
-  `specifications/architecture.md#shared-fragments`, a section that was renamed when shared
-  fragments became shared modules.
 - `specifications/mutating-tools.md` and `HISTORY.md` linked to
   `NEXT_STEPS.md#selection-restore-covers-one-object` after the entry was pruned;
   [FR 039](done/039-exporting-characters/README.md) restored it, with what is left of it.
@@ -191,11 +188,36 @@ Blender for long sessions; the headless bridge is unaffected.
 
 ## License in the catalogues
 
-Scoped as [FR 046](046-license-in-the-catalogues/README.md) (Proposed). It adds `license`,
-`author`, `source` and `packs` to `mpfb_list_assets` and `mpfb_list_asset_materials`, read from the
-pack metadata through one shared attribution. It also adds a `license` filter and
-`counts_by_license`, makes the reported `pack` agree with a `pack` filter, and carries the license of
-an equipped asset into `mpfb_get_object_info` and the summary. 
+**The assets and their materials have landed** as
+[FR 046](done/046-license-in-the-catalogues/README.md) ([HISTORY](HISTORY.md)): `license`,
+`author`, `source_url` and `packs` on every row of `mpfb_list_assets` and
+`mpfb_list_asset_materials`, a `license` filter with `counts_by_license`, and the license of an
+equipped asset and its material in `mpfb_get_object_info` and the summary. Two catalogues are left:
+
+- **Targets.** 211 pack entries are targets, but a target is a file in a category directory, so
+  the directory join attributes nothing, and a stem join over target names has not been measured.
+  `shared/pack_attribution.py`'s stem fallback is the mechanism; what is missing is the measurement
+  that says it holds for targets, which FR 046's `live_check.py` did for the asset subdirs.
+- **Poses**, when there is a pose catalogue (see [Loading poses](#loading-poses)). 149 pack entries
+  are poses, and a pose is a file too.
+
+<a id="a-garment-behind-a-sub-rig-is-missing-from-the-family"></a>
+
+## A garment behind a sub-rig is missing from the family
+
+Found by [FR 046](done/046-license-in-the-catalogues/README.md)'s live check. `ponytail01` carries
+a sub-rig of its own, so it is parented to that `Subrig` rather than to the character's rig, and
+MPFB's `ObjectService.find_related_objects()` does not walk past a `Subrig`. So `ponytail01` is in
+neither `mpfb_get_object_info`'s `related_objects` for the basemesh nor the summary's
+`equipped_assets`, though it is equipped and moves with the character. The two agree, so the
+summary is not a second opinion, but a caller checking a finished character against a brief - by
+license, or simply by what it wears - skips its hair.
+
+Asked about the ponytail itself, `mpfb_get_object_info` lists the whole character, so the walk is
+asymmetric rather than broken. The fix is in `shared/asset_info.py`'s `related_objects()`, which
+would add each `Subrig`'s mesh children, and the question to settle first is whether MPFB's own
+callers of `find_related_objects()` rely on the stop - in which case it is not MPFB's defect to
+file, only this package's walk to extend.
 
 <a id="eye-and-layered-skin-colours"></a>
 
@@ -334,8 +356,9 @@ have" is also among the most expensive calls the server offers.
 
 A `summary=True` mode (or a separate `mpfb_describe_asset_library`) returning counts faceted by
 `asset_subdir` × `pack` × `license`, and nothing else, would answer it in one call and read in a
-dozen lines. It would also give the license filter above an obvious place to prove itself: a caller
-could see "226 of 639 clothes are CC0" before deciding how to narrow, rather than after.
+dozen lines. [FR 046](done/046-license-in-the-catalogues/README.md) gave every call
+`counts_by_license`, taken before the license filter and the cap, so "226 of 639 clothes are CC0"
+is now one call per subdir; the faceting across subdirs and packs is what is left for this entry.
 
 A smaller version of the same point: `mpfb_list_assets()` with no arguments returns 200 rows that
 are all `Clothes`, because `clothes` sorts first and the default limit stops there. `truncated` is

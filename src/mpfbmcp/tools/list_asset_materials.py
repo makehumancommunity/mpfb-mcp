@@ -73,7 +73,8 @@ def register(mcp: FastMCP) -> None:
         nothing invalidates that cache on its own, so a material added to the
         asset's directory after the first call for that asset - in this
         Blender session - will not appear. `refresh=true` clears the cache
-        first; `cache_invalidated` says whether it did. That clear is global -
+        first, along with MPFB's pack metadata; `cache_invalidated` says
+        whether it did. That clear is global -
         every asset's cached list is dropped, not only this one's - which is
         why the default stays `false`.
 
@@ -83,12 +84,14 @@ def register(mcp: FastMCP) -> None:
         there, or null with `default_material_reason` saying why not;
         `current_alternative_material`, the fragment recorded on the object
         now; `materials`, one entry per alternative with `path`, `fragment`,
-        `name` and `is_default` - MPFB does **not** filter the asset's own
+        `name`, `is_default` and the attribution `mpfb_list_assets` reports
+        (`license`, `author`, `source_url`, `packs`; null when no pack claims
+        the file, which means unknown) - MPFB does **not** filter the asset's own
         material out of this scan, so the default usually appears and is
         flagged rather than removed; `count`; `search_roots`, the directories
         actually scanned, so "this hat has no other colours" is distinguishable
-        from "the hat's asset source no longer resolves"; and
-        `cache_invalidated`.
+        from "the hat's asset source no longer resolves";
+        `attribution_conflicts`; and `cache_invalidated`.
 
         An object that is not an asset comes back as `found: false`, or with an
         empty list and an explanation, never as an error.

@@ -194,7 +194,7 @@ def _list_rigs(run: _Run) -> dict:
 
 
 @_item("mpfb_list_assets", "assets", "count", "total_count", "truncated", "offset", "limit",
-       "counts_by_asset_subdir")
+       "counts_by_asset_subdir", "counts_by_license", "known_licenses")
 def _list_assets(run: _Run) -> dict:
     return run.tools["mpfb_list_assets"]()
 
@@ -335,7 +335,7 @@ def _add_asset(run: _Run) -> dict:
 
 
 @_item("mpfb_list_asset_materials", "found", "asset_object_name", "materials", "count",
-       "search_roots")
+       "search_roots", "attribution_conflicts")
 def _list_asset_materials(run: _Run) -> dict:
     envelope = run.tools["mpfb_list_asset_materials"](name=_asset_object(run))
     if envelope.get("status") == "ok":

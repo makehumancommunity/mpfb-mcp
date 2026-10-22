@@ -66,8 +66,11 @@ def register(mcp: FastMCP) -> None:
             no mhclo, so it has no `mhclo_path` key rather than a null one.
             `Skeleton`/`Subrig` carry `rig_identified_as` and `rig_definition_path`; a
             mesh asset (`Clothes`, `Eyes`, `Hair`, `Proxymeshes`, ...) carries
-            `asset_source`, `mhclo_path`, `material_identified_as`, `material_source`
-            and `mhmat_path`; a `Basemesh` carries the last three. An
+            `asset_source`, `mhclo_path`, `license`, `author`, `packs`,
+            `material_identified_as`, `material_source`, `mhmat_path`,
+            `material_license`, `material_author` and `material_packs` - the
+            pack attribution of the two files, as `mpfb_list_assets` reports
+            it; a `Basemesh` carries the last six. An
             unrecognized MakeHuman type gets an empty dict.
           - `related_objects`: the MakeHuman objects among this one's parents,
             children and siblings - "what belongs with this character" - each

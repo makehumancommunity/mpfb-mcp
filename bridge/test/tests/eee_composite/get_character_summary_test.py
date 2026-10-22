@@ -43,6 +43,7 @@ from .._fixtures import result
 from .._fixtures import services_or_skip
 from .._fixtures import supplied_resolution
 from .._fixtures import write_loadable_mhclo
+from .._fixtures import write_pack
 from .._fixtures import write_subrigged_mhclo
 
 COMMAND = "get_character_summary"
@@ -111,15 +112,17 @@ def _assert_agreement(name):
     basemesh = summary["basemesh_name"]
     info = result("get_object_info", {"name": basemesh})
     assert summary["skin"] == _pick(
-        info["asset_info"], ("material_identified_as", "material_source", "mhmat_path"))
+        info["asset_info"], ("material_identified_as", "material_source", "mhmat_path",
+                             "material_license"))
 
     expected_assets = []
     for entry in info["related_objects"]:
         if entry["object_type"] in ("Skeleton", "Subrig", "Basemesh", None):
             continue
         row = _pick(entry, ("name", "object_type", "in_current_scene"))
-        row.update(_pick(entry["asset_info"], ("asset_source", "material_identified_as",
-                                                "material_source")))
+        row.update(_pick(entry["asset_info"], ("asset_source", "license",
+                                                "material_identified_as", "material_source",
+                                                "material_license")))
         expected_assets.append(row)
     expected_assets.sort(key=lambda row: (row["object_type"], row["name"]))
     assert summary["equipped_assets"] == expected_assets
@@ -200,6 +203,29 @@ def test_every_shared_field_agrees_with_its_detailed_command(tmp_path):
     assert inside["targets"]["modifiers"] == []
     assert len(outside["targets"]["modifiers"]) == 5
     assert len(outside["targets"]["asymmetries"]) == 2
+
+
+def test_an_equipped_assets_license_agrees_with_both_detailed_commands(tmp_path):
+    """FR 046: the summary's license, get_object_info's, and the catalogue's"""
+    services = services_or_skip()
+    root = tmp_path / "assets"
+    with Character() as character:
+        garment = _dress(services, character, root)
+        write_pack(str(root), "spikes01_cc0", {
+            "spike": ("CC0", "smith", "http://www.makehumancommunity.org/node/7")})
+        try:
+            with redirected_locations(services, user_data=str(root)):
+                services["AssetService"].update_all_asset_lists()
+                # _assert_agreement holds the summary to get_object_info, field
+                # for field; this holds both to the catalogue.
+                summary = _assert_agreement(garment)
+                listed = result("list_assets", {"asset_subdir": "clothes",
+                                                "name_contains": "spike"})["assets"]
+        finally:
+            services["AssetService"].update_all_asset_lists()
+
+    assert [row["license"] for row in summary["equipped_assets"]] == ["CC0"]
+    assert [row["license"] for row in listed] == ["CC0"]
 
 
 def test_material_colours_agree_with_get_material_settings(tmp_path):

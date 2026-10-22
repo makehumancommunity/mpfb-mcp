@@ -177,7 +177,16 @@ import mpfbmcp
 # `subrigs_broken`, and `mpfb_add_rig` shrank 27 B where a false claim
 # - that adding a rig moves a placed character - became the true one. The
 # ceiling moves by what that cost.
-DESCRIPTION_CEILING = 85500
+#
+# Raised from 85,500 to 86,350 by
+# [FR 046](../feature-requests/done/046-license-in-the-catalogues/README.md), for
+# three existing tools and no new one: 825 B, of which `mpfb_list_assets` is
+# 451 B (773 B before trimming) for the `license` argument and the five answer
+# keys a caller filters or counts by, `mpfb_list_asset_materials` 203 B and
+# `mpfb_get_object_info` 171 B for naming the attribution fields they now carry.
+# What a license means is one sentence - `null` is unknown, never permissive -
+# and the derivation's caveats stay in the bridge docstrings.
+DESCRIPTION_CEILING = 86350
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -228,7 +237,10 @@ DESCRIPTION_CEILING = 85500
 #
 # Raised from 16,600 to 17,100 by FR 045: 486 B for `mpfb_place_character`'s
 # four nullable arguments, two of them objects.
-SCHEMA_CEILING = 17100
+#
+# Raised from 17,100 to 17,200 by FR 046: 89 B for `mpfb_list_assets`'
+# nullable `license`.
+SCHEMA_CEILING = 17200
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.

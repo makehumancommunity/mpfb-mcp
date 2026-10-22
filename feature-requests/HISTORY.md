@@ -879,3 +879,41 @@ with a call that does nothing. A rig turned by hand about global Z measured 0.0 
 all four rotation modes, against a 0.1 degree tolerance. 34 new bridge tests (587), with a real
 sub-rig fixture that reproduces the binding; 14 new unit tests (584); the description budget up
 1,450 B, the new tool at 1,320 B; the smoke run is 44 of 44, 2.1 s headless.
+
+## [FR 046](done/046-license-in-the-catalogues/README.md) — license in the catalogues: who made an asset, and under what terms
+
+Two sessions briefed to use CC0 assets only had to join `mpfb_list_assets` against the pack files
+by hand, and could not reach the alternative materials that way at all. **Every row of
+`mpfb_list_assets` and `mpfb_list_asset_materials` now carries `license`, `author`, `source_url`
+and `packs`**, read from the pack metadata MPFB already scanned for `pack`. `mpfb_list_assets`
+takes an exact, case-insensitive `license` filter, counts by license before that filter and the
+cap (`counts_by_license`, `license_unknown_count`), reports per matched pack how many installed
+assets it claims (`matched_packs`, so a pack registered with nothing on disk shows 0), and its
+`pack` is the claimant the `pack` filter matched rather than the first. `mpfb_get_object_info`'s
+`asset_info` carries `license`/`author`/`packs` for an equipped asset's file and
+`material_license`/`material_author`/`material_packs` for its material or skin, and the summary
+carries `license` and `material_license`. **One new shared module, `shared/pack_attribution.py`**,
+does the join for all four, taking `list_assets`' old derivation with it.
+
+The decisions worth remembering: a field is reported only when **every** claimant agrees, and a
+disagreement goes to `attribution_conflicts` (none on this install); `null` means unknown, never
+permissive, and a license filter excludes it and says so; the entries are read off MPFB's private
+`_PACKS` after `get_pack_names()`, so `pack` and `license` come from one scan, with a public
+`get_pack_metadata()` proposed upstream and preferred when present; an MHCLO's or MHMAT's own
+`license` line is never a source, since MPFB defaults a missing MHMAT license to CC0. **The join
+gained a file-stem fallback** where the containing directory claims nothing, adopted after the live
+check measured it reaching exactly the nine `eyes/materials/` files and nothing else.
+`mpfb_list_asset_materials`' `refresh` now clears the pack metadata too. `source_url` stayed on
+every row although it is about half of a page's 25% growth (102 KB to 128 KB for 200 rows), because
+crediting a CC-BY asset needs it.
+
+Verified by [`live_check.py`](done/046-license-in-the-catalogues/live_check.py), 30 of 30, on the
+maintainer's full community install: 226 of 639 garments CC0, 392 CC-BY, 21 unknown; `pack="_cc0"`
+with no row outside `_cc0` (20 rows would have been under the old rule); the five hair materials of
+the scene sessions CC0 in their `system_hair_materials` packs in both the catalogue and
+`mpfb_get_object_info`; every equipped asset's attribution equal to its catalogue row's. The check
+also found that a garment behind its own sub-rig (`ponytail01`) is missing from the basemesh's
+relatives and so from the summary, recorded in
+[NEXT_STEPS](NEXT_STEPS.md#a-garment-behind-a-sub-rig-is-missing-from-the-family). 24 new bridge tests (611), over a `packs/` fixture in the install's shapes; 1 new unit test
+(585); the description budget up 825 B; the smoke run is 44 of 44. Licenses on targets and poses
+stay in [NEXT_STEPS](NEXT_STEPS.md#license-in-the-catalogues).

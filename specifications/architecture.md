@@ -534,6 +534,16 @@ raises `MissingFromMpfb` naming the module and the name, which dispatch reports 
 used to be. FR 036's census found the four had no fallback by accident; the decision is that they
 keep none on purpose.
 
+**One name is read for data rather than for vocabulary or an entity**: `assetservice.py`'s
+`_PACKS`, the parsed JSON of every installed pack, which `shared/pack_attribution.py` reads after
+`get_pack_names()` has populated it
+([FR 046](../feature-requests/done/046-license-in-the-catalogues/README.md)). MPFB publishes the
+pack names and each pack's asset names, but not the entries holding `license`, `author` and
+`source`. Reading MPFB's cached copy rather than the files keeps `pack` and `license` on one scan.
+The fallback is the published names alone, with every license `null` and a message saying why, and
+a public `AssetService.get_pack_metadata()` is used first if MPFB ever grows one (proposed in
+`MCP_DISCOVERED_BUGS.md`). Being data from the disk, it is read **per call**, never at resolution.
+
 These reads may be done **once, at the point MPFB is resolved**, rather than on every call — a
 genuine simplification of being an add-on, since code sent into Blender per call had no way to
 remember anything between them. The three rules are unchanged; only their frequency is. What may
@@ -726,6 +736,17 @@ now four parts, and it applies on both sides of the socket:
   which is a convention rather than a concept. `bridge/test/tests/eee_composite/get_character_summary_test.py`
   dispatches the summary beside each detailed command on one character and asserts every shared
   field equal — the test that keeps them agreeing after the reason is forgotten.
+- **A derived fact that may decide a licensing question has one derivation.**
+  `pack_attribution.py` is that case
+  ([FR 046](../feature-requests/done/046-license-in-the-catalogues/README.md)): which installed
+  packs claim a file, and what `license`, `author` and `source_url` they agree on. Four commands
+  report it - `mpfb_list_assets` and `mpfb_list_asset_materials` per row, `mpfb_get_object_info`
+  per equipped asset through `asset_info.py`, `mpfb_get_character_summary` a subset of that - and a
+  garment that is CC0 in its catalogue and CC-BY on the character, or the other way round, would
+  be the one disagreement a caller has no way to resolve and every reason to act on. It moved the
+  `pack` derivation out of `list_assets` rather than adding a second join beside it. The index is
+  read once per call and passed down, never per row; the module takes a path and the roots to
+  judge it against, because the two catalogues derive a subdir differently.
 - **A shared module may share the condition and leave the wording alone.** `refit_blocker.py` is
   that case: `HumanService.refit()` cannot refit a generated Rigify rig with no meta rig left in
   the scene, reports it only through an `operator` no MCP tool has one of, and returns having

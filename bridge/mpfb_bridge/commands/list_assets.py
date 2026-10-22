@@ -38,7 +38,24 @@ around, and its two filters are quirks in their own right:
 
 ``pack`` itself is derived from a **directory naming convention** and is
 recorded nowhere, which is why the answer says so and flags the ambiguous case
-rather than picking a winner quietly.
+rather than picking a winner quietly. ``license``, ``author`` and
+``source_url`` come from the same join, through
+[`shared/pack_attribution.py`](../shared/pack_attribution.py), which says where
+it does not hold
+([FR 046](../../../feature-requests/done/046-license-in-the-catalogues/README.md)).
+Three choices around it are this command's:
+
+- **``pack`` names the claimant the pack filter matched**, not merely the
+  first: with ``hats01`` and ``hats01_cc0`` both claiming a hat,
+  ``pack="_cc0"`` answering ``pack: "hats01"`` read as the filter failing.
+  ``packs`` names them all.
+- **The license filter is exact**, unlike the pack filter: ``"CC"`` matching
+  both ``CC0`` and ``CC-BY`` would be a trap in a licensing question. An asset
+  with no recorded license never matches, and the message says how many were
+  excluded for that rather than checked.
+- **``counts_by_license`` is taken before the license filter and the cap**, and
+  ``matched_packs`` over the whole scan, so a narrowed answer still says what
+  it narrowed from, and a pack registered with nothing on disk shows as ``0``.
 """
 
 __all__ = (
@@ -47,11 +64,10 @@ __all__ = (
     "list_assets",
 )
 
-import os
-
 from ..log import get_logger
 from ..shared import asset_sections
 from ..shared import mpfb_surface
+from ..shared import pack_attribution
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
 from ..validation import TYPE_INTEGER
@@ -68,6 +84,10 @@ PARAMS = (
     Param("pack", TYPE_STRING, default=None, nullable=True,
           description="Case-insensitive substring matched against the installed pack names, "
                       "which is MPFB's own rule for a pack pattern."),
+    Param("license", TYPE_STRING, default=None, nullable=True,
+          description="A license as pack metadata records it (\"CC0\", \"CC-BY\"), matched "
+                      "exactly and case-insensitively. An asset with no recorded license never "
+                      "matches."),
     Param("limit", TYPE_INTEGER, default=200, minimum=0, maximum=1000,
           description="How many assets to return. The answer always says whether it was cut."),
     Param("offset", TYPE_INTEGER, default=0, minimum=0,
@@ -78,32 +98,6 @@ PARAMS = (
 )
 
 SUMMARY = "List the installed assets, with the fragment and path an adding command takes."
-
-
-def _read_pack_index(services):
-    """Asset name -> the installed packs claiming it, built once per call.
-
-    The names in pack metadata are the *directory* names a pack installs under,
-    which is the whole basis of the attribution below. Building this per asset
-    would be a metadata read per asset.
-    """
-    asset_service = services["AssetService"]
-    names = []
-    try:
-        names = [str(name) for name in (asset_service.get_pack_names() or [])]
-    except Exception:  # pylint: disable=broad-except
-        names = []
-    index = dict()
-    for pack_name in names:
-        try:
-            asset_names = asset_service.get_asset_names_in_pack(pack_name) or []
-        except Exception:  # pylint: disable=broad-except
-            asset_names = []
-        for asset_name in asset_names:
-            index.setdefault(str(asset_name), []).append(pack_name)
-    for key in index:
-        index[key] = sorted(set(index[key]))
-    return (sorted(names), index)
 
 
 def _read_asset_roots(services, subdir):
@@ -121,24 +115,8 @@ def _read_asset_roots(services, subdir):
     return [str(root) for root in roots]
 
 
-def _packs_claiming(dirname, normalized_roots, pack_index):
-    """Which packs claim the directory one asset sits in. A convention, not a record."""
-    if not dirname:
-        return []
-    normalized = os.path.normpath(str(dirname))
-    if normalized in normalized_roots:
-        # An asset sitting directly in the asset root rather than in a directory
-        # of its own - skins/default.mhmat and the ink layers are both like
-        # this. Its containing directory is named for the *subdir*, so the join
-        # would attribute it to whichever pack happened to ship an asset called
-        # "skins". No directory name means no attribution.
-        return []
-    return pack_index.get(os.path.basename(normalized), [])
-
-
-def _entries_for_section(services, subdir, asset_type, object_type, roots, pack_index):
-    """Every asset MPFB's cached list holds for one section."""
-    normalized_roots = [os.path.normpath(root) for root in roots]
+def _entries_for_section(services, subdir, asset_type, object_type, roots, index):
+    """Every asset MPFB's cached list holds for one section, attributed."""
     try:
         items = services["AssetService"].get_asset_list(subdir, asset_type) or dict()
     except Exception:  # pylint: disable=broad-except
@@ -148,24 +126,31 @@ def _entries_for_section(services, subdir, asset_type, object_type, roots, pack_
         name = str(item.get("name_without_ext") or "")
         if not name:
             continue
-        claimants = _packs_claiming(item.get("dirname"), normalized_roots, pack_index)
+        path = mpfb_surface.as_path(item.get("full_path"))
+        attribution = pack_attribution.attribute(index, path, roots)
+        claimants = attribution["packs"]
         entries.append({
             "name": name,
             "label": str(item.get("label") or "") or None,
             "fragment": str(item.get("fragment") or "") or None,
-            "path": mpfb_surface.as_path(item.get("full_path")),
+            "path": path,
             "object_type": object_type,
             "asset_subdir": subdir,
             "file_type": asset_type,
+            # Which claimant is reported is decided once the pack filter is
+            # known; see _reported_pack().
             "pack": claimants[0] if claimants else None,
+            "packs": claimants,
             "pack_ambiguous": len(claimants) > 1,
+            "license": attribution["license"],
+            "author": attribution["author"],
+            "source_url": attribution["source_url"],
             # Deliberately not item["thumb"], which is a Blender preview object
             # rather than anything that survives JSON.
             "thumb_path": mpfb_surface.as_path(item.get("thumb_path")),
-            # Not reported: every pack claiming this asset. It is what the pack
-            # filter below matches against, so that a filter cannot miss an
-            # asset whose alphabetically-first claimant is a different pack.
-            "_claimants": claimants,
+            # Not reported per row: whether the claimants disagree, and what each
+            # says. A page's disagreements are reported once, beside it.
+            "_attribution": attribution,
         })
     return entries
 
@@ -181,8 +166,9 @@ def _matching(scanned, needle, pack_pattern):
         if pack_pattern is not None:
             # Matched against the assets actually found on disk, never built
             # from pack metadata - a pack lists what it shipped, including files
-            # the user has since deleted.
-            if not any(pack_pattern in claimant.lower() for claimant in entry["_claimants"]):
+            # the user has since deleted. And against every claimant, so that a
+            # filter cannot miss an asset whose first claimant is another pack.
+            if not any(pack_pattern in claimant.lower() for claimant in entry["packs"]):
                 continue
         matched.append(entry)
 
@@ -193,23 +179,73 @@ def _matching(scanned, needle, pack_pattern):
     return matched
 
 
-def _message(requested_subdir, subdir_recognized, requested_pack, pack_pattern,
-             pack_recognized, matched, page):
+def _license_counts(entries):
+    """Recorded license -> how many of ``entries`` carry it, and how many carry none."""
+    counts = dict()
+    unknown = 0
+    for entry in entries:
+        if entry["license"] is None:
+            unknown += 1
+        else:
+            counts[entry["license"]] = counts.get(entry["license"], 0) + 1
+    return ({key: counts[key] for key in sorted(counts)}, unknown)
+
+
+def _matched_packs(scanned, known_packs, pack_pattern):
+    """Each installed pack the pattern matches, with how many scanned assets it claims.
+
+    Over what this call scanned, and including a pack that claims nothing on
+    disk - a pack registered with its assets missing shows as 0 rather than
+    silently matching nothing.
+    """
+    matched = {name: 0 for name in known_packs if pack_pattern in name.lower()}
+    for entry in scanned:
+        for claimant in entry["packs"]:
+            if claimant in matched:
+                matched[claimant] += 1
+    return matched
+
+
+def _reported_pack(entry, pack_pattern):
+    """The claimant ``pack`` names: the first matching the filter, else the first.
+
+    So ``pack="_cc0"`` never answers with ``pack: "hats01"`` for an asset that
+    ``hats01_cc0`` claims too.
+    """
+    if pack_pattern is not None:
+        for claimant in entry["packs"]:
+            if pack_pattern in claimant.lower():
+                return claimant
+    return entry["packs"][0] if entry["packs"] else None
+
+
+def _message(requested, recognized, matched, licensed, page, unknown_excluded, index):
     parts = []
-    if requested_subdir is not None and not subdir_recognized:
+    if requested["asset_subdir"] is not None and not recognized["asset_subdir"]:
         parts.append("No asset subdir called '{:s}'. See 'known_asset_subdirs'.".format(
-            str(requested_subdir)))
-    elif pack_pattern is not None and not pack_recognized:
+            str(requested["asset_subdir"])))
+    elif requested["pack"] is not None and not recognized["pack"]:
         parts.append("No installed asset pack name contains '{:s}'. See 'known_packs'.".format(
-            str(requested_pack)))
+            str(requested["pack"])))
+    elif requested["license"] is not None and not recognized["license"]:
+        parts.append("No installed pack records the license '{:s}'. See "
+                     "'known_licenses'.".format(str(requested["license"])))
     else:
-        parts.append("{:d} assets matched, {:d} returned".format(len(matched), len(page)))
-        if len(matched) > len(page):
+        parts.append("{:d} assets matched, {:d} returned".format(len(licensed), len(page)))
+        if len(licensed) > len(page):
             parts.append(" - the rest were not returned, so this is not the whole library")
         parts.append(
             ". Each asset is named twice: 'path' is what an adding function takes, 'fragment' "
-            "is the portable identifier MPFB records on the object it produces. 'pack' is "
-            "derived from a directory name, not recorded.")
+            "is the portable identifier MPFB records on the object it produces. 'pack' and "
+            "'license' are derived from a directory name, not recorded.")
+        if requested["license"] is not None:
+            parts.append(
+                " The license filter left out {:d} of {:d}; {:d} of those have no recorded "
+                "license and were excluded, not checked.".format(
+                    len(matched) - len(licensed), len(matched), unknown_excluded))
+    if not index.entries_read:
+        parts.append(" MPFB's pack metadata could not be read, so every license is null; "
+                     "'pack' still comes from the pack names.")
     return "".join(parts)
 
 
@@ -218,6 +254,7 @@ def list_assets(params, resolution):  # pylint: disable=too-many-locals
     services = resolution.services
     requested_subdir = params["asset_subdir"]
     requested_pack = params["pack"]
+    requested_license = params["license"]
     name_contains = params["name_contains"]
     limit = params["limit"]
     offset = params["offset"]
@@ -242,13 +279,21 @@ def list_assets(params, resolution):  # pylint: disable=too-many-locals
         # before anything is read.
         services["AssetService"].update_all_asset_lists()
 
-    known_packs, pack_index = _read_pack_index(services)
+    index = pack_attribution.read_index(services)
+    known_packs = index.pack_names
 
     # MPFB's own substring semantics, from get_asset_names_in_pack_pattern().
     pack_pattern = requested_pack.strip().lower() if requested_pack is not None else None
     pack_recognized = True
     if pack_pattern is not None:
         pack_recognized = any(pack_pattern in name.lower() for name in known_packs)
+
+    # Exact and case-insensitive, against the metadata's own spelling.
+    license_wanted = requested_license.strip().lower() if requested_license is not None else None
+    license_recognized = True
+    if license_wanted is not None:
+        license_recognized = any(license_wanted == known.lower()
+                                 for known in index.known_licenses)
 
     scanned = []
     counts_by_subdir = dict()
@@ -257,33 +302,52 @@ def list_assets(params, resolution):  # pylint: disable=too-many-locals
         roots = _read_asset_roots(services, subdir)
         asset_roots_searched[subdir] = roots
         section_entries = _entries_for_section(
-            services, subdir, asset_type, object_type, roots, pack_index)
-        # Ignores name_contains and pack, and ignores the cap: this is what
-        # keeps an over-broad call informative rather than merely truncated.
+            services, subdir, asset_type, object_type, roots, index)
+        # Ignores name_contains, pack and license, and ignores the cap: this is
+        # what keeps an over-broad call informative rather than merely truncated.
         counts_by_subdir[subdir] = len(section_entries)
         scanned.extend(section_entries)
 
     needle = name_contains.strip().lower() if name_contains is not None else None
     matched = _matching(scanned, needle, pack_pattern)
 
-    page = matched[offset:offset + limit]
+    # After every other filter and before this one and the cap, so a call
+    # filtered to one license still says how many it left out.
+    counts_by_license, license_unknown_count = _license_counts(matched)
+    licensed = matched
+    if license_wanted is not None:
+        # An asset with no recorded license never matches: it was not checked.
+        licensed = [entry for entry in matched
+                    if entry["license"] is not None and entry["license"].lower() == license_wanted]
+
+    page = licensed[offset:offset + limit]
+    conflicts = []
     for entry in page:
-        del entry["_claimants"]
+        entry["pack"] = _reported_pack(entry, pack_pattern)
+        attribution = entry.pop("_attribution")
+        if attribution["claims_disagree"]:
+            conflicts.append({"path": entry["path"], "claims": attribution["claims"]})
 
-    _LOG.debug("list_assets: %d scanned, %d matched, %d returned",
-               len(scanned), len(matched), len(page))
+    _LOG.debug("list_assets: %d scanned, %d matched, %d licensed, %d returned",
+               len(scanned), len(matched), len(licensed), len(page))
 
+    requested = {"asset_subdir": requested_subdir, "pack": requested_pack,
+                 "license": requested_license}
+    recognized = {"asset_subdir": subdir_recognized, "pack": pack_recognized,
+                  "license": license_recognized}
     return {
         "assets": page,
         "count": len(page),
-        "total_count": len(matched),
+        "total_count": len(licensed),
         # Always present, and the field an agent has to read before concluding
         # the library lacks something: a capped answer must never look like a
         # complete one.
-        "truncated": len(matched) > len(page),
+        "truncated": len(licensed) > len(page),
         "offset": offset,
         "limit": limit,
         "counts_by_asset_subdir": counts_by_subdir,
+        "counts_by_license": counts_by_license,
+        "license_unknown_count": license_unknown_count,
         "requested_asset_subdir": requested_subdir,
         "asset_subdir_recognized": subdir_recognized,
         "known_asset_subdirs": known_subdirs,
@@ -291,7 +355,13 @@ def list_assets(params, resolution):  # pylint: disable=too-many-locals
         "requested_pack": requested_pack,
         "pack_recognized": pack_recognized,
         "known_packs": known_packs,
+        "matched_packs": (None if pack_pattern is None
+                          else _matched_packs(scanned, known_packs, pack_pattern)),
+        "requested_license": requested_license,
+        "license_recognized": license_recognized,
+        "known_licenses": index.known_licenses,
+        "attribution_conflicts": conflicts,
         "asset_roots_searched": asset_roots_searched,
-        "message": _message(requested_subdir, subdir_recognized, requested_pack,
-                            pack_pattern, pack_recognized, matched, page),
+        "message": _message(requested, recognized, matched, licensed, page,
+                            license_unknown_count if license_wanted is not None else 0, index),
     }
