@@ -444,6 +444,62 @@ What would help, in order:
 This is also the honest answer to "is the image deceptive". It is not: the hands are 3.7 mm apart
 and touch nowhere, which is a measurement, not a judgement. No tool here could have produced it.
 
+<a id="refit-resets-a-rigify-pose"></a>
+
+## A refit silently resets a generated Rigify rig's pose and switches
+
+Found by the photo studio template session (`interacting_with_blender/PHOTO_STUDIO_TEMPLATE.md`).
+`mpfb_set_face_units` refits by default, and so do `mpfb_refit_human`,
+`mpfb_apply_expressions` and `mpfb_set_macro_details(refit=True)`. On a generated Rigify rig the
+refit leaves every control at rest **and every limb's `IK_FK` back at 0 (IK)**. Nothing in the
+response says so: `refit_performed: true` and the pose is gone. Character A had been posed
+(switches, arms, head) before its smile was composed. The pose vanished, and it showed up only
+when a later `mpfb_set_pose_bones` call on C and D was refused with `chain_not_in_charge`,
+because their height changes had refitted them too. The cost: three characters re-posed, about
+nine extra calls, and one wasted test render.
+
+Two cheap improvements:
+
+- Every refitting tool reports `pose_reset: true` with `restore_with`, built the way
+  `mpfb_reset_pose` already builds it, when the rig was off rest before the refit.
+- Better: capture the pose and switches before the refit and re-apply them after it, behind an
+  argument that defaults to on.
+
+<a id="refit-raises-on-excluded-collection"></a>
+
+## Refits raise on a character whose collection is excluded from the view layer
+
+Several characters at the origin are easiest to manage one collection each, with all but one
+excluded from the view layer. Any refit then fails with a raw traceback
+(`RuntimeError: ViewLayer 'ViewLayer' does not contain object 'TestB_Human.metarig'`, from
+`RigService._do_refit_existing_armature` setting the active object). Three
+`mpfb_set_face_units` calls failed this way in one batch. This should be a refusal like the
+others (`blocked_by: "not_in_view_layer"`, naming the collection), checked before anything is
+written. `mpfb_set_face_units` had already written the shape keys when the refit raised.
+
+<a id="garment-fit-intersections"></a>
+
+## Garment fit intersections that no MPFB tool can fix
+
+A data point for [Nothing reports that two meshes interpenetrate](#nothing-reports-that-two-meshes-interpenetrate),
+from four single, unposed-then-relaxed characters (scripted check:
+`interacting_with_blender/photo_studio_verification/check_intersections.py`). Pose changes drove
+arms-vs-trunk and hands-vs-garment overlaps to 0-2 face pairs. What pose cannot reach is
+asset fit, and MPFB has no offset control for it:
+
+| Pair | Face pairs | Where |
+|---|---|---|
+| `long01` hair x `mindfront_f_dress_02` | 198 | back of the dress, under the hair |
+| `mindfront_male_trousers_1` x `mindfront_shoes_oxford_male` | 93 | trouser hems inside the shoe collars |
+| `mindfront_m_suit_01` (black) x body | 43 | collar at the neck (122 before a scene-level +4 mm Displace) |
+| `mindfront_m_suit_01` x `mindfront_shoes_oxford_male` | 36 | hems inside shoes |
+| `mindfront_f_dress_03` x body | 32 | sleeve at the armpit (97 before the same Displace) |
+| `o4saken_curly01` x `mindfront_knitted_hat_01` | 7903 | hat swallowed by the hair; replaced |
+
+A per-asset "offset along normal" in the fitting step (MakeHuman's `z_depth`, or a fitted-offset
+slider) would turn most of these into a tool call. A garment-vs-garment report on `mpfb_add_asset`
+would have caught the hat on the first call instead of after a render.
+
 <a id="a-material-whose-textures-do-not-resolve-is-reported-as-applied"></a>
 
 ## A material whose textures do not resolve is reported as applied
