@@ -117,6 +117,13 @@ session found that neither request took:
   on Y (0.45 for a closed fist), not from rotating them, and FR 042's `scale_to` reaches it. On the
   default rig it means rotating three bones per finger. A `hand` argument (`fist`, `open`,
   `relaxed`, or a 0-1 curl per finger) would hide the difference between rigs.
+
+  **Confirmed, with a number.** The man-and-woman scene session needed a soft grip on two hands of a
+  `default_no_toes` rig and spent **four calls of fourteen entries each** — 56 finger-segment
+  rotations — to curl, uncurl and re-curl them while hunting for a pose that did not intersect. A
+  `hand` argument would have made each of those one entry. It also has to be a *curl amount*, not
+  just named shapes: what the image finally needed was a loose 24/40/24-degree curl on one hand and
+  none on the other, and no preset of `fist`/`open`/`relaxed` would have landed there.
 - **The pose libraries cannot reach a generated Rigify rig at all**, which makes
   [Loading poses](#loading-poses) narrower than that entry assumes. There is one JSON pose per FK
   rig type (`default_fk`, `game_engine_fk`, and so on), and MPFB's panel looks for
@@ -177,19 +184,11 @@ Blender for long sessions; the headless bridge is unaffected.
 
 ## License in the catalogues
 
-Found by the line-up session, whose brief allowed CC0 assets only. No catalogue says what an
-asset's license is, yet MPFB has it on disk: every pack JSON in `data/packs/` records a `license`
-per asset. The session had to read those files directly. `mpfb_list_assets`,
-`mpfb_list_asset_materials` and a future pose catalogue should report `license` (and `author`)
-per entry, and take a `license` filter. Two related findings:
-
-- `pack` is not a stand-in for license. Every `*_cc0` pack checked duplicates a non-CC0 one
-  (`hats01` / `hats01_cc0`), so `mpfb_list_assets(pack="_cc0")` returned 24 assets, 18 of them
-  attributed to the *non*-CC0 name with `pack_ambiguous: true`. The answer then contradicted the
-  filter the caller passed. When several packs claim an asset, report all of them.
-- `mpfb_get_status` listed `accessories01_cc0` as installed while none of its four capes were on
-  disk. Reporting a registered pack whose assets cannot be found would have saved a confused
-  search.
+Scoped as [FR 046](046-license-in-the-catalogues/README.md) (Proposed). It adds `license`,
+`author`, `source` and `packs` to `mpfb_list_assets` and `mpfb_list_asset_materials`, read from the
+pack metadata through one shared attribution. It also adds a `license` filter and
+`counts_by_license`, makes the reported `pack` agree with a `pack` filter, and carries the license of
+an equipped asset into `mpfb_get_object_info` and the summary. 
 
 <a id="eye-and-layered-skin-colours"></a>
 
@@ -278,3 +277,204 @@ target, the silence viseme, resolved through `TargetService.target_full_path()` 
 `is_visemes02_installed()` beside the face units' probe would let this package use MPFB's own
 definition, as [mpfb-integration.md](../specifications/mpfb-integration.md#a-capability-that-depends-on-an-optional-asset-pack)
 prefers.
+
+<a id="no-way-to-verify-an-install-without-an-mcp-client"></a>
+
+## No way to verify an install without an MCP client
+
+Found by the man-and-woman scene session, which began with the server installed but not registered
+with the client, and could not tell that apart from a broken one.
+
+Everything needed to diagnose it exists, and none of it is reachable without a working MCP client
+already in place. `mpfb_get_status` answers this question precisely — it is the tool whose whole
+purpose is "is MPFB present, initialized and correctly configured?", and it is documented as the
+one that "always answers rather than failing" — but calling it requires the client registration
+that is the thing in doubt. The session's workaround was to hand-write a JSON-RPC stdio probe
+(`initialize`, `notifications/initialized`, `tools/call`) against `.venv/bin/mpfb-mcp` to confirm
+the server started, spoke the protocol, listed 42 tools and round-tripped to the bridge. That is
+forty lines of client to answer a yes/no question, and nothing in [INSTALL.md](../INSTALL.md)
+suggests it.
+
+A `mpfb-mcp --selftest` (or `doctor`) subcommand on the existing console script would close this:
+start the server in-process, run the same `mpfb_get_status` call, and print the protocol version
+handshake, the tool count, the bridge host and port actually used, and whether the bridge answered
+— then exit non-zero if it did not. It is the one command an install guide can end with, the one a
+user can paste into a bug report, and the only way to separate "the bridge is not running" from
+"the add-on is not enabled" from "the client never started the server" without a client. It needs
+no new bridge command: the protocol-version check at connect time and `get_mpfb_status` already
+carry every fact it would print.
+
+Worth saying in `INSTALL.md` either way: the Blender half can be verified on its own, because the
+bridge's port shows up in `ss -ltnp | grep 9877` when the add-on is enabled and not otherwise.
+That single line distinguishes the two most common failures and costs nothing to document.
+
+<a id="a-summary-mode-for-the-asset-catalogue"></a>
+
+## A summary mode for the asset catalogue
+
+Also from the scene session, and deliberately *not* an argument against the cap. `mpfb_list_assets`
+is documented as "a filtering tool rather than a listing one", its answer is capped on purpose, and
+`truncated` / `total_count` exist so a caller cannot mistake a page for the library. That design is
+right for "find me a garment".
+
+It is the wrong shape for the question a session actually opens with, which is *what is in this
+install at all* — how many garments, hair, skins and poses there are, how they divide across packs,
+and (per the entry above) how they divide by license. Answering that today costs one call per
+`asset_subdir`, ten in this session's case, each returning up to 1000 full rows — name, label,
+fragment, absolute path, thumb path — when the caller wants counts. The first call also pays MPFB's
+one-preview-image-per-asset load for that subdir, so the cheapest possible phrasing of "what do I
+have" is also among the most expensive calls the server offers.
+
+A `summary=True` mode (or a separate `mpfb_describe_asset_library`) returning counts faceted by
+`asset_subdir` × `pack` × `license`, and nothing else, would answer it in one call and read in a
+dozen lines. It would also give the license filter above an obvious place to prove itself: a caller
+could see "226 of 639 clothes are CC0" before deciding how to narrow, rather than after.
+
+A smaller version of the same point: `mpfb_list_assets()` with no arguments returns 200 rows that
+are all `Clothes`, because `clothes` sorts first and the default limit stops there. `truncated` is
+true and `total_count` is honest, so the response is not wrong — but the shape of it invites the
+reading "this install has 200 clothes and nothing else", which is what happened here before the
+docstring was read. Defaulting a no-argument call to the summary above would be strictly more
+informative than a truncated page of one type.
+
+<a id="a-hand-cannot-be-placed-at-a-point-on-a-standard-rig"></a>
+
+## A hand cannot be placed at a point on a standard rig
+
+Found by the man-and-woman scene session, whose whole subject was two characters holding hands.
+This is the single largest cost that session paid, and it is adjacent to
+[Posing support](#posing-support) rather than covered by it: that entry is about hand *shape*, this
+one is about where the hand *is*.
+
+`mpfb_set_pose_bones` offers `move_to` ("where the head goes"), but a bone only accepts it when its
+role is `ik_control`. On MPFB's standard rigs there are none: `mpfb_get_pose_controls` on
+`default_no_toes` reports `helper_modes` of `{"arm_mode": "NONE", "leg_mode": "NONE",
+"finger_mode": "NONE", "eye_mode": "NONE"}`, `counts_by_role` gives `ik_control: 0`, and every arm
+control is `chain: "fk"`. So the only way to put a hand somewhere is to solve the chain by hand:
+pick a direction for `upperarm01`, `lowerarm01` and `wrist`, write it, read `mpfb_get_pose`'s
+`landmarks`, and iterate. That session did it roughly ten times per arm.
+
+MPFB itself can do better and the bridge cannot reach it. MPFB's IK helpers are what `helper_modes`
+is reporting on, but nothing turns them on from this side: `RigService` exposes only
+`add_ik_constraint_to_pose_bone`, `add_ik_rotation_lock_to_pose_bone` and `set_ik_rotation_limits`,
+the low-level pieces, while the helper *modes* are assembled in MPFB's UI operators. Building them
+by hand from those three calls would be reimplementing an MPFB panel in the bridge, which is what
+the posing commands already do for Rigify's snaps — so it is in scope, just not small.
+
+Three ways out, cheapest first:
+- **Say so.** `mpfb_set_pose_bones`' description should state that `move_to` and `move_by` need an
+  `ik_control`, and that standard rigs have none until the helpers are switched on. Today the
+  limitation is discoverable only by reading `counts_by_role` and inferring.
+- **A tool that switches MPFB's IK helper modes on**, per limb, mirroring the panel. That is the
+  real fix and it makes `move_to` work on the rig most characters get by default.
+- **A solver argument**, e.g. `reach: {bone: "wrist.L", to: {...}}`, that does the FK iteration in
+  the bridge and reports what it achieved. More work, but it is the thing a caller actually wants
+  and it would work on every rig.
+
+Worth noting for whoever takes this: Rigify was not a way out either. By the time the problem
+appears the character is dressed, `mpfb_add_rig` refuses with `already_rigged`, and MPFB cannot swap
+a rig — deleting it unrigs every garment and nothing rigs them retroactively. The rig choice is
+effectively final at the moment it is made, which raises the cost of getting it wrong.
+
+<a id="nothing-reports-that-two-meshes-interpenetrate"></a>
+
+## Nothing reports that two meshes interpenetrate
+
+The same session's other large cost, and the one with the clearest payoff.
+
+The brief was to avoid the defect that sank the previous attempt at this image: two characters whose
+hands passed through each other. Nothing in the forty-two tools can see that. `mpfb_set_pose_bones`
+reports `achieved` per bone, `limbs_made_stretched` and `limbs_made_unreachable`;
+`mpfb_place_character` reports a `footprint` box and `subrigs_broken`. All of them describe one
+character. Two characters can occupy the same cubic centimetres and every tool reports success.
+
+So the session wrote its own check: build a `BVHTree` per evaluated mesh in world space and call
+`overlap()`, which returns intersecting face pairs, plus `find_nearest` for the minimum surface
+distance. That turned an unanswerable aesthetic question into a number, and the number moved: the
+first hand-holding pose scored **148 intersecting face pairs**; a pose-and-placement search drove it
+to **0 with a 3.7 mm minimum gap**, which is what shipped. The same check then caught two problems
+nobody was looking for — a boot shaft punching through a trouser leg (76 pairs, visible in the
+render as dark ragged holes at the ankle) and a hand disappearing into the other character's skirt
+(73 pairs) — both of which had already survived a visual pass.
+
+What would help, in order:
+- **`mpfb_check_intersections`**, read-only: given two subjects (or one, against itself), report
+  intersecting face pairs and minimum surface distance per mesh pair, optionally restricted to a
+  bounding box or a z-band. Thirty lines of `mathutils.bvhtree` in a bridge command, and it is the
+  difference between "looks fine" and "0 pairs, 3.7 mm".
+- **A clearance line in the mutating tools.** `mpfb_place_character` already computes a footprint;
+  reporting whether that footprint overlaps another character's, and what the closest approach is,
+  would catch the common case for free.
+- A garment-vs-garment check on `mpfb_add_asset` would have caught the boots immediately. The boot
+  and the trousers are both MPFB's own fitted assets; nothing warns that they do not fit together.
+
+This is also the honest answer to "is the image deceptive". It is not: the hands are 3.7 mm apart
+and touch nowhere, which is a measurement, not a judgement. No tool here could have produced it.
+
+<a id="a-material-whose-textures-do-not-resolve-is-reported-as-applied"></a>
+
+## A material whose textures do not resolve is reported as applied
+
+`mpfb_set_asset_material` returned `applied: true`, named the file and listed what it destroyed,
+for a material that rendered as black plastic with magenta streaks.
+
+The asset is `ricardo2020_long_01_bronze`, shipped in `system_hair_materials03`. Its MHMAT names
+three textures by paths relative to a MakeHuman data root that does not exist here —
+`hair/long01/Material/long01_diffuse_straw.png` and `..._copper.png` resolve to nothing, and
+`normalmapTexture hair/long01/long01_diffuse.png` resolves to the *colour* map, which MPFB duly
+wired into the normal-map node. The resulting material has an empty `diffuseTexture` image node
+feeding Base Color. Ten of the eleven other materials beside that asset use a bare filename and are
+fine, so this is the asset author's bug, not MPFB's — but MPFB loaded it without a word and the tool
+passed that silence on.
+
+The fix is a `warnings` entry, which this tool already has a channel for: after building the
+material, check each image node for a `None` image or a `filepath` that does not exist, and name
+them. `mpfb_add_asset` wants the same check — it builds materials by the same path, and its
+`material_created: true` carries the same false reassurance. It is cheap, it needs no new MPFB
+capability, and it converts a render nobody can explain into one line in the response.
+
+A smaller sibling, from the same session: MPFB's own layered-skin defaults put `NavelWidthMultiplier`
+at `11` against a declared range of `[0.001, 0.2]`, which `mpfb_get_material_settings` duly reports
+in `values_outside_range`. The reporting works; it is MPFB's default that is wrong, and worth
+raising upstream rather than papering over here.
+
+<a id="response-bulk-on-the-read-only-tools"></a>
+
+## Response bulk on the read-only tools
+
+Not a defect, and not urgent — recorded because one session hit all three and they share a shape:
+the tools return everything they know rather than what was asked for, and the catalogues are now big
+enough that it costs.
+
+- **`mpfb_list_assets` echoes `known_packs` in every response.** On this install that is 118 pack
+  names, repeated in full whether the call filtered by pack or not. It exists so a caller can
+  correct a misspelling from the same response, which is right — but it could be sent only when
+  `pack_recognized` is false, which is the only time it is needed.
+- **A full `mpfb_get_material_settings` skin read is about 20 KB.** The docstring warns about it and
+  `section` narrows it to one of three. Within `skin` there is no narrowing: ten groups come back
+  with every socket, every range and every `linked` entry, when the caller usually wants
+  `color.SkinColor`. A `groups=["color"]` argument would be the same shape as `section`, one level
+  down.
+- **`mpfb_add_asset` equips exactly one asset per call.** Dressing two characters took sixteen
+  calls, each returning a full report. A batch form would cut the round trips, and — more useful —
+  would give one place to enforce the ordering rule that the README states and no tool checks:
+  rig before garments, Rigify generate after them, dress before placing.
+
+<a id="what-the-all-or-nothing-batches-caught"></a>
+
+## What the all-or-nothing batches caught (keep this)
+
+A note in favour of an existing decision, so it does not get traded away later.
+
+`mpfb_set_material_settings` and `mpfb_set_pose_bones` both refuse the whole call if any entry fails
+to resolve, and both paid for themselves in one session:
+
+- A write of `IrisColor` was refused with `unknown_socket` and `closest: ["IrisMinorColor",
+  "IrisMajorColor", "IrisSection4Color"]`. The correct names came out of the refusal; nothing was
+  half-written.
+- A pose call naming `head` twice — once to turn it, once to tilt it — was refused with "bones[1]
+  names 'head', already named earlier in this call". Silently applying both would have given a
+  rotation that was neither, and it would have been diagnosed from a render much later.
+
+Both are cases where a partial write would have been expensive to detect and impossible to undo
+across the socket. Worth keeping, and worth extending to any future tool that writes a batch.
