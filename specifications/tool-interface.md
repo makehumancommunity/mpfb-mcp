@@ -155,6 +155,11 @@ and `material_type`, and `mpfb_export_character`'s `format` and `target_engine`.
 like MPFB's - they are the Export copy panel's enum, spelled as it spells them - but no MPFB function
 receives them: the panel's operator branches on them, and so does the command that reproduces it.
 What decides the case is who consumes the value, not where its spelling came from.
+[FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md) added two:
+`mpfb_set_rigify_hand_shape`'s `shape` and the finger names keyed in `fingers`, this package's
+own table of amounts and its own words for the fingers. The bridge holds the tables and the tool a
+copy of the names, and `tests/test_set_rigify_hand_shape.py` reads the bridge module as data and
+requires the two to agree, as `tests/test_bridge_connection.py` does for `PROTOCOL_VERSION`.
 
 **An argument that becomes a path is a shape, not a vocabulary, and it is checked here.**
 `mpfb_save_preset` and `mpfb_create_human_from_preset` take a `preset_name` that resolves to
@@ -400,14 +405,18 @@ dictionaries, so they were checked by the FR's own `census.py --check` instead.
 | What a placement cannot express or aim at | `blocked_by: "character_tilted"` (turned about more than world up; a `position` alone is still taken) / `"face_toward_not_found"` / `"face_toward_has_no_direction"` (straight above or below) | |
 | A garment's sub-rig bound wrong | `subrigs_broken`: per sub-rig, `subrig_object_name`, `asset_object_name` and the measured `displacement` in metres; `[]` when none is | `subrigs_broken_by_move`, as scoped - a move breaks none |
 | A change to a pose bone, in an entry of `bones` | a position as `move_by` (an offset) or `move_to` (where the head goes, as `mpfb_get_pose` reports `head`); a rotation as `rotate_by` (about the head), `rotate_to` (from rest, as `mpfb_get_pose` reports `rotation`) or `aim` (head-to-tail direction) with `twist` (degrees about the bone's own axis); `scale_to`, factors keyed `x`/`y`/`z` in the bone's own axes. At most one of each kind | `translate`, `location`, `rotation` as an argument |
-| Also apply to the other side | `symmetry`, a bool: call-level in `mpfb_set_targets`, per entry in `mpfb_set_pose_bones` - one concept, one spelling | `mirror` |
+| Also apply to the other side | `symmetry`, a bool: call-level in `mpfb_set_targets`, per entry in `mpfb_set_pose_bones` and `mpfb_set_rigify_hand_shape` - one concept, one spelling. The hand tool copies its entry unmirrored, since a curl and a spread mean the same on both sides | `mirror` |
+| A hand's shape, on a generated Rigify rig ([FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md)) | `hands`, the writer's list, one entry per hand, addressed by `body_part` (`left_hand`/`right_hand`); `shape`, one of `open`, `relaxed`, `fist`, `pointing`, `grip`, `pinch`, listed with every finger's amounts as `known_shapes`; `fingers`, keyed `thumb`, `index`, `middle`, `ring`, `pinky`, each holding `curl` (-0.2 to 1.0, 1.0 the finger as it sits in a fist) and `spread` (-1.0 to 1.0, positive away from the middle finger, the middle toward the index, the thumb away from the palm - the same on both hands). Read back in that shape beside `joint_degrees` (each joint's bend from rest, first knuckle first), `spread_degrees` and `tip` (the fingertip, in the frame), and `matches_shape`, the shape a hand is in or `null`. A write reports `fingers_before`/`fingers_after`, `matches_shape_before`/`matches_shape_after`, `fingers_written`, `segments_reset` and its verb `changed` | `pose`, `amount`, `bend`, `angle`, a per-joint input |
+| A reading that is a fit rather than exact | `expressible: false`, with `not_expressible_because` naming each reason (`master_moved`, `master_twisted`, `knuckle_and_joints_disagree`, `segment_posed`, `palm_posed`, `outside_range`); `amounts_measure` says how the amounts were derived | `exact`, `approximate` |
 | A Rigify switch, addressed | `body_part` and `switch` (Rigify's property name, as `mpfb_get_pose_controls` lists it); its value `value`; `raw: true` to skip the snap | the bone it lives on, which is reported and never asked for - which is why a compact switch entry drops it |
 | Which switches to list, by name | `switch_names` (`mpfb_get_pose_controls` only, [FR 044](../feature-requests/done/044-switches-filter/README.md)), echoed sorted as `requested_switch_names`, counted by `counts_by_switch` under every switch name the rig has. Its vocabulary is the rig's own, not this package's: `human_toes` has `parent_switch` and `game_engine` does not | `switches`, which is `mpfb_set_pose_switches`' list of objects and the key of the answer - one name, one JSON type, as with `include_switches` |
 | Whether a write kept the limb where it was, and how well | `snapped`, with `snap_reason` when false, and `snap_error` (metres) when true | |
 | Whether a write ended where it was sent | `achieved`, with `deviation` when false and `achieved_measure` saying how it was measured | |
-| The arguments that undo what a tool did | `restore_with`, keyed by the tool to call (`apply_with` is the save's: the call that makes something durable). Two users: `mpfb_reset_pose` and `mpfb_place_character` | `undo` |
+| The arguments that undo what a tool did | `restore_with`, keyed by the tool to call, the keys in the order to send them (`apply_with` is the save's: the call that makes something durable). Three users: `mpfb_reset_pose`, `mpfb_place_character` and `mpfb_set_rigify_hand_shape`, whose way back is its own call and then `mpfb_set_pose_bones`' | `undo` |
 | Also do or list the optional part | `include_<part>`: `include_switches` (a reset) - FR 042 named it `switches`, which `mpfb_set_pose_switches` already takes as a list, and one name carries one JSON type; `include_hidden` (`mpfb_get_pose_controls`, FR 043) | `switches` as a bool, `show_hidden` |
 | A rig a writer cannot act on | `blocked_by: "rig_in_edit_mode"` / `"rig_has_no_switches"` (only a generated Rigify rig has them) / `"rig_not_classified"` (a reset by body part on a rig with none) | |
+| A rig the hand-shape tools do not take | `blocked_by: "rig_not_supported"`, with `supported_rigs` (`rigify_generated.human`, `rigify_generated.human_toes`), and a message naming `mpfb_set_pose_bones` as that rig's way to pose fingers; a meta-rig keeps `rigify_not_generated` | `unsupported_rig` |
+| A finger a hand-shape entry names that the rig cannot give it | a resolution error: `finger_not_on_rig` (the hand has no such finger; a shape just skips it, listed in `fingers_not_on_rig`) or `finger_not_as_generated` (it has one, edited after generation, and the message names the bone or driver looked for); beside `unknown_finger`, `unknown_shape`, `unknown_body_part` and `finger_ik_in_charge` | `missing_finger` |
 | The character has no rig to pose / only a Rigify meta-rig / a body part that is not one / a role that is not one / a switch name the rig has nowhere | `blocked_by: "rig_not_found"` / `"rigify_not_generated"` / `"unknown_body_parts"`, with `known_body_parts` / `"unknown_roles"`, with `known_roles`, refused after `unknown_body_parts` / `"unknown_switch_names"`, with `known_switch_names` (every switch name the rig has, sorted), refused after `unknown_roles` and only on a rig that has switches; a name the rig has outside the requested parts is not a mistake and counts 0 | `no_rig`, `no_armature_found` (which `mpfb_generate_rigify_rig` keeps for a different question: no armature at all among the relatives) |
 
 Where MPFB's own spelling disagrees with a row here, the row wins;
@@ -473,6 +482,15 @@ Each of these looks like a divergence and is not:
   by where each reading came from.
 - **`loaded_from`** (a path, per target) and **`loaded_from_disk`** (the face units that had to be
   loaded): two concepts with two shapes.
+- **`mpfb_get_rigify_hand_shape` and `mpfb_set_rigify_hand_shape` carry the rig family in their
+  names**, and no other posing tool does
+  ([FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md)). They cannot work on any
+  other rig - a finger's curl is a Rigify master's rotation and Y scale - and a caller that picks a
+  tool by its name should not reach for one on a default rig. The other posing tools work on every
+  rig and keep their names.
+- **Shape and finger names are checked on both sides of the socket**, like `mode`: they are this
+  package's own vocabulary, so a misspelled `pinkie` has nothing to look up. A `body_part` is still
+  checked bridge-side only, as in every posing tool.
 - **`requested`** in `mpfb_apply_expressions` (per-entry outcomes) and in the preset tool's
   `overrides` records (a value): both are what the caller asked for.
 - **`requested_name`** in `mpfb_remove_asset`: the echo of a required asset `name`, which is never

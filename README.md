@@ -36,6 +36,8 @@ Early beta. Forty-two tools are implemented.
   where does it rest?
 - `mpfb_get_pose` — what is this character's pose now: what is off rest, where are its hands, feet,
   hips and head, and is a limb stretched or out of reach?
+- `mpfb_get_rigify_hand_shape` — on a Rigify character, how curled and spread is each finger, what
+  shape is each hand making, and where are the fingertips?
 
 **Catalogues** — what could be added, each entry named the way the acting tool will want it:
 
@@ -75,6 +77,8 @@ Early beta. Forty-two tools are implemented.
   character's own forward, left and up, batched, and say where each one actually ended up.
 - `mpfb_set_pose_switches` — change a generated Rigify rig's IK/FK, pole, parent and stretch
   switches, keeping each limb where it is as Rigify's own buttons do.
+- `mpfb_set_rigify_hand_shape` — on a Rigify character, make a fist, point, grip or pinch, or
+  curl and spread any finger by an amount, one call per change.
 - `mpfb_reset_pose` — put a character back at rest, and answer with the calls that put the pose
   back: Blender's own undo does not see what these tools do.
 - `mpfb_place_character` — stand a character somewhere in the scene, facing a direction or a

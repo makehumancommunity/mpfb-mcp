@@ -917,3 +917,46 @@ relatives and so from the summary, recorded in
 [NEXT_STEPS](NEXT_STEPS.md#a-garment-behind-a-sub-rig-is-missing-from-the-family). 24 new bridge tests (611), over a `packs/` fixture in the install's shapes; 1 new unit test
 (585); the description budget up 825 B; the smoke run is 44 of 44. Licenses on targets and poses
 stay in [NEXT_STEPS](NEXT_STEPS.md#license-in-the-catalogues).
+
+## [FR 047](done/047-rigify-hand-shapes/README.md) — `mpfb_get_rigify_hand_shape` and `mpfb_set_rigify_hand_shape`
+
+Before this, a fist on a Rigify rig was `scale_to` on every finger master, which nothing told a
+caller about; the karate session found 0.45 by trial and error, and the scene session spent four
+calls of fourteen entries curling and uncurling a grip. **Two tools now read and write a hand as a
+`curl` and a `spread` per finger**, on rigs generated from MPFB's Rigify meta-rigs only (`human`,
+`human_toes`), and the names say so: the first tools whose names carry a rig family. The writer
+takes one entry per hand, a `shape` (`open`, `relaxed`, `fist`, `pointing`, `grip`, `pinch`) and/or
+`fingers` overrides, with anything left out left alone and `symmetry` copying the entry unmirrored;
+the reader answers in exactly that shape, beside `joint_degrees`, `spread_degrees` and `tip`
+measured on the deforming bones, and `matches_shape`. **One new shared module,
+`shared/rigify_hands.py`**, does the mapping both ways, reads the bend axis and sign off Rigify's
+`MCH-…_drv` drivers, finds each finger's spread sign from the hand's rest geometry, and holds the
+calibration and the shape table.
+
+The decisions worth remembering: **the calibration is in degrees and was set by measurement** on a
+default `human_toes` character - a fist is the knuckle at 85 degrees and the later joints at 35 to
+45, the fingertips 7 to 11 mm clear of the palm's surface below each metacarpal; **the karate
+session's 0.45 scale (99 degrees at the later joints) buries the fingertips in the palm** once the
+knuckle bends, and with the knuckle at rest it is a hook, which the reader reports as
+`expressible: false`. The knuckle stops short of 90 because reading the master's rotation back
+swings about the bend axis, singular at 90. **Thumb opposition was not needed**: curl and spread
+alone bring the thumb and index tips to 6.4 mm, so `pinch` needs no third amount. A written
+finger's segments are reset and owed in `restore_with`, which is two calls in order - this tool's
+amounts, then `mpfb_set_pose_bones` for the segments and any master an amount cannot express. A
+joint is measured as the turn that carries the previous bone's direction back to rest, seen from
+the next bone, because Rigify's stretch chain leaves the first deforming bone without the master's
+twist; consecutive bones' relative rotation read a spread thumb's middle joint 6 degrees off.
+
+Verified by [`live_check.py`](done/047-rigify-hand-shapes/live_check.py), 0 failures, on a placed
+and turned `human_toes` character and a `human` one: every shape reads back as itself on both
+hands with every finger achieved, a fist with no fingertip in the palm, a pinch at 6.4 mm, a grip
+with every fingertip within 10 mm of a 4 cm cylinder's surface, pointing at 0 degrees, the scene
+session's loose curl and open hand in one call, `restore_with` putting a hand posed by hand back,
+and a reset reading `open`; workbench renders from the front and the side were looked at for each.
+The `human` rig met every row without a change. The reader answers in 4.1 KB, above the 3 KB the
+request aimed at, and a two-hand write with `restore_with` in 6.8 KB; each costs about 0.07 s
+through the windowed bridge. 55 new bridge tests (666); 24 new unit tests (609); the description
+budget up 2,050 B; the smoke run is 46 of 46 in 2.3 s headless, its writer item a `fist` that
+`mpfb_reset_pose` puts back, since the smoke run requires every mutating item to change something.
+A helper for the default rig and the `game_engine` conversion stay in
+[NEXT_STEPS](NEXT_STEPS.md#posing-support).

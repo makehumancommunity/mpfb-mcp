@@ -314,6 +314,15 @@ own format, holding `ponytail01`'s one bone and one `CHILD_OF`. FR 039's sub-rig
 only the *shape* - a typed armature between a garment and the rig - which was enough for a family
 walk and could not be bound wrong.
 
+**A fixture shared by a module stays the install for every test in it.** The posing modules build
+one generated rig per module, because generating Rigify takes most of a second, and each test puts
+it back with `_fixtures.rest_pose()`. Putting it back means the pose and the switches - not
+`animation_data_clear()`, which takes Rigify's drivers with the test's action. FR 042's animated-
+channel test did that, and every later test in its module ran on a rig whose fingers no longer
+curled; nothing there noticed, and FR 047's equivalent test failed only because the next test read
+the hands ([FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md)). A test that keys a
+rig removes the action it made and nothing else.
+
 ## What the suite can never establish
 
 Stated once here rather than repeated in every module, because the list is a property of the

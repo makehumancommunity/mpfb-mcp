@@ -329,6 +329,30 @@ standard rig into one. So the posing tools read the generated rig itself, in the
   compared with the bones present; what a helper drives is read off the constraints.
 - **Any other rig is answered unclassified**, its bones as a hierarchy with no body part or role.
   A wrong `left_hand` is worse than none.
+- **How a finger moves is read off Rigify's drivers**
+  ([FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md)). A `limbs.super_finger`
+  turns its first knuckle by the master's rotation, through a `COPY_ROTATION` onto the first
+  `MCH-…_drv` bone, and every later joint by `(1 - scale.y) · π` about its primary axis, through a
+  driver on each later `MCH-…_drv` bone. `shared/rigify_hands.py` finds those drivers by the
+  master's `scale.y` they read, and takes the bend axis from the driven index and its sign from the
+  expression, which must be one of Rigify's `axis_options` (`(1-sy)*pi` or `-((1-sy)*pi)`); the
+  spread axis is the master's remaining one. A driver Rigify would not write, a missing `DEF-` or
+  `MCH-` bone or a bend about the bone's own axis is a resolution error naming what was looked
+  for. The bridge test checks the expression table against `super_finger.Rig.axis_options` and
+  that both of MPFB's meta-rigs ask for `primary_rotation_axis: "X"` and no extra IK control, so a
+  change to either fails a test. **The spread's sign is anatomical and read from the rest
+  geometry**, not tabulated per side: positive moves the tip away from the middle finger's
+  knuckle, the middle finger toward the index's, and the thumb away from the side a curling
+  finger moves toward - because the same `spread` must spread both hands alike, and a left and a
+  right hand's bone axes are mirror images. Only rigs generated from MPFB's own meta-rigs are
+  accepted: the `game_engine` conversion's fingers are `super_finger` too, with Rigify's defaults,
+  and were never calibrated.
+- **The deforming bones carry the evidence a reading is checked against, but not all of it.**
+  Rigify's stretch chain gives the first `DEF-` bone of a finger the master's direction and not its
+  twist, and every later one its control's whole orientation. So a joint is measured as the turn
+  that carries the previous bone's direction, seen from the next bone, back to where it is at rest
+  - which the missing twist cannot disturb - and the first knuckle as a direction. Measuring
+  consecutive bones' relative rotation instead read a spread thumb's middle joint 6 degrees off.
 
 ## A third-party add-on's UI operators are reimplemented, never called
 

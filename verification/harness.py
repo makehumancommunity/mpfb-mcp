@@ -83,6 +83,7 @@ MUTATING_VERBS = {
     "mpfb_set_pose_bones": "changes",
     "mpfb_set_pose_switches": "changes",
     "mpfb_reset_pose": "reset",
+    "mpfb_set_rigify_hand_shape": "changed",
     "mpfb_place_character": "placed",
     "mpfb_create_export_copy": "created",
     "mpfb_export_character": "exported",

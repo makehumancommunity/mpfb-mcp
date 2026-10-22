@@ -162,7 +162,10 @@ def build_server() -> FastMCP:
             "To pose a character, find its controls with mpfb_get_pose_controls - "
             "which bones to move, by body part, in a frame that turns with the "
             "character - and read the result back with mpfb_get_pose rather "
-            "than from a screenshot. "
+            "than from a screenshot. On a rig generated from MPFB's Rigify "
+            "meta-rigs, shape a hand with mpfb_set_rigify_hand_shape - a "
+            "named shape, or a curl and spread per finger - and read it with "
+            "mpfb_get_rigify_hand_shape. "
             "MPFB builds every character at the origin: lay several out with "
             "mpfb_place_character, spaced by the footprint it and "
             "mpfb_get_character_summary report. "
@@ -212,11 +215,12 @@ def build_server() -> FastMCP:
         add_asset, add_rig, apply_expressions, create_export_copy, create_human,
         create_human_from_preset, export_character, generate_rigify_rig, get_character_summary, get_expression, get_face_units,
         get_macro_details, get_material_settings, get_object_info, get_pose, get_pose_controls,
-        get_status, get_target_stack,
+        get_rigify_hand_shape, get_status, get_target_stack,
         list_asset_materials, list_assets, list_docs, list_expressions, list_objects,
         list_presets, list_rigs, list_targets, list_urls, place_character, refit_human, remove_asset, reset_pose,
         save_expression, save_preset, set_asset_material, set_face_units, set_macro_details,
-        set_material_settings, set_pose_bones, set_pose_switches, set_skin, set_targets,
+        set_material_settings, set_pose_bones, set_pose_switches, set_rigify_hand_shape, set_skin,
+        set_targets,
         symmetrize_targets)
     add_asset.register(mcp)
     add_rig.register(mcp)
@@ -234,6 +238,7 @@ def build_server() -> FastMCP:
     get_object_info.register(mcp)
     get_pose.register(mcp)
     get_pose_controls.register(mcp)
+    get_rigify_hand_shape.register(mcp)
     get_status.register(mcp)
     get_target_stack.register(mcp)
     list_asset_materials.register(mcp)
@@ -257,6 +262,7 @@ def build_server() -> FastMCP:
     set_material_settings.register(mcp)
     set_pose_bones.register(mcp)
     set_pose_switches.register(mcp)
+    set_rigify_hand_shape.register(mcp)
     set_skin.register(mcp)
     set_targets.register(mcp)
     symmetrize_targets.register(mcp)

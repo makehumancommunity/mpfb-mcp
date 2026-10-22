@@ -1038,21 +1038,24 @@ def _activate_only(blender_object):
 def rigged_character(services, character, rig):
     """Rig ``character`` and return the armature that moves it.
 
-    ``rig`` is an identifier ``mpfb_add_rig`` would take, plus two that only a
-    generation produces: ``"generated:human_toes"`` adds MPFB's meta-rig and
-    generates it with ``RigService.generate_rigify_rig()``, and
+    ``rig`` is an identifier ``mpfb_add_rig`` would take, plus three that only a
+    generation produces: ``"generated:human_toes"`` and ``"generated:human"``
+    add MPFB's meta-rig of that name and generate it with
+    ``RigService.generate_rigify_rig()``, and
     ``"generated:game_engine"`` adds the standard ``game_engine`` rig and runs
     MPFB's legacy convert-to-Rigify operator on it, which is the only way MPFB
     makes a ``rigify_generated.game_engine`` rig. Both skip without Rigify.
     """
     human_service = services["HumanService"]
-    if rig == "generated:human_toes":
+    if rig in ("generated:human_toes", "generated:human"):
         _rigify_or_skip(services)
+        meta_name = rig.split(":", 1)[1]
         meta_rig = human_service.add_builtin_rig(
-            character.basemesh, "rigify.human_toes", import_weights=True)
+            character.basemesh, "rigify." + meta_name, import_weights=True)
         assert meta_rig is not None, "the meta-rig should have been added"
         generated = services["RigService"].generate_rigify_rig(meta_rig, meta_rig_action="hide")
-        assert generated is not None, "Rigify should have generated the human_toes meta-rig"
+        assert generated is not None, "Rigify should have generated the {:s} meta-rig".format(
+            meta_name)
         return generated
     if rig == "generated:game_engine":
         _rigify_or_skip(services)

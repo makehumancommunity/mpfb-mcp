@@ -433,3 +433,13 @@ different tabs and a human sees sliders move. Across MCP there is no such feedba
   writer's whole batch. Each such bone had no visible effect when it was reset - a chain `IK_FK`
   had handed away, an FK bone a helper drives - so the visible pose still comes back whole
   ([FR 042](../feature-requests/done/042-posing-bones-switches-and-reset/README.md)).
+- **A write that resets controls the caller did not name owes them in `restore_with` too.**
+  `mpfb_set_rigify_hand_shape` puts a written finger's segment controls at rest, because a rotation
+  left on one would add to the curl and make the answer's `curl` untrue; a caller who asked for a
+  fist did not ask for that, and may have posed those segments by hand. So the answer lists them
+  (`segments_reset`, each with its transform before), and `restore_with` holds two calls, sent in
+  the order the keys are in: its own entries for each changed finger's `curl` and `spread`, then
+  `mpfb_set_pose_bones` entries for the segments and for any master whose channels were not a curl
+  and a spread at all (a hook, a twist), which an amount cannot express. Amounts keep seven
+  decimals, so a live round trip put every channel back within 1e-5, the bound single-precision
+  Euler channels allow ([FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md)).

@@ -1,7 +1,7 @@
 """
-All twenty-eight commands that take a subject, asked about the same three misses.
+All thirty commands that take a subject, asked about the same three misses.
 
-The claim is about twenty-eight commands at once, which is why it is here: every
+The claim is about thirty commands at once, which is why it is here: every
 command that takes a subject resolves it the same way, because all of them go
 through ``shared/subject_resolution.py``
 ([FR 036](../../../../feature-requests/done/036-subject-resolver-and-duplication/README.md)).
@@ -55,7 +55,7 @@ SUBJECT_ONLY = ("get_object_info", "generate_rigify_rig")
 
 
 def _calls(subject):
-    """The twenty-eight commands, each with the least that passes its parameter contract."""
+    """The thirty commands, each with the least that passes its parameter contract."""
     return {
         "get_object_info": dict(name=subject),
         "get_macro_details": dict(name=subject),
@@ -90,6 +90,9 @@ def _calls(subject):
         "create_export_copy": dict(name=subject),
         "export_character": dict(export_name="bridge_test_never_written", name=subject),
         "place_character": dict(name=subject, position=dict(x=1.0)),
+        "get_rigify_hand_shape": dict(name=subject),
+        "set_rigify_hand_shape": dict(name=subject, hands=[
+            dict(body_part="left_hand", shape="fist")]),
     }
 
 
@@ -193,7 +196,7 @@ def test_a_name_that_does_not_exist(tmp_path):
 
 
 def test_an_object_with_no_basemesh(tmp_path):
-    """The third sentence from twenty-six commands, and a found subject from two."""
+    """The third sentence from twenty-eight commands, and a found subject from two."""
     import bpy  # pylint: disable=import-outside-toplevel
     cube = linked_plain_object(CUBE)
     try:

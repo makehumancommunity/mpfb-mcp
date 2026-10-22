@@ -316,9 +316,10 @@ def test_an_animated_channel_is_written_and_flagged_and_nothing_is_keyed(rigify)
         assert len(list(_fcurves(rig))) == curves, "no keyframe was inserted"
     finally:
         tool_settings.use_keyframe_insert_auto = keying
+        # Not animation_data_clear(): that would take Rigify's drivers with it,
+        # leaving every later test in this module a rig whose fingers do not curl.
         rig.animation_data.action = None
         bpy.data.actions.remove(action)
-        rig.animation_data_clear()
 
 
 def _fcurves(rig):

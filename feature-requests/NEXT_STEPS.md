@@ -108,26 +108,29 @@ and `mpfb_get_pose`, with the character frame and the posing vocabulary, and
 [FR 042](done/042-posing-bones-switches-and-reset/README.md) added `mpfb_set_pose_bones`,
 `mpfb_set_pose_switches` (snapping by default) and `mpfb_reset_pose`; its live check rebuilt the
 karate stance below with mpfb-mcp tools alone. What is left of the entry is two gaps the karate
-session found that neither request took:
+session found that neither request took, the first now half closed:
 
-- **There is no hand-shape helper.** The Rigify half is scoped as
-  [FR 047](047-rigify-hand-shapes/README.md) (Proposed): `mpfb_get_rigify_hand_shape` and
-  `mpfb_set_rigify_hand_shape`, with six named shapes and a 0-1 `curl` and a `spread` per finger.
-  It covers only rigs generated from MPFB's Rigify meta-rigs (`human`, `human_toes`). **The default
-  rig and `game_engine`, including its Rigify conversion, are not in it**, and those stay here. The
-  56-rotation cost below was measured on `default_no_toes`, which FR 047 refuses.
+- **There is no hand-shape helper for the default rig.** The Rigify half has landed as
+  [FR 047](done/047-rigify-hand-shapes/README.md) ([HISTORY](HISTORY.md)):
+  `mpfb_get_rigify_hand_shape` and `mpfb_set_rigify_hand_shape`, six named shapes and a `curl` and
+  `spread` per finger, on rigs generated from MPFB's Rigify meta-rigs only. **The default rig and
+  `game_engine`, including its Rigify conversion, are not in it**, and those stay here; both are
+  refused with `rig_not_supported`. The 56-rotation cost below was measured on `default_no_toes`.
 
-  On Rigify, a fist comes from scaling the finger master bones
-  on Y (0.45 for a closed fist), not from rotating them, and FR 042's `scale_to` reaches it. On the
-  default rig it means rotating three bones per finger. A `hand` argument (`fist`, `open`,
-  `relaxed`, or a 0-1 curl per finger) would hide the difference between rigs.
+  On the default rig a curl means rotating three bones per finger, with no master, and maybe MPFB's
+  own finger helpers. A helper there needs its own mechanism and its own calibration; FR 047's
+  degrees (`shared/rigify_hands.py`) are a starting point, not a table to reuse, since they were
+  set on Rigify's coupling of the two later joints. The `game_engine` conversion's fingers are
+  `super_finger` with Rigify's defaults, `_l`/`_r` names and no palm control, so supporting it would
+  be a calibration and a classification effort rather than a mechanism one.
 
   **Confirmed, with a number.** The man-and-woman scene session needed a soft grip on two hands of a
   `default_no_toes` rig and spent **four calls of fourteen entries each** — 56 finger-segment
-  rotations — to curl, uncurl and re-curl them while hunting for a pose that did not intersect. A
-  `hand` argument would have made each of those one entry. It also has to be a *curl amount*, not
-  just named shapes: what the image finally needed was a loose 24/40/24-degree curl on one hand and
-  none on the other, and no preset of `fist`/`open`/`relaxed` would have landed there.
+  rotations — to curl, uncurl and re-curl them while hunting for a pose that did not intersect. It
+  also has to be a *curl amount*, not just named shapes: what the image finally needed was a loose
+  24/40/24-degree curl on one hand and none on the other. On Rigify that case is now one call
+  (FR 047's live check); a per-joint curl like 24/40/24 is still not expressible there, by
+  decision, and stays `mpfb_set_pose_bones`' job.
 - **The pose libraries cannot reach a generated Rigify rig at all**, which makes
   [Loading poses](#loading-poses) narrower than that entry assumes. There is one JSON pose per FK
   rig type (`default_fk`, `game_engine_fk`, and so on), and MPFB's panel looks for

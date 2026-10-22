@@ -293,6 +293,18 @@ the asset's containing directory name against the asset names in the installed p
   locked channel counts as changed: an axis read back to three decimals and sent again leaks about
   5e-4 rad into a locked Euler component, which is rounding to put back, not a request to refuse
   ([FR 042](../feature-requests/done/042-posing-bones-switches-and-reset/README.md)).
+- **An amount derived from control channels is reported beside the measurement it can be checked
+  against, and says when it is only a fit.** Nothing records that a hand is "curled 0.5".
+  `mpfb_get_rigify_hand_shape` derives each finger's `curl` and `spread` from its master's rotation
+  and Y scale, through the inverse of what the writer does, so a read-back is a write; beside them
+  are `joint_degrees` and `spread_degrees`, measured on the deforming bones, and `tip`. Channels a
+  person posed some other way - a hook, a twist, a bent segment, a posed palm - are not a curl and
+  a spread at all, so such a finger is `expressible: false` with `not_expressible_because`, and
+  its amounts are then the least-squares fit to the measurement, clamped into the writer's range,
+  never presented as exact. `matches_shape` is derived from the amounts within a stated tolerance
+  (0.05), and is `null` for any hand with a finger that is not expressible. The tolerances and the
+  calibration live in one module (`shared/rigify_hands.py`) and `amounts_measure` carries the
+  definition in every answer ([FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md)).
 
 ## A response says which source answered it
 

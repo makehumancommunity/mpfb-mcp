@@ -186,7 +186,16 @@ import mpfbmcp
 # `mpfb_get_object_info` 171 B for naming the attribution fields they now carry.
 # What a license means is one sentence - `null` is unknown, never permissive -
 # and the derivation's caveats stay in the bridge docstrings.
-DESCRIPTION_CEILING = 86350
+#
+# Raised from 86,350 to 88,400 by
+# [FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md), for two
+# tools, both under the average: `mpfb_set_rigify_hand_shape` (1,236 B) names
+# the six shapes, the finger names and both ranges, and what each sign of
+# `spread` does on which finger, since a caller must send them before any answer
+# could tell it; `mpfb_get_rigify_hand_shape` (840 B) points at the writer for
+# the vocabulary and spends its bytes on what is measured beside the amounts.
+# The shapes' amounts are in every reader answer (`known_shapes`), not here.
+DESCRIPTION_CEILING = 88400
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -240,7 +249,10 @@ DESCRIPTION_CEILING = 86350
 #
 # Raised from 17,100 to 17,200 by FR 046: 89 B for `mpfb_list_assets`'
 # nullable `license`.
-SCHEMA_CEILING = 17200
+#
+# Raised from 17,200 to 17,800 by FR 047: 580 B across two tools, a nullable
+# `name` each, the reader's `body_parts` list and the writer's batched `hands`.
+SCHEMA_CEILING = 17800
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.
@@ -292,7 +304,7 @@ class DescriptionBudgetTests(unittest.TestCase):
         self.measured = measure()
 
     def test_every_registered_tool_is_measured(self) -> None:
-        self.assertEqual(42, len(self.measured))
+        self.assertEqual(44, len(self.measured))
 
     def test_total_description_size_is_under_the_ceiling(self) -> None:
         total = sum(entry["description_bytes"] for entry in self.measured)

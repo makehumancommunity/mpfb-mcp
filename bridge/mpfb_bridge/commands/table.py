@@ -60,6 +60,7 @@ from . import get_mpfb_status
 from . import get_object_info
 from . import get_pose
 from . import get_pose_controls
+from . import get_rigify_hand_shape
 from . import get_target_stack
 from . import get_status
 from . import list_asset_materials
@@ -83,6 +84,7 @@ from . import set_macro_details
 from . import set_material_settings
 from . import set_pose_bones
 from . import set_pose_switches
+from . import set_rigify_hand_shape
 from . import set_skin
 from . import set_targets
 from . import symmetrize_targets
@@ -207,6 +209,12 @@ COMMANDS = {
         params=get_pose_controls.PARAMS,
         requires_mpfb=True,
         summary=get_pose_controls.SUMMARY),
+    "get_rigify_hand_shape": Command(
+        name="get_rigify_hand_shape",
+        handler=get_rigify_hand_shape.get_rigify_hand_shape,
+        params=get_rigify_hand_shape.PARAMS,
+        requires_mpfb=True,
+        summary=get_rigify_hand_shape.SUMMARY),
     "get_target_stack": Command(
         name="get_target_stack",
         handler=get_target_stack.get_target_stack,
@@ -359,6 +367,12 @@ COMMANDS = {
         params=set_pose_switches.PARAMS,
         requires_mpfb=True,
         summary=set_pose_switches.SUMMARY),
+    "set_rigify_hand_shape": Command(
+        name="set_rigify_hand_shape",
+        handler=set_rigify_hand_shape.set_rigify_hand_shape,
+        params=set_rigify_hand_shape.PARAMS,
+        requires_mpfb=True,
+        summary=set_rigify_hand_shape.SUMMARY),
     "set_skin": Command(
         name="set_skin",
         handler=set_skin.set_skin,

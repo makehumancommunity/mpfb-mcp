@@ -462,6 +462,29 @@ def _set_pose_switches(run: _Run) -> dict:
         switches=[{"body_part": "left_arm", "switch": "IK_FK", "value": 1.0}]))
 
 
+def _hand_shaped(run: _Run, envelope: dict) -> dict:
+    """The envelope, or a skip when the run's rig is not one the hand-shape tools take."""
+    blocked = (envelope.get("result") or {}).get("blocked_by")
+    if blocked in ("rig_not_found", "rigify_not_generated", "rig_not_supported"):
+        raise Skipped("the hand-shape tools take only a generated human or human_toes Rigify "
+                      "rig, and this run's is not one ({}, {})".format(run.rig_family, blocked))
+    return envelope
+
+
+@_item("mpfb_set_rigify_hand_shape", "hands", "restore_with")
+def _set_rigify_hand_shape(run: _Run) -> dict:
+    # A fist, so that the call changes something: every mutating item must
+    # answer performed true. mpfb_reset_pose below puts the hand back, as it
+    # does mpfb_set_pose_bones' write, so the run leaves the pose as it found it.
+    return _hand_shaped(run, run.tools["mpfb_set_rigify_hand_shape"](
+        name=_character(run), hands=[{"body_part": "left_hand", "shape": "fist"}]))
+
+
+@_item("mpfb_get_rigify_hand_shape", "hands", "known_shapes")
+def _get_rigify_hand_shape(run: _Run) -> dict:
+    return _hand_shaped(run, run.tools["mpfb_get_rigify_hand_shape"](name=_character(run)))
+
+
 @_item("mpfb_reset_pose", "restore_with", "bones_reset", "not_restorable")
 def _reset_pose(run: _Run) -> dict:
     # include_switches is the one argument not left at its default, because it

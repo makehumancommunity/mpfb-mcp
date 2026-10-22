@@ -1,9 +1,9 @@
 # Hand shapes on a Rigify rig: named shapes, and a curl and spread per finger
 
-**Status:** Proposed
+**Status:** Done
 
-This scopes the first gap left in [Posing support](../NEXT_STEPS.md#posing-support): **there is no
-hand-shape helper.** [FR 042](../done/042-posing-bones-switches-and-reset/README.md) can make a
+This scopes the first gap left in [Posing support](../../NEXT_STEPS.md#posing-support): **there is no
+hand-shape helper.** [FR 042](../042-posing-bones-switches-and-reset/README.md) can make a
 fist, but only by sending `scale_to` to every finger master, and the caller has to know that a
 Rigify finger curls when its master is scaled on Y. Nothing in a tool description says so, and the
 karate session found 0.45 by trial and error. The man-and-woman scene session measured what the
@@ -69,7 +69,7 @@ amount**, in one call per change, without knowing which bone or which channel do
   refusal names `mpfb_set_pose_bones` as the way to pose their fingers. A helper for the default
   rig, which is where the scene session's cost was measured, needs a different mechanism (three
   rotations per finger, with no master) and maybe MPFB's own finger helpers. It stays in
-  [NEXT_STEPS](../NEXT_STEPS.md#posing-support).
+  [NEXT_STEPS](../../NEXT_STEPS.md#posing-support).
 - **Per-joint angles as an input.** This was asked and decided: the amount is a 0-1 `curl`. A
   "hook" (first knuckle straight, the later joints bent, which is what the karate session's
   scale-only fist was) or a 24/40/24-degree curl like the scene session's cannot be said exactly.
@@ -79,15 +79,15 @@ amount**, in one call per change, without knowing which bone or which channel do
   version. Per-finger `spread` is in scope, so each is one `fingers` dict away, and adding a shape
   later means adding a row to a table (see [Architecture](#architecture)).
 - **User-defined or saved hand shapes**, and loading them from files. That belongs with
-  [Loading poses](../NEXT_STEPS.md#loading-poses).
+  [Loading poses](../../NEXT_STEPS.md#loading-poses).
 - **The palm control** (`palm.L`, Rigify's `super_palm`). It cups the metacarpals rather than
   moving a finger. It is not written.
   The reader reports it when it is off rest (FR 13).
 - **Rigify's `finger_curve`** (the rubber-hose B-bone setting on each master). It is not written,
   and it is reported when it is off its default, as `mpfb_get_pose` already does.
-- **Placing a hand at a point**, which is [its own NEXT_STEPS entry](../NEXT_STEPS.md#a-hand-cannot-be-placed-at-a-point-on-a-standard-rig);
+- **Placing a hand at a point**, which is [its own NEXT_STEPS entry](../../NEXT_STEPS.md#a-hand-cannot-be-placed-at-a-point-on-a-standard-rig);
   **detecting interpenetration** with a held object or the other hand, which is
-  [its own entry](../NEXT_STEPS.md#nothing-reports-that-two-meshes-interpenetrate);
+  [its own entry](../../NEXT_STEPS.md#nothing-reports-that-two-meshes-interpenetrate);
   **shapes that adapt to the body's proportions** (a shape is a table of amounts, and the answer
   measures the result so that a caller can adjust it); **toes**; **keyframes**.
 
@@ -148,7 +148,7 @@ amount**, in one call per change, without knowing which bone or which channel do
    about 3 KB for two hands is the target, and the actual size is measured.
 9. **`curl` and `spread` are derived**, and the answer says how. They come from the master's
    rotation and Y scale through the inverse of FR 4-6, as a
-   [derived fact](../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact).
+   [derived fact](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact).
    The derivation runs on the control channels. `joint_degrees` comes from the deforming bones,
    which is the ground truth the derivation can be checked against.
 10. **`matches_shape`** per hand: the name of the shape whose amounts the hand matches within a
@@ -220,7 +220,7 @@ amount**, in one call per change, without knowing which bone or which channel do
 
 - **One concept, one spelling.** `body_part`, `symmetry`, `achieved`, `deviation`, `restore_with`
   and the character frame are already in the
-  [glossary](../../specifications/tool-interface.md#the-glossary) and keep their meaning. The new
+  [glossary](../../../specifications/tool-interface.md#the-glossary) and keep their meaning. The new
   words are `hands`, `shape`, `fingers`, `curl`, `spread`, `joint_degrees`, `tip`,
   `matches_shape`, `known_shapes` and `segments_reset`, and they are added to it. `shape` must not
   collide with anything: the census in `tests/test_vocabulary.py` checks one JSON type per
@@ -243,9 +243,9 @@ amount**, in one call per change, without knowing which bone or which channel do
 ## Architecture
 
 - **Two bridge commands**, `get_rigify_hand_shape` and `set_rigify_hand_shape`, two tool modules,
-  and the usual four touch points listed in [CLAUDE.md](../../CLAUDE.md).
+  and the usual four touch points listed in [CLAUDE.md](../../../CLAUDE.md).
 - **One new shared module, `shared/rigify_hands.py`**, with two users, which is what
-  [warrants one](../../specifications/architecture.md#shared-modules-and-what-warrants-one). It
+  [warrants one](../../../specifications/architecture.md#shared-modules-and-what-warrants-one). It
   finds a hand's fingers (from FR 041's `finger_master` and `finger_segment` controls, grouped by
   the finger token in the name, `thumb`, `f_index`, `f_middle`, `f_ring`, `f_pinky`), maps amounts to channels and channels back to
   amounts, holds the calibration and the shape table, and measures `joint_degrees` and `tip`. It
@@ -253,7 +253,7 @@ amount**, in one call per change, without knowing which bone or which channel do
   `pose_writing.py`, the frame through `character_frame.py`, and classification through
   `pose_controls.py`. None of that is copied.
 - **The finger mechanics are read live, by Rigify's conventions**, as
-  [mpfb-integration.md](../../specifications/mpfb-integration.md#a-generated-rigify-rig-is-read-live-by-rigifys-conventions)
+  [mpfb-integration.md](../../../specifications/mpfb-integration.md#a-generated-rigify-rig-is-read-live-by-rigifys-conventions)
   requires. The bend axis and its sign are read from the driver on each finger's later
   `MCH-…_drv` bones (`(1-sy)*pi` on `+X`, which the meta-rigs' `primary_rotation_axis: "X"` gives),
   and are not assumed. The spread axis is the master's remaining axis, perpendicular to both the
@@ -287,25 +287,25 @@ amount**, in one call per change, without knowing which bone or which channel do
 
 ## Affected specifications
 
-- [tool-interface.md](../../specifications/tool-interface.md#the-glossary): the new words in
+- [tool-interface.md](../../../specifications/tool-interface.md#the-glossary): the new words in
   [Non-functional requirements](#non-functional-requirements); `rig_not_supported` with
   `supported_rigs`, and `finger_not_on_rig`, under the posing refusals; a third user of
   `restore_with`; and, under "Kept on purpose", why these two tool names carry the rig family when
   the other posing tools do not.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md#a-generated-rigify-rig-is-read-live-by-rigifys-conventions):
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md#a-generated-rigify-rig-is-read-live-by-rigifys-conventions):
   the finger mechanism, bend axis and sign read from the `MCH-…_drv` drivers, beside the
   collections, naming and switches it already lists.
-- [responses.md](../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact):
+- [responses.md](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact):
   an amount derived from control channels, reported beside the measurement it can be checked
   against (`joint_degrees`), with `expressible: false` when the derivation does not fit.
-- [mutating-tools.md](../../specifications/mutating-tools.md#a-tool-that-destroys-state-it-did-not-create-owes-the-caller-a-list):
+- [mutating-tools.md](../../../specifications/mutating-tools.md#a-tool-that-destroys-state-it-did-not-create-owes-the-caller-a-list):
   a write that silently resets controls it was not asked about (FR 13's segments) owes them in
   `restore_with`.
-- [architecture.md](../../specifications/architecture.md#shared-modules-and-what-warrants-one):
+- [architecture.md](../../../specifications/architecture.md#shared-modules-and-what-warrants-one):
   `rigify_hands.py`.
-- [vision.md](../../specifications/vision.md#target-tool-catalog): Introspection goes from 11 to 12
+- [vision.md](../../../specifications/vision.md#target-tool-catalog): Introspection goes from 11 to 12
   tools, and Creation and modification from 24 to 25.
-- The server instructions in [`__init__.py`](../../src/mpfbmcp/__init__.py): the posing sentence
+- The server instructions in [`__init__.py`](../../../src/mpfbmcp/__init__.py): the posing sentence
   gains a clause naming the hand tools for Rigify rigs.
 
 ## Tests
@@ -401,13 +401,125 @@ outcome depends on what the live rig shows:
   argument and the reader's answer together, and the outcome is recorded here either way. This
   was preferred to a shape the reader's vocabulary cannot express.
 
+## Outcome
+
+Both tools landed as scoped, on one new shared module, `shared/rigify_hands.py`. What the effort
+settled, found and changed from the text above:
+
+### The calibration, and how each number was found
+
+All in degrees, set on a default `human_toes` character with the module's own write, then checked
+unchanged on a generated `human` rig, which met every row.
+
+| Finger | `knuckle_degrees` | `joint_degrees` | `spread_degrees` |
+|---|---|---|---|
+| thumb | 10 | 40 | 40 |
+| index | 85 | 35 | 20 |
+| middle | 85 | 45 | 10 |
+| ring | 85 | 40 | 15 |
+| pinky | 85 | 35 | 25 |
+
+- **The four fingers' curl 1.0 is a fist with the fingertips against the palm, not in it.** The
+  measure: the tip bone's end, along the palm-side normal (the way a curling finger moves, averaged
+  over the four), against the palm's surface below the middle of that finger's metacarpal, found by
+  a ray at rest. A grid over knuckle and later joint angles showed every combination the
+  architecture section's starting point suggested burying the tips: **the karate session's 0.45
+  scale (99 degrees at each later joint) puts them 10-15 mm inside the palm once the knuckle
+  bends**; it only looked closed in a screenshot because the knuckle was at rest, which makes it a
+  hook. The later-joint angle was chosen per finger as the largest that leaves the tip clear with
+  the knuckle near 90, and the result measures 7.2, 10.6, 10.1 and 7.2 mm clear (index to pinky).
+  A ray-parity "inside the mesh" test was tried first and abandoned: an open finger base makes its
+  parity unreliable.
+- **The knuckle is 85, not 90**, because the reader turns the master's rotation back into a swing
+  about the spread axis and one about the bend axis, which is singular at exactly 90.
+- **The thumb's curl 1.0 lies across the index and middle fingers in a fist**: its distal bone's
+  middle 16 mm outside the midpoint of those two fingers' middle bones, found by a search over
+  knuckle, joint and spread; the fist row adds `spread: -0.5`.
+- **The spread maxima** were set by looking at a fanned hand (spread 1.0 on every finger but the
+  middle), both from the palm and the back.
+
+### Shapes
+
+`open`, `relaxed`, `fist` and `pointing` are as scoped. `grip` and `pinch` were searched for, then
+retuned once after the knuckle moved from 90 to 85, which the first live run caught:
+
+- **`pinch`**: thumb `curl` 0.65, `spread` -0.5; index 0.7, `spread` 0.5; the others `relaxed`. The
+  thumb and index tips measure 6.4 mm apart by `tip`, on both rigs.
+- **`grip`**: thumb 0.8, `spread` -0.8; index 0.7, middle 0.75, ring 0.7, pinky 0.6. Each fingertip
+  ends 5.7-10.0 mm from the surface of a 4 cm cylinder placed against the palm across the
+  knuckles, and the renders show the hand closed around it.
+
+### Decided by evidence: no thumb opposition
+
+**Curl and spread alone bring the thumb and index tips within 1 cm** - the search found 2.9 mm at
+its closest, which is overlapping pads - so `opposition` was not added, to the writer or the reader.
+The thumb's nail does not face the index in `pinch`, which a screenshot shows and the 1 cm rule
+does not ask about.
+
+### What changed from the text above
+
+- **The spread's sign is found from the hand's rest geometry**, not tabulated per side: positive
+  moves a tip away from the middle finger's knuckle (the middle toward the index's), and the thumb
+  away from the side a curling finger moves toward. A finger with no neighbour to define it is a
+  resolution error. The bend axis and sign are read off the drivers as planned.
+- **A joint is not measured as consecutive bones' relative rotation.** Rigify's stretch chain gives
+  the first deforming bone the master's direction but not its twist, so that reading put a spread
+  thumb's middle joint 6 degrees off. Each later joint is the turn that carries the previous
+  bone's direction, seen from the next bone, back to rest; the first knuckle is a direction.
+  Measured and asked-for angles now agree within 0.003 degrees over random curls and spreads.
+- **A spread written alone leaves the Y scale exactly as it was**, so "one amount changes and
+  nothing else" holds to the bit rather than to rounding.
+- **`restore_with` round-trips every channel within 1e-5, not 1e-6.** `mathutils` computes in
+  single precision; an amount read back from a master's Euler channels is exact to about 2e-6.
+  Its amounts keep seven decimals.
+- **The reader is 4.1 KB, not the 3 KB aimed at**: 2.1 KB of hands, 1.3 KB of `known_shapes` and
+  0.4 KB of `amounts_measure`. `fingers_found` was dropped as a key, since `fingers` is keyed by the
+  fingers a hand has; a finger the rig has and cannot read is in `finger_errors`. A two-hand write
+  with `restore_with` is 6.8 KB, under its 8 KB.
+- **The karate test reads a hook.** Requirement 9's test, "a master scaled to 0.45 reads as the
+  curl that scale implies", reads `joint_degrees` of 0, 99, 99 and `expressible: false`
+  (`knuckle_and_joints_disagree`) with a fitted curl, because with this calibration that scale is
+  not a curl.
+- **Spellings settled**: `rig_not_supported` with `supported_rigs`; resolution errors
+  `finger_not_on_rig` and `finger_not_as_generated` (a finger the rig has, edited after
+  generation), `unknown_finger`, `unknown_shape`, `unknown_body_part`, `duplicate_body_part`,
+  `counterpart_named`, `finger_ik_in_charge`, `driven_channel`, `locked_channel`, `invalid_entry`;
+  the writer's verb `changed`; per hand `fingers_written`, `fingers_not_on_rig`,
+  `fingers_before`/`fingers_after`, `matches_shape_before`/`matches_shape_after`,
+  `segments_reset`, `palm_off_rest`, `settings_off_default`; per finger `expressible`,
+  `not_expressible_because`, `spread_degrees`, and on a written finger `achieved` and `deviation`.
+- **The smoke item writes `fist`, not `open`.** The smoke run requires every mutating item to
+  answer `performed: true`, so `open` on a hand at rest would fail it; the item runs before
+  `mpfb_reset_pose`, which puts the hand back, as it does for `mpfb_set_pose_bones`' item.
+- **A latent test hazard, fixed in passing**: FR 042's animated-channel test cleared the rig's
+  whole `animation_data`, Rigify's drivers included, so later tests in its module ran on a rig
+  whose fingers could not curl. Both modules now remove only the action, and
+  [testing.md](../../../specifications/testing.md#a-fixture-reproduces-the-install-never-a-convenient-one)
+  says why.
+
+## Verification status
+
+**Verified.** [`live_check.py`](live_check.py) ran with 0 failures against the maintainer's
+windowed Blender, using mpfb-mcp tools alone for everything it builds and poses: a `human_toes`
+character placed at (-2.5, 1.5) facing 35 degrees, every shape on both hands through `symmetry`
+read back as itself with every finger achieved, the four numeric acceptances above, the scene
+session's case (a loose curl on one hand, none on the other) in one call, `pointing` as `fist`
+plus an index override, `restore_with` restoring a hand with a posed segment and a hook, and
+`mpfb_reset_pose` on `left_hand` reading `open`. Workbench renders from the front and the side
+of each shape on each rig were looked at; they are written outside the repository. The same rows
+on a generated `human` rig met every acceptance without a change to the tables. Each call costs
+about 0.07 s through the windowed bridge.
+
+The two tools have smoke items in [verification/](../../../verification/): 46 of 46 in 2.3 s
+against a headless Blender. 55 new bridge tests (666 in all) and 24 new unit tests (609).
+
 ## References
 
-- [NEXT_STEPS: Posing support](../NEXT_STEPS.md#posing-support), the entry this scopes, with both
+- [NEXT_STEPS: Posing support](../../NEXT_STEPS.md#posing-support), the entry this scopes, with both
   sessions' numbers.
-- [FR 041](../done/041-pose-controls-and-read-back/README.md) (`finger_master`, `finger_segment`,
+- [FR 041](../041-pose-controls-and-read-back/README.md) (`finger_master`, `finger_segment`,
   `finger_curve` as a setting, the frame) and
-  [FR 042](../done/042-posing-bones-switches-and-reset/README.md) (`pose_writing.py`, the
+  [FR 042](../042-posing-bones-switches-and-reset/README.md) (`pose_writing.py`, the
   snapshot and restore, `achieved`, `restore_with`, and the fist through `scale_to`).
 - Blender: `scripts/addons_core/rigify/rigs/limbs/super_finger.py`: `make_master_control` (`_master`,
   X/Z scale locked), `rig_mch_bend_bone` (the first `MCH-…_drv` copies the master's rotation, the

@@ -830,6 +830,18 @@ now four parts, and it applies on both sides of the socket:
   public as `rounded_metres()`, so a placement's position and a frame's origin cannot differ in the
   last digit.
 
+- **What a curl is, is one mapping for a reader and a writer.** `rigify_hands.py` came with
+  [FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md), whose reader reports each
+  finger in exactly the shape its writer takes: a reader and a writer that mapped `curl: 0.5` to a
+  master's channels separately would make a read-back a different write. It finds a hand's fingers
+  from `pose_controls`' classification and Rigify's drivers, maps amounts to channels and back,
+  measures the joints on the deforming bones, and holds the calibration and the shape table - the
+  calibration is data this package set by measurement, so it lives beside the code that applies it
+  rather than in either command. It also holds the refusal both commands give a rig they do not
+  take, and the hand entry both answer with, because a command must not import another command.
+  Writing goes through `pose_writing.py`'s snapshot, restore and lock checks, and the frame is
+  `character_frame.py`'s; none of that is copied.
+
 **The evidence for the rule is FR 036's census**, not the census of generated programs that
 stood here before: those programs were deleted by
 [FR 033](../feature-requests/done/033-retire-the-generated-code-path/README.md), and a rule backed
@@ -850,7 +862,8 @@ four module-level names through `mpfb_surface.py` once rather than at every use.
 neither, because they read nothing out of MPFB's services: `performed.py` works on a dict the
 command has finished building, `artifact_names.py` on a name and a path, `expression_panel.py` on
 MPFB's root package name, and `selection.py` and `blender_data.py` on plain Blender state.
-`character_frame.py`, `pose_reading.py` and `pose_writing.py` read only Blender too. `placement.py`
+`character_frame.py`, `pose_reading.py`, `pose_writing.py` and `rigify_hands.py` read only Blender
+too. `placement.py`
 was scoped to read none either and takes `services` for two questions only MPFB may answer: which
 meta-rig moves with a generated rig (the one `HumanService.refit()` will refit,
 `find_rigify_metarig_by_rig()`'s) and which armature is a sub-rig (its `object_type`). `pose_controls.py`'s rig lookup

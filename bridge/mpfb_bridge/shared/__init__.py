@@ -65,7 +65,9 @@ library, three with the character summary, four with
 both material settings commands and the character summary must agree about, and
 ``placement`` with
 [FR 045](../../../feature-requests/done/045-placing-a-character/README.md), which the
-place command, the summary and ``add_asset`` must agree about.
+place command, the summary and ``add_asset`` must agree about, and ``rigify_hands`` with
+[FR 047](../../../feature-requests/done/047-rigify-hand-shapes/README.md), which the two
+hand-shape commands must agree about for a read-back to be a write.
 """
 
 __all__ = ()
