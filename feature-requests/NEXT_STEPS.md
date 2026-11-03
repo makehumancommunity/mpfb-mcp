@@ -39,6 +39,7 @@ records what has already landed and why. When an effort below is finished, move 
 - [Subdivision on a mesh asset, beside the shape keys `interpolate` gave it](#subdivision-on-mesh-assets-beside-shape-keys)
 - [Enhanced skin settings, and MPFB's named material settings files](#eye-and-layered-skin-colours)
 - [Layered skin: what `mpfb_set_material_settings` cannot reach](#layered-skin-sockets-out-of-reach)
+- [`tongue01` does not follow `jawOpen`](#tongue-does-not-follow-jaw-open)
 - [License in the catalogues](#license-in-the-catalogues)
 - [Direct tests of the bridge's shared modules](#direct-tests-of-the-bridges-shared-modules)
 - [A garment's sub-rig is bound wrong when it is equipped away from the origin](#sub-rig-child-of-breaks-away-from-the-origin)
@@ -256,6 +257,27 @@ are where this bites hardest; the session ended up choosing garments by BVH coun
 Two cheap things would have saved most of this: an intersection count in `mpfb_add_asset`'s answer
 (against the body and every other equipped asset), and a `license` filter that also covers
 alternative materials, since every candidate had to be joined against the pack JSONs by hand.
+
+More from the action image session (2026-11-03, script:
+`interacting_with_blender/action_image_with_normal_map_skins/fit_tools.py`). Two things here are new.
+`mpfb_add_asset`'s default subdivision can itself cause the intersection, and an overlap count does
+not say whether anything shows:
+
+| Pair | Face pairs | Outcome |
+|---|---|---|
+| `cortu_cargo_pants` (196 faces) x body, at rest, subdivision 1 | 284 and 148 | Skin through both thighs in the render |
+| Same, at rest, subdivision 0 | 28 and 12 | Faceted outline, far less skin |
+| Same, posed, subdivision 0 | 33 and 21 | 448 px of skin visible on one man, 0 on the other |
+| `short01`, `short02`, `short03` under `mindfront_patrol_cap` | 1501, 425, 186 vertices through | No short CC0 hair fits; hair asset dropped |
+| `jaldmic_akm_base` x the hand holding it | 468 | The asset's fixed position runs it through the palm; not visible |
+
+The visible figure took a pixel test: cast a camera ray per pixel and count where the body is hit
+before the pants, which needs `calc_loop_triangles`, because `BVHTree.FromPolygons` triangulates
+non-planar quads differently from the renderer and the two disagreed by whole patches. Per-vertex and
+per-face versions reported 0 for a patch plainly visible in the render. Usable hip and thigh poses
+only got 448 px to 224 px (an extreme thigh angle with a 20-degree twist reached 32 px);
+`upperleg-muscle` −0.7 on the body brought it to 88 px. A "does this show from this camera" answer
+beside the overlap count would have replaced most of that search.
 
 <a id="a-hand-cannot-be-placed-at-a-point-on-a-standard-rig"></a>
 
@@ -707,6 +729,24 @@ default `Roughness` 0.35 (wet-looking) to 0.50-0.58. What is not reachable:
   the only lever for gloss.
 - Neither is in MPFB's preset serializer either, so this is an MPFB-side gap first; the tool can
   only follow.
+
+The action image session (2026-11-03) needed the normal strength for real:
+`mindfront_skin_male_african_middleage`'s author recommends about 0.7, and 1.0 looked gritty on the
+chest. It was set to 0.75 through `execute_blender_code`, which also means it does not survive
+`mpfb_save_preset`. That session also found a default worth changing in MPFB: with the body group's
+`SSSRadiusMultiplyer` at 0.7, an open mouth's interior renders saturated red even with the key light
+off, because the cavity uses the body shader. A multiplier of 0.12 clears it. The socket is writable,
+so this needed no tool, only several test renders to find.
+
+<a id="tongue-does-not-follow-jaw-open"></a>
+
+## `tongue01` does not follow `jawOpen`
+
+Found by the action image session. With `jawOpen` at 0.85 and a refit, `tongue01` stays near its rest
+position and floats mid-mouth, covering the upper teeth as a pink slab; the teeth do follow. The
+asset was removed. `mpfb_set_face_units` says nothing about it, since the unit was applied correctly.
+Either the tongue wants jaw weighting in MPFB, or the tool's answer could warn when a `Tongue` asset
+is equipped and `jawOpen` is above about 0.3.
 
 <a id="license-in-the-catalogues"></a>
 
