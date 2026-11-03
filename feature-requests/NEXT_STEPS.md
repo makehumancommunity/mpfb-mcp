@@ -655,6 +655,15 @@ enough that it costs.
 
 ## The MakeClothes and MakeSkin workflows
 
+**Scoped on 2026-11-03 as four requests, not yet implemented:**
+[FR 048](048-measuring-mesh-assets/README.md) (`mpfb_check_mesh_asset` and `mpfb_check_intersections`),
+[FR 049](049-makeskin-materials/README.md) (set, get and store a MakeSkin material),
+[FR 050](050-writing-mesh-assets/README.md) (`mpfb_write_mesh_asset`, and the try-on recipe) and
+[FR 051](051-delete-groups/README.md) (`mpfb_generate_delete_group`, behind a spike). They rename the
+tools proposed below, since the [glossary](../specifications/tool-interface.md) keeps "clothes" for
+quoting MPFB. Item 5 below stayed out of them: see
+[Trying an asset without touching the scene](#trying-an-asset-without-touching-the-scene).
+
 **No tool touches asset authoring.** Everything MPFB's Create assets panels do was driven through
 `execute_blender_code` and `from bl_ext.repo.mpfb...` imports, which is exactly the "read MPFB's
 source to know what to call" the [vision](../specifications/vision.md) exists to remove.
@@ -768,6 +777,23 @@ about 500 lines to write and 20 s to run.
   control.
 - The MHMAT writer emits `bumpmapIntensity 1.0` with no bump map and `roughness 0.7` beside a roughness
   map. Both are harmless, but a reader can't tell which values are in effect.
+
+<a id="trying-an-asset-without-touching-the-scene"></a>
+
+## Trying an asset without touching the scene
+
+What [FR 050](050-writing-mesh-assets/README.md) left out when it settled on a recipe of existing
+tools: `mpfb_create_human_from_preset`, `mpfb_add_asset`, pose, `mpfb_check_intersections`. In the gi
+session that loop found every defect that mattered. Two things are missing from it:
+
+- **No tool removes a character.** The recipe leaves its test character in the user's scene, and
+  deleting one by hand leaves rigs, sub-rigs and masks to think about. A `mpfb_remove_character` would
+  be the smallest fix. It is destructive, so it needs the same care as `mpfb_remove_asset`.
+- **`mpfb_try_asset` itself**, which would not touch the scene at all. It was weighed as a headless
+  subprocess (the project's first, needing the binary's location and results passed between processes,
+  beside a bridge that "executes nothing a caller sends") and as a temporary scene in the running file
+  (MPFB reads `context.scene`, and a failure part way leaves debris in the user's file). Neither earned
+  its cost before the recipe had been used. A second authoring session should say whether it still does.
 
 <a id="what-the-all-or-nothing-batches-caught"></a>
 
