@@ -500,6 +500,23 @@ A per-asset "offset along normal" in the fitting step (MakeHuman's `z_depth`, or
 slider) would turn most of these into a tool call. A garment-vs-garment report on `mpfb_add_asset`
 would have caught the hat on the first call instead of after a render.
 
+More from the second man-and-woman session (2026-10-24, CC0 only, script:
+`interacting_with_blender/man_and_woman_holding_hands/check_intersections.py`). Layered separates
+are where this bites hardest; the session ended up choosing garments by BVH count rather than look:
+
+| Pair | Face pairs | Outcome |
+|---|---|---|
+| `toigo_turtle_neck` x `toigo_wool_pants` | 557 | waistband through the sweater; both dropped |
+| `toigo_fisherman_sweater` x `toigo_long_full_skirt` | 502 | same; both dropped |
+| `male_casualsuit01` x body | 171 | ~85 at the collar, unfixable; dropped |
+| every male sock-shoe (`shoes01`-`06`) x any CC0 one-piece jeans | 28-120 | `shoes03` x `male_casualsuit03` kept: 28, all inside the trouser leg, invisible |
+| `toigo_ballet_flats` / `toigo_flats` x body | 148 / 972 | foot through the sole; `toigo_mj_cloth_shoes` scored 0 |
+| `toigo_keyhole_neck_dress` x body | 0 | the only CC0 one-piece female outfit tested that fits cleanly |
+
+Two cheap things would have saved most of this: an intersection count in `mpfb_add_asset`'s answer
+(against the body and every other equipped asset), and a `license` filter that also covers
+alternative materials, since every candidate had to be joined against the pack JSONs by hand.
+
 <a id="a-material-whose-textures-do-not-resolve-is-reported-as-applied"></a>
 
 ## A material whose textures do not resolve is reported as applied
@@ -527,6 +544,91 @@ at `11` against a declared range of `[0.001, 0.2]`, which `mpfb_get_material_set
 in `values_outside_range`. The reporting works; it is MPFB's default that is wrong, and worth
 raising upstream rather than papering over here.
 
+<a id="layered-skin-sockets-out-of-reach"></a>
+
+## Layered skin: what `mpfb_set_material_settings` cannot reach
+
+Found by the second man-and-woman session, whose brief asked for a natural, not overly glossy
+layered skin and asked explicitly what was missing. Roughness and the procedural bump strengths per
+region (`body`, `face`, `ears`, `lips`) are all writable, and that was enough to go from MPFB's
+default `Roughness` 0.35 (wet-looking) to 0.50-0.58. What is not reachable:
+
+- **The skin's normal-map strength.** The `masternormal` Normal Map node sits at the top level of
+  the material, outside every group the tool serializes, so a skin that ships a normal map
+  (`mindfront_aksel_skin`) can only be taken at strength 1.0.
+- **Specular level and IOR.** Each region group wraps a Principled BSDF with `Specular IOR Level`
+  0.5 and `IOR` 1.5 set inside the group, not exposed as group inputs. Skin wants ~1.4; roughness is
+  the only lever for gloss.
+- Neither is in MPFB's preset serializer either, so this is an MPFB-side gap first; the tool can
+  only follow.
+
+<a id="set-skin-renames-another-characters-node-groups"></a>
+
+## `mpfb_set_skin` renames another character's node groups to `.unused`
+
+Two characters with `LAYERED` skins share the layered node groups (`MpfbBody`, `MpfbFace`,
+`MpfbSkinMasterColor`, ...): the second skin built reuses the first one's. Re-skinning the *first*
+character with `mpfb_set_skin` then renamed the groups the *second* character still used to
+`MpfbBody.unused`, `MpfbNails.unused.unused` and so on, and built fresh ones for the first. The
+render is unaffected (each `.unused` group still has its one user) and MPFB's
+`MaterialService.identify_material` still answers `layered_skin` for both, so this is cosmetic
+today. But `.unused` is MPFB's marker for "delete me", and anything that later purges by that marker
+will break the other character's skin. `materials_destroyed` reports only the subject's materials, so
+nothing in the response hints that a second character was touched.
+
+<a id="hand-to-hand-contact-on-rigify"></a>
+
+## Hand-to-hand contact on a Rigify rig
+
+A cost data point beside [A hand cannot be placed at a point on a standard rig](#a-hand-cannot-be-placed-at-a-point-on-a-standard-rig)
+and [Nothing reports that two meshes interpenetrate](#nothing-reports-that-two-meshes-interpenetrate),
+this time on `rigify.human_toes`, where `move_to` on `hand_ik` does work. Placing the hand was easy;
+**orienting** it was not. `aim` plus `twist` does not say what twist 0 is relative to: on the same
+hand, twist 0, -90, +90 and 180 gave "back of hand forward", "palm forward", "hands crossed" and
+"palms facing", which does not read as 90-degree steps from the caller's side. What worked was
+setting the control's world matrix in bpy from a palm normal and a finger direction, measured on
+`DEF-hand` (palm normal is local +X on `.L`, -X on `.R`).
+
+The hold itself then needed a search: about 500 placements were scored with a BVH overlap count
+plus "his vertices within 5 mm of her surface" as a proxy for a grip, with the hand shapes set by
+`mpfb_set_rigify_hand_shape` (his fingers curl ~0.6 and thumb spread 0.9 so they wrap the pinky edge
+of her hand; hers ~0.45). Result: 0 intersecting face pairs, 0.6 mm closest approach. Two
+additions would have saved most of the hour:
+
+- An `orient` entry on `mpfb_set_pose_bones` taking the palm normal and finger direction in the
+  character frame (or world), resolved against the deforming hand bone.
+- `mpfb_set_rigify_hand_shape`'s answer is ~2.5 KB per call, mostly unchanged fingers' before/after
+  tips; a written-fingers-only mode would make iterating on curls cheap.
+
+Also worth saying in the tool description: negative thumb `spread` brings the thumb across the palm,
+out of the palm plane and toward whatever the palm faces; positive brings it back beside the index.
+
+<a id="rigify-fist-intersects-itself"></a>
+
+## The Rigify `fist` shape intersects itself, and "straight" is out of reach
+
+Found by the Taido gedan-gamae session (`interacting_with_blender/taido/CLAUDE.md`, "Posing"), on
+`rigify_generated.human_toes`. Two gaps in `mpfb_set_rigify_hand_shape`:
+
+- **`shape: "fist"` gives 86–123 intersecting face pairs** within the hand itself (BVH overlap
+  between finger groups classified by dominant `DEF-` vertex group). The index and middle fingertip
+  segments cross, and the thumb sits inside the index. Spread changes through the tool moved the
+  count (71 → 91 → 36) without clearing it. A clean fist needed a coordinate-descent search over the
+  masters' euler X/Z and Y scale in bpy, about 70 evaluations and 3 s in all. The best clean
+  result (curls 0.8/0.8/0.87/0.92, thumb 0.65/−48°) is visibly looser than the preset, because every
+  tighter thumb went into the fingers (22–86 pairs). Wanted: a `fist` that is clean on MPFB's own
+  meshes, or an `avoid_intersections` flag that backs each curl off until the hand's self-overlap is
+  zero, reporting what it gave up.
+- **A flat, straight open hand cannot be expressed.** The rest fingers curl about 26° toward the
+  palm, and the tool's floor of `curl −0.2` leaves 5–10°. A curl range down to about −0.3, or a
+  `flat` shape calibrated to put the fingers in line with the hand bone, would cover the open hands
+  of martial-arts kamae (and a salute, a blade hand, a wave).
+
+A note for whoever searches finger poses directly in bpy: on `.R` the masters' Z rotation is the
+*negated* spread (the tool reads a raw +9° as spread −0.45), so the tool's "same on both hands"
+holds. A more positive index `spread` made the index–middle overlap worse in a curled fist
+(71 → 91) because of the fist's geometry, not the sign.
+
 <a id="response-bulk-on-the-read-only-tools"></a>
 
 ## Response bulk on the read-only tools
@@ -548,6 +650,124 @@ enough that it costs.
   calls, each returning a full report. A batch form would cut the round trips, and — more useful —
   would give one place to enforce the ordering rule that the README states and no tool checks:
   rig before garments, Rigify generate after them, dress before placing.
+
+<a id="the-makeclothes-and-makeskin-workflows"></a>
+
+## The MakeClothes and MakeSkin workflows
+
+**No tool touches asset authoring.** Everything MPFB's Create assets panels do was driven through
+`execute_blender_code` and `from bl_ext.repo.mpfb...` imports, which is exactly the "read MPFB's
+source to know what to call" the [vision](../specifications/vision.md) exists to remove.
+
+The evidence is one session (2026-11-01), taking a draft gi to a finished asset: new belt geometry,
+a re-cut unwrap, three 4096 px textures, and an MHCLO written, then loaded on another character.
+Scripts and renders are in `interacting_with_blender/taido/gi/`, with the task record in its
+`README.md`. Only four MPFB tools were called in the whole session, all read-only, and two of those
+gave misleading answers because the object's source record was stale (below).
+
+| Step | How it was done | What it cost |
+|---|---|---|
+| Is this mesh ready for MakeClothes? | `ClothesService.mesh_is_valid_as_clothes()` by hand; metadata through three config classes | The answer was `all_checks_ok: true` for a mesh with real defects (below) |
+| Build the material | Wrote an MHMAT by hand, then `populate_from_mhmat()` and `apply_node_tree()` | Reading the operator first, because `mpfb.import_makeskin_material` needs a file dialog and a "replace" scene property |
+| Write the MHCLO | `bpy.ops.mpfb.write_makeclothes_clothes(filepath=...)`, selecting exactly the basemesh and garment first | 2.2 s to run. It leaves the selection cleared and reports only through `self.report` |
+| Delete group | A ray-casting script | **Eleven runs** |
+| Try the asset on someone else | `HumanService.add_mhclo_asset()` in a headless Blender on a posed template scene | 14 s per pose, and it found every defect that mattered |
+
+### Proposed tools, in order of what they would have saved
+
+**1. `mpfb_check_clothes`.** Read-only, and the highest value here. Today's validator checks vertex
+groups, scale and face type, and passed the draft with these defects:
+
+| Defect in the draft | Measure | Consequence |
+|---|---|---|
+| Coat normals inward (hakama correct) | Sleeves 8 % outward, back panel 0 %, hakama legs 100 % | Found only by plotting the mesh from outside Blender |
+| Coat through the hakama's waist | 77 face pairs | Visible at the waist |
+| Coat through the body | 25 face pairs | Under the flaps |
+| Under flap through the top flap | 14 face pairs | A visible crease at the hem |
+
+So the tool should wrap the validator and add, per connected component:
+- normal orientation;
+- overlap counts against the **unmasked** body and against the garment's other components (see the
+  trap below);
+- the fit offset range;
+- UV islands, overlaps, out-of-range coordinates and texels per metre per island;
+- every texture node's resolved path;
+- the three metadata groups, the xref cache's state, and `asset_source`.
+
+It belongs beside [Nothing reports that two meshes interpenetrate](#nothing-reports-that-two-meshes-interpenetrate).
+
+**2. `mpfb_write_clothes_asset`.** Takes a garment and writes MHCLO + OBJ + MHMAT + textures, following
+the [mutating-tools rules](../specifications/mutating-tools.md):
+- a name and never a path;
+- `overwrite: false` by default;
+- selection restored;
+- `blocked_by` for a missing xref cache (`mpfb.basemesh_xref` builds it) and a failed check;
+- `path`, sizes and match counts in the answer.
+
+The logic sits in the `ClothesCommon` operator mixin rather than a service, so like
+`mpfb_set_asset_material` this has to reproduce a panel. Destination is a design question: the
+library is the natural "where the result can be found", but a work-in-progress may not belong there.
+This session wrote to a project directory, and **"Store in library" is untested**. It must also say
+that it rewrites source textures (below).
+
+**3. `mpfb_set_makeskin_material`.** Takes a name, a map of `{diffuse, normalmap, roughnessmap, ...}`
+to image paths, and values, and builds the node tree through MPFB's own template. Agents generate
+textures outside Blender, so this is one tool that has to accept input paths. It needs a matching
+read: which maps are wired, at what strength, in which colour space. `mpfb_get_material_settings`
+reports only `diffuseIntensity` for a garment.
+
+**4. `mpfb_generate_delete_group`.** This was the longest part of the session, and it is a real
+algorithm rather than a call:
+- `mpfb.makeclothes_gendelete` calls its own result "very rough" and, by its source, refuses any
+  garment with a modifier. MPFB's own Subdivision modifier is one.
+- The group went from 2563 to 3209 vertices.
+- A fixed margin at the V-neck is wrong both ways: 3.5 cm left dark slits inside the lapel on the
+  authoring body, and 7.5 cm left skin poking through the coat on the posed template.
+- What worked was a sight-line test, plus a collar of three rings because a mask takes the whole
+  face. See `taido/gi/tools/extend_delete_group.py`.
+- Its answer should give masked-skin-still-visible and unmasked-skin-under-garment counts.
+
+**5. A way to try an asset without touching the scene.** Every poke-through appeared only on the
+template's other body shape, in a pose. The authoring scene showed zero overlaps throughout. A
+headless `mpfb_try_asset` on a preset would give an agent that loop. Even without it,
+`mpfb_add_asset`'s answer should carry the intersection counts already asked for under
+[Garment fit intersections](#garment-fit-intersections). `mpfb_add_asset`
+was not itself tried here, since it would have left a `Delete.*` group on the user's character.
+
+**Not tools.** Unwrapping, packing and texture generation are general Blender and image work, and
+went fine through generic code. A short recipe would serve better: rasterize UV triangles into
+per-texel position and island maps, build a height field in metres, derive the normal map. That took
+about 500 lines to write and 20 s to run.
+
+### Traps worth documenting now, whatever gets built
+
+- **An overlap count on a masked body is blind.** Once the delete group grew, the masked skin was no
+  longer in the evaluated mesh, so `coat/body` stayed at 0 while it poked through on the next
+  character. It also silently disabled this session's own clearance step, which measured against the
+  evaluated body. Measure with the masks off.
+- **Subdivision can warp a straight texture pattern.** MPFB adds Subdivision with Blender's default
+  `uv_smooth` (`PRESERVE_BOUNDARIES`). A narrow strip with one face across its width, as a belt
+  naturally is, renders its stitching as a ripple. It is perfectly straight with subdivision off, and
+  worse with `uv_smooth: NONE`. Margin strips along both long edges fixed it. A band-like part is a
+  common garment feature, so this deserves a line in MPFB's docs or a check.
+- **Mixed faces are refused.** `all_faces_same_type` means an all-triangle draft forces any added
+  geometry to triangles too. The message is clear; the restriction is worth knowing before modelling.
+- **A garment changes behaviour once it has a material of its own.** Nothing updates `asset_source`,
+  so this gi still answers as `nurse_uniform_with_pants`. `mpfb_get_object_info` gives
+  `mhclo_path: null`, `mpfb_list_asset_materials` says `mhclo_not_installed`, and by its source
+  "Store as alternate" would fail for the same reason.
+
+### Worth raising in MPFB
+
+- `generic_execute` reports an image error with `{'ERROR'}` and then returns `{'FINISHED'}`, and
+  `mpfb.import_makeskin_material` does the same when a material already exists. Called from code,
+  both read as success. Any tool wrapping them has to check for itself.
+- `check_that_all_textures_are_saved` calls `image.save()` on every texture, which **re-encodes the
+  source files in place**: here the diffuse went from 2.5 to 3.2 MB and the normal map from 17.0 to
+  18.2 MB. Nothing says so, and it is a surprise if those files are generated or under version
+  control.
+- The MHMAT writer emits `bumpmapIntensity 1.0` with no bump map and `roughness 0.7` beside a roughness
+  map. Both are harmless, but a reader can't tell which values are in effect.
 
 <a id="what-the-all-or-nothing-batches-caught"></a>
 
