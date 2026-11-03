@@ -84,6 +84,10 @@ the MakeHuman ecosystem, which is a dependency no tool in this package has yet.
 
 ## Loading poses
 
+**Scoped on 2026-11-03 as [FR 055](055-loading-and-saving-poses/README.md), not yet implemented**, with saving, partial poses
+and the floor added. Scoping measured why a load needs a choice: MPFB's BVH loader rewrites 124 of 137 bone rolls, after which a JSON
+pose lands 606 mm off at the wrist, and each load orphans an armature and an action.
+
 These come in two variants: BVH-style poses found via AssetService and json-style poses found
 in the user config dir. The latter is loaded in an operator in the rigging ui hierarchy.
 
@@ -131,7 +135,8 @@ session found that neither request took, the first now half closed:
   24/40/24-degree curl on one hand and none on the other. On Rigify that case is now one call
   (FR 047's live check); a per-joint curl like 24/40/24 is still not expressible there, by
   decision, and stays `mpfb_set_pose_bones`' job.
-- **The pose libraries cannot reach a generated Rigify rig at all**, which makes
+- **The pose libraries cannot reach a generated Rigify rig at all** ([FR 055](055-loading-and-saving-poses/README.md) refuses it, and a
+  pose saved on such a rig loads back; retargeting stays here), which makes
   [Loading poses](#loading-poses) narrower than that entry assumes. There is one JSON pose per FK
   rig type (`default_fk`, `game_engine_fk`, and so on), and MPFB's panel looks for
   `<identify_rig>_ik` on any rig with an `_ik` bone, so this rig would need
@@ -202,7 +207,9 @@ equipped asset and its material in `mpfb_get_object_info` and the summary. Two c
   `shared/pack_attribution.py`'s stem fallback is the mechanism; what is missing is the measurement
   that says it holds for targets, which FR 046's `live_check.py` did for the asset subdirs.
 - **Poses**, when there is a pose catalogue (see [Loading poses](#loading-poses)). 149 pack entries
-  are poses, and a pose is a file too.
+  are poses, and a pose is a file too. **BVH poses turn out to be done:** `mpfb_list_assets` reports
+  all 59 here as CC0, measured while scoping [FR 055](055-loading-and-saving-poses/README.md). A saved
+  JSON pose has no pack entry to join.
 
 <a id="a-garment-behind-a-sub-rig-is-missing-from-the-family"></a>
 
@@ -259,6 +266,8 @@ order the easy thing to do.
 
 ## Selection restore covers one object
 
+**[FR 054](054-refits-keep-the-pose/README.md) moves the commands it wraps onto `restored_all()`.** The others stay here.
+
 Ten mutating commands put the caller's selection back with `shared/selection.py`'s `restored()`,
 which restores the active object and the **borrowed** object's own selection and nothing else, so an
 object an operator selected on the way - a new armature, an imported garment - is left selected.
@@ -314,6 +323,9 @@ prefers.
 
 ## No way to verify an install without an MCP client
 
+**Scoped on 2026-11-03 as [FR 057](057-install-selftest/README.md), not yet implemented.** One claim below does not hold: "the bridge is
+not running" and "the add-on is not enabled" cannot be told apart from outside Blender, where both are nothing listening.
+
 Found by the man-and-woman scene session, which began with the server installed but not registered
 with the client, and could not tell that apart from a broken one.
 
@@ -344,6 +356,10 @@ That single line distinguishes the two most common failures and costs nothing to
 
 ## A summary mode for the asset catalogue
 
+**Scoped on 2026-11-03 as [FR 056](056-asset-library-summary/README.md), not yet implemented.** Measured, against what is below: the cost is
+the answer's size (605 KB for a sweep, 128 KB for a bare call, 3.2 KB for the faceting), not the time, since the preview load did
+not show up headless. `limit=0` already gives the counts with no rows, and says nothing about it.
+
 Also from the scene session, and deliberately *not* an argument against the cap. `mpfb_list_assets`
 is documented as "a filtering tool rather than a listing one", its answer is capped on purpose, and
 `truncated` / `total_count` exist so a caller cannot mistake a page for the library. That design is
@@ -373,6 +389,10 @@ informative than a truncated page of one type.
 <a id="a-hand-cannot-be-placed-at-a-point-on-a-standard-rig"></a>
 
 ## A hand cannot be placed at a point on a standard rig
+
+**Scoped on 2026-11-03 as two requests, not yet implemented:** [FR 052](052-reaching-and-orienting/README.md) (`reach_to` and `orient`
+on `mpfb_set_pose_bones`) and [FR 053](053-rig-helpers/README.md) (`mpfb_set_rig_helpers`). Those are the second and third ways out
+below, and FR 052 takes the first.
 
 Found by the man-and-woman scene session, whose whole subject was two characters holding hands.
 This is the single largest cost that session paid, and it is adjacent to
@@ -448,6 +468,9 @@ and touch nowhere, which is a measurement, not a judgement. No tool here could h
 
 ## A refit silently resets a generated Rigify rig's pose and switches
 
+**Scoped on 2026-11-03 as [FR 054](054-refits-keep-the-pose/README.md), not yet implemented.** Measured: a default rig keeps its pose
+through a refit, so this is Rigify's alone, and snapshot and restore puts one back at 0.0 mm in 23 ms.
+
 Found by the photo studio template session (`interacting_with_blender/PHOTO_STUDIO_TEMPLATE.md`).
 `mpfb_set_face_units` refits by default, and so do `mpfb_refit_human`,
 `mpfb_apply_expressions` and `mpfb_set_macro_details(refit=True)`. On a generated Rigify rig the
@@ -468,6 +491,9 @@ Two cheap improvements:
 <a id="refit-raises-on-excluded-collection"></a>
 
 ## Refits raise on a character whose collection is excluded from the view layer
+
+**Scoped on 2026-11-03 in [FR 054](054-refits-keep-the-pose/README.md), which includes the collection temporarily rather than refusing
+as proposed below.** It keeps the refusal for what cannot be included. `mpfb_add_asset` raises the same way, and is in scope.
 
 Several characters at the origin are easiest to manage one collection each, with all but one
 excluded from the view layer. Any refit then fails with a raw traceback
@@ -580,6 +606,8 @@ nothing in the response hints that a second character was touched.
 
 ## Hand-to-hand contact on a Rigify rig
 
+**The `orient` entry is scoped in [FR 052](052-reaching-and-orienting/README.md).** The rest stays here.
+
 A cost data point beside [A hand cannot be placed at a point on a standard rig](#a-hand-cannot-be-placed-at-a-point-on-a-standard-rig)
 and [Nothing reports that two meshes interpenetrate](#nothing-reports-that-two-meshes-interpenetrate),
 this time on `rigify.human_toes`, where `move_to` on `hand_ik` does work. Placing the hand was easy;
@@ -632,6 +660,9 @@ holds. A more positive index `spread` made the index–middle overlap worse in a
 <a id="response-bulk-on-the-read-only-tools"></a>
 
 ## Response bulk on the read-only tools
+
+**Measured while scoping [FR 056](056-asset-library-summary/README.md):** `known_packs` is 1.65 KB of a 128 KB answer, so its bullet below
+is worth little on its own. The rows, at 622 bytes each, are the cost. FR 056 drops it from a summary only.
 
 Not a defect, and not urgent — recorded because one session hit all three and they share a shape:
 the tools return everything they know rather than what was asked for, and the catalogues are now big
