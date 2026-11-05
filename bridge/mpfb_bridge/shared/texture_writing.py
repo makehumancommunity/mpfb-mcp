@@ -29,7 +29,7 @@ on one filesystem and why the staging directory is a sibling and not a temporary
 directory somewhere else.
 
 Takes no ``services``: this is plain Blender and plain files. Shared with
-[FR 050](../../../feature-requests/050-writing-mesh-assets/README.md), which writes
+[FR 050](../../../feature-requests/done/050-writing-mesh-assets/README.md), which writes
 a garment's own material the same way.
 """
 
@@ -45,6 +45,7 @@ __all__ = (
     "made_directories",
     "move_into_place",
     "plan",
+    "reload_stale_images",
     "remove_directories",
     "staging",
     "write_staged",
@@ -208,6 +209,27 @@ def move_into_place(staged_file, directory):
     target = os.path.join(directory, os.path.basename(staged_file))
     os.replace(staged_file, target)
     return target
+
+
+def reload_stale_images(plans):
+    """MPFB reuses a loaded image by basename, so a replaced file must reach the loaded one.
+
+    Returns a sentence for each image of a written file's name that it could not bring
+    in step.
+    """
+    warnings = []
+    for planned in plans:
+        image = bpy.data.images.get(planned.filename)
+        if image is None or image == planned.image:
+            continue
+        if image_file_path(image) == planned.destination and not image.is_dirty:
+            image.reload()
+        else:
+            warnings.append(
+                "An image named '{:s}' is already loaded from elsewhere, and MPFB reuses a loaded "
+                "image by name, so applying this material in this session shows that image's "
+                "pixels.".format(planned.filename))
+    return warnings
 
 
 def made_directories(path):

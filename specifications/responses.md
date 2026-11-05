@@ -452,6 +452,12 @@ which is the one thing a read-back may not do.
 each number in effect that MPFB's loader will not give back, from a scratch build of MPFB's template rather than a list
 kept here, so it is true of the MPFB that is running and empties itself if that MPFB starts reading them.
 
+**Who chose a value is part of the answer, when a default could pass for a choice.** `path_resolved_by` says who chose a
+directory; `license_resolved_by` and `author_resolved_by` (`"argument"`, `"object"`, `"mpfb_default"`) say who chose what
+a file claims, by Blender's `is_property_set()`, because a chosen `CC0` and MPFB's default `CC0` read the same. A mesh
+nobody labelled would be published as CC0 and shown as that by the catalogues, so `mpfb_write_mesh_asset` also says so
+in `warnings`. `allow_exact_matching_resolved_by` and `uuid_resolved_by` follow the same form.
+
 ## A summary is never a second opinion
 
 A summary tool answers several detailed tools' questions at once, and is only worth having if an

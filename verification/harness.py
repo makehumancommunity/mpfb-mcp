@@ -35,6 +35,7 @@ from __future__ import annotations
 __all__ = (
     "DRY_RUN_TOOLS",
     "MUTATING_VERBS",
+    "REFUSED_DRY_RUN",
     "Report",
     "descriptions",
     "diff_objects",
@@ -83,6 +84,7 @@ MUTATING_VERBS = {
     "mpfb_set_asset_material": "applied",
     "mpfb_set_makeskin_material": "applied",
     "mpfb_store_makeskin_material": "saved",
+    "mpfb_write_mesh_asset": "written",
     "mpfb_set_pose_bones": "changes",
     "mpfb_set_pose_switches": "changes",
     "mpfb_reset_pose": "reset",
@@ -95,7 +97,10 @@ MUTATING_VERBS = {
 
 # The smoke run calls these with dry_run, because what they write would otherwise
 # grow the list of files it leaves behind. Saved and performed both come back false.
-DRY_RUN_TOOLS = ("mpfb_store_makeskin_material",)
+DRY_RUN_TOOLS = ("mpfb_store_makeskin_material", "mpfb_write_mesh_asset")
+
+# The refusal a dry-run item may come back with instead, because no tool can build what it needs.
+REFUSED_DRY_RUN = {"mpfb_write_mesh_asset": "not_valid_as_asset"}
 
 
 def performed_disagreement(tool_name: str, envelope: dict) -> str | None:

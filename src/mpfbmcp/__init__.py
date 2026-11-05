@@ -178,6 +178,9 @@ def build_server() -> FastMCP:
             "mpfb_set_makeskin_material, read it with "
             "mpfb_get_makeskin_material, and keep it as an alternate or a skin "
             "with mpfb_store_makeskin_material. "
+            "To author a mesh asset: measure it, write it with mpfb_write_mesh_asset, "
+            "then build a second character from a preset, pose it, equip the asset "
+            "and measure with mpfb_check_intersections, reading the unmasked counts. "
             "A character exists only in the running .blend until it is saved "
             "as an MPFB preset: mpfb_save_preset writes one - a file, and not "
             "undoable - mpfb_list_presets says which exist, and "
@@ -231,7 +234,7 @@ def build_server() -> FastMCP:
         save_expression, save_preset, set_asset_material, set_face_units, set_macro_details,
         set_makeskin_material, set_material_settings, set_pose_bones, set_pose_switches, set_rigify_hand_shape, set_skin,
         set_targets, store_makeskin_material,
-        symmetrize_targets)
+        symmetrize_targets, write_mesh_asset)
     add_asset.register(mcp)
     add_rig.register(mcp)
     apply_expressions.register(mcp)
@@ -281,6 +284,7 @@ def build_server() -> FastMCP:
     set_targets.register(mcp)
     store_makeskin_material.register(mcp)
     symmetrize_targets.register(mcp)
+    write_mesh_asset.register(mcp)
 
     _shipped_without_source_indentation(mcp)
     mcp.declared_arguments = {

@@ -75,6 +75,18 @@ def test_handlers_are_installed_and_put_back():
             "Signal {:d} should not stay ours after the loop".format(number)
 
 
+def test_the_loop_gets_a_window_back_when_blender_dropped_it():
+    # What loading a file on the command line leaves, which a test can only supply.
+    module = bridge_module("cli")
+    windows = bpy.context.window_manager.windows
+    if len(windows) == 0:
+        pytest.skip("this Blender has no window to give back")
+    with bpy.context.temp_override(window=None):
+        with module._window_context():  # pylint: disable=protected-access
+            assert bpy.context.window == windows[0]
+            assert bpy.ops.wm.obj_export.poll()
+
+
 def test_interrupt_raises_what_the_loop_catches():
     """cli._interrupt()"""
     with pytest.raises(KeyboardInterrupt):

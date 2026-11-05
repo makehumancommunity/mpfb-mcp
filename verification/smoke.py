@@ -23,7 +23,8 @@ call each, the tool's own defaults, three shallow assertions.
    (``harness.MUTATING_VERBS``) - the one check the unit suite genuinely cannot
    make, because there the flag and the verb are read out of the same stub run.
    ``harness.DRY_RUN_TOOLS`` is the one exception: an item called with ``dry_run``
-   so as to write nothing must come back ready and not performed.
+   so as to write nothing must come back ready and not performed, or with the one
+   refusal ``harness.REFUSED_DRY_RUN`` names for it.
 
 It asserts nothing about *values*. Whether a garment equipped through the tool
 is indistinguishable from one equipped through MPFB's panel is FR 010's claim,
@@ -535,6 +536,15 @@ def _store_makeskin_material(run: _Run) -> dict:
         dry_run=True)
 
 
+@_item("mpfb_write_mesh_asset", "path", "fragment", "validator", "warnings")
+def _write_mesh_asset(run: _Run) -> dict:
+    # dry_run, for the same reason as the item above. An equipped asset has no vertex groups of
+    # its own, so MPFB's validator refuses it, and no tool makes a mesh it would pass: this item
+    # reaches the validator and no further (harness.REFUSED_DRY_RUN). Writing is FR 050's check.
+    return run.tools["mpfb_write_mesh_asset"](
+        name=_asset_object(run), asset_name="mpfbmcp_smoke_run", dry_run=True)
+
+
 @_item("mpfb_remove_asset", "asset_object_name", "object_type", "basemesh_name",
        "objects_removed")
 def _remove_asset(run: _Run) -> dict:
@@ -748,7 +758,11 @@ def _run_item(run: _Run, item: dict) -> None:
                  for key in item["keys"] if key not in named]
     if tool_name in harness.MUTATING_VERBS:
         if tool_name in harness.DRY_RUN_TOOLS:
-            if result.get("ready") is not True or result.get("performed") is not False:
+            refused_as_expected = (
+                harness.REFUSED_DRY_RUN.get(tool_name) == result.get("blocked_by")
+                and result.get("performed") is False)
+            if not refused_as_expected and (
+                    result.get("ready") is not True or result.get("performed") is not False):
                 problems.append("a dry run should be ready and not performed, got ready={!r}, "
                                 "performed={!r}".format(result.get("ready"),
                                                         result.get("performed")))

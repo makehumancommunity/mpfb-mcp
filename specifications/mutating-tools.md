@@ -260,7 +260,9 @@ second, writing `<name>.json` into the expressions directory of MPFB's user data
 the third, writing `<export_name>.fbx`, `.glb` or `.usdz` - the first file meant for another
 application; and `mpfb_store_makeskin_material`
 ([FR 049](../feature-requests/done/049-makeskin-materials/README.md)) is the fourth, writing an MHMAT and its
-textures, the first to write several files as one artifact. Four properties follow, and they are the whole of the
+textures, the first to write several files as one artifact; and `mpfb_write_mesh_asset`
+([FR 050](../feature-requests/done/050-writing-mesh-assets/README.md)) is the fifth, writing a complete asset, the
+first with a choice of destination. Four properties follow, and they are the whole of the
 extra obligation:
 
 - **Address the artifact by name, never by a path.** A preset is `<name>` within MPFB's user config
@@ -283,6 +285,10 @@ extra obligation:
   `"default"`) says who did, in every answer. **A directory somebody named that does not exist is a
   refusal** (`export_directory_missing`), not created on their behalf: a typo in a preference must
   not become a directory tree. The default is created, as MPFB creates its own.
+
+  **A choice between directories is still not a path.** `mpfb_write_mesh_asset`'s `destination` is `"library"` or
+  `"export_directory"`, so a caller can iterate on an asset without filling the library, and each is a directory
+  somebody other than the caller decided on. `path_resolved_by` then says `"library"` too.
 - **The name is a shape, so it is validated on this side of the socket, and more strictly than MPFB
   does.** This is the filesystem case of
   [validate before crossing the socket](tool-interface.md#validate-before-crossing-the-socket), and
@@ -298,6 +304,15 @@ extra obligation:
   a refusal carrying that file's size and modification time — enough to decide from, without a
   second call — and `path` is in **every** answer, refusals included, because "which file was this
   about" is the first thing a caller needs whatever happened.
+- **An artifact of several files is written whole or not at all.** Everything is settled and matched first, then made
+  in a staging directory beside the destination, holding its final names since MPFB derives lines of the file from
+  them, and only then moved, so a failure cannot leave half an asset and a refusal leaves no directory. **Overwriting
+  replaces that artifact's own files and nothing beside them**: an alternate, a weights file or a thumbnail stays.
+  Properties go on the object last, so a call that failed or was a `dry_run` has changed nothing in the `.blend` either.
+- **A state that would be baked into the file is a refusal, though a measured defect is not.** What
+  `mpfb_write_mesh_asset` measures it only reports, since the finished gi has 613 unmasked pairs and is fine and no
+  threshold on a count would be objective. A posed or turned body is a different thing: the write itself would be wrong,
+  whatever the mesh is like, and the file would be wrong on every other body (`rig_not_at_rest`, `character_turned`).
 - **Refuse to write where the result cannot be found.** FR 027 added this, and it is the one that
   the preset case never needed: a preset has one directory, while an expression lives in a library
   MPFB assembles from several data roots, **first root first**. A file saved into user data while a

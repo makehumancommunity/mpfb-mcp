@@ -13,7 +13,7 @@ records what has already landed and why. When an effort below is finished, move 
 
 **With a feature request**, in request order:
 
-- [The MakeClothes and MakeSkin workflows](#the-makeclothes-and-makeskin-workflows): FR 050 and FR 051
+- [The MakeClothes and MakeSkin workflows](#the-makeclothes-and-makeskin-workflows): FR 051
 - [A hand cannot be placed at a point on a standard rig](#a-hand-cannot-be-placed-at-a-point-on-a-standard-rig): FR 052 and FR 053
 - [Hand-to-hand contact on a Rigify rig](#hand-to-hand-contact-on-rigify): FR 052, in part
 - [A refit silently resets a generated Rigify rig's pose and switches](#refit-resets-a-rigify-pose): FR 054
@@ -56,10 +56,10 @@ records what has already landed and why. When an effort below is finished, move 
 ## The MakeClothes and MakeSkin workflows
 
 **Scoped on 2026-11-03 as four requests.**
-[FR 048](done/048-measuring-mesh-assets/README.md) (`mpfb_check_mesh_asset` and `mpfb_check_intersections`)
-and [FR 049](done/049-makeskin-materials/README.md) (set, get and store a MakeSkin material) have landed;
+[FR 048](done/048-measuring-mesh-assets/README.md) (`mpfb_check_mesh_asset` and `mpfb_check_intersections`),
+[FR 049](done/049-makeskin-materials/README.md) (set, get and store a MakeSkin material) and
+[FR 050](done/050-writing-mesh-assets/README.md) (`mpfb_write_mesh_asset`, and the try-on recipe) have landed;
 [HISTORY.md](HISTORY.md) has them. Not yet implemented:
-[FR 050](050-writing-mesh-assets/README.md) (`mpfb_write_mesh_asset`, and the try-on recipe) and
 [FR 051](051-delete-groups/README.md) (`mpfb_generate_delete_group`, behind a spike). They rename the
 tools proposed below, since the [glossary](../specifications/tool-interface.md) keeps "clothes" for
 quoting MPFB. Item 5 below stayed out of them: see
@@ -88,20 +88,8 @@ gave misleading answers because the object's source record was stale (below).
 **1. `mpfb_check_clothes`.** Landed as `mpfb_check_mesh_asset`, in
 [FR 048](done/048-measuring-mesh-assets/README.md).
 
-**2. `mpfb_write_clothes_asset`.** Takes a garment and writes MHCLO + OBJ + MHMAT + textures, following
-the [mutating-tools rules](../specifications/mutating-tools.md):
-- a name and never a path;
-- `overwrite: false` by default;
-- selection restored;
-- `blocked_by` for a missing xref cache (`mpfb.basemesh_xref` builds it) and a failed check;
-- `path`, sizes and match counts in the answer.
-
-The logic sits in the `ClothesCommon` operator mixin rather than a service, so like
-`mpfb_set_asset_material` this has to reproduce a panel. Destination is a design question: the
-library is the natural "where the result can be found", but a work-in-progress may not belong there.
-This session wrote to a project directory, and **"Store in library" is untested**.
-[FR 049](done/049-makeskin-materials/README.md)'s `shared/texture_writing.py` does not rewrite source textures,
-and neither should this.
+**2. `mpfb_write_clothes_asset`.** Landed as `mpfb_write_mesh_asset`, in
+[FR 050](done/050-writing-mesh-assets/README.md), which also ran "Store in library" for the first time.
 
 **3. `mpfb_set_makeskin_material`.** Landed with `mpfb_get_makeskin_material` and
 `mpfb_store_makeskin_material`, in [FR 049](done/049-makeskin-materials/README.md).
@@ -125,33 +113,14 @@ headless `mpfb_try_asset` on a preset would give an agent that loop. Even withou
 was not itself tried here, since it would have left a `Delete.*` group on the user's character.
 
 **Not tools.** Unwrapping, packing and texture generation are general Blender and image work, and
-went fine through generic code. A short recipe would serve better: rasterize UV triangles into
-per-texel position and island maps, build a height field in metres, derive the normal map. That took
-about 500 lines to write and 20 s to run.
-
-### Traps worth documenting now, whatever gets built
-
-- **An overlap count on a masked body is blind.** Once the delete group grew, the masked skin was no
-  longer in the evaluated mesh, so `coat/body` stayed at 0 while it poked through on the next
-  character. It also silently disabled this session's own clearance step, which measured against the
-  evaluated body. Measure with the masks off.
-- **Subdivision can warp a straight texture pattern.** MPFB adds Subdivision with Blender's default
-  `uv_smooth` (`PRESERVE_BOUNDARIES`). A narrow strip with one face across its width, as a belt
-  naturally is, renders its stitching as a ripple. It is perfectly straight with subdivision off, and
-  worse with `uv_smooth: NONE`. Margin strips along both long edges fixed it. A band-like part is a
-  common garment feature, so this deserves a line in MPFB's docs or a check.
-- **Mixed faces are refused.** `all_faces_same_type` means an all-triangle draft forces any added
-  geometry to triangles too. The message is clear; the restriction is worth knowing before modelling.
-- **A garment changes behaviour once it has a material of its own.** Nothing updates `asset_source`,
-  so this gi still answers as `nurse_uniform_with_pants`. `mpfb_get_object_info` gives
-  `mhclo_path: null`, `mpfb_list_asset_materials` says `mhclo_not_installed`, and by its source
-  "Store as alternate" would fail for the same reason.
+went fine through generic code. The recipe, and the traps this session found, are in
+[README.md](../README.md#authoring-a-mesh-asset).
 
 ### Worth raising in MPFB
 
 - `generic_execute` reports an image error with `{'ERROR'}` and then returns `{'FINISHED'}`, and
-  `mpfb.import_makeskin_material` does the same when a material already exists. Called from code,
-  both read as success. Any tool wrapping them has to check for itself.
+  `mpfb.import_makeskin_material` does the same when a material already exists. Filed with the rest of
+  what [FR 050](done/050-writing-mesh-assets/README.md) provoked.
 - `check_that_all_textures_are_saved` calls `image.save()` on every texture, which **re-encodes the
   source files in place**: here the diffuse went from 2.5 to 3.2 MB and the normal map from 17.0 to
   18.2 MB. Nothing says so, and it is a surprise if those files are generated or under version
@@ -632,7 +601,7 @@ file, only this package's walk to extend.
 
 ## Trying an asset without touching the scene
 
-What [FR 050](050-writing-mesh-assets/README.md) left out when it settled on a recipe of existing
+What [FR 050](done/050-writing-mesh-assets/README.md) left out when it settled on a recipe of existing
 tools: `mpfb_create_human_from_preset`, `mpfb_add_asset`, pose, `mpfb_check_intersections`. In the gi
 session that loop found every defect that mattered. Two things are missing from it:
 

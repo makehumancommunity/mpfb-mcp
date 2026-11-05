@@ -5,7 +5,7 @@
 The last of four requests scoping
 [The MakeClothes and MakeSkin workflows](../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows). It
 uses [FR 048](../done/048-measuring-mesh-assets/README.md)'s overlap module, and its result reaches a file
-through [FR 050](../050-writing-mesh-assets/README.md).
+through [FR 050](../done/050-writing-mesh-assets/README.md).
 
 **The delete group was the longest part of the gi session: eleven runs of a ray-casting script.** A delete
 group hides the body under a garment, and it can fail in two opposite ways. Too small, and skin pokes through
@@ -36,11 +36,11 @@ error, and two numbers saying how each failure mode stands.
 ## Non-goals
 
 - **Guaranteeing a result on every body and pose.** The group is computed on the authoring body, and skin
-  appearing on another body is found by [FR 050's recipe](../050-writing-mesh-assets/README.md#documentation).
+  appearing on another body is found by [FR 050's recipe](../done/050-writing-mesh-assets/README.md#documentation).
   The margins exist to make that rare.
 - **Wrapping `mpfb.makeclothes_gendelete`.** Offered as a lower-risk start and declined. Its result is what
   this replaces.
-- **Writing the group into a file.** [FR 050](../050-writing-mesh-assets/README.md) does that.
+- **Writing the group into a file.** [FR 050](../done/050-writing-mesh-assets/README.md) does that.
 - **Editing a group by hand or by a vertex list.** Generic Blender work remains the way, and the two measures
   below report on any group, however it was made.
 
@@ -68,7 +68,7 @@ decision to bring back to the maintainer, not one to take during implementation.
 
 ## Functional requirements
 
-1. **`name`** is the garment; **`basemesh`** is optional and found as in FR 050. **`delete_group`** defaults to
+1. **`name`** is the garment; **`basemesh`** is optional and found by `subject_resolution.resolve_asset_body()`, as in FR 048 and FR 050. **`delete_group`** defaults to
    the object's `MC_delete_group`.
 2. **Modifiers are no obstacle.** It works on the garment's stripped mesh, unlike MPFB's operator.
 3. **A candidate is a `body` vertex whose normal ray hits the garment** within a maximum gap (0.14 m in the
@@ -124,8 +124,10 @@ decision to bring back to the maintainer, not one to take during implementation.
   is met by naming it. Live-check that the extra group reaches no export or MHCLO.
 - **Group names differ in practice:** the gi's is `delete`, MPFB's default is `Delete`, and an equipped asset's is
   `Delete.<name>`. All are honoured as given, and none is assumed.
-- **The rule that a posed character gives a wrong answer** is FR 050's to establish. Whatever it finds about
-  matching on a posed body applies here too, and this request should refuse the same way.
+- **A posed or turned character, which [FR 050](../done/050-writing-mesh-assets/README.md) established for matching.**
+  A posed body baked into an MHCLO: one thigh changed 793 of 2,674 lines. A turned one too, since offsets are in world
+  axes: 2,670 of them at 90 degrees. Whether sight lines suffer the same way is this request's to provoke; if they do,
+  refuse as it does, with `rig_not_at_rest` and `character_turned`, reading `pose_reading.deforming_bones_off_rest()`.
 
 ## Affected specifications
 

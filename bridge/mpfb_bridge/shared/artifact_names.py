@@ -36,6 +36,10 @@ over one table of names and all three nouns by ``tests/test_save_preset.py``, wh
 executes this file's source directly - so it imports nothing but the standard
 library.
 
+A stored MakeSkin material and a written mesh asset
+([FR 050](../../../feature-requests/done/050-writing-mesh-assets/README.md)) have narrower
+rules of their own, each because of what MPFB's panel does to a name it is given.
+
 It also holds the two ``os.stat`` helpers that report what is already at such
 a path - the ``file_before`` all three writing commands refuse and report with -
 because "what is there" is the other half of "what may it be called". Reads
@@ -43,9 +47,11 @@ nothing out of MPFB, so like ``performed`` it takes no ``services``.
 """
 
 __all__ = (
+    "ASSET_NAME_PATTERN",
     "MATERIAL_NAME_PATTERN",
     "NAME_MAX_LENGTH",
     "NAME_PATTERN",
+    "asset_name_rejection",
     "file_facts",
     "material_name_rejection",
     "modified_iso",
@@ -68,6 +74,9 @@ NAME_PATTERN = "^[A-Za-z0-9_.-]+$"
 # What a stored MakeSkin material may be called. Narrower than the above: see
 # material_name_rejection().
 MATERIAL_NAME_PATTERN = "^[a-z0-9_]+$"
+
+# What a written mesh asset may be called. Narrower too: see asset_name_rejection().
+ASSET_NAME_PATTERN = "^[a-zA-Z0-9_]+$"
 
 
 def name_rejection(name, noun):
@@ -121,6 +130,31 @@ def material_name_rejection(name):
         return ("A material name may hold only lower case letters, digits and '_', which is "
                 "what survives MPFB's normalisation unchanged. This one also holds: {:s}.".format(
                     ", ".join(repr(character) for character in illegal)))
+    return None
+
+
+def asset_name_rejection(name):
+    """Why this name may not become a written mesh asset, as a sentence, or None.
+
+    Stricter than :func:`name_rejection`, because MakeClothes' "Store in library"
+    turns anything outside ``[a-zA-Z0-9_]`` into ``_`` and then collapses runs of
+    ``_``, so ``my-gi`` would land as ``my_gi`` and ``a__b`` as ``a_b``. A name that
+    survives that unchanged is one the panel and this agree about, which is
+    the promise of this module's docstring.
+    """
+    rejection = name_rejection(name, "mesh asset")
+    if rejection is not None:
+        return rejection
+    if re.match(ASSET_NAME_PATTERN, name) is None:
+        illegal = sorted(set(
+            character for character in name
+            if re.match(ASSET_NAME_PATTERN, character) is None))
+        return ("A mesh asset name may hold only letters, digits and '_', which is what "
+                "survives MPFB's normalisation unchanged. This one also holds: {:s}.".format(
+                    ", ".join(repr(character) for character in illegal)))
+    if "__" in name:
+        return ("A mesh asset name must not hold '__', which MPFB's normalisation collapses "
+                "to one '_'.")
     return None
 
 

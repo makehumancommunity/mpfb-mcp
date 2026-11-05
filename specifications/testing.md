@@ -426,6 +426,14 @@ and its weights by [FR 009](../feature-requests/done/009-add-rig/README.md) — 
 in that area owes the same proof again, in its own subdir. See
 [Where an exhaustive live check belongs](#where-an-exhaustive-live-check-belongs).
 
+
+**The bridge's suite runs in one context, and the bridge serves from others.** It dispatches from a `--python` script,
+which has a window, and `blender --background file.blend --command mpfb_bridge` had none: `mpfb_write_mesh_asset` and
+`mpfb_create_human_from_preset` passed here and raised over a real socket
+([FR 050](../feature-requests/done/050-writing-mesh-assets/README.md)). A test can take the window away, and does, but
+only a live check over `--command` with a file named finds what else reads it, which is one more reason a tool that
+drives an MPFB operator or exporter owes a live run over the real socket.
+
 ## A test may depend on a sibling checkout if it skips without one
 
 Some data in this package is copied by hand out of another repository: `reference/urls.py` is a

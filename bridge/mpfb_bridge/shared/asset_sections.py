@@ -48,9 +48,11 @@ __all__ = (
     "mesh_asset_types",
     "normalize_asset_type",
     "read_sections",
+    "shadowing_file",
     "subdir_for_object_type",
 )
 
+import os
 import sys
 
 
@@ -154,3 +156,30 @@ def normalize_asset_type(value):
     the two vocabularies breaks the day a two-word type appears.
     """
     return str(value).lower().capitalize()
+
+
+def shadowing_file(services, asset_subdir, file_path):
+    """Another file that could answer for ``<name>/<name>.<ext>`` at ``file_path``, or ``None``.
+
+    Walked as ``find_asset_absolute_path()`` walks: by basename, in root order, taking
+    the first whose parent directory matches too. One in an earlier root wins for
+    certain, and one in the same root wins or not by the order of ``os.walk``. Roots
+    come from ``get_available_data_roots()`` rather than ``get_asset_roots()``, which
+    leaves out one with no such directory yet, and that would make every root look
+    earlier than a first write's.
+    """
+    target = os.path.abspath(file_path)
+    filename = os.path.basename(target)
+    name = os.path.splitext(filename)[0]
+    roots = [os.path.abspath(os.path.join(str(root), asset_subdir))
+             for root in services["AssetService"].get_available_data_roots()]
+    own_root = next((index for index, root in enumerate(roots)
+                     if target.startswith(root + os.sep)), len(roots))
+    for index, root in enumerate(roots[:own_root + 1]):
+        for dirpath, _dirs, files in os.walk(root):
+            if filename not in files or os.path.basename(dirpath) != name:
+                continue
+            found = os.path.abspath(os.path.join(dirpath, filename))
+            if found != target:
+                return dict(path=found, same_root=index == own_root)
+    return None

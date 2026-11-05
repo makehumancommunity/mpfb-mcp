@@ -62,6 +62,7 @@ __all__ = (
     "general_object_properties",
     "human_object_properties",
     "make_clothes_properties",
+    "make_clothes_scene_properties",
     "make_skin_properties",
     "module_level",
     "property_value",
@@ -131,6 +132,16 @@ def make_clothes_properties(root_name):
     """
     module = sys.modules.get(str(root_name) + ".ui.create_assets.makeclothes")
     return getattr(module, "MakeClothesObjectProperties", None)
+
+
+def make_clothes_scene_properties(root_name):
+    """MPFB's ``MAKECLOTHES_PROPERTIES``, the panel's settings on the scene, or ``None``.
+
+    Off the panel's own module, where they are defined: the package above imports only
+    the panel class.
+    """
+    module = sys.modules.get(str(root_name) + ".ui.create_assets.makeclothes.makeclothespanel")
+    return getattr(module, "MAKECLOTHES_PROPERTIES", None)
 
 
 def make_skin_properties(root_name):

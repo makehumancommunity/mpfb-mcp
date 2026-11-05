@@ -638,6 +638,34 @@ what Blender 5.1 calls a mix node's factor, so neither strength reaches a file t
 store writes both from `shared/makeskin.py`'s own reading, and takes the MHMAT's spelling as the key. **This is the
 repair the rule asks for**: it changes only a file this package writes, and costs nothing if MPFB is fixed.
 
+### MakeClothes: eight departures, and an asset that still loads as the panel's does
+
+`ClothesCommon` is an operator mixin with no service behind it, so
+[FR 050](../feature-requests/done/050-writing-mesh-assets/README.md) reimplemented it from services, the third panel
+to get that after the asset material and the export copy. An asset written by `mpfb_write_mesh_asset` must load
+through `mpfb_add_asset` as the panel's does, and `eee_composite/write_mesh_asset_compare_test.py` runs MPFB's operator
+to hold it to that: the two MHCLOs differ in the name, the OBJ's name and a generated `uuid`, and the two equipped meshes
+do not differ at all. The eight departures are in the command's docstring, and these are the ones resting on something
+provoked rather than read:
+
+- **The OBJ is written with the garment's modifiers off.** `save_wavefront_file()` applies them and the matching strips
+  subdivision, so the gi at viewport level 1 gets an OBJ of 11,862 vertices beside an MHCLO of 2,027. The two counts are
+  then compared before anything moves.
+- **A posed or turned body is refused.** `MeshCrossRef(after_modifiers=True)` strips only `MASK` and `SUBSURF`, so one
+  posed thigh changed 793 of 2,674 lines; offsets are in world axes, so a body at 90 degrees changed 2,670. A moved one
+  changed 19, by under 0.03.
+- **A file's `homepage`, tags and `z_depth` have no argument**, because `Mhclo` has no `homepage`, `write_mhclo()`
+  writes no tags, and `z_depth` is always 50. An argument that reaches no file would be a lie.
+
+**A panel's setting is read, not remembered.** `allow_exact_matching` left out follows `disable_exact_strategy` on the
+scene. The request, scoped from one session, said it defaulted to true, because the gi's file had it on; MPFB's default
+is false. Which of the two a body gets changes 2,674 exact lines to 624.
+
+**MPFB's exporter needs a window's context.** `save_wavefront_file()` reads `bpy.context.object` and `wm.obj_export` polls
+for a window, and Blender drops the window from the context when a file is named on its command line, though the window
+manager still holds it. So `cli.py` serves from that window's context, and **a command reads the selection from the view
+layer**, never `bpy.context.selected_objects`, which is absent with no screen.
+
 ### A character away from the origin: repair what MPFB visibly intends, report what it does not
 
 MPFB builds every character at the origin, and several of its functions behave as if one stays

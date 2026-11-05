@@ -442,3 +442,43 @@ def test_a_cache_directory_the_validator_creates_is_removed_and_never_read_as_a_
                                       character.basemesh, character.basemesh)
     assert state["xref_cache_exists"] is True
     assert state["delete_group"]["name"] is None, "the property set is not reachable from that root"
+
+
+def test_the_summary_reduces_one_reading_and_invents_nothing():
+    # FR 050's write answer carries this, so it must be arithmetic on the report and no more.
+    module = bridge_module("shared.mesh_asset_report")
+    rows = [dict(component=0, faces=20, outward_fraction=0.9, fit_offset=dict(min=0.0, max=0.1),
+                 overlap=dict(body=dict(face_pairs=2, face_pairs_unmasked=30),
+                              self=dict(face_pairs=4), other_components_intersecting=1)),
+            dict(component=1, faces=10, outward_fraction=0.4, fit_offset=None,
+                 overlap=dict(body=dict(face_pairs=0, face_pairs_unmasked=7),
+                              self=dict(face_pairs=9), other_components_intersecting=0))]
+    summary = module.check_summary(dict(
+        applies=True, measured_against="Human", component_count=3, components_truncated=True,
+        rows=rows))
+    assert summary["lowest_outward_fraction"] == 0.4
+    assert summary["largest_body_face_pairs_unmasked"] == 30
+    assert summary["largest_self_face_pairs"] == 9
+    assert summary["component_count"] == 3 and summary["components_truncated"] is True
+    assert summary["rows"][1] == dict(
+        component=1, faces=10, outward_fraction=0.4, fit_offset=None, body_face_pairs=0,
+        body_face_pairs_unmasked=7, self_face_pairs=9, other_components_intersecting=0)
+
+
+def test_a_summary_of_nothing_measured_says_why():
+    module = bridge_module("shared.mesh_asset_report")
+    reason = dict(applies=False, reason="The mesh has no faces to measure.")
+    assert module.check_summary(reason) == reason
+
+
+def test_debris_is_what_the_block_left_and_nothing_older():
+    services = services_or_skip()
+    module = bridge_module("shared.mesh_asset_report")
+    older = bpy.data.meshes.new("BridgeTestOlderOrphan")
+    try:
+        with module.debris_removed(services):
+            bpy.data.meshes.new("BridgeTestNewOrphan")
+        assert "BridgeTestNewOrphan" not in bpy.data.meshes
+        assert "BridgeTestOlderOrphan" in bpy.data.meshes
+    finally:
+        bpy.data.meshes.remove(older)

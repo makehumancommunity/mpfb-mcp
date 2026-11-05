@@ -61,6 +61,7 @@ __all__ = (
     "OFF_REST_THRESHOLD",
     "REACH_TOLERANCE",
     "STRETCH_TOLERANCE",
+    "deforming_bones_off_rest",
     "evaluated",
     "landmarks",
     "limbs",
@@ -85,6 +86,10 @@ STRETCH_TOLERANCE = 0.001
 # as a failure to reach.
 REACH_TOLERANCE = 0.01
 
+# How far an element of a deforming bone's matrix may be from rest and still be at rest.
+# A millimetre or a milliradian, since Rigify's constraints do not land exactly on it.
+_DEFORMING_TOLERANCE = 0.001
+
 _RATIO_DIGITS = 3
 
 LIMB_MEASURES = {
@@ -98,6 +103,25 @@ LIMB_MEASURES = {
 def evaluated():
     """Bring every pose matrix up to date with the last write, from whichever tool made it."""
     bpy.context.view_layer.update()
+
+
+def deforming_bones_off_rest(rig_object):
+    """The names of the bones moving a mesh away from its rest shape, for this rig.
+
+    What each bone *ends up as*, rather than :func:`off_rest`'s own channels, because on
+    a Rigify rig a deforming bone moves through constraints and its channels stay at rest.
+    Nothing moves a mesh while the armature shows its rest position.
+    """
+    if rig_object.data.pose_position == "REST":
+        return []
+    names = []
+    for pose_bone in rig_object.pose.bones:
+        if not pose_bone.bone.use_deform:
+            continue
+        difference = pose_bone.matrix - pose_bone.bone.matrix_local
+        if any(abs(value) > _DEFORMING_TOLERANCE for row in difference for value in row):
+            names.append(str(pose_bone.name))
+    return names
 
 
 def _rotation_off_rest(pose_bone):

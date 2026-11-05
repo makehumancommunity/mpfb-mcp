@@ -165,6 +165,10 @@ builds a whole second character, which is the only honest way to call that tool.
   does. `mpfb_store_makeskin_material` ([FR 049](../feature-requests/done/049-makeskin-materials/README.md)) would be a
   fourth, so its item passes `dry_run` instead, and is the one mutating item that must come back ready and **not**
   performed (`harness.DRY_RUN_TOOLS`). What it cannot find out, writing, its own request's live check established.
+  `mpfb_write_mesh_asset` ([FR 050](../feature-requests/done/050-writing-mesh-assets/README.md)) passes `dry_run` too, and goes
+  less far: an equipped asset has no vertex groups of its own, so MPFB's validator refuses it, and no tool makes a mesh it
+  would pass. So its item must come back refused with exactly `not_valid_as_asset` (`harness.REFUSED_DRY_RUN`), which proves
+  the socket, the arguments and the validator and nothing past them. The rest is that request's live check.
 - **The `mpfb_set_material_settings` item names one socket**, the other non-default argument in the
   table: the call naming nothing - what FR 040 planned as its item - answers `performed: false`,
   which the rule above does not allow. It writes the first writable float on the first colour

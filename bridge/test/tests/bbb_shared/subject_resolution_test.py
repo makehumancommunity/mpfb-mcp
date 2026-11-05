@@ -129,3 +129,26 @@ def test_a_subject_miss_stops_before_the_family_walk():
     assert message.startswith(
         "No object named 'BridgeTestNoSuchObject' exists in this .blend file, so nothing was "
         "tested.")
+
+
+def test_the_selected_body_is_found_with_no_window_in_the_context():
+    # bpy.context.selected_objects exists only in a screen's context, so under --command
+    # with a file named it raised where this step should have answered.
+    import bpy  # pylint: disable=import-outside-toplevel
+    services = services_or_skip()
+    module = bridge_module("shared.subject_resolution")
+    loose = linked_plain_object("BridgeTestLooseMesh")
+    try:
+        with Character() as character:
+            bpy.ops.object.select_all(action="DESELECT")
+            character.basemesh.select_set(True)
+            with Character() as _second:
+                bpy.ops.object.select_all(action="DESELECT")
+                character.basemesh.select_set(True)
+                with bpy.context.temp_override(window=None):
+                    body, resolved_by, refusal = module.resolve_asset_body(
+                        services, None, loose, "to measure against", "nothing was measured")
+                assert refusal is None
+                assert body == character.basemesh and resolved_by == "selection"
+    finally:
+        bpy.data.objects.remove(loose)

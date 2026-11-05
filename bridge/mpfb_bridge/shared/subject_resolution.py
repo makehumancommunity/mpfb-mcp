@@ -40,12 +40,20 @@ refusals is part of that command's contract. ``save_preset`` and
 ``add_rig`` judges the rig identifier first. A resolver that raised would decide
 that order for them.
 
-``resolve_subject`` reads nothing out of MPFB, and takes no ``services``.
-``resolve_basemesh`` takes ``services`` first, for the reason the rest of this
-directory does.
+**A mesh being authored belongs to nobody yet**, so :func:`resolve_asset_body`
+looks further than a family, in a fixed order: a named ``basemesh``; one among the
+mesh's nearest relatives, which is how the macro and rig panels find one; the one
+selected, which is how MakeClothes' own panel does; the only one in the file. Several
+at the last two is a refusal, because a fit against the wrong body reads as a bad fit.
+``check_mesh_asset`` and ``write_mesh_asset`` share it, since the write must be about
+the body the check measured.
+
+``resolve_subject`` reads nothing out of MPFB, and takes no ``services``. The other
+two take ``services`` first, for the reason the rest of this directory does.
 """
 
 __all__ = (
+    "resolve_asset_body",
     "resolve_basemesh",
     "resolve_subject",
     "so_clause",
@@ -114,3 +122,50 @@ def resolve_basemesh(services, requested_name, not_a_character, not_done=None):
                 "mpfb_get_object_info to see what it is related to.".format(
                     subject.name, not_a_character))
     return (basemesh, subject, resolved_by, None)
+
+
+def resolve_asset_body(services, requested, subject, purpose, not_done):
+    """``(basemesh, resolved_by, refusal)``, in the order this module's docstring gives.
+
+    ``refusal`` is ``(blocked_by, sentence, candidates)``, or ``None``. ``purpose``
+    finishes "there is no body ..." and ``not_done`` says what did not happen.
+    """
+    object_service = services["ObjectService"]
+    if requested is not None:
+        body, _resolved_by, message = resolve_subject(requested)
+        if body is None:
+            return (None, None, ("basemesh_not_found", message, []))
+        if not object_service.object_is_basemesh(body):
+            return (None, None, (
+                "not_a_basemesh",
+                "'{:s}' is not a MakeHuman basemesh, so there is no body {:s}. "
+                "Call mpfb_list_objects with 'Basemesh' to see which there are.".format(
+                    body.name, purpose),
+                []))
+        return (body, "argument", None)
+
+    relative = object_service.find_object_of_type_amongst_nearest_relatives(subject, "Basemesh")
+    if relative is not None:
+        return (relative, "relative", None)
+
+    # From the view layer: selected_objects exists only in a screen's context, so under
+    # --command it raises.
+    selected = [blender_object for blender_object in bpy.context.view_layer.objects
+                if blender_object.select_get() and object_service.object_is_basemesh(blender_object)]
+    if len(selected) == 1:
+        return (selected[0], "selection", None)
+    candidates = selected or [blender_object for blender_object in bpy.data.objects
+                              if object_service.object_is_basemesh(blender_object)]
+    if len(candidates) == 1:
+        return (candidates[0], "only_basemesh", None)
+    if not candidates:
+        return (None, None, (
+            "basemesh_not_found",
+            "'{:s}' has no MakeHuman basemesh among its relatives and this file holds none, so "
+            "there is no body {:s}.".format(subject.name, purpose), []))
+    return (None, None, (
+        "basemesh_ambiguous",
+        "'{:s}' has no basemesh among its relatives and {:d} could be meant, so {:s}. "
+        "Pass 'basemesh' naming one of 'candidates'.".format(
+            subject.name, len(candidates), not_done),
+        sorted(blender_object.name for blender_object in candidates)))

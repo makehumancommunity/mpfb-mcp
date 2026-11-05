@@ -50,6 +50,14 @@ Blender being run, since a disabled extension registers no CLI command and
 scene afterwards happens in the same process: this loop owns the main thread until
 it is interrupted.
 
+**It serves from a window's context.** Blender drops the window from the context
+when it loads a file named on its command line, though the window manager still
+holds it, so ``blender --background scene.blend --command mpfb_bridge`` had no
+``bpy.context.object`` or ``selected_objects``, and every ``wm.*`` operator that polls
+for a window failed, where the same call with no file named worked.
+``mpfb_create_human_from_preset`` raised on the first of those
+([FR 050](../../feature-requests/done/050-writing-mesh-assets/README.md)'s live check).
+
 **What this does not establish** is that MPFB itself is fully usable without a
 screen. It makes the *bridge* drivable headless; how much of MPFB works there is
 a separate question and this module answers none of it.
@@ -61,7 +69,10 @@ __all__ = (
 )
 
 import argparse
+import contextlib
 import signal
+
+import bpy
 
 from . import addon_preferences
 from . import command_server
@@ -122,6 +133,14 @@ def _restore_signals(previous):
         signal.signal(number, signal.SIG_DFL if handler is None else handler)
 
 
+def _window_context():
+    """A context holding a window, if Blender's lost one and it has one to give back."""
+    windows = bpy.context.window_manager.windows
+    if bpy.context.window is not None or len(windows) == 0:
+        return contextlib.nullcontext()
+    return bpy.context.temp_override(window=windows[0])
+
+
 def cli_execute(argv):
     """Serve commands until interrupted. Returns a process exit code.
 
@@ -175,8 +194,9 @@ def cli_execute(argv):
               "stop.".format(host, port, len(COMMANDS)), flush=True)
         _LOG.info("Headless command loop started on %s:%d", host, port)
 
-        while command_server.is_running():
-            command_server.poll_blocking()
+        with _window_context():
+            while command_server.is_running():
+                command_server.poll_blocking()
     except KeyboardInterrupt:
         print("\nInterrupted.", flush=True)
     finally:

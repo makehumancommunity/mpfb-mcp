@@ -44,6 +44,7 @@ __all__ = (
     "READ_ONLY_VALUE_KEYS",
     "Vocabulary",
     "empty_slots",
+    "export_staged",
     "file_settings",
     "is_color_value",
     "metadata_issue",
@@ -54,6 +55,7 @@ __all__ = (
     "socket_in_charge",
     "socket_of",
     "texture_node",
+    "values_not_restored",
     "vocabulary",
 )
 
@@ -401,3 +403,77 @@ def file_settings(words, tree):
         else:
             settings[key] = float(charge[1].default_value)
     return settings
+
+
+def values_not_restored(services, words, tree):
+    """Each value here that MPFB's template will not give back when the file is applied.
+
+    Measured against the template rather than kept in a list: a scratch material built
+    with this one's slots, the way ``apply_node_tree()`` will, compared socket by socket.
+    Only ``diffuseColor`` is ever filled in, so it is the one key skipped, and a value not
+    in effect here loses nothing by going back to the template's.
+    """
+    MakeSkinMaterial = mpfb_surface.module_level(  # pylint: disable=invalid-name
+        services, "HumanService", "MakeSkinMaterial", fallback=None)
+    template_values = dict()
+    for slot in words.slots:
+        has_slot = texture_node(tree, slot) is not None
+        template_values["has_" + slot] = "true" if has_slot else "false"
+        template_values[slot + "_filename"] = '""'
+    scratch = services["MaterialService"].create_empty_material("mpfb_bridge_scratch", None)
+    try:
+        MakeSkinMaterial().apply_node_tree(scratch, template_values)
+        ours = file_settings(words, tree)
+        built = file_settings(words, scratch.node_tree)
+    finally:
+        bpy.data.materials.remove(scratch)
+    in_effect, _absent = read_values(words, tree)
+    lost = dict()
+    for key, value in ours.items():
+        if key == "diffuseColor" or value is None or built.get(key) is None:
+            continue
+        if not in_effect[key]["in_effect"]:
+            continue
+        if abs(float(value) - float(built[key])) > 1e-4:
+            lost[key] = dict(stored=round(float(value), 6),
+                             after_apply=round(float(built[key]), 6))
+    return lost
+
+
+def _settings_for_file(words, settings, staged_directory, plans, name, license_value, author):
+    """Everything put into ``_settings`` between MPFB's read and MPFB's write."""
+    for slot in words.slots:
+        settings[slot + "Texture"] = None
+    for planned in plans:
+        # export_to_disk() computes the same path and so copies nothing.
+        settings[planned.slot + "Texture"] = os.path.join(staged_directory, planned.filename)
+    settings["name"] = name
+    settings["license"] = license_value
+    settings["author"] = author
+    for key in words.metadata:
+        if settings.get(key) == "":
+            # A line holding a key and no value parses back as nothing at all.
+            settings[key] = None
+
+
+def export_staged(services, words, blender_object, tree, staged_directory, plans, name,
+                  license_value, author):
+    """Write ``<staged_directory>/<name>.mhmat`` with MPFB's own writer, and return its path.
+
+    MPFB's ``populate_from_object()`` reads the object and ``export_to_disk()`` writes the
+    file. What goes in between is the textures' staged paths, this call's name, license
+    and author, and the numbers :func:`file_settings` read, without which the displacement
+    strength and the diffuse mix factor never reach a file. ``plans`` are the textures to
+    name, which must be in ``staged_directory`` or in place beside the final file.
+    """
+    MakeSkinMaterial = mpfb_surface.module_level(  # pylint: disable=invalid-name
+        services, "HumanService", "MakeSkinMaterial", fallback=None)
+    mhmat = MakeSkinMaterial()
+    mhmat.populate_from_object(blender_object)
+    # pylint: disable=protected-access
+    mhmat._settings.update(file_settings(words, tree))
+    _settings_for_file(words, mhmat._settings, staged_directory, plans, name, license_value,
+                       author)
+    staged_mhmat = os.path.join(staged_directory, name + ".mhmat")
+    mhmat.export_to_disk(staged_mhmat)
+    return staged_mhmat

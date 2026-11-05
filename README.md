@@ -16,7 +16,7 @@ you can speed up things and save some tokens.
 
 ## Status
 
-Early beta. Forty-nine tools are implemented.
+Early beta. Fifty tools are implemented.
 
 **Introspection** — read-only, and each of them always answers rather than failing:
 
@@ -36,12 +36,6 @@ Early beta. Forty-nine tools are implemented.
   where does it rest?
 - `mpfb_get_pose` — what is this character's pose now: what is off rest, where are its hands, feet,
   hips and head, and is a limb stretched or out of reach?
-- `mpfb_check_intersections` — how much meshes pass through each other and how close they come, in
-  numbers, with the body's delete-group masks on and off: a count on a masked body cannot see through
-  the mask, and that is the trap. Two characters, a character and a held prop, or one character's own
-  garments.
-- `mpfb_check_mesh_asset` — whether a mesh is ready to be an asset, beyond MPFB's own check: which way
-  each part's faces point, how it fits the body and itself, its UV islands, its textures and its metadata.
 - `mpfb_get_rigify_hand_shape` — on a Rigify character, how curled and spread is each finger, what
   shape is each hand making, and where are the fingertips?
 
@@ -78,11 +72,6 @@ Early beta. Forty-nine tools are implemented.
   already on the character, and take it off properly.
 - `mpfb_set_skin` — give the character a skin, in any of MPFB's five material models.
 - `mpfb_set_asset_material` — recolour an equipped asset, or restore its own material.
-- `mpfb_set_makeskin_material` / `mpfb_get_makeskin_material` — give any mesh a MakeSkin material from image
-  files or Blender images and numbers, and read which maps are wired and which numbers are in effect.
-- `mpfb_store_makeskin_material` — keep one as an alternate of its asset or as a body skin, without changing a
-  source texture. MPFB's loader then restores the textures and the diffuse colour, and the answer names any
-  other number it will not.
 - `mpfb_set_material_settings` — change iris colours, the layered skin and the tint of hair and
   garments, batched, in a way a preset keeps.
 - `mpfb_set_pose_bones` — pose a character: move, rotate, aim and scale its controls in the
@@ -104,8 +93,26 @@ Early beta. Forty-nine tools are implemented.
   Unity, Unreal and Godot. The file goes in a directory set in the MPFB Bridge's preferences, never
   one the agent picks.
 
-`mpfb_save_preset`, `mpfb_save_expression` and `mpfb_export_character` are the only tools here
-that write a file, and nothing in Blender can undo it, so each refuses to overwrite unless told to.
+**Authoring** — make a mesh into an asset, and see how it behaves on somebody else ([the recipe](#authoring-a-mesh-asset)):
+
+- `mpfb_check_intersections` — how much meshes pass through each other and how close they come, in
+  numbers, with the body's delete-group masks on and off: a count on a masked body cannot see through
+  the mask, and that is the trap. Two characters, a character and a held prop, or one character's own
+  garments.
+- `mpfb_check_mesh_asset` — whether a mesh is ready to be an asset, beyond MPFB's own check: which way
+  each part's faces point, how it fits the body and itself, its UV islands, its textures and its metadata.
+- `mpfb_set_makeskin_material` / `mpfb_get_makeskin_material` — give any mesh a MakeSkin material from image
+  files or Blender images and numbers, and read which maps are wired and which numbers are in effect.
+- `mpfb_store_makeskin_material` — keep one as an alternate of its asset or as a body skin, without changing a
+  source texture. MPFB's loader then restores the textures and the diffuse colour, and the answer names any
+  other number it will not.
+- `mpfb_write_mesh_asset` — write a mesh as a complete asset, MHCLO, OBJ, MHMAT and textures, in the library or
+  the export directory the bridge's user chose, and say what to call next to try it on another body. Only MPFB's
+  own validator blocks it; everything else measured is reported.
+
+`mpfb_save_preset`, `mpfb_save_expression`, `mpfb_export_character`, `mpfb_store_makeskin_material`
+and `mpfb_write_mesh_asset` are the only tools here that write a file, and nothing in Blender can undo
+it, so each refuses to overwrite unless told to.
 
 **Order matters and MPFB reports no error when it is wrong**: add the rig before the garments,
 generate a Rigify rig after them, and dress a character before placing it - a garment with its own
@@ -114,6 +121,37 @@ character is refitted. The tools report the violation they can see rather than
 enforcing it.
 
 See [src/mpfbmcp](src/mpfbmcp) and [CLAUDE.md](CLAUDE.md) for how they work and how to run them.
+
+## Authoring a mesh asset
+
+Modelling, unwrapping and weight painting are general Blender work, and no tool here does them. Once there is a
+mesh, **author on one character, write, then try it on another**, because every poke-through in the session this
+comes from appeared only on another body shape in a pose, while the authoring scene showed zero overlaps throughout:
+
+1. Measure with `mpfb_check_mesh_asset`, against the body it was made on. Give it a material with
+   `mpfb_set_makeskin_material`, if it has none.
+2. Write it with `mpfb_write_mesh_asset`, with `destination` `export_directory` while iterating, so that the library
+   does not fill up, and `overwrite` from then on. The character must be at rest and facing forward, since MPFB would
+   bake a pose or a turn into the file: `mpfb_reset_pose` and `mpfb_place_character` put it back, and their
+   `restore_with` returns it. `try_with` in the answer is the rest of this list, with the asset's name filled in.
+3. Build a second character with `mpfb_create_human_from_preset`, and pose it with `mpfb_set_pose_bones`.
+4. Equip the asset with `mpfb_add_asset`.
+5. Measure with `mpfb_check_intersections`, **reading `face_pairs_unmasked`**, then fix the mesh and go back to 2.
+
+No tool removes a character yet, so the second one stays in the scene: do this in a file you do not mean to keep.
+
+**Textures** are image work, and need no tool. What worked was to rasterize the UV triangles into per-texel position
+and island maps, build a height field in metres, and derive the normal map: about 500 lines to write and 20 s to run.
+
+**Three traps:**
+
+- **An overlap count on a masked body is blind.** Once a delete group grows, the masked skin is no longer in the
+  evaluated mesh, so a garment and the body can read 0 while it pokes through on the next character. Measure with the
+  masks off, which is why each answer carries both.
+- **Mixed faces are refused.** MPFB's validator requires every face to have the same number of vertices, so an
+  all-triangle draft forces anything added to it to be triangles too.
+- **Subdivision can ripple a narrow band.** MPFB adds Subdivision with Blender's default `uv_smooth`, and a strip one
+  face wide, as a belt naturally is, renders its stitching as a ripple. Margin strips along both long edges fix it.
 
 ## Documentation
 

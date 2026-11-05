@@ -3,9 +3,10 @@ Whether a mesh is ready to be written as an asset, read section by section.
 
 **One reading, so that a later summary is not a second opinion**
 ([FR 048](../../../feature-requests/done/048-measuring-mesh-assets/README.md)).
-``check_mesh_asset`` reports it whole, and FR 050's write answer is to carry a
-summary of the same reading, which is the rule ``get_character_summary`` already
-follows. The overlap itself is [`mesh_overlap.py`](mesh_overlap.py)'s.
+``check_mesh_asset`` reports it whole, and
+[FR 050](../../../feature-requests/done/050-writing-mesh-assets/README.md)'s write
+answer carries a summary of the same reading (:func:`check_summary`), which is the
+rule ``get_character_summary`` already follows. The overlap itself is [`mesh_overlap.py`](mesh_overlap.py)'s.
 
 **Why more than MPFB's validator.** ``ClothesService.mesh_is_valid_as_clothes()``
 checks vertex groups, scale and face type. It gave ``all_checks_ok: true`` for
@@ -48,7 +49,7 @@ it reads through to the default, and FR 050 asked whether anything could: on
 Blender 5.1 this tells a chosen ``CC0`` from MPFB's default ``CC0`` on the gi.
 
 **MPFB's validator has two side effects, and both are undone here**
-(:func:`validator`). It builds a ``MeshCrossRef``, which copies the mesh and links
+(:func:`validator`, by :func:`debris_removed`, which the write's matching needs too). It builds a ``MeshCrossRef``, which copies the mesh and links
 the copy, deletes the object and leaves the copied mesh data behind as an orphan.
 And its ``MeshCrossRef`` for the basemesh is given ``cache_dir``, which it creates
 when absent, so on an install with no xref cache it leaves an empty directory, and
@@ -61,7 +62,10 @@ plain Blender and do not.
 
 __all__ = (
     "MAX_COMPONENTS",
+    "build_xref_cache",
+    "check_summary",
     "component_report",
+    "debris_removed",
     "metadata",
     "metadata_warnings",
     "textures",
@@ -70,8 +74,10 @@ __all__ = (
     "write_state",
 )
 
+import contextlib
 import math
 import os
+import shutil
 
 import bpy
 import numpy
@@ -639,23 +645,89 @@ def validator(services, blender_object, basemesh):
     Returns ``(report, sentence)``: a ``report`` of ``None`` means it raised, and
     ``sentence`` says what it raised.
     """
-    cache_directory = _cache_directory(services)
-    cache_existed = bool(cache_directory and os.path.exists(cache_directory))
-    meshes_before = set(mesh.name for mesh in bpy.data.meshes)
     report = None
     sentence = None
-    with selection.restored_all():
+    with selection.restored_all(), debris_removed(services):
         try:
             report = services["ClothesService"].mesh_is_valid_as_clothes(blender_object, basemesh)
         except Exception as error:  # pylint: disable=broad-except
             sentence = "MPFB's validator raised {:s}: {!s}".format(type(error).__name__, error)
-    for mesh in list(bpy.data.meshes):
-        if mesh.name not in meshes_before and mesh.users == 0:
-            bpy.data.meshes.remove(mesh)
-    if cache_directory and not cache_existed and os.path.isdir(cache_directory):
-        try:
-            os.rmdir(cache_directory)
-        except OSError:
-            # Something is in it, so it is not what this call created.
-            pass
     return (report if report is None else dict(report), sentence)
+
+
+@contextlib.contextmanager
+def debris_removed(services):
+    """Run MPFB's validator or matching, then remove what its ``MeshCrossRef`` leaves.
+
+    That is the two side effects this module's docstring describes, and they are the
+    same whichever of them ran: mesh data with no users, and a cache directory that
+    did not exist and is empty.
+    """
+    cache_directory = _cache_directory(services)
+    cache_existed = bool(cache_directory and os.path.exists(cache_directory))
+    meshes_before = set(mesh.name for mesh in bpy.data.meshes)
+    try:
+        yield
+    finally:
+        for mesh in list(bpy.data.meshes):
+            if mesh.name not in meshes_before and mesh.users == 0:
+                bpy.data.meshes.remove(mesh)
+        if cache_directory and not cache_existed and os.path.isdir(cache_directory):
+            try:
+                os.rmdir(cache_directory)
+            except OSError:
+                # Something is in it, so it is not what this call created.
+                pass
+
+
+def build_xref_cache(services, basemesh):
+    """MPFB's basemesh xref cache, built as its panel's operator builds it.
+
+    Starts from nothing, as the operator does: a directory holding part of a cache would
+    otherwise be read as far as it goes. Generic to every basemesh, and about 30 s.
+    ``MeshCrossRef`` is read off ``clothesservice``'s module, which imports it.
+    """
+    MeshCrossRef = mpfb_surface.required_module_level(  # pylint: disable=invalid-name
+        services, "ClothesService", "MeshCrossRef")
+    cache_directory = _cache_directory(services)
+    if os.path.exists(cache_directory):
+        shutil.rmtree(cache_directory)
+    os.makedirs(cache_directory)
+    MeshCrossRef(basemesh, after_modifiers=False, build_faces_by_group_reference=True,
+                 cache_dir=cache_directory, write_cache=True, read_cache=False)
+
+
+def check_summary(components):
+    """:func:`component_report` reduced to what a write's answer carries, or its reason.
+
+    Per component its ``outward_fraction`` and largest overlap counts, under the names the
+    report uses, and the lowest and largest of them overall. A reduction of one reading
+    rather than a second one, so a write's answer and ``check_mesh_asset`` cannot disagree.
+    """
+    if not components["applies"]:
+        return components
+    rows = []
+    for row in components["rows"]:
+        overlap = row["overlap"]
+        rows.append(dict(
+            component=row["component"],
+            faces=row["faces"],
+            outward_fraction=row["outward_fraction"],
+            fit_offset=row["fit_offset"],
+            body_face_pairs=overlap["body"]["face_pairs"],
+            body_face_pairs_unmasked=overlap["body"]["face_pairs_unmasked"],
+            self_face_pairs=overlap["self"]["face_pairs"],
+            other_components_intersecting=overlap["other_components_intersecting"],
+        ))
+    fractions = [row["outward_fraction"] for row in rows if row["outward_fraction"] is not None]
+    return dict(
+        applies=True,
+        measured_against=components["measured_against"],
+        component_count=components["component_count"],
+        components_truncated=components["components_truncated"],
+        lowest_outward_fraction=min(fractions) if fractions else None,
+        largest_body_face_pairs_unmasked=max(
+            (row["body_face_pairs_unmasked"] for row in rows), default=0),
+        largest_self_face_pairs=max((row["self_face_pairs"] for row in rows), default=0),
+        rows=rows,
+    )

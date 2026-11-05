@@ -93,6 +93,7 @@ from . import set_skin
 from . import set_targets
 from . import store_makeskin_material
 from . import symmetrize_targets
+from . import write_mesh_asset
 from .command import Command
 
 COMMANDS = {
@@ -426,4 +427,10 @@ COMMANDS = {
         params=symmetrize_targets.PARAMS,
         requires_mpfb=True,
         summary=symmetrize_targets.SUMMARY),
+    "write_mesh_asset": Command(
+        name="write_mesh_asset",
+        handler=write_mesh_asset.write_mesh_asset,
+        params=write_mesh_asset.PARAMS,
+        requires_mpfb=True,
+        summary=write_mesh_asset.SUMMARY),
 }

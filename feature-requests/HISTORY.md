@@ -1029,6 +1029,37 @@ the gi rebuilt from its three textures and stored as an alternate of a copy of `
 mean difference of 0.000000 per channel, its sources byte-identical. The smoke run is 51 of 51 in 2.6 s, its store
 item a `dry_run`, so its file list did not grow. 102 new bridge tests (846), 38 new unit tests (668).
 
+## [FR 050](done/050-writing-mesh-assets/README.md) — writing a mesh asset
+
+Writing an asset took a MakeClothes operator with exactly two objects selected, and nothing told an agent what to do
+next. **One tool**, `mpfb_write_mesh_asset`: an MHCLO, an OBJ, and for a MakeSkin material its MHMAT and textures, in
+the library or the export directory the bridge's user chose, by name and never by path, with a recipe for trying the
+result on another body in [README.md](../README.md#authoring-a-mesh-asset) and `try_with`. `ClothesCommon` is
+reimplemented from services, and a composite test runs MPFB's operator on one mesh to hold the two MHCLOs to the listed
+departures and the two equipped meshes to one another. Only MPFB's validator blocks; the rest is `check`, a summary of
+`mpfb_check_mesh_asset`'s one reading. A library write updates `asset_source`, so the gi stopped answering as
+`nurse_uniform_with_pants`.
+
+**Three things the request did not have right.** `disable_exact_strategy` does not default to true: its JSON says false,
+and the session's file had it on, so the argument follows the scene rather than a remembered default. The posed body it
+asked to provoke was real, 793 of 2,674 lines from one thigh, and **a turned body is the same defect by another road**,
+2,670 lines at 90 degrees, since offsets are in world axes, so `character_turned` joined `rig_not_at_rest`. And no tool
+can make a mesh MPFB's validator passes, so the smoke item stops at the refusal, `harness.REFUSED_DRY_RUN`.
+
+**The live check found what the in-process suite could not.** Blender drops the window from the context when a file is
+named on its command line, so over a real socket MPFB's exporter and then `mpfb_create_human_from_preset` raised, in a
+suite of 904 that passed. `cli.py` now serves from the window's context, which fixes every command there, and
+`check_mesh_asset`'s selection step stopped reading `bpy.context.selected_objects`. Filed in MPFB: the OBJ mismatch, the
+dropped fields, the silent overwrite, the directory a refused write leaves, the `{'ERROR'}` then `{'FINISHED'}`, and the
+context reads.
+
+Verified by [`live_check.py`](done/050-writing-mesh-assets/live_check.py), 22 checks and no failures on Blender 5.1.0: the
+first "Store in library" of the gi in 1.1 s, 2,027 lines with 3,209 delete vertices; MPFB's exporter at level 1 writing
+11,862 vertices where this writes 2,027; `mpfb_get_object_info` and `mpfb_list_asset_materials` resolving it; its sources
+byte-identical. The recipe through tools alone, on `Denise` with both upper arms raised 60 degrees, counted 337 pairs
+masked and 1,753 unmasked, against 12 and 610 at rest; the session's 159 and 105 are from other poses and a reference
+only. The smoke run is 52 of 52 in 3.0 s. 58 new bridge tests (904), 19 new unit tests (687).
+
 ## [FR 058](done/058-autostarting-the-bridge/README.md) — auto-starting the bridge
 
 A windowed Blender had to be told to serve, by hand, every session. **A checkbox now does that, off by

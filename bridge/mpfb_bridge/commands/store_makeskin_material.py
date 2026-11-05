@@ -54,8 +54,6 @@ __all__ = (
 
 import os
 
-import bpy
-
 from ..log import get_logger
 from ..shared import asset_sections
 from ..shared import makeskin
@@ -179,29 +177,6 @@ def _resolve_skin(services, request):
     return None
 
 
-def _shadowing_file(services, request, name):
-    """Another ``<name>/<name>.mhmat`` that could answer for this one, or ``None``.
-
-    Walked as ``find_asset_absolute_path()`` walks: by basename, in root order, taking
-    the first whose parent directory matches too. One in an earlier root wins for
-    certain, and one in the same root wins or not by the order of ``os.walk``.
-    """
-    roots = [os.path.abspath(str(root))
-             for root in services["AssetService"].get_asset_roots(request.asset_subdir)]
-    target = os.path.abspath(request.file_path)
-    filename = name + ".mhmat"
-    own_root = next((index for index, root in enumerate(roots)
-                     if target.startswith(root + os.sep)), len(roots))
-    for index, root in enumerate(roots[:own_root + 1]):
-        for dirpath, _dirs, files in os.walk(root):
-            if filename not in files or os.path.basename(dirpath) != name:
-                continue
-            found = os.path.abspath(os.path.join(dirpath, filename))
-            if found != target:
-                return dict(path=found, same_root=index == own_root)
-    return None
-
-
 def _resolved_metadata(words, subject, argument, key):
     """``(value, resolved_by)``: the argument, else the object's, else MPFB's default."""
     if argument is not None:
@@ -212,78 +187,8 @@ def _resolved_metadata(words, subject, argument, key):
     return (None if not value else str(value), "mpfb_default")
 
 
-def _values_not_restored(services, words, tree):
-    """Each value here that MPFB's template will not give back when the file is applied.
-
-    Measured against the template rather than kept in a list: a scratch material built
-    with this one's slots, the way ``apply_node_tree()`` will, compared socket by socket.
-    Only ``diffuseColor`` is ever filled in, so it is the one key skipped, and a value not
-    in effect here loses nothing by going back to the template's.
-    """
-    MakeSkinMaterial = mpfb_surface.module_level(  # pylint: disable=invalid-name
-        services, "HumanService", "MakeSkinMaterial", fallback=None)
-    template_values = dict()
-    for slot in words.slots:
-        has_slot = makeskin.texture_node(tree, slot) is not None
-        template_values["has_" + slot] = "true" if has_slot else "false"
-        template_values[slot + "_filename"] = '""'
-    scratch = services["MaterialService"].create_empty_material("mpfb_bridge_scratch", None)
-    try:
-        MakeSkinMaterial().apply_node_tree(scratch, template_values)
-        ours = makeskin.file_settings(words, tree)
-        built = makeskin.file_settings(words, scratch.node_tree)
-    finally:
-        bpy.data.materials.remove(scratch)
-    in_effect, _absent = makeskin.read_values(words, tree)
-    lost = dict()
-    for key, value in ours.items():
-        if key == "diffuseColor" or value is None or built.get(key) is None:
-            continue
-        if not in_effect[key]["in_effect"]:
-            continue
-        if abs(float(value) - float(built[key])) > 1e-4:
-            lost[key] = dict(stored=round(float(value), 6),
-                             after_apply=round(float(built[key]), 6))
-    return lost
-
-
-def _settings_for_file(words, settings, staged_directory, plans, name, license_value, author):
-    """Everything put into ``_settings`` between MPFB's read and MPFB's write."""
-    for slot in words.slots:
-        settings[slot + "Texture"] = None
-    for planned in plans:
-        # export_to_disk() computes the same path and so copies nothing.
-        settings[planned.slot + "Texture"] = os.path.join(staged_directory, planned.filename)
-    settings["name"] = name
-    settings["license"] = license_value
-    settings["author"] = author
-    for key in words.metadata:
-        if settings.get(key) == "":
-            # A line holding a key and no value parses back as nothing at all.
-            settings[key] = None
-
-
-def _reload_stale_images(plans):
-    """MPFB reuses a loaded image by basename, so a replaced file must reach the loaded one."""
-    warnings = []
-    for planned in plans:
-        image = bpy.data.images.get(planned.filename)
-        if image is None or image == planned.image:
-            continue
-        if texture_writing.image_file_path(image) == planned.destination and not image.is_dirty:
-            image.reload()
-        else:
-            warnings.append(
-                "An image named '{:s}' is already loaded from elsewhere, and MPFB reuses a loaded "
-                "image by name, so applying this material in this session shows that image's "
-                "pixels.".format(planned.filename))
-    return warnings
-
-
 def _write(services, words, request, params, tree, license_value, author):
     """Stage everything beside the destination, then move it in. Returns the rows written."""
-    MakeSkinMaterial = mpfb_surface.module_level(  # pylint: disable=invalid-name
-        services, "HumanService", "MakeSkinMaterial", fallback=None)
     name = params["material_name"]
     parent = os.path.dirname(request.directory)
     made = texture_writing.made_directories(parent)
@@ -291,14 +196,9 @@ def _write(services, words, request, params, tree, license_value, author):
         with texture_writing.staging(parent) as staged_directory:
             staged = [texture_writing.write_staged(planned, staged_directory)
                       for planned in request.plans]
-            mhmat = MakeSkinMaterial()
-            mhmat.populate_from_object(request.subject)
-            # pylint: disable=protected-access
-            mhmat._settings.update(makeskin.file_settings(words, tree))
-            _settings_for_file(words, mhmat._settings, staged_directory, request.plans, name,
-                               license_value, author)
-            staged_mhmat = os.path.join(staged_directory, name + ".mhmat")
-            mhmat.export_to_disk(staged_mhmat)
+            staged_mhmat = makeskin.export_staged(
+                services, words, request.subject, tree, staged_directory, request.plans, name,
+                license_value, author)
             made.extend(texture_writing.made_directories(request.directory))
             for staged_file in staged:
                 if staged_file is not None:
@@ -462,7 +362,7 @@ def store_makeskin_material(params, resolution):  # pylint: disable=too-many-ret
                 "" if file_before is None else ", written {!s}".format(file_before["modified"])),
             file_before=file_before, existing_textures=existing_textures, **resolved)
 
-    shadowing = _shadowing_file(services, request, name)
+    shadowing = asset_sections.shadowing_file(services, request.asset_subdir, request.file_path)
     if shadowing is not None:
         return blocked(
             "name_shadowed",
@@ -471,7 +371,7 @@ def store_makeskin_material(params, resolution):  # pylint: disable=too-many-ret
             "Nothing was written. Choose another name.".format(name, shadowing["path"]),
             shadowed_by=shadowing, **resolved)
 
-    lost = _values_not_restored(services, words, tree)
+    lost = makeskin.values_not_restored(services, words, tree)
     asset_packs, attribution = _asset_packs(services, request)
     warnings = []
     if asset_packs:
@@ -494,7 +394,7 @@ def store_makeskin_material(params, resolution):  # pylint: disable=too-many-ret
                 "Writing '{:s}' failed, and no part of it was moved into place: {:s}".format(
                     request.file_path, str(error)),
                 file_before=file_before, file_after=now if now["exists"] else None, **resolved)
-        warnings.extend(_reload_stale_images(request.plans))
+        warnings.extend(texture_writing.reload_stale_images(request.plans))
         cache_invalidated = _invalidate(services, params["store_as"])
 
     _LOG.debug("store_makeskin_material: %r dry_run=%r", request.file_path, params["dry_run"])

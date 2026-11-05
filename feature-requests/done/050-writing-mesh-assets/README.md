@@ -1,11 +1,11 @@
 # Writing a mesh asset
 
-**Status:** Proposed
+**Status:** Done
 
 The third of four requests scoping
-[The MakeClothes and MakeSkin workflows](../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows).
-It needs [FR 048](../done/048-measuring-mesh-assets/README.md)'s report and shares
-[FR 049](../done/049-makeskin-materials/README.md)'s texture writing, so it lands after both.
+[The MakeClothes and MakeSkin workflows](../../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows).
+It needs [FR 048](../048-measuring-mesh-assets/README.md)'s report and shares
+[FR 049](../049-makeskin-materials/README.md)'s texture writing, so it lands after both.
 
 **Writing an asset took `bpy.ops.mpfb.write_makeclothes_clothes(filepath=...)` with exactly the
 basemesh and garment selected.** It leaves the selection cleared, reports only through `self.report`,
@@ -24,7 +24,7 @@ or set its metadata without three config classes. Nothing tells it what to do ne
   no tags, and `z_depth` is always 50, because the operator passes neither the property nor the
   attribute's real name, `zdepth`.
 - **An untextured MakeSkin material is not written**, since the operator requires `makeskin` and MPFB
-  [identifies that material as `gameengine`](../../specifications/mpfb-integration.md).
+  [identifies that material as `gameengine`](../../../specifications/mpfb-integration.md).
 - **`disable_exact_strategy` defaults to true** in the panel, so a call to the matching function with its
   own default gets a different match from the panel's.
 
@@ -37,7 +37,7 @@ location an agent can then try it from, and says exactly what it wrote.
 
 - **The asset can be iterated on** without filling the library, through `destination`.
 - **The mesh knows what it became.** After a library write, `mpfb_get_object_info` and the alternates in
-  [FR 049](../done/049-makeskin-materials/README.md) work on the object.
+  [FR 049](../049-makeskin-materials/README.md) work on the object.
 - **An agent is told how to try it on another body**, with the tools that already exist.
 
 ## Non-goals
@@ -65,7 +65,7 @@ location an agent can then try it from, and says exactly what it wrote.
    `mpfb_add_asset` accepts and says which is stored.
 3. **`destination`** is `"library"` (the default) or `"export_directory"`. The first is
    `<user data>/<type>/<asset_name>/`, as the panel's "Store in library"; the second is
-   `<export directory>/<asset_name>/`, using [FR 039](../done/039-exporting-characters/README.md)'s
+   `<export directory>/<asset_name>/`, using [FR 039](../039-exporting-characters/README.md)'s
    human-chosen directory, with `path_resolved_by` and `export_directory_missing` as there.
 4. **`overwrite`** is false by default. **`dry_run`** does everything but write.
 5. **`license`, `author` and `description`** default from the object, and `license_resolved_by` and
@@ -99,7 +99,7 @@ location an agent can then try it from, and says exactly what it wrote.
     colour adjustments by it. An existing one is kept across an overwrite.
 14. **The OBJ matches the MHCLO.** It is exported without modifiers applied (see Architecture).
 15. **The material's MHMAT and textures are written whenever it is MakeSkin**, untextured ones included, and
-    through [FR 049](../done/049-makeskin-materials/README.md)'s modules, so no source file changes:
+    through [FR 049](../049-makeskin-materials/README.md)'s modules, so no source file changes:
     `shared/makeskin.py`'s `recognized()` and `file_settings()`, and `shared/texture_writing.py`'s `plan()`,
     `staging()` and `move_into_place()`, which already write beside the destination and move. Report
     `values_not_restored` as `mpfb_store_makeskin_material` does, since MPFB's loader drops the same numbers. Other material
@@ -115,14 +115,14 @@ location an agent can then try it from, and says exactly what it wrote.
 
 18. **`path`** on every answer, and `files` with each one's size and action. **`match_counts`** (exact and
     offset), `delete_vertices`, `max_pole`, `allow_exact_matching`, `selection` restored.
-    **`check`** is a summary of [FR 048](../done/048-measuring-mesh-assets/README.md)'s report: per component, the
+    **`check`** is a summary of [FR 048](../048-measuring-mesh-assets/README.md)'s report: per component, the
     lowest `outward_fraction` and largest overlap counts. **`try_with`** gives the recipe's next calls:
     `mpfb_create_human_from_preset`, `mpfb_add_asset` with this asset's `fragment` or `path`, and
     `mpfb_check_intersections`.
 
 ### Documentation
 
-19. **The recipe is written down**, in [README.md](../../README.md), with one sentence in the server's
+19. **The recipe is written down**, in [README.md](../../../README.md), with one sentence in the server's
     instructions: author on one character, write, then build a second from a preset, pose it, equip the asset
     and measure with masks off. The README also holds the texture recipe the session recommended instead of a
     tool (rasterize UV triangles into per-texel position and island maps, build a height field in metres,
@@ -132,7 +132,7 @@ location an agent can then try it from, and says exactly what it wrote.
 ## Non-functional requirements
 
 - **No partial writes** across every refusal and failure. This is
-  [the obligation's](../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more)
+  [the obligation's](../../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more)
   general rule, and MPFB's path does not provide it.
 - **Fidelity to the panel, by result.** An asset written here and one written by MPFB's panel from the same
   mesh must load identically through `mpfb_add_asset`. Departures are listed in the docstring and in
@@ -142,7 +142,7 @@ location an agent can then try it from, and says exactly what it wrote.
 ## Architecture
 
 - **`ClothesCommon` is an operator mixin, with no service behind it, so it is reimplemented from services**
-  as [`set_asset_material`](../../bridge/mpfb_bridge/commands/set_asset_material.py) and the export copy
+  as [`set_asset_material`](../../../bridge/mpfb_bridge/commands/set_asset_material.py) and the export copy
   were: `ClothesService.mesh_is_valid_as_clothes()`, `create_mhclo_from_clothes_matching()`,
   `get_reference_scale()`, `Mhclo.write_mhclo()`. It never calls `bpy.ops.mpfb.write_makeclothes_*`.
 - **Departures from the panel**, all in the docstring and answer: a source texture is never rewritten; the OBJ
@@ -156,12 +156,12 @@ location an agent can then try it from, and says exactly what it wrote.
   temporary location must be a directory holding the final names, never temporary names.
 - **The asset name's rule is stricter than exports'.** The panel turns anything outside `[a-zA-Z0-9_]` into `_`
   and collapses runs, so `my-gi` would land as `my_gi`, breaking the rule that
-  [every accepted name is one MPFB's panel would accept unchanged](../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more).
+  [every accepted name is one MPFB's panel would accept unchanged](../../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more).
   `artifact_names.py` gains a noun and a pattern for this, on both sides of the socket.
 - **Telling "never set" from "chose CC0"**, which FR 5's `"mpfb_default"` depends on, is settled:
   `BlenderConfigSet.has_key_with_value()` cannot do it, since it reads through to the default, and Blender's
   `is_property_set()` on the property's full name can.
-  [FR 048](../done/048-measuring-mesh-assets/README.md#what-the-requirements-did-not-anticipate) found it on the gi,
+  [FR 048](../048-measuring-mesh-assets/README.md#what-the-requirements-did-not-anticipate) found it on the gi,
   and `shared/mesh_asset_report.py`'s `metadata()` reports it as `set`.
 - **The asset's report is `shared/mesh_asset_report.py`**, and its `validator()` undoes two side effects of MPFB's own.
   One of them matters here: the xref cache's directory can exist and be empty, so `write_state()`'s
@@ -177,16 +177,16 @@ location an agent can then try it from, and says exactly what it wrote.
 
 ## Affected specifications
 
-- [vision.md](../../specifications/vision.md#target-tool-catalog): **authoring as a fifth capability area**,
+- [vision.md](../../../specifications/vision.md#target-tool-catalog): **authoring as a fifth capability area**,
   naming FR 048-051's tools.
-- [mutating-tools.md](../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more):
+- [mutating-tools.md](../../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more):
   a choice of two destinations, neither chosen by path; the fourth writer's obligations; no partial asset.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not):
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not):
   the third reimplemented panel, and its departures.
-- [responses.md](../../specifications/responses.md): `license_resolved_by` and `author_resolved_by`, beside
+- [responses.md](../../../specifications/responses.md): `license_resolved_by` and `author_resolved_by`, beside
   `path_resolved_by`.
-- [tool-interface.md](../../specifications/tool-interface.md): the name rule's new noun.
-- [verification/README.md](../../verification/README.md): the smoke item uses `dry_run`, so it stays three
+- [tool-interface.md](../../../specifications/tool-interface.md): the name rule's new noun.
+- [verification/README.md](../../../verification/README.md): the smoke item uses `dry_run`, so it stays three
   files.
 
 ## Tests
@@ -215,6 +215,56 @@ location an agent can then try it from, and says exactly what it wrote.
   the OBJ mismatch, the dropped fields, the silent overwrite and the `{'ERROR'}`-then-`{'FINISHED'}` return.
 - **Smoke item** with `dry_run`.
 
+## Outcome
+
+**`mpfb_write_mesh_asset` landed with every requirement met but the ones below**, on
+[`shared/`](../../../bridge/mpfb_bridge/shared) modules FR 048 and FR 049 left for it. The body's resolver, the shadowing walk,
+the staged MHMAT, `values_not_restored` and the stale image reload moved out of the two commands holding them, since two
+commands now have to agree.
+
+Verified by [`live_check.py`](live_check.py), 22 checks and no failures on Blender 5.1.0, over a real socket with a file
+named on the command line, and the [smoke item](../../../verification/README.md):
+
+| What was asked | What it showed |
+|---|---|
+| The first run of "Store in library" | 1.1 s, 2,027 lines, 3,209 delete vertices, six files |
+| Both destinations | `path_resolved_by` `library` and `command_line`; `asset_source` changed by the first only |
+| `mpfb_get_object_info`, `mpfb_list_asset_materials` | `mhclo_not_installed` before, resolved after |
+| The OBJ at viewport level 1 | MPFB's exporter 11,862 vertices, this 2,027 beside an MHCLO of 2,027 |
+| The recipe, through tools alone, on `Denise` | At rest 12 pairs masked and 610 unmasked; both upper arms raised 60 degrees, 337 and 1,753. The session's 159 and 105 are other poses, a reference and not a target |
+| The sources | Byte-identical, unwritten |
+
+### What the requirements did not anticipate
+
+- **`disable_exact_strategy` does not default to true (FR 7, and the opening list).** Its JSON has said false since the
+  option was added, and a live read agrees. The gi's own file has it on, which is the likely source of the claim. So
+  `allow_exact_matching` left out reads the scene, and on the gi that is false, on a new file true.
+- **A turned body bakes in too (Architecture's pitfall had only the pose).** Offsets are in world axes, so at 90 degrees
+  2,670 of 2,674 lines changed, each offset rotated. A moved body changed 19, by under 0.03, where a triangle tied with its
+  neighbour. `character_turned` joins `rig_not_at_rest`, which the pitfall asked for and which one thigh earned: 793 lines.
+  Neither breaks "only the validator blocks", which is about what is measured of a mesh, since here the write itself would
+  be wrong. `rig_not_at_rest` looks at what deforming bones end up as, since a Rigify rig moves them through constraints.
+- **A texture that cannot be written is left out and reported (FR 15).** The request is silent, and its decision rejected
+  blocking on an unresolved texture, so `textures_left_out` and a warning are what it gets, and the MHMAT names only what
+  exists.
+- **`try_with` holds a null for what is the caller's**, `preset_name` first, in `restore_with`'s form.
+- **The name is on one table in `tests/test_write_mesh_asset.py`**, as a material's is, rather than in `test_save_preset.py`'s
+  drift check: that check asserts one verdict across its nouns, and this rule is narrower. `__` is refused as well as the
+  characters, since the panel collapses it.
+- **More refusals than listed:** `mesh_not_visible`, since MPFB's exporter writes what it can select; `obj_does_not_match`, the
+  counts compared before anything moves; `match_failed` and `write_failed`; `object_type_required`.
+- **A `uuid` is also kept from the file an overwrite replaces**, when the mesh has none, because alternates are keyed by it.
+- **The MHMAT takes the MHCLO's license and author unless MakeSkin's were set**, where the panel writes MakeSkin's default into
+  it. A difference is a warning. An argument goes to both.
+- **The panel leaves the garment selected and nothing active**, rather than "the selection cleared" as written. Either way, it is
+  put back here.
+- **The live check found a fault in the bridge, not this tool.** `blender --background file.blend --command mpfb_bridge` has a
+  window and none in its context, so `wm.obj_export`'s poll, `save_wavefront_file()` and `mpfb_create_human_from_preset`
+  failed there while the suite passed. `cli.py` serves from that window's context now, and
+  `resolve_asset_body()` reads the selection from the view layer.
+- **The smoke item stops at the validator**, which refuses any equipped asset, and no tool makes a mesh it would pass
+  (`harness.REFUSED_DRY_RUN`). The request said only "with `dry_run`".
+
 ## Decisions taken while scoping
 
 Asked on 2026-11-03:
@@ -238,7 +288,7 @@ demand, against NEXT_STEPS' suggestion (FR 12); generating a missing `uuid` (FR 
 
 ## References
 
-- [NEXT_STEPS: The MakeClothes and MakeSkin workflows](../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows).
+- [NEXT_STEPS: The MakeClothes and MakeSkin workflows](../../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows).
 - `interacting_with_blender/taido/gi/README.md` and `tools/test_on_template.py`.
 - mpfb2: `ui/create_assets/makeclothes/operators/` (`clothescommon.py`, `writeclothes.py`,
   `writeclotheslibrary.py`, `bmxref.py`, `genuuid.py`, `markclothes.py`), `services/clothesservice.py`,

@@ -54,11 +54,11 @@ NO_SUCH = "BridgeTestSubjectNoSuchObject"
 # The commands that stop at the subject rather than going on to a basemesh.
 SUBJECT_ONLY = ("get_object_info", "generate_rigify_rig", "check_intersections",
                 "check_mesh_asset", "get_makeskin_material", "set_makeskin_material",
-                "store_makeskin_material")
+                "store_makeskin_material", "write_mesh_asset")
 
 
 def _calls(subject):
-    """The thirty-five commands, each with the least that passes its parameter contract."""
+    """The thirty-six commands, each with the least that passes its parameter contract."""
     return {
         "get_object_info": dict(name=subject),
         "check_intersections": dict(name=subject),
@@ -67,6 +67,7 @@ def _calls(subject):
         "set_makeskin_material": dict(name=subject, material_name="bridge_test_never_made"),
         "store_makeskin_material": dict(name=subject, store_as="alternate",
                                         material_name="bridge_test_never_written"),
+        "write_mesh_asset": dict(name=subject, asset_name="bridge_test_never_written"),
         "get_macro_details": dict(name=subject),
         "get_character_summary": dict(name=subject),
         "get_target_stack": dict(name=subject),

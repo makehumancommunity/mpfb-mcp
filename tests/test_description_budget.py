@@ -209,7 +209,10 @@ import mpfbmcp
 # 1,659 B and the writer at 2,077 B, about the 2,050 B average, and the store at 2,206 B,
 # over it because `values_not_restored` is a surprise a caller cannot discover until a
 # material comes back different, and a surprise stays in full.
-DESCRIPTION_CEILING = 99400
+#
+# Raised from 99,400 to 102,000 by FR 050: `mpfb_write_mesh_asset` at about 2,530 B, over the
+# average for its refusals, two of which a caller cannot foresee.
+DESCRIPTION_CEILING = 102000
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -273,7 +276,9 @@ DESCRIPTION_CEILING = 99400
 #
 # Raised from 18,800 to 20,200 by FR 049: 1,390 B across three tools, most of it the
 # setter's three nullable objects of objects and the store's seven arguments.
-SCHEMA_CEILING = 20200
+#
+# Raised from 20,200 to 21,400 by FR 050: 1,190 B for `mpfb_write_mesh_asset`'s thirteen arguments.
+SCHEMA_CEILING = 21400
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.
@@ -325,7 +330,7 @@ class DescriptionBudgetTests(unittest.TestCase):
         self.measured = measure()
 
     def test_every_registered_tool_is_measured(self) -> None:
-        self.assertEqual(49, len(self.measured))
+        self.assertEqual(50, len(self.measured))
 
     def test_total_description_size_is_under_the_ceiling(self) -> None:
         total = sum(entry["description_bytes"] for entry in self.measured)

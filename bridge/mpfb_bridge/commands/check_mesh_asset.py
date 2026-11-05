@@ -12,12 +12,9 @@ body, and which sections.
 [glossary](../../../specifications/tool-interface.md#the-glossary) keeps "clothes"
 for quoting MPFB, and MakeClothes writes all three kinds of mesh asset.
 
-**The body is found the way a panel would, in a fixed order.** A named ``basemesh``;
-else one among the mesh's nearest relatives, which is how the macro and rig panels
-find one; else the one selected, which is how MakeClothes' own panel does; else the
-only one in the file. Several at the last two is a refusal, because a fit against
-the wrong body reads as a bad fit. ``basemesh_resolved_by`` says which it was. The
-mesh need not be marked as an asset, since checking one before it is marked is the
+**The body is found the way a panel would, in a fixed order**, by
+``subject_resolution.resolve_asset_body()``, and ``basemesh_resolved_by`` says which
+step it was. The mesh need not be marked as an asset, since checking one before it is marked is the
 point, and ``object_type`` says what it is marked as, if anything.
 
 **MPFB's validator returns early on mixed faces, and everything else is still
@@ -38,8 +35,6 @@ __all__ = (
     "SUMMARY",
     "check_mesh_asset",
 )
-
-import bpy
 
 from ..log import get_logger
 from ..shared import mesh_asset_report
@@ -78,46 +73,6 @@ def _refused(found, reason, message, subject, resolved_by, **extra):
     answer.update(dict.fromkeys(SECTIONS))
     answer.update(extra)
     return answer
-
-
-def _resolved_body(services, requested, subject):
-    """``(basemesh, resolved_by, refusal)``, in the order this module's docstring gives."""
-    object_service = services["ObjectService"]
-    if requested is not None:
-        body, _resolved_by, message = subject_resolution.resolve_subject(requested)
-        if body is None:
-            return (None, None, ("basemesh_not_found", message, []))
-        if not object_service.object_is_basemesh(body):
-            return (None, None, (
-                "not_a_basemesh",
-                "'{:s}' is not a MakeHuman basemesh, so there is no body to measure against. "
-                "Call mpfb_list_objects with 'Basemesh' to see which there are.".format(body.name),
-                []))
-        return (body, "argument", None)
-
-    relative = object_service.find_object_of_type_amongst_nearest_relatives(subject, "Basemesh")
-    if relative is not None:
-        return (relative, "relative", None)
-
-    selected = [blender_object for blender_object in bpy.context.selected_objects
-                if object_service.object_is_basemesh(blender_object)]
-    if len(selected) == 1:
-        return (selected[0], "selection", None)
-    candidates = selected or [blender_object for blender_object in bpy.data.objects
-                              if object_service.object_is_basemesh(blender_object)]
-    if len(candidates) == 1:
-        return (candidates[0], "only_basemesh", None)
-    if not candidates:
-        return (None, None, (
-            "basemesh_not_found",
-            "'{:s}' has no MakeHuman basemesh among its relatives and this file holds none, so "
-            "there is no body to measure against.".format(subject.name), []))
-    return (None, None, (
-        "basemesh_ambiguous",
-        "'{:s}' has no basemesh among its relatives and {:d} could be meant, so nothing was "
-        "measured. Pass 'basemesh' naming one of 'candidates'.".format(
-            subject.name, len(candidates)),
-        sorted(blender_object.name for blender_object in candidates)))
 
 
 def _validated_sections(requested):
@@ -193,7 +148,8 @@ def check_mesh_asset(params, resolution):
                             ", ".join(str(name) for name in unknown), ", ".join(SECTIONS)),
                         subject, resolved_by, known_sections=list(SECTIONS))
 
-    body, body_resolved_by, refusal = _resolved_body(services, params["basemesh"], subject)
+    body, body_resolved_by, refusal = subject_resolution.resolve_asset_body(
+        services, params["basemesh"], subject, "to measure against", "nothing was measured")
     if refusal is not None:
         reason, sentence, candidates = refusal
         return _refused(True, reason, sentence, subject, resolved_by, candidates=candidates)
