@@ -25,6 +25,7 @@ records what has already landed and why. When an effort below is finished, move 
 - [A summary mode for the asset catalogue](#a-summary-mode-for-the-asset-catalogue): FR 056
 - [Response bulk on the read-only tools](#response-bulk-on-the-read-only-tools): FR 056, in part
 - [No way to verify an install without an MCP client](#no-way-to-verify-an-install-without-an-mcp-client): FR 057
+- [Starting the bridge without a click](#starting-the-bridge-without-a-click): FR 058
 
 **Without one**, by apparent impact:
 
@@ -511,6 +512,18 @@ carry every fact it would print.
 Worth saying in `INSTALL.md` either way: the Blender half can be verified on its own, because the
 bridge's port shows up in `ss -ltnp | grep 9877` when the add-on is enabled and not otherwise.
 That single line distinguishes the two most common failures and costs nothing to document.
+
+<a id="starting-the-bridge-without-a-click"></a>
+
+## Starting the bridge without a click
+
+**Scoped on 2026-11-05 as [FR 058](058-autostarting-the-bridge/README.md), not yet implemented.** A
+preference, off by default, for a windowed Blender, which reverses
+[FR 029](done/029-bridge-transport-and-skeleton/README.md#out-of-scope-deliberately)'s refusal. For a
+headless Blender, `--command mpfb_bridge` stays the one way to ask: an environment variable or the
+preference has nothing to wait on there. Scoping found two defects in that command, which the request
+takes: Ctrl+C does not stop it (Blender's own `SIGINT` handler means `cli.py`'s `except
+KeyboardInterrupt` never runs), and its "listening" line never reaches a pipe.
 
 <a id="windowed-bridge-answers-once-a-second"></a>
 
