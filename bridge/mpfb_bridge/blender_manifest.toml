@@ -26,7 +26,8 @@ license = [
 tags = ["Development"]
 
 [permissions]
-# The server listens on 127.0.0.1 and is off until started from the preferences
-# panel. The wording follows blender lab's MCP add-on, which passed extension
+# The server listens on 127.0.0.1 and is off until a person starts it from the
+# preferences panel, or ticks the checkbox there that starts it with Blender,
+# which is off by default. The wording follows blender lab's MCP add-on, which passed extension
 # review with a listening socket declared this way.
 network = "Runs a local TCP socket server for MCP client communication"

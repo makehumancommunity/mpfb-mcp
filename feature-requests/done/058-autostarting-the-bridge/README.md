@@ -1,6 +1,6 @@
 # Auto-starting the bridge
 
-**Status:** Accepted
+**Status:** Done
 
 **A windowed Blender has to be told to serve, by hand, every session.** Until somebody opens
 Preferences → Add-ons → MPFB Bridge and clicks the button, every tool answers with a connection
@@ -8,7 +8,7 @@ error. For someone who installed the bridge in order to use it, that is a chore 
 A checkbox would end it, and blender lab's add-on has one.
 
 **This reverses a documented decision, on purpose.**
-[FR 029](../done/029-bridge-transport-and-skeleton/README.md#out-of-scope-deliberately) refused
+[FR 029](../029-bridge-transport-and-skeleton/README.md#out-of-scope-deliberately) refused
 autostart because "a listening socket that appears because software was installed" is what the pivot
 claims to improve on, and said that adding it "means reversing a documented decision, which is a
 request of its own and not a panel tweak". This is that request. What FR 029 protected survives if
@@ -56,7 +56,7 @@ true after it has been reworded.
 - **A delay preference.** blender lab's add-on has one, to avoid slowing startup. Binding a socket
   needs no such thing, and a one-shot timer is already after startup.
 - **An indicator outside the preferences panel**, such as in the status bar. The bridge deliberately
-  has no presence there ([ui.py](../../bridge/mpfb_bridge/ui.py)).
+  has no presence there ([ui.py](../../../bridge/mpfb_bridge/ui.py)).
 
 ## Functional requirements
 
@@ -69,7 +69,7 @@ true after it has been reworded.
    a click, whether or not a `.blend` was named on its command line.
 3. **The box is a setting, not a switch.** Ticking it starts nothing now and unticking it stops
    nothing now; the Start and Stop buttons do that. It is saved like any other preference, so with
-   Blender's auto-save off it needs Save Preferences, which [INSTALL.md](../../INSTALL.md) says.
+   Blender's auto-save off it needs Save Preferences, which [INSTALL.md](../../../INSTALL.md) says.
 4. **A failure to bind is quiet.** It raises nothing, shows no popup and does not stop Blender
    starting. It goes in the panel's error line and in the log at warning level. The Start button
    stays available. A second Blender finding the port taken is the expected case rather than a fault,
@@ -77,7 +77,7 @@ true after it has been reworded.
 5. Pressing Stop holds for the session. Opening a file neither starts nor stops the server.
    **Re-enabling the add-on or reloading scripts with the box ticked starts it**: that is the same
    `register()`, and telling them apart is not worth a second code path. The description need not say
-   this, and [architecture.md](../../specifications/architecture.md#the-bridge) should.
+   this, and [architecture.md](../../../specifications/architecture.md#the-bridge) should.
 6. The panel says when the running server was started automatically, so somebody who has forgotten
    ticking the box can see why a socket is open.
 7. **No command reads or writes the box.** Like the export directory it belongs to the person who
@@ -142,7 +142,7 @@ unregister
 python atexit                (add-on already gone)
 ```
 
-**The timer never fires**, as [architecture.md](../../specifications/architecture.md#the-bridge)
+**The timer never fires**, as [architecture.md](../../../specifications/architecture.md#the-bridge)
 already records, and after the last argument Blender exits
 (`blender/source/creator/creator.cc`, `WM_exit` straight after `ARG_PASS_FINAL`). The only exception
 in that source is the deferred `--command`, which runs after
@@ -157,7 +157,7 @@ and Blender exits.
 | Environment variable | No place to wait, as above. It is also inherited by every Blender started from that shell or by that process, including render workers and `--command extension build`, which would hang or collide. And it does not show in `ps`, so a process list no longer explains an open socket | Refuse |
 | Argument after `--`, read from `sys.argv` | No place to wait, as above. Unlike an environment variable it shows in `ps` and is not inherited, but it adds nothing to `--command` and bypasses Blender's help and its error for an unknown command | Refuse |
 | The checkbox, honoured in background | No place to wait, as above, **and** it would turn every background Blender on the machine into a server that never exits, for any purpose, from a setting made in a window | Refuse |
-| `--python-expr` calling `cli_execute()` | Works, and [verification/](../../verification/README.md) records one run that needed it, on a machine with the add-on installed twice. It reaches into the add-on's internals for what `--command` offers publicly | Not for documenting |
+| `--python-expr` calling `cli_execute()` | Works, and [verification/](../../../verification/README.md) records one run that needed it, on a machine with the add-on installed twice. It reaches into the add-on's internals for what `--command` offers publicly | Not for documenting |
 
 What an environment variable can do that the command line cannot is reach a Blender whose command
 line you do not write. A headless Blender is always started by something that writes its command
@@ -197,7 +197,7 @@ line, so that advantage is worth nothing here.
   in the operator. A small `autostart.py` beside `timer.py` holds the schedule, the cancel and the
   callback, and joins `__init__.py`'s list of modules.
 - **`bpy.app.online_access` is not consulted**, as the operator does not consult it, for the reason
-  [architecture.md](../../specifications/architecture.md#the-bridge) gives. blender lab's add-on
+  [architecture.md](../../../specifications/architecture.md#the-bridge) gives. blender lab's add-on
   refuses instead. An automatic start is a harder case for that reading than a click, but the
   tick is as explicit as the click, and two behaviours would be harder to explain. It should go to
   extension review with the rest of that reading.
@@ -225,18 +225,18 @@ line, so that advantage is worth nothing here.
 
 ## Affected specifications
 
-- [architecture.md](../../specifications/architecture.md#the-bridge): the "off until started"
+- [architecture.md](../../../specifications/architecture.md#the-bridge): the "off until started"
   defence is reworded; the two drive mechanisms gain the rule that the checkbox applies to the first
   only, and why the second cannot notice anything for itself; this request's measurements of the
   startup order go here.
-- [vision.md](../../specifications/vision.md): "Installation is the consent" stays true and is not
+- [vision.md](../../../specifications/vision.md): "Installation is the consent" stays true and is not
   reworded. Check it still reads so.
-- [testing.md](../../specifications/testing.md): only if the live check finds something a bridge test
+- [testing.md](../../../specifications/testing.md): only if the live check finds something a bridge test
   should have.
 
-Beyond the specifications: [INSTALL.md](../../INSTALL.md) (the start instructions, the signals, the
+Beyond the specifications: [INSTALL.md](../../../INSTALL.md) (the start instructions, the signals, the
 ready line, `--addons`, and the `MPFB_BRIDGE_PORT` row, which says a headless bridge does not read
-the preference) and the root [CLAUDE.md](../../CLAUDE.md)'s commands and its `bridge/` table row. No
+the preference) and the root [CLAUDE.md](../../../CLAUDE.md)'s commands and its `bridge/` table row. No
 tool is added, so neither the tool table nor the count changes.
 
 ## Tests
@@ -289,13 +289,37 @@ No smoke item: no tool is introduced, and `verification/` drives the bridge rath
 - **`--host` and `--port` follow the preference** because the checkbox makes it more likely that
   someone has set one.
 
+## What landed differently
+
+- **Requirement 10's "previous handlers are put back" holds only where Python can name them.**
+  Blender's `SIGINT` handler is C, so `signal.signal` returns `None` for it and it cannot be installed
+  again. `SIG_DFL` stands in. Blender is on its way out by then, and a second Ctrl+C ending that at
+  once is what its own handler would have done.
+- **The Windows pitfall was fixed by not setting `SO_REUSEADDR` on Windows, not with
+  `SO_EXCLUSIVEADDRUSE`.** Microsoft's same document says an exclusive socket cannot always be reused
+  at once: a listening socket closed after accepting connections can block a rebind until they are no
+  longer active, and this server accepts one per request, so Stop then Start could fail. Without either
+  option a second bind on the same address is still refused, by that document's tables, which are what
+  the two-Blender case needs. asyncio's `reuse_address` makes the same choice. **This goes against that
+  document's general advice**, that every server application should set `SO_EXCLUSIVEADDRUSE`. Its
+  reason is port hijacking, and by the same tables another process cannot take a default socket's
+  specific address even with `SO_REUSEADDR`, so the loopback default is covered. A non-loopback or
+  wildcard `host`, which the bridge warns against, is the case to reconsider. Still **not measured on
+  Windows**.
+- **A small `addon_preferences.py` was added** beside `autostart.py`, since `cli.py` and `autostart.py`
+  both needed the guard `export_directory.py` already had. `export_directory.py` now uses it too.
+
+Verified by [`live_check.py`](live_check.py): 35 checks, 0 failures, on Blender 5.1.0 on Linux. Every
+check in the table under [Tests](#tests) has a row there. No tool was touched, so there is no smoke
+item, and the existing smoke run is 46 of 46.
+
 ## References
 
-- [FR 029](../done/029-bridge-transport-and-skeleton/README.md#out-of-scope-deliberately): the
-  refusal this reverses. [FR 028](../done/028-pivot-to-specific-addon/README.md): the posture.
-- [FR 039](../done/039-exporting-characters/README.md): the command line, preference, default order
+- [FR 029](../029-bridge-transport-and-skeleton/README.md#out-of-scope-deliberately): the
+  refusal this reverses. [FR 028](../028-pivot-to-specific-addon/README.md): the posture.
+- [FR 039](../039-exporting-characters/README.md): the command line, preference, default order
   that requirement 12 copies, and the argument for a setting no socket can reach.
-- [FR 057](../057-install-selftest/README.md): what can be told from outside Blender. An autostart
+- [FR 057](../../057-install-selftest/README.md): what can be told from outside Blender. An autostart
   that failed looks like every other "nothing is listening".
 - `blender_mcp/addon/blender_mcp_addon/__init__.py`: `use_autostart` (default **on** there),
   `_autostart_timer`, and the same background gate.

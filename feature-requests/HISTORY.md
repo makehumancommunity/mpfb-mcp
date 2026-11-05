@@ -960,3 +960,39 @@ budget up 2,050 B; the smoke run is 46 of 46 in 2.3 s headless, its writer item 
 `mpfb_reset_pose` puts back, since the smoke run requires every mutating item to change something.
 A helper for the default rig and the `game_engine` conversion stay in
 [NEXT_STEPS](NEXT_STEPS.md#posing-support).
+
+<a id="autostarting-the-bridge"></a>
+
+## [FR 058](done/058-autostarting-the-bridge/README.md) — auto-starting the bridge
+
+A windowed Blender had to be told to serve, by hand, every session. **A checkbox now does that, off by
+default**, reversing FR 029's documented refusal on the reading that a tick is the second, separate
+act FR 029 asked starting to be. A one-shot `persistent` timer reads it after startup; a port already
+taken goes in the panel and the log, and no command can read or write it.
+
+**For a headless Blender, `--command mpfb_bridge` stays the only way to ask**, after measuring why:
+a background Blender gives an add-on nothing to wait on, so an environment variable, an argument
+after `--` or the checkbox would block in front of the file and scripts, or watch Blender exit. The
+order is in [architecture.md](../specifications/architecture.md#the-bridge). **Scoping it found two
+defects there, both as old as the command.** Ctrl+C did not stop it: Blender's C `SIGINT` handler
+meant `except KeyboardInterrupt` and the `finally` never ran, so the first press left the bridge
+answering and the second killed Blender. And its "listening" line never reached a pipe. It now stops
+on the first `SIGINT` or `SIGTERM` with exit 0, the line is flushed, and `--host` and `--port` fall
+back to the preferences as `--export-dir` does.
+
+Two things landed other than as written. **The handlers cannot all be put back**: Blender's `SIGINT`
+handler is C, so Python gets `None` for it and the default stands in, with Blender already on its way
+out. **`SO_REUSEADDR` is simply not set on Windows**, rather than the `SO_EXCLUSIVEADDRUSE` the request
+named, because Microsoft documents that an exclusive socket can block a rebind while an accepted
+connection lingers, and this server closes one per request. asyncio makes the same choice, and it
+goes against that document's advice that servers set the exclusive option, which the request's
+"What landed differently" weighs. Neither that nor anything else here was run on Windows.
+
+Verified by [`live_check.py`](done/058-autostarting-the-bridge/live_check.py), 0 failures of 35, on
+Blender 5.1.0 on Linux, with real windows and real signals: a ticked box answers 0.79 s from launch
+with the named file open; a second Blender reports the taken port and is otherwise normal while the
+first still answers; Stop then opening a file stays stopped; a ticked box in background exits in
+0.42 s with nothing listening; a single `SIGINT` exits 0 in 0.11 s with the port free. 16 new bridge
+tests (682); 609 unit tests, unchanged in number; the smoke run is 46 of 46 in 2.2 s, stopped with one
+Ctrl+C. No tool was added. Telling a client which Blender answered is left out: with the box ticked,
+an agent may be changing a file other than the one on the screen.

@@ -46,13 +46,11 @@ import os
 
 import bpy
 
+from . import addon_preferences
+
 RESOLVED_BY_COMMAND_LINE = "command_line"
 RESOLVED_BY_PREFERENCES = "preferences"
 RESOLVED_BY_DEFAULT = "default"
-
-# The add-on's package, which is what Blender keys its preferences by. This
-# module sits at the package root, so its own __package__ is that name.
-_ADDON_PACKAGE = __package__
 
 
 class _State:
@@ -73,10 +71,10 @@ def preference_value():
     read, which happens to a test harness that registered the add-on for one
     process: there is then no preference to have set.
     """
-    addon = bpy.context.preferences.addons.get(_ADDON_PACKAGE)
-    if addon is None or addon.preferences is None:
+    preferences = addon_preferences.read()
+    if preferences is None:
         return ""
-    return str(getattr(addon.preferences, "export_directory", "") or "")
+    return str(getattr(preferences, "export_directory", "") or "")
 
 
 def _absolute(directory):

@@ -10,11 +10,13 @@ is MPFB's, this is a different extension, and two installed add-ons registering
 the same ``bl_idname`` is the kind of collision that fails quietly and is then
 very hard to see.
 
-**The server is off until started.** Not a preference, not an auto-start timer: a
-listening socket that appears because software was installed is exactly the
-posture the pivot is meant to improve on, and "installation is the consent" only
-holds if starting it is a second, separate act. An autostart option was
-considered and refused for that reason rather than overlooked.
+**The server is off until a person asks for it**, with the button here or with the
+checkbox beside it, which is off by default and which starts the server with every
+windowed Blender from then on ([`autostart.py`](autostart.py)). A listening socket
+that appears because software was installed is exactly the posture the pivot is
+meant to improve on, and "installation is the consent" only holds if starting it is
+a second, separate act. Ticking the box is that act. FR 029 refused a checkbox on
+this reasoning and FR 058 reversed it; nothing a client sends can reach it.
 
 **The export directory is a preference because the human must choose it.**
 ``export_character`` takes only a file name; the directory is read by
@@ -34,6 +36,7 @@ __all__ = (
     "MPFB_BRIDGE_Preferences",
     "MPFB_BRIDGE_OT_server_start",
     "MPFB_BRIDGE_OT_server_stop",
+    "start_server",
 )
 
 import time
@@ -61,6 +64,47 @@ class _State:
     """
 
     last_error = ""
+    started_automatically = False
+
+
+def start_server(preferences, automatic=False):
+    """Bind the socket and start the timer that drives it. Returns why not, or ``None``.
+
+    The one start sequence, shared by the operator and by the box in
+    :mod:`autostart`, so that the two cannot drift on the poll interval, the
+    wording or the online-access hint. What to do with a failure differs between
+    them and is left to the caller: the operator reports it to whoever clicked,
+    while the box has nobody to report to. Both show in the panel through
+    ``_State``, which is set here.
+
+    The refusal of background mode stays in the operator. The box has its own, and
+    ``start_server`` called in a background Blender binds a socket nothing would
+    answer on, which only a test does, knowing that.
+    """
+    from . import timer  # pylint: disable=import-outside-toplevel
+
+    _State.last_error = ""
+    _State.started_automatically = False
+    command_server.timer_internal_vars_calc(active=preferences.timer_interval_active)
+
+    try:
+        command_server.start(preferences.host, preferences.port, COMMANDS)
+    except Exception as error:  # pylint: disable=broad-except
+        message = "Could not start the MPFB Bridge server{:s}: {:s}".format(
+            " automatically" if automatic else "", str(error))
+        # Blender 4.2+ gates add-ons that declare a network permission on the
+        # user's online-access setting. Whether that gate reaches a loopback
+        # bind is not documented either way, so rather than refusing to try,
+        # name it as a suspect only when a failure has actually happened.
+        if not bpy.app.online_access:
+            message += (" Online access is disabled in Blender's system preferences, which "
+                        "may be what refused the socket.")
+        _State.last_error = message
+        return message
+
+    _State.started_automatically = automatic
+    timer.register_timer()
+    return None
 
 
 def _clock(timestamp):
@@ -121,6 +165,14 @@ class MPFB_BRIDGE_Preferences(bpy.types.AddonPreferences):
         subtype="DIR_PATH",
         default="")
 
+    autostart: bpy.props.BoolProperty(
+        name="Start server when Blender starts",
+        description="Start the command server every time Blender opens with a window, without a "
+                    "click. While it runs, any process on this computer can drive Blender through "
+                    "it. Takes effect the next time Blender starts, and is ignored in background "
+                    "mode, which has its own command",
+        default=False)
+
     def draw(self, _context):
         """Paint the preferences panel: the address, the switch, and what is happening."""
         layout = self.layout
@@ -130,6 +182,7 @@ class MPFB_BRIDGE_Preferences(bpy.types.AddonPreferences):
         column.prop(self, "port")
         column.prop(self, "timer_interval_active")
         column.prop(self, "export_directory")
+        column.prop(self, "autostart")
 
         layout.separator()
 
@@ -139,6 +192,9 @@ class MPFB_BRIDGE_Preferences(bpy.types.AddonPreferences):
             # The bound address rather than the preference, which may say port 0.
             layout.label(text="Server is running on {:s}:{:d}".format(*address) if address
                          else "Server is running", icon="CHECKMARK")
+            if _State.started_automatically:
+                # So somebody who has forgotten the box can see why a socket is open.
+                layout.label(text="Started automatically, by the checkbox above")
         else:
             layout.operator("mpfb_bridge.server_start", icon="PLAY")
             layout.label(text="Server is stopped", icon="X")
@@ -223,8 +279,6 @@ class MPFB_BRIDGE_OT_server_start(bpy.types.Operator):
 
     def execute(self, context):
         """Bind the socket, then register the timer that drives it."""
-        from . import timer  # pylint: disable=import-outside-toplevel
-
         preferences = context.preferences.addons[__package__].preferences
 
         if bpy.app.background:
@@ -251,26 +305,12 @@ class MPFB_BRIDGE_OT_server_start(bpy.types.Operator):
             self.report({"WARNING"}, "The MPFB Bridge server is already running")
             return {"CANCELLED"}
 
-        _State.last_error = ""
-        command_server.timer_internal_vars_calc(active=preferences.timer_interval_active)
-
-        try:
-            command_server.start(preferences.host, preferences.port, COMMANDS)
-        except Exception as error:  # pylint: disable=broad-except
-            message = "Could not start the MPFB Bridge server: {:s}".format(str(error))
-            # Blender 4.2+ gates add-ons that declare a network permission on the
-            # user's online-access setting. Whether that gate reaches a loopback
-            # bind is not documented either way, so rather than refusing to try,
-            # name it as a suspect only when a failure has actually happened.
-            if not bpy.app.online_access:
-                message += (" Online access is disabled in Blender's system preferences, which "
-                            "may be what refused the socket.")
-            _State.last_error = message
-            _LOG.error(message)
-            self.report({"ERROR"}, message)
+        problem = start_server(preferences)
+        if problem:
+            _LOG.error(problem)
+            self.report({"ERROR"}, problem)
             return {"CANCELLED"}
 
-        timer.register_timer()
         self.report({"INFO"}, "MPFB Bridge server listening on {:s}:{:d}".format(
             preferences.host, preferences.port))
         return {"FINISHED"}

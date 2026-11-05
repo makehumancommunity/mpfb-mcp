@@ -49,6 +49,8 @@ matches what it tests, never under a new letter.
 | Module | What it covers |
 |--------|----------------|
 | `aaa_addon/bridge_test.py` | The harness itself, the shape of the command table, and the start/stop lifecycle. Also the background-mode refusal, which is **the one test that could only be written because the suite runs headless**: `bpy.app.background` is `True` here, so the refusal is directly assertable |
+| `aaa_addon/autostart_test.py` | FR 058's checkbox as far as a suite with no event loop can say: off by default, what a windowed Blender would do (the decision takes `background` as an argument, each answer binding a real socket), that a ticked box means nothing here, a server something else started left alone, a held port quiet, and what the panel draws, through its real `draw()` over a stand-in layout |
+| `aaa_addon/cli_test.py` | `cli.py`'s parts that need no process of their own: the address's order of command line, preference, default, with `--port 0` counting as named and no preferences to read not being an error, and the signal handlers installed and put back |
 | `aaa_addon/validation_test.py` | The parameter contract, as one table of cases read by one loop. Every case is a failure that would otherwise be silent — `limit=True` paging one entry at a time, `refresh="false"` rescanning the disk, a misspelled key producing a call that succeeds and does nothing |
 | `aaa_addon/dispatch_test.py` | What a request becomes before a handler sees it: the order of the checks, the `mpfb_unavailable` precondition with both non-`ok` states supplied rather than waited for, the handshake, and that a handler which raises does not take the server down |
 | `aaa_addon/roundtrip_test.py` | **A real request over a real socket.** Client on a thread, dispatch on the main one, which is the add-on's production shape. This is what the headless drive mechanism bought: before it, the transport was the one part of the add-on its own tests could not reach |
@@ -82,8 +84,9 @@ matches what it tests, never under a new letter.
 | `eee_composite/expression_divergence_test.py` | The three expression-aware commands asked about one character and required to agree, then the compose-save-apply round trip across them |
 
 **What this suite cannot establish** is that the *timer-driven* path answers the same as the
-blocking one, because there is no event loop here to drive a timer. That comparison belongs
-to a feature request's own live check.
+blocking one, because there is no event loop here to drive a timer, nor anything about the headless
+command as a process, since the suite runs inside the Blender it would have to signal. Those belong
+to a feature request's own live check, as FR 058's did.
 
 ## Prerequisites
 

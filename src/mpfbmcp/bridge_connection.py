@@ -280,8 +280,9 @@ def _request(host: str, port: int, command: str,
         raise ConnectionError(
             "Cannot connect to the MPFB Bridge at {:s}:{:d}. The bridge is a Blender add-on of "
             "its own, separate from MPFB: it must be installed and enabled, and its command "
-            "server started from the add-on's preferences panel, which it is not until somebody "
-            "starts it.".format(host, port)
+            "server started, which it is not until somebody starts it from the add-on's "
+            "preferences panel, ticks the checkbox there that starts it with Blender, or runs "
+            "'blender --background --command mpfb_bridge'.".format(host, port)
         ) from ex
     except socket.timeout as ex:
         record.failed(ex)

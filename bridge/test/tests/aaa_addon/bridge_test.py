@@ -49,7 +49,7 @@ def test_server_is_not_listening_by_default():
     """command_server.is_running()"""
     is_running = dynamic_import("command_server", "is_running")
     assert not is_running(), \
-        "The command server should be off until it is started from the preferences panel"
+        "The command server should be off until somebody asks for it"
 
 
 def test_bridge_does_not_mistake_itself_for_mpfb():

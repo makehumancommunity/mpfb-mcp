@@ -26,7 +26,9 @@ The modules, in dependency order:
   file that need be read to know everything this add-on can be asked to do
 - ``timer`` - the main-thread callback that drives the server in a GUI Blender
 - ``cli`` - the blocking loop that drives it in a background one
+- ``addon_preferences`` - this add-on's preferences, or ``None`` when there are none
 - ``ui`` - preferences, the start and stop operators, and the panel
+- ``autostart`` - the one-shot that honours the preference to start with Blender
 
 WARNING, and it is MPFB's warning rather than a new one: do not import anything
 from this package outside ``register()``. Only once Blender has called that can
@@ -48,15 +50,19 @@ _REGISTERED_CLI_COMMANDS = []
 def register():
     """Register the add-on's classes and its CLI command.
 
-    Starts no server and opens no socket. Registering the CLI command does not
-    run it: it makes ``blender --command mpfb_bridge`` resolve to something,
-    which is the only way a background Blender can be asked to serve, since a
-    disabled extension registers nothing and an unregistered command id is an
-    unknown command.
+    Opens no socket here. In a windowed Blender it schedules a one-shot that
+    starts the server if the person has ticked the preference asking for that,
+    which is off by default (see :mod:`autostart`); in a background Blender that
+    preference means nothing. Registering the CLI command does not run it: it
+    makes ``blender --command mpfb_bridge`` resolve to something, which is the
+    only way a background Blender can be asked to serve, since a disabled
+    extension registers nothing and an unregistered command id is an unknown
+    command.
 
     No version guard on ``register_cli_command``. The manifest declares a
     Blender floor of 5.0.0, which is comfortably past the release that added it.
     """
+    from . import autostart  # pylint: disable=import-outside-toplevel
     from .cli import CLI_COMMAND_ID  # pylint: disable=import-outside-toplevel
     from .cli import cli_execute  # pylint: disable=import-outside-toplevel
     from .ui import CLASSES  # pylint: disable=import-outside-toplevel
@@ -68,11 +74,16 @@ def register():
     _REGISTERED_CLI_COMMANDS.append(
         bpy.utils.register_cli_command(CLI_COMMAND_ID, cli_execute))
 
+    autostart.schedule()
+
 
 def unregister():
     """Stop the server if it is running, then unregister in reverse order."""
+    from . import autostart  # pylint: disable=import-outside-toplevel
     from . import command_server  # pylint: disable=import-outside-toplevel
     from . import timer  # pylint: disable=import-outside-toplevel
+
+    autostart.cancel()
 
     while _REGISTERED_CLI_COMMANDS:
         bpy.utils.unregister_cli_command(_REGISTERED_CLI_COMMANDS.pop())

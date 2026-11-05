@@ -66,6 +66,7 @@ __all__ = (
 
 import json
 import math
+import os
 import select
 import socket
 import time
@@ -273,7 +274,13 @@ def start(host, port, commands):
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # Only on POSIX, where it means a port left in TIME_WAIT can be bound again and
+        # a second listener is still refused. On Windows it means something else: two
+        # sockets may then share a port with undefined delivery, so two Blenders would
+        # both "start" and a client would reach either. Unset there, a second bind
+        # fails. asyncio makes the same choice, for the same reason.
+        if os.name == "posix":
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.setblocking(False)
         sock.bind((host, port))
         sock.listen(_LISTEN_BACKLOG)

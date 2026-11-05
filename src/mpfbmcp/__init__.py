@@ -9,7 +9,8 @@ dispatches it and answers over its TCP socket (see bridge_connection.py).
 This requires:
   - Blender running with MPFB and the MPFB Bridge add-on installed & enabled.
   - The bridge's command server started (from the add-on's preferences panel,
-    or ``blender --background --command mpfb_bridge`` for a headless one).
+    where a checkbox can also start it with Blender, or
+    ``blender --background --command mpfb_bridge`` for a headless one).
   - This server's client configuring MPFB_BRIDGE_HOST / MPFB_BRIDGE_PORT to
     match, if not using the defaults (127.0.0.1:9877).
 """

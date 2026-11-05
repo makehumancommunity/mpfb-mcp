@@ -113,8 +113,8 @@ Three structural consequences:
 
 **The honest limitation is documented rather than papered over.** While the server is running, any
 local process can drive it, exactly as with both existing MCP add-ons. The defences are that it
-binds loopback only, that it is off until started from a preferences panel, and that what it will
-do is a list a sceptic can read. A shared-secret token was considered and rejected for now: it
+binds loopback only, that it is off until a person asks for it, and that what it will do is a list
+a sceptic can read. A shared-secret token was considered and rejected for now: it
 adds a configuration step to every client setup, which is the friction the pivot exists to remove.
 
 **There are two drive mechanisms, and which one you get is decided by whether Blender has a
@@ -124,6 +124,48 @@ headless one it is drained from a blocking `select` loop reached through
 ending in the same dispatch, the same framing and the same table — **one protocol implemented
 once**, which is a deliberate departure from the add-on the transport is modelled on, where the
 background path is a second read loop beside the timer-driven one.
+
+**A person asks for the server, in one of three ways, and installing is none of them.** The Start
+button, for now. A checkbox beside it, off by default, for every windowed Blender from then on. And
+`--command mpfb_bridge`, for a background one. No command can read or write the checkbox, for the
+reason a command cannot choose the export directory: a socket must not be able to arrange for itself
+to open next time. [FR 029](../feature-requests/done/029-bridge-transport-and-skeleton/README.md#out-of-scope-deliberately)
+refused the checkbox and [FR 058](../feature-requests/done/058-autostarting-the-bridge/README.md)
+reversed that, on the reading that what FR 029 protected was starting being a second, separate act,
+and a tick is one. It fires from a one-shot `persistent` timer, so after the add-ons, the file on the
+command line and any `--python` script, and it leaves a running server alone. A port already taken is
+the expected case for a second Blender and is reported only in the panel and the log. It reads the
+box whenever the add-on registers in a window, so with the box ticked re-enabling the add-on or
+reloading scripts starts the server too.
+
+**The checkbox means nothing in a background Blender, and no other switch could work there.** Measured
+in FR 058 on Blender 5.1.0: a background Blender runs `register()`, `load_post` for the startup file,
+`load_post` for a `.blend` on its command line, its `--python` scripts, then `unregister()`; a timer
+never fires, and Python's `atexit` comes after the add-on has gone. So an environment variable, an
+argument after `--`, or the box itself would have to block in `register()` or `load_post`, in front of
+the file and the scripts, or not block and watch Blender exit. Only a deferred `--command` runs last
+and is waited for. And a background Blender is also every render and every `--command extension
+build`, which a setting made in a window must not turn into a process that never exits. An
+environment variable would work for a *windowed* Blender, since that has an event loop; nobody has
+needed one.
+
+**The headless command is something a supervisor can run.** It stops on the first `SIGINT` or on
+`SIGTERM`, with exit 0, through a Python handler installed for the length of the loop. It needs one
+because Blender replaces `SIGINT` in background mode with a C handler that only sets a flag for the
+render loop: without it the first Ctrl+C left the bridge answering, and the second killed Blender past
+every `finally`. Its ready line, `MPFB Bridge listening on <host>:<port>`, is flushed, since a pipe is
+block-buffered, and may be relied on, which is how a caller learns what `--port 0` got. `--host` and
+`--port` fall back to the preferences and then to the defaults, as `--export-dir` does: the
+preferences say *where*, and only the command line says *whether*.
+
+**`SO_REUSEADDR` is set on POSIX only.** There it lets a port in `TIME_WAIT` be bound again and still
+refuses a second listener, measured. On Windows Microsoft documents that it lets two sockets share a
+port with undefined delivery, which a checkbox would turn from rare to routine, so it is left unset,
+which is what asyncio does for the same reason. `SO_EXCLUSIVEADDRUSE`, which that document advises for
+servers, is deliberately not used: it can refuse a rebind while an accepted connection lingers, and
+this server accepts one per request
+([the weighing](../feature-requests/done/058-autostarting-the-bridge/README.md#what-landed-differently)).
+**Not measured on Windows.**
 
 **A windowed Blender sets the pace, not the bridge's poll interval.** Measured during
 [FR 045](../feature-requests/done/045-placing-a-character/README.md): in a windowed Blender whose
@@ -150,8 +192,8 @@ screen. Two prerequisites are easy to miss: the add-on must be *enabled* in the 
 because a disabled extension registers no CLI command, and the loop owns the main thread until it
 is interrupted.
 
-**The bridge has one preference a command reads: where exports go.** Host, port and poll interval
-configure the server; `export_directory` configures a command, `export_character`, and so does
+**The bridge has one preference a command reads: where exports go.** Host, port, poll interval and
+the checkbox configure the server; `export_directory` configures a command, `export_character`, and so does
 `--export-dir` on the headless command. Both are read through
 [`export_directory.py`](../bridge/mpfb_bridge/export_directory.py), a module at the add-on's root
 beside `stats.py`, because `ui.py` and `cli.py` both write the choice and a command importing the

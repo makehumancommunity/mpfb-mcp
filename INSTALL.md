@@ -245,7 +245,7 @@ All optional. Set them in the client's configuration for the server, not in your
 | Variable | Default | What it does |
 |----------|---------|--------------|
 | `MPFB_BRIDGE_HOST` | `127.0.0.1` | Where the bridge is listening. |
-| `MPFB_BRIDGE_PORT` | `9877` | Its port. Must match the bridge's preferences, or `--port` for a headless one. |
+| `MPFB_BRIDGE_PORT` | `9877` | Its port. Must match the bridge's preferences, or `--port` if a headless one was given it. |
 | `MPFB_MCP_LOG_LEVEL` | off | `INFO` or `DEBUG` logs each call to stderr, which most clients keep in their MCP server log. |
 | `MPFB_MCP_RECORD_DIR` | off | A directory to keep the exact request and response of every call in. Diagnostic output about your machine: read it before sharing it, and do not point it inside this repository. |
 
@@ -260,15 +260,31 @@ installed add-on does not open a port by itself.
 - **In a Blender with a window**: *Edit → Preferences → Add-ons → MPFB Bridge*, click
   **Start MPFB Bridge server**. The panel then says it is running, and counts requests as they
   arrive.
+
+  To stop doing that every session, tick **Start server when Blender starts** there. It is off by
+  default, and takes effect the next time Blender starts. While the server runs, any process on this
+  computer can drive Blender through it. If Blender's *Auto-Save Preferences* is off, use *Save
+  Preferences* or the tick is forgotten. Only the first Blender started gets the port: a second one
+  says so in its panel and otherwise works normally, without a bridge.
 - **In a Blender with no window** (a server, a pipeline, a throwaway instance for testing):
 
   ```bash
   blender --background --command mpfb_bridge
   ```
 
-  It serves until Ctrl+C. Add `--port 9900` to listen elsewhere, and put a `.blend` path before
-  `--command` to open one first. The start button refuses in background mode, since a background
-  Blender has no event loop to drive it; this command is the replacement, not a workaround.
+  It serves until Ctrl+C or `SIGTERM`, either of which ends it with exit code 0. Add `--port 9900` to
+  listen elsewhere; without it, the port and host come from the preferences above, then the defaults.
+  Anything for Blender goes **before** `--command`, which takes everything after it for itself: a
+  `.blend` path to open one first, `--python setup.py` to run a script first, `--addons
+  bl_ext.user_default.mpfb_bridge` to enable the add-on for this one process.
+
+  A script starting this can wait for the line `MPFB Bridge listening on <host>:<port>`, which is
+  written as soon as the socket is bound and says which port `--port 0` got. If the address will not
+  bind it prints one line and exits with code 1.
+
+  The start button and the checkbox do nothing in background mode, since a background Blender has no
+  event loop to drive them, and a render should not turn into a server because of a setting made
+  elsewhere; this command is the replacement, not a workaround.
 
 Order does not matter. The MCP client can start mpfb-mcp before Blender is running; until the
 bridge is up, each tool answers with an error naming the preferences panel, except
@@ -341,7 +357,7 @@ and every call then fails with a message saying which end to upgrade.
 | Symptom | Likely cause |
 |---------|--------------|
 | Every tool reports a refused connection | The bridge server is not started (step 6), or it is on a different host or port than `MPFB_BRIDGE_HOST` / `MPFB_BRIDGE_PORT` say. |
-| **Start MPFB Bridge server** fails with "address already in use" | Something else holds port 9877 — often a second Blender with the bridge already running. Stop that one, or change the port in the preferences and in the client configuration together. |
+| **Start MPFB Bridge server** fails with "address already in use", or the panel says it could not start automatically | Something else holds port 9877 — often another Blender with the bridge already running, which is the one your client is talking to. Stop that one, or change the port in the preferences and in the client configuration together. |
 | `mpfb_get_status` says `absent` | MPFB is not installed or not enabled in *that* Blender. The bridge's preferences panel says where it looked. |
 | `mpfb_get_status` says `not_initialized` | MPFB is loaded but failed during startup. Blender's console (*Window → Toggle System Console* on Windows; the terminal Blender was started from elsewhere) has MPFB's error. |
 | `blender --background --command mpfb_bridge` says the command is unknown | The add-on is installed but not enabled in that Blender's preferences. A disabled extension registers no command-line command. |
