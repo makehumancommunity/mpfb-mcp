@@ -178,7 +178,8 @@ def build_server() -> FastMCP:
             "mpfb_set_makeskin_material, read it with "
             "mpfb_get_makeskin_material, and keep it as an alternate or a skin "
             "with mpfb_store_makeskin_material. "
-            "To author a mesh asset: measure it, write it with mpfb_write_mesh_asset, "
+            "To author a mesh asset: measure it, give the body a delete group with "
+            "mpfb_generate_delete_group, write it with mpfb_write_mesh_asset, "
             "then build a second character from a preset, pose it, equip the asset "
             "and measure with mpfb_check_intersections, reading the unmasked counts. "
             "A character exists only in the running .blend until it is saved "
@@ -226,7 +227,7 @@ def build_server() -> FastMCP:
     from mpfbmcp.tools import (
         add_asset, add_rig, apply_expressions, check_intersections, check_mesh_asset,
         create_export_copy, create_human,
-        create_human_from_preset, export_character, generate_rigify_rig, get_character_summary, get_expression, get_face_units,
+        create_human_from_preset, export_character, generate_delete_group, generate_rigify_rig, get_character_summary, get_expression, get_face_units,
         get_macro_details, get_makeskin_material, get_material_settings, get_object_info, get_pose, get_pose_controls,
         get_rigify_hand_shape, get_status, get_target_stack,
         list_asset_materials, list_assets, list_docs, list_expressions, list_objects,
@@ -244,6 +245,7 @@ def build_server() -> FastMCP:
     create_human.register(mcp)
     create_human_from_preset.register(mcp)
     export_character.register(mcp)
+    generate_delete_group.register(mcp)
     generate_rigify_rig.register(mcp)
     get_character_summary.register(mcp)
     get_expression.register(mcp)

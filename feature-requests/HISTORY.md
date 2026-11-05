@@ -1093,3 +1093,104 @@ first still answers; Stop then opening a file stays stopped; a ticked box in bac
 tests (682); 609 unit tests, unchanged in number; the smoke run is 46 of 46 in 2.2 s, stopped with one
 Ctrl+C. No tool was added. Telling a client which Blender answered is left out: with the box ticked,
 an agent may be changing a file other than the one on the screen.
+
+## [FR 051](done/051-delete-groups/README.md) — generating a delete group
+
+The delete group was the longest part of the gi session, at eleven runs of a script with the garment's openings
+hard-coded, and MPFB's own operator calls its result "very rough". **One tool**, `mpfb_generate_delete_group`, and
+`shared/delete_group.py`: from the gi's draft of 2,563 it gives **3,199 vertices in 0.59 s**, all of them in the session's 3,209,
+reading the openings off the mesh.
+
+**The request opened with a spike that could have stopped it, and it did not.** Which limb's `joint-*` chain passes
+through a loop classified 24 of 24; rig weights 22, and needing a rig; looseness 18. It also found that a boundary loop
+is often no opening at all, since a jacket lies over a shirt and a button on a jacket, so a vertex now has to reach skin and
+see air before it counts. Four of eleven garments tried are closed shells with no boundary, which get no margin and a warning.
+
+**The renders found what every number missed.** The first complete run passed every check and showed black wedges on the
+authoring body's chest. The cause was the generalisation itself: measuring a margin to an edge rather than to its midpoint
+kept vertices from being tested, so they grew no collar. And the two counts the request asked for are of a loaded asset,
+a ring smaller, and had not moved, which is why `masked_skin_still_visible_authoring` is beside them. **A loaded asset is not
+what MPFB's rule says, either**: `Mhclo.load()` reads the first index of each range twice and `_conservative_mask()` removes
+one occurrence per face, so the gi's 3,209 leave 2,698 and not 2,680. Reproduced and filed.
+
+`<group>.original` is the undo, since 3,209 vertices cannot be a `restore_with`, and is what every rerun starts from. It
+reaches no FBX, glTF or MHCLO. A turned character is not refused, unlike FR 050's write, because everything is read in the
+body's own frame; a pose is. Generated from nothing, a group errs toward leaving skin (the suit: 5 slits and 1,625 faces under
+the cloth, against its author's 138 and 377), so `merge` is the default.
+
+Verified by [`live_check.py`](done/051-delete-groups/live_check.py), 39 of 39, with renders kept beside it: the gi, both Taido
+poses against the session's own asset (160 and 114 masked pairs against 157 and 107), the dress and the suit. 36 new
+bridge tests (940); 9 unit tests (696); the smoke run is 53 of 53 in 3.4 s. Descriptions to 104,700 B and schemas to 22,000 B.
+
+<a id="the-gi-session-that-scoped-fr-048-to-fr-051"></a>
+
+### The gi session that scoped FR 048 to FR 051
+
+Moved from [NEXT_STEPS.md](NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows) when the last of the four landed. Scoped on
+2026-11-03 as four requests: [FR 048](done/048-measuring-mesh-assets/README.md),
+[FR 049](done/049-makeskin-materials/README.md), [FR 050](done/050-writing-mesh-assets/README.md) and
+[FR 051](done/051-delete-groups/README.md). They renamed the tools proposed below, since the
+[glossary](../specifications/tool-interface.md) keeps "clothes" for quoting MPFB.
+
+**No tool touches asset authoring.** Everything MPFB's Create assets panels do was driven through
+`execute_blender_code` and `from bl_ext.repo.mpfb...` imports, which is exactly the "read MPFB's
+source to know what to call" the [vision](../specifications/vision.md) exists to remove.
+
+The evidence is one session (2026-11-01), taking a draft gi to a finished asset: new belt geometry,
+a re-cut unwrap, three 4096 px textures, and an MHCLO written, then loaded on another character.
+Scripts and renders are in `interacting_with_blender/taido/gi/`, with the task record in its
+`README.md`. Only four MPFB tools were called in the whole session, all read-only, and two of those
+gave misleading answers because the object's source record was stale (below).
+
+| Step | How it was done | What it cost |
+|---|---|---|
+| Is this mesh ready for MakeClothes? | `ClothesService.mesh_is_valid_as_clothes()` by hand; metadata through three config classes | The answer was `all_checks_ok: true` for a mesh with real defects (below) |
+| Build the material | Wrote an MHMAT by hand, then `populate_from_mhmat()` and `apply_node_tree()` | Reading the operator first, because `mpfb.import_makeskin_material` needs a file dialog and a "replace" scene property |
+| Write the MHCLO | `bpy.ops.mpfb.write_makeclothes_clothes(filepath=...)`, selecting exactly the basemesh and garment first | 2.2 s to run. It leaves the selection cleared and reports only through `self.report` |
+| Delete group | A ray-casting script | **Eleven runs** |
+| Try the asset on someone else | `HumanService.add_mhclo_asset()` in a headless Blender on a posed template scene | 14 s per pose, and it found every defect that mattered |
+
+### Proposed tools, in order of what they would have saved
+
+**1. `mpfb_check_clothes`.** Landed as `mpfb_check_mesh_asset`, in
+[FR 048](done/048-measuring-mesh-assets/README.md).
+
+**2. `mpfb_write_clothes_asset`.** Landed as `mpfb_write_mesh_asset`, in
+[FR 050](done/050-writing-mesh-assets/README.md), which also ran "Store in library" for the first time.
+
+**3. `mpfb_set_makeskin_material`.** Landed with `mpfb_get_makeskin_material` and
+`mpfb_store_makeskin_material`, in [FR 049](done/049-makeskin-materials/README.md).
+
+**4. `mpfb_generate_delete_group`.** This was the longest part of the session, and it is a real
+algorithm rather than a call:
+- `mpfb.makeclothes_gendelete` calls its own result "very rough" and, by its source, refuses any
+  garment with a modifier. MPFB's own Subdivision modifier is one.
+- The group went from 2563 to 3209 vertices.
+- A fixed margin at the V-neck is wrong both ways: 3.5 cm left dark slits inside the lapel on the
+  authoring body, and 7.5 cm left skin poking through the coat on the posed template.
+- What worked was a sight-line test, plus a collar of three rings because a mask takes the whole
+  face. See `taido/gi/tools/extend_delete_group.py`.
+- Its answer should give masked-skin-still-visible and unmasked-skin-under-garment counts.
+
+**5. A way to try an asset without touching the scene.** Every poke-through appeared only on the
+template's other body shape, in a pose. The authoring scene showed zero overlaps throughout. A
+headless `mpfb_try_asset` on a preset would give an agent that loop. Even without it,
+`mpfb_add_asset`'s answer should carry the intersection counts already asked for under
+[Garment fit intersections](NEXT_STEPS.md#garment-fit-intersections). `mpfb_add_asset`
+was not itself tried here, since it would have left a `Delete.*` group on the user's character.
+
+**Not tools.** Unwrapping, packing and texture generation are general Blender and image work, and
+went fine through generic code. The recipe, and the traps this session found, are in
+[README.md](../README.md#authoring-a-mesh-asset).
+
+### Worth raising in MPFB
+
+- `generic_execute` reports an image error with `{'ERROR'}` and then returns `{'FINISHED'}`, and
+  `mpfb.import_makeskin_material` does the same when a material already exists. Filed with the rest of
+  what [FR 050](done/050-writing-mesh-assets/README.md) provoked.
+- `check_that_all_textures_are_saved` calls `image.save()` on every texture, which **re-encodes the
+  source files in place**: here the diffuse went from 2.5 to 3.2 MB and the normal map from 17.0 to
+  18.2 MB. Nothing says so, and it is a surprise if those files are generated or under version
+  control. [FR 049](done/049-makeskin-materials/README.md)'s tools do not call it; filed.
+- The MHMAT writer emits `bumpmapIntensity 1.0` with no bump map and `roughness 0.7` beside a roughness
+  map. Both are harmless, and `mpfb_get_makeskin_material`'s `in_effect` now tells a reader which are.

@@ -545,6 +545,13 @@ def _write_mesh_asset(run: _Run) -> dict:
         name=_asset_object(run), asset_name="mpfbmcp_smoke_run", dry_run=True)
 
 
+@_item("mpfb_generate_delete_group", "vertices_after", "masked_skin_still_visible",
+       "unmasked_skin_under_garment", "openings")
+def _generate_delete_group(run: _Run) -> dict:
+    # dry_run: the body's group would otherwise change, and a kept copy stay, for the next run.
+    return run.tools["mpfb_generate_delete_group"](name=_asset_object(run), dry_run=True)
+
+
 @_item("mpfb_remove_asset", "asset_object_name", "object_type", "basemesh_name",
        "objects_removed")
 def _remove_asset(run: _Run) -> dict:

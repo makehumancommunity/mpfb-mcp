@@ -6,7 +6,7 @@ This is the first of four requests scoping
 [The MakeClothes and MakeSkin workflows](../../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows),
 and the one the others build on: [FR 049](../../049-makeskin-materials/README.md) reports through it,
 [FR 050](../../050-writing-mesh-assets/README.md) carries its summary and
-[FR 051](../../051-delete-groups/README.md) uses its overlap module.
+[FR 051](../051-delete-groups/README.md) uses its overlap module.
 
 **MPFB's clothes check passed a garment with real defects, and nothing in the forty-four tools can
 see two meshes pass through each other.** `ClothesService.mesh_is_valid_as_clothes()` checks vertex

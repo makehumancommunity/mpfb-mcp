@@ -709,6 +709,22 @@ The general case of the section above — two MPFB *code paths* that disagree, r
 concept the services lack — is
 [Where MPFB's own code paths disagree, mpfb-mcp picks one and names it](#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it).
 
+### Replacing a result rather than reproducing it
+
+The rule above is about a concept MPFB does well and exposes badly. `mpfb_generate_delete_group` is the other case:
+`mpfb.makeclothes_gendelete` calls its own result "very rough", tells the user to edit it by hand and refuses any
+garment with a modifier, which includes MPFB's own Subdivision. **There is nothing there to reproduce, so the quirks
+rule does not apply**, and the tool is judged on the result rather than on agreeing with the operator
+([FR 051](../feature-requests/done/051-delete-groups/README.md)). What stays MPFB's is the interface around it: the group's name, its members, which vertices `body`
+says are skin, and how a loaded asset treats it.
+
+That last one is reproduced exactly, defects included, because a count is only worth having if it is about what happens.
+`ClothesService._conservative_mask()` removes one occurrence of a member per partly covered face, and `Mhclo.load()`
+appends the first index of each range twice, so a vertex starting a run of indices survives one such face. The two meet
+only on a file: the gi's 3,209 members leave 2,698 on the next character, where the rule alone says 2,680.
+`shared/delete_group.py`'s `as_loaded()` is held to MPFB's function by a bridge test and to a loaded asset by another,
+and the live check compares it with what two posed scenes actually got.
+
 ### Sometimes reading the UI module is the right answer
 
 The modifier case above ends in "never import the UI module", and that reads as a rule about UI

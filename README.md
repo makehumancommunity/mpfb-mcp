@@ -16,7 +16,7 @@ you can speed up things and save some tokens.
 
 ## Status
 
-Early beta. Fifty tools are implemented.
+Early beta. Fifty-one tools are implemented.
 
 **Introspection** — read-only, and each of them always answers rather than failing:
 
@@ -106,6 +106,9 @@ Early beta. Fifty tools are implemented.
 - `mpfb_store_makeskin_material` — keep one as an alternate of its asset or as a body skin, without changing a
   source texture. MPFB's loader then restores the textures and the diffuse colour, and the answer names any
   other number it will not.
+- `mpfb_generate_delete_group` — give the body the vertex group that hides it under a garment, with no margins to find
+  by trial and error, and two numbers: removed skin that can still be seen, and standing skin that lies under the
+  garment. Rerun it freely, since it starts over each time from the group it found first, which it keeps.
 - `mpfb_write_mesh_asset` — write a mesh as a complete asset, MHCLO, OBJ, MHMAT and textures, in the library or
   the export directory the bridge's user chose, and say what to call next to try it on another body. Only MPFB's
   own validator blocks it; everything else measured is reported.
@@ -129,7 +132,7 @@ mesh, **author on one character, write, then try it on another**, because every 
 comes from appeared only on another body shape in a pose, while the authoring scene showed zero overlaps throughout:
 
 1. Measure with `mpfb_check_mesh_asset`, against the body it was made on. Give it a material with
-   `mpfb_set_makeskin_material`, if it has none.
+   `mpfb_set_makeskin_material`, if it has none, and the body a delete group with `mpfb_generate_delete_group`.
 2. Write it with `mpfb_write_mesh_asset`, with `destination` `export_directory` while iterating, so that the library
    does not fill up, and `overwrite` from then on. The character must be at rest and facing forward, since MPFB would
    bake a pose or a turn into the file: `mpfb_reset_pose` and `mpfb_place_character` put it back, and their

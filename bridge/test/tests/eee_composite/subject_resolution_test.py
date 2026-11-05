@@ -52,7 +52,8 @@ CUBE = "BridgeTestSubjectCube"
 NO_SUCH = "BridgeTestSubjectNoSuchObject"
 
 # The commands that stop at the subject rather than going on to a basemesh.
-SUBJECT_ONLY = ("get_object_info", "generate_rigify_rig", "check_intersections",
+SUBJECT_ONLY = ("get_object_info", "generate_delete_group", "generate_rigify_rig",
+                "check_intersections",
                 "check_mesh_asset", "get_makeskin_material", "set_makeskin_material",
                 "store_makeskin_material", "write_mesh_asset")
 
@@ -63,6 +64,7 @@ def _calls(subject):
         "get_object_info": dict(name=subject),
         "check_intersections": dict(name=subject),
         "check_mesh_asset": dict(name=subject),
+        "generate_delete_group": dict(name=subject),
         "get_makeskin_material": dict(name=subject),
         "set_makeskin_material": dict(name=subject, material_name="bridge_test_never_made"),
         "store_makeskin_material": dict(name=subject, store_as="alternate",

@@ -422,6 +422,11 @@ through it on the next character. One session's clearance step stopped working t
   `face_pairs_unmasked` is every mask off but the one hiding helper geometry, which is not skin. The same
   goes for `region` and `min_distance`, each with its `_unmasked` twin. A row with no body in it has no
   `_unmasked` fields, since a mesh that is not a body has nothing hidden for them to say.
+- **A number about a state that is not the one on screen says so, and the one on screen gets its own.** A delete
+  group is seen twice: as it stands, on the body it was authored on, and about a ring smaller once its asset is
+  loaded. `mpfb_generate_delete_group` counted only the second, as asked, and black wedges on the authoring body's
+  chest moved that count by nothing, so `masked_skin_still_visible_authoring` is beside it
+  ([FR 051](../feature-requests/done/051-delete-groups/README.md)).
 - **No verdict, because no threshold would be objective.** A finished garment scored 7 against the masked
   body and 627 against the unmasked one, and renders cleanly. A tool that measures reports the number and says
   in its description what the number cannot see, and the caller's judgement is the caller's.

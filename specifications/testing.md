@@ -323,6 +323,12 @@ curled; nothing there noticed, and FR 047's equivalent test failed only because 
 the hands ([FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md)). A test that keys a
 rig removes the action it made and nothing else.
 
+**A count is checked against a picture at least once.** Where a tool's number stands for something seen, its live check
+renders, keeps the renders in the request's subdir, and somebody looks. [FR 051](../feature-requests/done/051-delete-groups/README.md)'s
+first complete run passed every check, its counts level with the finished asset's, and showed black wedges on the
+character's chest. The counts were about the asset once loaded, the wedges were on the body as it stood, and no number there
+could have said so: a new number could, once a picture had said what it was for.
+
 ## What the suite can never establish
 
 Stated once here rather than repeated in every module, because the list is a property of the

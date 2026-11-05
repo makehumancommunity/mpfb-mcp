@@ -13,7 +13,6 @@ records what has already landed and why. When an effort below is finished, move 
 
 **With a feature request**, in request order:
 
-- [The MakeClothes and MakeSkin workflows](#the-makeclothes-and-makeskin-workflows): FR 051
 - [A hand cannot be placed at a point on a standard rig](#a-hand-cannot-be-placed-at-a-point-on-a-standard-rig): FR 052 and FR 053
 - [Hand-to-hand contact on a Rigify rig](#hand-to-hand-contact-on-rigify): FR 052, in part
 - [A refit silently resets a generated Rigify rig's pose and switches](#refit-resets-a-rigify-pose): FR 054
@@ -55,78 +54,9 @@ records what has already landed and why. When an effort below is finished, move 
 
 ## The MakeClothes and MakeSkin workflows
 
-**Scoped on 2026-11-03 as four requests.**
-[FR 048](done/048-measuring-mesh-assets/README.md) (`mpfb_check_mesh_asset` and `mpfb_check_intersections`),
-[FR 049](done/049-makeskin-materials/README.md) (set, get and store a MakeSkin material) and
-[FR 050](done/050-writing-mesh-assets/README.md) (`mpfb_write_mesh_asset`, and the try-on recipe) have landed;
-[HISTORY.md](HISTORY.md) has them. Not yet implemented:
-[FR 051](051-delete-groups/README.md) (`mpfb_generate_delete_group`, behind a spike). They rename the
-tools proposed below, since the [glossary](../specifications/tool-interface.md) keeps "clothes" for
-quoting MPFB. Item 5 below stayed out of them: see
+All four requests have landed, the last being [FR 051](done/051-delete-groups/README.md). The evidence they were scoped
+from is in [HISTORY.md](HISTORY.md#the-gi-session-that-scoped-fr-048-to-fr-051). What stayed out is
 [Trying an asset without touching the scene](#trying-an-asset-without-touching-the-scene).
-
-**No tool touches asset authoring.** Everything MPFB's Create assets panels do was driven through
-`execute_blender_code` and `from bl_ext.repo.mpfb...` imports, which is exactly the "read MPFB's
-source to know what to call" the [vision](../specifications/vision.md) exists to remove.
-
-The evidence is one session (2026-11-01), taking a draft gi to a finished asset: new belt geometry,
-a re-cut unwrap, three 4096 px textures, and an MHCLO written, then loaded on another character.
-Scripts and renders are in `interacting_with_blender/taido/gi/`, with the task record in its
-`README.md`. Only four MPFB tools were called in the whole session, all read-only, and two of those
-gave misleading answers because the object's source record was stale (below).
-
-| Step | How it was done | What it cost |
-|---|---|---|
-| Is this mesh ready for MakeClothes? | `ClothesService.mesh_is_valid_as_clothes()` by hand; metadata through three config classes | The answer was `all_checks_ok: true` for a mesh with real defects (below) |
-| Build the material | Wrote an MHMAT by hand, then `populate_from_mhmat()` and `apply_node_tree()` | Reading the operator first, because `mpfb.import_makeskin_material` needs a file dialog and a "replace" scene property |
-| Write the MHCLO | `bpy.ops.mpfb.write_makeclothes_clothes(filepath=...)`, selecting exactly the basemesh and garment first | 2.2 s to run. It leaves the selection cleared and reports only through `self.report` |
-| Delete group | A ray-casting script | **Eleven runs** |
-| Try the asset on someone else | `HumanService.add_mhclo_asset()` in a headless Blender on a posed template scene | 14 s per pose, and it found every defect that mattered |
-
-### Proposed tools, in order of what they would have saved
-
-**1. `mpfb_check_clothes`.** Landed as `mpfb_check_mesh_asset`, in
-[FR 048](done/048-measuring-mesh-assets/README.md).
-
-**2. `mpfb_write_clothes_asset`.** Landed as `mpfb_write_mesh_asset`, in
-[FR 050](done/050-writing-mesh-assets/README.md), which also ran "Store in library" for the first time.
-
-**3. `mpfb_set_makeskin_material`.** Landed with `mpfb_get_makeskin_material` and
-`mpfb_store_makeskin_material`, in [FR 049](done/049-makeskin-materials/README.md).
-
-**4. `mpfb_generate_delete_group`.** This was the longest part of the session, and it is a real
-algorithm rather than a call:
-- `mpfb.makeclothes_gendelete` calls its own result "very rough" and, by its source, refuses any
-  garment with a modifier. MPFB's own Subdivision modifier is one.
-- The group went from 2563 to 3209 vertices.
-- A fixed margin at the V-neck is wrong both ways: 3.5 cm left dark slits inside the lapel on the
-  authoring body, and 7.5 cm left skin poking through the coat on the posed template.
-- What worked was a sight-line test, plus a collar of three rings because a mask takes the whole
-  face. See `taido/gi/tools/extend_delete_group.py`.
-- Its answer should give masked-skin-still-visible and unmasked-skin-under-garment counts.
-
-**5. A way to try an asset without touching the scene.** Every poke-through appeared only on the
-template's other body shape, in a pose. The authoring scene showed zero overlaps throughout. A
-headless `mpfb_try_asset` on a preset would give an agent that loop. Even without it,
-`mpfb_add_asset`'s answer should carry the intersection counts already asked for under
-[Garment fit intersections](#garment-fit-intersections). `mpfb_add_asset`
-was not itself tried here, since it would have left a `Delete.*` group on the user's character.
-
-**Not tools.** Unwrapping, packing and texture generation are general Blender and image work, and
-went fine through generic code. The recipe, and the traps this session found, are in
-[README.md](../README.md#authoring-a-mesh-asset).
-
-### Worth raising in MPFB
-
-- `generic_execute` reports an image error with `{'ERROR'}` and then returns `{'FINISHED'}`, and
-  `mpfb.import_makeskin_material` does the same when a material already exists. Filed with the rest of
-  what [FR 050](done/050-writing-mesh-assets/README.md) provoked.
-- `check_that_all_textures_are_saved` calls `image.save()` on every texture, which **re-encodes the
-  source files in place**: here the diffuse went from 2.5 to 3.2 MB and the normal map from 17.0 to
-  18.2 MB. Nothing says so, and it is a surprise if those files are generated or under version
-  control. [FR 049](done/049-makeskin-materials/README.md)'s tools do not call it; filed.
-- The MHMAT writer emits `bumpmapIntensity 1.0` with no bump map and `roughness 0.7` beside a roughness
-  map. Both are harmless, and `mpfb_get_makeskin_material`'s `in_effect` now tells a reader which are.
 
 <a id="garment-fit-intersections"></a>
 

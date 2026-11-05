@@ -67,6 +67,7 @@ __all__ = (
     "limbs",
     "off_rest",
     "posed_entry",
+    "rigs_deforming",
     "settings_off_default",
     "switch_values",
 )
@@ -103,6 +104,17 @@ LIMB_MEASURES = {
 def evaluated():
     """Bring every pose matrix up to date with the last write, from whichever tool made it."""
     bpy.context.view_layer.update()
+
+
+def rigs_deforming(*meshes):
+    """Each armature a modifier that is on makes one of these meshes follow."""
+    rigs = []
+    for mesh in meshes:
+        for modifier in mesh.modifiers:
+            if (modifier.type == "ARMATURE" and modifier.show_viewport
+                    and modifier.object is not None and modifier.object not in rigs):
+                rigs.append(modifier.object)
+    return rigs
 
 
 def deforming_bones_off_rest(rig_object):

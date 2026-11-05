@@ -326,17 +326,6 @@ def _delete_group_refusal(request, params):
     return None
 
 
-def _rigs_of(*meshes):
-    """Each armature a modifier that is on makes one of these meshes follow."""
-    rigs = []
-    for mesh in meshes:
-        for modifier in mesh.modifiers:
-            if (modifier.type == "ARMATURE" and modifier.show_viewport
-                    and modifier.object is not None and modifier.object not in rigs):
-                rigs.append(modifier.object)
-    return rigs
-
-
 def _state_refusal(request):
     """A state in which the write itself would be wrong. See this module's docstring."""
     if bpy.context.mode != "OBJECT":
@@ -350,7 +339,7 @@ def _state_refusal(request):
                 "can select, so nothing was written. Show it and call again.".format(
                     request.subject.name), dict())
     pose_reading.evaluated()
-    for rig in _rigs_of(request.subject, request.body):
+    for rig in pose_reading.rigs_deforming(request.subject, request.body):
         posed = pose_reading.deforming_bones_off_rest(rig)
         if posed:
             return ("rig_not_at_rest",

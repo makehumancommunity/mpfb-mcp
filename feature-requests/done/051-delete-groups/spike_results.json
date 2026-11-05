@@ -1,0 +1,2612 @@
+{
+ "Human.nurse_uniform_with_pants": {
+  "garment": "Human.nurse_uniform_with_pants",
+  "body_vertices": 13380,
+  "garment_vertices": 2027,
+  "garment_polygons": 3905,
+  "boundary_edges": 145,
+  "components": [
+   1083,
+   500,
+   216,
+   60,
+   60,
+   54,
+   54
+  ],
+  "loops": [
+   {
+    "vertices": 53,
+    "perimeter": 2.235,
+    "centre": [
+     -0.006,
+     -0.069,
+     1.188
+    ],
+    "low_z": 0.993,
+    "high_z": 1.481,
+    "component_vertices": 500,
+    "chains": {},
+    "gap_median": 0.0085,
+    "gap_max": 0.0262,
+    "nearest_joints": [
+     "joint-spine-2",
+     "joint-spine-3",
+     "joint-spine-1"
+    ],
+    "dominant_bones": [
+     "spine04",
+     "spine02",
+     "spine01"
+    ],
+    "reaches_skin": 0.868,
+    "exposed": 0.755,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 32,
+    "perimeter": 0.866,
+    "centre": [
+     -0.004,
+     -0.056,
+     1.058
+    ],
+    "low_z": 1.04,
+    "high_z": 1.075,
+    "component_vertices": 1083,
+    "chains": {
+     "trunk": 0.166
+    },
+    "gap_median": 0.0155,
+    "gap_max": 0.0338,
+    "nearest_joints": [
+     "joint-spine-3",
+     "joint-spine-4",
+     "joint-spine-2"
+    ],
+    "dominant_bones": [
+     "spine04",
+     "spine03",
+     "spine05"
+    ],
+    "reaches_skin": 0.125,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 18,
+    "perimeter": 0.561,
+    "centre": [
+     -0.188,
+     -0.029,
+     0.061
+    ],
+    "low_z": 0.054,
+    "high_z": 0.071,
+    "component_vertices": 1083,
+    "chains": {
+     "r-leg": 0.826
+    },
+    "gap_median": 0.0328,
+    "gap_max": 0.0572,
+    "nearest_joints": [
+     "joint-r-ankle",
+     "joint-r-foot-1",
+     "joint-r-toe-4-1"
+    ],
+    "dominant_bones": [
+     "foot.R",
+     "lowerleg02.R",
+     "lowerleg01.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "hem",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 18,
+    "perimeter": 0.52,
+    "centre": [
+     0.184,
+     -0.021,
+     0.058
+    ],
+    "low_z": 0.047,
+    "high_z": 0.069,
+    "component_vertices": 1083,
+    "chains": {
+     "l-leg": 0.831
+    },
+    "gap_median": 0.0235,
+    "gap_max": 0.067,
+    "nearest_joints": [
+     "joint-l-ankle",
+     "joint-l-foot-1",
+     "joint-l-toe-1-1"
+    ],
+    "dominant_bones": [
+     "foot.L",
+     "lowerleg02.L",
+     "lowerleg01.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "hem",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 12,
+    "perimeter": 0.375,
+    "centre": [
+     0.443,
+     -0.152,
+     1.081
+    ],
+    "low_z": 1.035,
+    "high_z": 1.129,
+    "component_vertices": 500,
+    "chains": {
+     "l-arm": 0.812
+    },
+    "gap_median": 0.0282,
+    "gap_max": 0.0452,
+    "nearest_joints": [
+     "joint-l-hand",
+     "joint-l-hand-3",
+     "joint-l-hand-2"
+    ],
+    "dominant_bones": [
+     "lowerarm01.L",
+     "lowerarm02.L",
+     "wrist.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "cuff",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 12,
+    "perimeter": 0.375,
+    "centre": [
+     -0.44,
+     -0.152,
+     1.081
+    ],
+    "low_z": 1.035,
+    "high_z": 1.129,
+    "component_vertices": 500,
+    "chains": {
+     "r-arm": 0.81
+    },
+    "gap_median": 0.0286,
+    "gap_max": 0.0465,
+    "nearest_joints": [
+     "joint-r-hand",
+     "joint-r-hand-3",
+     "joint-r-hand-2"
+    ],
+    "dominant_bones": [
+     "lowerarm01.R",
+     "lowerarm02.R",
+     "wrist.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "cuff",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "limb"
+   }
+  ],
+  "groups": {
+   "delete": 3209
+  },
+  "masks": [
+   [
+    "Hide helpers",
+    "body"
+   ],
+   [
+    "Mask",
+    "delete"
+   ]
+  ],
+  "joint_heights": {
+   "joint-neck": 1.482,
+   "joint-l-hand": 1.06,
+   "joint-l-knee": 0.503,
+   "joint-l-ankle": 0.071,
+   "joint-pelvis": 0.922
+  }
+ },
+ "toigo_keyhole_neck_dress": {
+  "garment": "Human.toigo_keyhole_neck_dress",
+  "body_vertices": 13380,
+  "garment_vertices": 9067,
+  "garment_polygons": 8944,
+  "boundary_edges": 252,
+  "components": [
+   9067
+  ],
+  "loops": [
+   {
+    "vertices": 96,
+    "perimeter": 1.433,
+    "centre": [
+     -0.008,
+     -0.022,
+     0.495
+    ],
+    "low_z": 0.478,
+    "high_z": 0.514,
+    "component_vertices": 9067,
+    "chains": {
+     "l-leg": 0.371,
+     "r-leg": 0.373
+    },
+    "gap_median": 0.0618,
+    "gap_max": 0.1292,
+    "nearest_joints": [
+     "joint-r-knee",
+     "joint-l-knee",
+     "joint-pelvis"
+    ],
+    "dominant_bones": [
+     "upperleg02.L",
+     "upperleg02.R",
+     "lowerleg01.R"
+    ],
+    "reaches_skin": 0.958,
+    "exposed": 1.0,
+    "kind_by_chains": "hem",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 80,
+    "perimeter": 1.152,
+    "centre": [
+     -0.0,
+     -0.012,
+     1.308
+    ],
+    "low_z": 1.214,
+    "high_z": 1.403,
+    "component_vertices": 9067,
+    "chains": {
+     "trunk": 0.543
+    },
+    "gap_median": 0.0103,
+    "gap_max": 0.0162,
+    "nearest_joints": [
+     "joint-r-clavicle",
+     "joint-l-clavicle",
+     "joint-spine-1"
+    ],
+    "dominant_bones": [
+     "spine01",
+     "spine02",
+     "upperarm01.R"
+    ],
+    "reaches_skin": 0.938,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 28,
+    "perimeter": 0.515,
+    "centre": [
+     -0.158,
+     -0.014,
+     1.313
+    ],
+    "low_z": 1.226,
+    "high_z": 1.392,
+    "component_vertices": 9067,
+    "chains": {},
+    "gap_median": 0.0116,
+    "gap_max": 0.0162,
+    "nearest_joints": [
+     "joint-r-shoulder",
+     "joint-r-scapula",
+     "joint-r-clavicle"
+    ],
+    "dominant_bones": [
+     "upperarm01.R",
+     "spine01",
+     "shoulder01.R"
+    ],
+    "reaches_skin": 0.857,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 28,
+    "perimeter": 0.512,
+    "centre": [
+     0.158,
+     -0.015,
+     1.313
+    ],
+    "low_z": 1.229,
+    "high_z": 1.392,
+    "component_vertices": 9067,
+    "chains": {},
+    "gap_median": 0.0118,
+    "gap_max": 0.0142,
+    "nearest_joints": [
+     "joint-l-shoulder",
+     "joint-l-scapula",
+     "joint-l-clavicle"
+    ],
+    "dominant_bones": [
+     "upperarm01.L",
+     "spine01",
+     "shoulder01.L"
+    ],
+    "reaches_skin": 0.929,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 20,
+    "perimeter": 0.191,
+    "centre": [
+     -0.0,
+     -0.144,
+     1.236
+    ],
+    "low_z": 1.2,
+    "high_z": 1.251,
+    "component_vertices": 9067,
+    "chains": {},
+    "gap_median": 0.0121,
+    "gap_max": 0.0152,
+    "nearest_joints": [
+     "joint-spine-1",
+     "joint-r-clavicle",
+     "joint-l-clavicle"
+    ],
+    "dominant_bones": [
+     "spine02",
+     "spine01",
+     "breast.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   }
+  ],
+  "groups": {
+   "Delete.toigo_keyhole_neck_dress": 1330
+  },
+  "masks": [
+   [
+    "Hide helpers",
+    "body"
+   ],
+   [
+    "Delete.toigo_keyhole_neck_dress",
+    "Delete.toigo_keyhole_neck_dress"
+   ]
+  ],
+  "joint_heights": {
+   "joint-neck": 1.414,
+   "joint-l-hand": 1.016,
+   "joint-l-knee": 0.474,
+   "joint-l-ankle": 0.069,
+   "joint-pelvis": 0.874
+  }
+ },
+ "mindfront_m_suit_01": {
+  "garment": "Human.mindfront_m_suit_01",
+  "body_vertices": 13380,
+  "garment_vertices": 4883,
+  "garment_polygons": 4585,
+  "boundary_edges": 576,
+  "components": [
+   1994,
+   1537,
+   379,
+   76,
+   76,
+   76,
+   76,
+   76,
+   76,
+   76,
+   76,
+   76
+  ],
+  "loops": [
+   {
+    "vertices": 126,
+    "perimeter": 3.037,
+    "centre": [
+     -0.001,
+     -0.066,
+     1.065
+    ],
+    "low_z": 0.813,
+    "high_z": 1.422,
+    "component_vertices": 1994,
+    "chains": {},
+    "gap_median": 0.0162,
+    "gap_max": 0.0496,
+    "nearest_joints": [
+     "joint-spine-2",
+     "joint-spine-3",
+     "joint-spine-4"
+    ],
+    "dominant_bones": [
+     "spine04",
+     "spine02",
+     "upperleg01.L"
+    ],
+    "reaches_skin": 0.056,
+    "exposed": 0.937,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 48,
+    "perimeter": 1.148,
+    "centre": [
+     -0.0,
+     -0.087,
+     1.252
+    ],
+    "low_z": 1.047,
+    "high_z": 1.441,
+    "component_vertices": 379,
+    "chains": {},
+    "gap_median": 0.0017,
+    "gap_max": 0.0078,
+    "nearest_joints": [
+     "joint-spine-1",
+     "joint-l-clavicle",
+     "joint-r-clavicle"
+    ],
+    "dominant_bones": [
+     "spine01",
+     "spine02",
+     "neck01"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 0.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 36,
+    "perimeter": 0.808,
+    "centre": [
+     -0.0,
+     -0.031,
+     0.948
+    ],
+    "low_z": 0.932,
+    "high_z": 0.961,
+    "component_vertices": 1537,
+    "chains": {
+     "trunk": 0.099
+    },
+    "gap_median": 0.0023,
+    "gap_max": 0.0086,
+    "nearest_joints": [
+     "joint-spine-4",
+     "joint-pelvis",
+     "joint-spine-3"
+    ],
+    "dominant_bones": [
+     "spine04",
+     "spine05",
+     "pelvis.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 0.167,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 36,
+    "perimeter": 0.753,
+    "centre": [
+     0.0,
+     -0.108,
+     1.292
+    ],
+    "low_z": 1.098,
+    "high_z": 1.409,
+    "component_vertices": 57,
+    "chains": {},
+    "gap_median": 0.0062,
+    "gap_max": 0.0135,
+    "nearest_joints": [
+     "joint-l-clavicle",
+     "joint-r-clavicle",
+     "joint-spine-1"
+    ],
+    "dominant_bones": [
+     "spine01",
+     "spine02",
+     "neck02"
+    ],
+    "reaches_skin": 0.528,
+    "exposed": 0.694,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 38,
+    "perimeter": 0.476,
+    "centre": [
+     0.0,
+     -0.049,
+     1.405
+    ],
+    "low_z": 1.37,
+    "high_z": 1.437,
+    "component_vertices": 379,
+    "chains": {
+     "trunk": 0.695
+    },
+    "gap_median": 0.0057,
+    "gap_max": 0.0162,
+    "nearest_joints": [
+     "joint-neck",
+     "joint-l-clavicle",
+     "joint-r-clavicle"
+    ],
+    "dominant_bones": [
+     "spine01",
+     "neck02",
+     "neck01"
+    ],
+    "reaches_skin": 0.474,
+    "exposed": 0.605,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 20,
+    "perimeter": 0.293,
+    "centre": [
+     0.189,
+     -0.024,
+     0.076
+    ],
+    "low_z": 0.068,
+    "high_z": 0.084,
+    "component_vertices": 1537,
+    "chains": {
+     "l-leg": 0.794
+    },
+    "gap_median": 0.0113,
+    "gap_max": 0.018,
+    "nearest_joints": [
+     "joint-l-ankle",
+     "joint-l-toe-5-1",
+     "joint-l-foot-1"
+    ],
+    "dominant_bones": [
+     "foot.L",
+     "lowerleg02.L",
+     "lowerleg01.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "hem",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 20,
+    "perimeter": 0.293,
+    "centre": [
+     -0.189,
+     -0.024,
+     0.076
+    ],
+    "low_z": 0.068,
+    "high_z": 0.084,
+    "component_vertices": 1537,
+    "chains": {
+     "r-leg": 0.794
+    },
+    "gap_median": 0.0113,
+    "gap_max": 0.018,
+    "nearest_joints": [
+     "joint-r-ankle",
+     "joint-r-toe-5-1",
+     "joint-r-foot-1"
+    ],
+    "dominant_bones": [
+     "foot.R",
+     "lowerleg02.R",
+     "lowerleg01.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "hem",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 20,
+    "perimeter": 0.273,
+    "centre": [
+     0.456,
+     -0.174,
+     0.999
+    ],
+    "low_z": 0.968,
+    "high_z": 1.035,
+    "component_vertices": 1994,
+    "chains": {
+     "l-arm": 0.948
+    },
+    "gap_median": 0.0256,
+    "gap_max": 0.0359,
+    "nearest_joints": [
+     "joint-l-hand",
+     "joint-l-hand-2",
+     "joint-l-hand-3"
+    ],
+    "dominant_bones": [
+     "wrist.L",
+     "lowerarm02.L",
+     "lowerarm01.L"
+    ],
+    "reaches_skin": 0.0,
+    "exposed": 1.0,
+    "kind_by_chains": "cuff",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 20,
+    "perimeter": 0.273,
+    "centre": [
+     -0.458,
+     -0.176,
+     0.998
+    ],
+    "low_z": 0.967,
+    "high_z": 1.034,
+    "component_vertices": 1994,
+    "chains": {
+     "r-arm": 0.954
+    },
+    "gap_median": 0.0241,
+    "gap_max": 0.0358,
+    "nearest_joints": [
+     "joint-r-hand",
+     "joint-r-hand-2",
+     "joint-r-hand-3"
+    ],
+    "dominant_bones": [
+     "wrist.R",
+     "lowerarm02.R",
+     "metacarpal4.R"
+    ],
+    "reaches_skin": 0.0,
+    "exposed": 1.0,
+    "kind_by_chains": "cuff",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 20,
+    "perimeter": 0.223,
+    "centre": [
+     0.461,
+     -0.188,
+     0.998
+    ],
+    "low_z": 0.971,
+    "high_z": 1.03,
+    "component_vertices": 40,
+    "chains": {
+     "l-arm": 0.969
+    },
+    "gap_median": 0.0097,
+    "gap_max": 0.0204,
+    "nearest_joints": [
+     "joint-l-hand",
+     "joint-l-hand-3",
+     "joint-l-hand-2"
+    ],
+    "dominant_bones": [
+     "wrist.L",
+     "metacarpal4.L",
+     "lowerarm02.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "cuff",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 20,
+    "perimeter": 0.223,
+    "centre": [
+     -0.461,
+     -0.188,
+     0.998
+    ],
+    "low_z": 0.971,
+    "high_z": 1.03,
+    "component_vertices": 40,
+    "chains": {
+     "r-arm": 0.969
+    },
+    "gap_median": 0.0097,
+    "gap_max": 0.0204,
+    "nearest_joints": [
+     "joint-r-hand",
+     "joint-r-hand-3",
+     "joint-r-hand-2"
+    ],
+    "dominant_bones": [
+     "wrist.R",
+     "metacarpal4.R",
+     "lowerarm02.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "cuff",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 20,
+    "perimeter": 0.178,
+    "centre": [
+     0.435,
+     -0.134,
+     1.037
+    ],
+    "low_z": 1.014,
+    "high_z": 1.062,
+    "component_vertices": 40,
+    "chains": {
+     "l-arm": 0.829
+    },
+    "gap_median": 0.0081,
+    "gap_max": 0.0237,
+    "nearest_joints": [
+     "joint-l-hand",
+     "joint-l-hand-3",
+     "joint-l-hand-2"
+    ],
+    "dominant_bones": [
+     "lowerarm01.L",
+     "lowerarm02.L",
+     "wrist.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 0.3,
+    "kind_by_chains": "cuff",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 20,
+    "perimeter": 0.178,
+    "centre": [
+     -0.435,
+     -0.134,
+     1.037
+    ],
+    "low_z": 1.014,
+    "high_z": 1.062,
+    "component_vertices": 40,
+    "chains": {
+     "r-arm": 0.829
+    },
+    "gap_median": 0.0081,
+    "gap_max": 0.0237,
+    "nearest_joints": [
+     "joint-r-hand",
+     "joint-r-hand-3",
+     "joint-r-hand-2"
+    ],
+    "dominant_bones": [
+     "lowerarm01.R",
+     "lowerarm02.R",
+     "wrist.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 0.35,
+    "kind_by_chains": "cuff",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 12,
+    "perimeter": 0.061,
+    "centre": [
+     -0.002,
+     -0.157,
+     1.018
+    ],
+    "low_z": 1.007,
+    "high_z": 1.028,
+    "component_vertices": 76,
+    "chains": {},
+    "gap_median": 0.0225,
+    "gap_max": 0.023,
+    "nearest_joints": [
+     "joint-spine-3",
+     "joint-spine-2",
+     "joint-spine-4"
+    ],
+    "dominant_bones": [
+     "spine04",
+     "spine03",
+     "spine02"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 0.583,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 12,
+    "perimeter": 0.053,
+    "centre": [
+     0.001,
+     -0.155,
+     1.095
+    ],
+    "low_z": 1.086,
+    "high_z": 1.104,
+    "component_vertices": 76,
+    "chains": {},
+    "gap_median": 0.0164,
+    "gap_max": 0.0176,
+    "nearest_joints": [
+     "joint-spine-2",
+     "joint-spine-3",
+     "joint-spine-1"
+    ],
+    "dominant_bones": [
+     "spine03",
+     "spine02",
+     "spine04"
+    ],
+    "reaches_skin": 0.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 12,
+    "perimeter": 0.042,
+    "centre": [
+     -0.025,
+     -0.134,
+     0.919
+    ],
+    "low_z": 0.912,
+    "high_z": 0.926,
+    "component_vertices": 76,
+    "chains": {},
+    "gap_median": 0.0046,
+    "gap_max": 0.0061,
+    "nearest_joints": [
+     "joint-pelvis",
+     "joint-r-upper-leg",
+     "joint-spine-4"
+    ],
+    "dominant_bones": [
+     "spine04",
+     "spine05",
+     "pelvis.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 0.417,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 12,
+    "perimeter": 0.039,
+    "centre": [
+     -0.477,
+     -0.128,
+     1.008
+    ],
+    "low_z": 1.002,
+    "high_z": 1.014,
+    "component_vertices": 76,
+    "chains": {},
+    "gap_median": 0.0324,
+    "gap_max": 0.0354,
+    "nearest_joints": [
+     "joint-r-hand",
+     "joint-r-hand-2",
+     "joint-r-hand-3"
+    ],
+    "dominant_bones": [
+     "lowerarm02.R",
+     "lowerarm01.R",
+     "wrist.R"
+    ],
+    "reaches_skin": 0.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 12,
+    "perimeter": 0.039,
+    "centre": [
+     -0.469,
+     -0.118,
+     1.016
+    ],
+    "low_z": 1.01,
+    "high_z": 1.022,
+    "component_vertices": 76,
+    "chains": {},
+    "gap_median": 0.0308,
+    "gap_max": 0.0342,
+    "nearest_joints": [
+     "joint-r-hand",
+     "joint-r-hand-2",
+     "joint-r-hand-3"
+    ],
+    "dominant_bones": [
+     "lowerarm02.R",
+     "lowerarm01.R",
+     "wrist.R"
+    ],
+    "reaches_skin": 0.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 12,
+    "perimeter": 0.039,
+    "centre": [
+     -0.46,
+     -0.108,
+     1.025
+    ],
+    "low_z": 1.018,
+    "high_z": 1.031,
+    "component_vertices": 76,
+    "chains": {},
+    "gap_median": 0.0275,
+    "gap_max": 0.0304,
+    "nearest_joints": [
+     "joint-r-hand",
+     "joint-r-hand-2",
+     "joint-r-hand-3"
+    ],
+    "dominant_bones": [
+     "lowerarm01.R",
+     "lowerarm02.R",
+     "wrist.R"
+    ],
+    "reaches_skin": 0.583,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 12,
+    "perimeter": 0.039,
+    "centre": [
+     -0.451,
+     -0.098,
+     1.033
+    ],
+    "low_z": 1.026,
+    "high_z": 1.039,
+    "component_vertices": 76,
+    "chains": {},
+    "gap_median": 0.0252,
+    "gap_max": 0.0277,
+    "nearest_joints": [
+     "joint-r-hand",
+     "joint-r-hand-2",
+     "joint-r-hand-3"
+    ],
+    "dominant_bones": [
+     "lowerarm01.R",
+     "lowerarm02.R",
+     "wrist.R"
+    ],
+    "reaches_skin": 0.833,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 12,
+    "perimeter": 0.039,
+    "centre": [
+     0.477,
+     -0.128,
+     1.008
+    ],
+    "low_z": 1.002,
+    "high_z": 1.014,
+    "component_vertices": 76,
+    "chains": {},
+    "gap_median": 0.0323,
+    "gap_max": 0.0353,
+    "nearest_joints": [
+     "joint-l-hand",
+     "joint-l-hand-2",
+     "joint-l-hand-3"
+    ],
+    "dominant_bones": [
+     "lowerarm02.L",
+     "lowerarm01.L",
+     "wrist.L"
+    ],
+    "reaches_skin": 0.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 12,
+    "perimeter": 0.039,
+    "centre": [
+     0.469,
+     -0.118,
+     1.016
+    ],
+    "low_z": 1.01,
+    "high_z": 1.022,
+    "component_vertices": 76,
+    "chains": {},
+    "gap_median": 0.031,
+    "gap_max": 0.0344,
+    "nearest_joints": [
+     "joint-l-hand",
+     "joint-l-hand-2",
+     "joint-l-hand-3"
+    ],
+    "dominant_bones": [
+     "lowerarm02.L",
+     "lowerarm01.L",
+     "wrist.L"
+    ],
+    "reaches_skin": 0.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 12,
+    "perimeter": 0.039,
+    "centre": [
+     0.46,
+     -0.108,
+     1.025
+    ],
+    "low_z": 1.018,
+    "high_z": 1.031,
+    "component_vertices": 76,
+    "chains": {},
+    "gap_median": 0.0277,
+    "gap_max": 0.0306,
+    "nearest_joints": [
+     "joint-l-hand",
+     "joint-l-hand-2",
+     "joint-l-hand-3"
+    ],
+    "dominant_bones": [
+     "lowerarm01.L",
+     "lowerarm02.L",
+     "wrist.L"
+    ],
+    "reaches_skin": 0.5,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 12,
+    "perimeter": 0.039,
+    "centre": [
+     0.451,
+     -0.098,
+     1.033
+    ],
+    "low_z": 1.026,
+    "high_z": 1.039,
+    "component_vertices": 76,
+    "chains": {},
+    "gap_median": 0.0254,
+    "gap_max": 0.0278,
+    "nearest_joints": [
+     "joint-l-hand",
+     "joint-l-hand-2",
+     "joint-l-hand-3"
+    ],
+    "dominant_bones": [
+     "lowerarm01.L",
+     "lowerarm02.L",
+     "wrist.L"
+    ],
+    "reaches_skin": 0.75,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "limb"
+   }
+  ],
+  "groups": {
+   "Delete.mindfront_m_suit_01": 3432
+  },
+  "masks": [
+   [
+    "Hide helpers",
+    "body"
+   ],
+   [
+    "Delete.mindfront_m_suit_01",
+    "Delete.mindfront_m_suit_01"
+   ]
+  ],
+  "joint_heights": {
+   "joint-neck": 1.414,
+   "joint-l-hand": 1.016,
+   "joint-l-knee": 0.474,
+   "joint-l-ankle": 0.069,
+   "joint-pelvis": 0.874
+  }
+ },
+ "toigo_keyhole_tank_top": {
+  "garment": "Human.toigo_keyhole_tank_top",
+  "body_vertices": 13380,
+  "garment_vertices": 726,
+  "garment_polygons": 676,
+  "boundary_edges": 106,
+  "components": [
+   726
+  ],
+  "loops": [
+   {
+    "vertices": 40,
+    "perimeter": 1.171,
+    "centre": [
+     -0.0,
+     -0.015,
+     1.308
+    ],
+    "low_z": 1.214,
+    "high_z": 1.397,
+    "component_vertices": 726,
+    "chains": {
+     "trunk": 0.541
+    },
+    "gap_median": 0.0113,
+    "gap_max": 0.0189,
+    "nearest_joints": [
+     "joint-r-clavicle",
+     "joint-l-clavicle",
+     "joint-spine-1"
+    ],
+    "dominant_bones": [
+     "spine01",
+     "spine02",
+     "upperarm01.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 28,
+    "perimeter": 0.944,
+    "centre": [
+     0.0,
+     -0.032,
+     0.935
+    ],
+    "low_z": 0.929,
+    "high_z": 0.942,
+    "component_vertices": 726,
+    "chains": {
+     "trunk": 0.077
+    },
+    "gap_median": 0.0194,
+    "gap_max": 0.0293,
+    "nearest_joints": [
+     "joint-spine-4",
+     "joint-pelvis",
+     "joint-spine-3"
+    ],
+    "dominant_bones": [
+     "spine04",
+     "spine05",
+     "pelvis.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 14,
+    "perimeter": 0.504,
+    "centre": [
+     -0.168,
+     -0.019,
+     1.314
+    ],
+    "low_z": 1.223,
+    "high_z": 1.389,
+    "component_vertices": 726,
+    "chains": {},
+    "gap_median": 0.0136,
+    "gap_max": 0.0225,
+    "nearest_joints": [
+     "joint-r-shoulder",
+     "joint-r-scapula",
+     "joint-r-clavicle"
+    ],
+    "dominant_bones": [
+     "upperarm01.R",
+     "spine01",
+     "shoulder01.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 14,
+    "perimeter": 0.501,
+    "centre": [
+     0.168,
+     -0.019,
+     1.314
+    ],
+    "low_z": 1.223,
+    "high_z": 1.389,
+    "component_vertices": 726,
+    "chains": {},
+    "gap_median": 0.0136,
+    "gap_max": 0.0225,
+    "nearest_joints": [
+     "joint-l-shoulder",
+     "joint-l-scapula",
+     "joint-l-clavicle"
+    ],
+    "dominant_bones": [
+     "upperarm01.L",
+     "spine01",
+     "shoulder01.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 10,
+    "perimeter": 0.189,
+    "centre": [
+     -0.0,
+     -0.144,
+     1.236
+    ],
+    "low_z": 1.202,
+    "high_z": 1.249,
+    "component_vertices": 726,
+    "chains": {},
+    "gap_median": 0.0116,
+    "gap_max": 0.0182,
+    "nearest_joints": [
+     "joint-spine-1",
+     "joint-l-clavicle",
+     "joint-r-clavicle"
+    ],
+    "dominant_bones": [
+     "spine02",
+     "spine01",
+     "breast.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   }
+  ],
+  "groups": {
+   "Delete.toigo_keyhole_tank_top": 752
+  },
+  "masks": [
+   [
+    "Hide helpers",
+    "body"
+   ],
+   [
+    "Delete.toigo_keyhole_tank_top",
+    "Delete.toigo_keyhole_tank_top"
+   ]
+  ],
+  "joint_heights": {
+   "joint-neck": 1.414,
+   "joint-l-hand": 1.016,
+   "joint-l-knee": 0.474,
+   "joint-l-ankle": 0.069,
+   "joint-pelvis": 0.874
+  }
+ },
+ "callharvey3d_harvey_female_scrubtop2": {
+  "garment": "Human.callharvey3d_harvey_female_scrubtop2",
+  "body_vertices": 13380,
+  "garment_vertices": 2368,
+  "garment_polygons": 2362,
+  "boundary_edges": 0,
+  "components": [
+   1968,
+   164,
+   72,
+   72,
+   48,
+   44
+  ],
+  "loops": [],
+  "groups": {
+   "Delete.callharvey3d_harvey_female_scrubtop2": 1337
+  },
+  "masks": [
+   [
+    "Hide helpers",
+    "body"
+   ],
+   [
+    "Delete.callharvey3d_harvey_female_scrubtop2",
+    "Delete.callharvey3d_harvey_female_scrubtop2"
+   ]
+  ],
+  "joint_heights": {
+   "joint-neck": 1.414,
+   "joint-l-hand": 1.016,
+   "joint-l-knee": 0.474,
+   "joint-l-ankle": 0.069,
+   "joint-pelvis": 0.874
+  }
+ },
+ "cortu_cargo_pants": {
+  "garment": "Human.cortu_cargo_pants",
+  "body_vertices": 13380,
+  "garment_vertices": 211,
+  "garment_polygons": 196,
+  "boundary_edges": 32,
+  "components": [
+   211
+  ],
+  "loops": [
+   {
+    "vertices": 16,
+    "perimeter": 0.868,
+    "centre": [
+     0.0,
+     -0.041,
+     0.946
+    ],
+    "low_z": 0.941,
+    "high_z": 0.952,
+    "component_vertices": 211,
+    "chains": {
+     "trunk": 0.092
+    },
+    "gap_median": 0.0051,
+    "gap_max": 0.0196,
+    "nearest_joints": [
+     "joint-spine-4",
+     "joint-pelvis",
+     "joint-spine-3"
+    ],
+    "dominant_bones": [
+     "spine04",
+     "spine05",
+     "pelvis.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 8,
+    "perimeter": 0.47,
+    "centre": [
+     -0.188,
+     -0.028,
+     0.054
+    ],
+    "low_z": 0.04,
+    "high_z": 0.071,
+    "component_vertices": 211,
+    "chains": {
+     "r-leg": 0.842
+    },
+    "gap_median": 0.0312,
+    "gap_max": 0.0366,
+    "nearest_joints": [
+     "joint-r-ankle",
+     "joint-r-foot-1",
+     "joint-r-toe-5-1"
+    ],
+    "dominant_bones": [
+     "foot.R",
+     "lowerleg02.R",
+     "lowerleg01.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "hem",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 8,
+    "perimeter": 0.47,
+    "centre": [
+     0.188,
+     -0.028,
+     0.054
+    ],
+    "low_z": 0.04,
+    "high_z": 0.071,
+    "component_vertices": 211,
+    "chains": {
+     "l-leg": 0.842
+    },
+    "gap_median": 0.0312,
+    "gap_max": 0.0366,
+    "nearest_joints": [
+     "joint-l-ankle",
+     "joint-l-foot-1",
+     "joint-l-toe-5-1"
+    ],
+    "dominant_bones": [
+     "foot.L",
+     "lowerleg02.L",
+     "lowerleg01.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "hem",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   }
+  ],
+  "groups": {},
+  "masks": [
+   [
+    "Hide helpers",
+    "body"
+   ]
+  ],
+  "joint_heights": {
+   "joint-neck": 1.414,
+   "joint-l-hand": 1.016,
+   "joint-l-knee": 0.474,
+   "joint-l-ankle": 0.069,
+   "joint-pelvis": 0.874
+  }
+ },
+ "cortu_jeans_shorts": {
+  "garment": "Human.cortu_jeans_shorts",
+  "body_vertices": 13380,
+  "garment_vertices": 285,
+  "garment_polygons": 250,
+  "boundary_edges": 72,
+  "components": [
+   285
+  ],
+  "loops": [
+   {
+    "vertices": 34,
+    "perimeter": 0.799,
+    "centre": [
+     0.0,
+     -0.029,
+     0.964
+    ],
+    "low_z": 0.947,
+    "high_z": 0.977,
+    "component_vertices": 285,
+    "chains": {
+     "trunk": 0.118
+    },
+    "gap_median": 0.002,
+    "gap_max": 0.0048,
+    "nearest_joints": [
+     "joint-spine-4",
+     "joint-spine-3",
+     "joint-pelvis"
+    ],
+    "dominant_bones": [
+     "spine04",
+     "spine05",
+     "spine03"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 19,
+    "perimeter": 0.557,
+    "centre": [
+     -0.099,
+     -0.025,
+     0.779
+    ],
+    "low_z": 0.753,
+    "high_z": 0.8,
+    "component_vertices": 285,
+    "chains": {
+     "r-leg": 0.086
+    },
+    "gap_median": 0.0021,
+    "gap_max": 0.0054,
+    "nearest_joints": [
+     "joint-r-upper-leg",
+     "joint-pelvis",
+     "joint-spine-4"
+    ],
+    "dominant_bones": [
+     "upperleg01.R",
+     "upperleg02.R",
+     "pelvis.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "hem",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 19,
+    "perimeter": 0.557,
+    "centre": [
+     0.099,
+     -0.025,
+     0.779
+    ],
+    "low_z": 0.753,
+    "high_z": 0.8,
+    "component_vertices": 285,
+    "chains": {
+     "l-leg": 0.086
+    },
+    "gap_median": 0.0021,
+    "gap_max": 0.0054,
+    "nearest_joints": [
+     "joint-l-upper-leg",
+     "joint-pelvis",
+     "joint-spine-4"
+    ],
+    "dominant_bones": [
+     "upperleg01.L",
+     "upperleg02.L",
+     "pelvis.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "hem",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "trunk"
+   }
+  ],
+  "groups": {
+   "Delete.cortu_jeans_shorts": 183
+  },
+  "masks": [
+   [
+    "Hide helpers",
+    "body"
+   ],
+   [
+    "Delete.cortu_jeans_shorts",
+    "Delete.cortu_jeans_shorts"
+   ]
+  ],
+  "joint_heights": {
+   "joint-neck": 1.414,
+   "joint-l-hand": 1.016,
+   "joint-l-knee": 0.474,
+   "joint-l-ankle": 0.069,
+   "joint-pelvis": 0.874
+  }
+ },
+ "aethelraed_flapper_dress": {
+  "garment": "Human.aethelraed_flapper_dress",
+  "body_vertices": 13380,
+  "garment_vertices": 6690,
+  "garment_polygons": 6434,
+  "boundary_edges": 596,
+  "components": [
+   5499,
+   612,
+   579
+  ],
+  "loops": [
+   {
+    "vertices": 119,
+    "perimeter": 2.049,
+    "centre": [
+     0.195,
+     -0.015,
+     0.733
+    ],
+    "low_z": 0.307,
+    "high_z": 0.911,
+    "component_vertices": 579,
+    "chains": {},
+    "gap_median": 0.0305,
+    "gap_max": 0.0948,
+    "nearest_joints": [
+     "joint-l-upper-leg",
+     "joint-pelvis",
+     "joint-l-knee"
+    ],
+    "dominant_bones": [
+     "upperleg01.L",
+     "upperleg02.L",
+     "pelvis.L"
+    ],
+    "reaches_skin": 0.168,
+    "exposed": 0.992,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 119,
+    "perimeter": 2.046,
+    "centre": [
+     -0.198,
+     -0.028,
+     0.719
+    ],
+    "low_z": 0.295,
+    "high_z": 0.899,
+    "component_vertices": 612,
+    "chains": {},
+    "gap_median": 0.0218,
+    "gap_max": 0.0832,
+    "nearest_joints": [
+     "joint-r-upper-leg",
+     "joint-r-knee",
+     "joint-pelvis"
+    ],
+    "dominant_bones": [
+     "upperleg01.R",
+     "upperleg02.R",
+     "lowerleg01.R"
+    ],
+    "reaches_skin": 0.126,
+    "exposed": 0.882,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 70,
+    "perimeter": 1.481,
+    "centre": [
+     0.01,
+     0.011,
+     0.222
+    ],
+    "low_z": 0.192,
+    "high_z": 0.284,
+    "component_vertices": 5499,
+    "chains": {
+     "l-leg": 0.651,
+     "r-leg": 0.659
+    },
+    "gap_median": 0.0568,
+    "gap_max": 0.1455,
+    "nearest_joints": [
+     "joint-ground",
+     "joint-l-ankle",
+     "joint-r-ankle"
+    ],
+    "dominant_bones": [
+     "lowerleg02.R",
+     "lowerleg02.L",
+     "lowerleg01.L"
+    ],
+    "reaches_skin": 0.914,
+    "exposed": 1.0,
+    "kind_by_chains": "hem",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 34,
+    "perimeter": 0.713,
+    "centre": [
+     -0.01,
+     -0.012,
+     1.389
+    ],
+    "low_z": 1.378,
+    "high_z": 1.404,
+    "component_vertices": 5499,
+    "chains": {
+     "trunk": 0.651
+    },
+    "gap_median": 0.0049,
+    "gap_max": 0.0103,
+    "nearest_joints": [
+     "joint-neck",
+     "joint-r-clavicle",
+     "joint-l-clavicle"
+    ],
+    "dominant_bones": [
+     "spine01",
+     "neck01",
+     "upperarm01.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 24,
+    "perimeter": 0.486,
+    "centre": [
+     0.271,
+     -0.022,
+     1.214
+    ],
+    "low_z": 1.159,
+    "high_z": 1.298,
+    "component_vertices": 5499,
+    "chains": {
+     "l-arm": 0.29
+    },
+    "gap_median": 0.0047,
+    "gap_max": 0.0441,
+    "nearest_joints": [
+     "joint-l-elbow",
+     "joint-l-shoulder",
+     "joint-l-scapula"
+    ],
+    "dominant_bones": [
+     "upperarm02.L",
+     "upperarm01.L",
+     "lowerarm01.L"
+    ],
+    "reaches_skin": 0.917,
+    "exposed": 1.0,
+    "kind_by_chains": "cuff",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 20,
+    "perimeter": 0.397,
+    "centre": [
+     -0.295,
+     -0.022,
+     1.206
+    ],
+    "low_z": 1.141,
+    "high_z": 1.281,
+    "component_vertices": 5499,
+    "chains": {
+     "r-arm": 0.348
+    },
+    "gap_median": 0.0045,
+    "gap_max": 0.0473,
+    "nearest_joints": [
+     "joint-r-elbow",
+     "joint-r-shoulder",
+     "joint-r-scapula"
+    ],
+    "dominant_bones": [
+     "upperarm02.R",
+     "lowerarm01.R",
+     "upperarm01.R"
+    ],
+    "reaches_skin": 0.9,
+    "exposed": 1.0,
+    "kind_by_chains": "cuff",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 18,
+    "perimeter": 0.287,
+    "centre": [
+     0.161,
+     -0.025,
+     0.963
+    ],
+    "low_z": 0.913,
+    "high_z": 1.054,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0145,
+    "gap_max": 0.042,
+    "nearest_joints": [
+     "joint-l-upper-leg",
+     "joint-spine-4",
+     "joint-spine-3"
+    ],
+    "dominant_bones": [
+     "spine04",
+     "spine05",
+     "pelvis.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 14,
+    "perimeter": 0.277,
+    "centre": [
+     0.243,
+     -0.023,
+     1.337
+    ],
+    "low_z": 1.298,
+    "high_z": 1.372,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0192,
+    "gap_max": 0.0435,
+    "nearest_joints": [
+     "joint-l-shoulder",
+     "joint-l-scapula",
+     "joint-l-elbow"
+    ],
+    "dominant_bones": [
+     "upperarm01.L",
+     "upperarm02.L",
+     "shoulder01.L"
+    ],
+    "reaches_skin": 0.786,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 12,
+    "perimeter": 0.247,
+    "centre": [
+     0.221,
+     0.01,
+     0.674
+    ],
+    "low_z": 0.614,
+    "high_z": 0.732,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0435,
+    "gap_max": 0.0614,
+    "nearest_joints": [
+     "joint-l-knee",
+     "joint-l-upper-leg",
+     "joint-pelvis"
+    ],
+    "dominant_bones": [
+     "upperleg02.L",
+     "upperleg01.L",
+     "lowerleg01.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 0.417,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 10,
+    "perimeter": 0.195,
+    "centre": [
+     -0.192,
+     0.01,
+     0.753
+    ],
+    "low_z": 0.706,
+    "high_z": 0.799,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.018,
+    "gap_max": 0.0317,
+    "nearest_joints": [
+     "joint-r-upper-leg",
+     "joint-pelvis",
+     "joint-spine-4"
+    ],
+    "dominant_bones": [
+     "upperleg01.R",
+     "upperleg02.R",
+     "pelvis.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 8,
+    "perimeter": 0.181,
+    "centre": [
+     0.278,
+     0.052,
+     0.329
+    ],
+    "low_z": 0.284,
+    "high_z": 0.373,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0692,
+    "gap_max": 0.0821,
+    "nearest_joints": [
+     "joint-l-knee",
+     "joint-l-ankle",
+     "joint-l-toe-5-1"
+    ],
+    "dominant_bones": [
+     "lowerleg01.L",
+     "lowerleg02.L",
+     "foot.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 42,
+    "perimeter": 0.173,
+    "centre": [
+     -0.167,
+     -0.016,
+     0.89
+    ],
+    "low_z": 0.879,
+    "high_z": 0.901,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0115,
+    "gap_max": 0.0189,
+    "nearest_joints": [
+     "joint-r-upper-leg",
+     "joint-pelvis",
+     "joint-spine-4"
+    ],
+    "dominant_bones": [
+     "upperleg01.R",
+     "pelvis.R",
+     "spine04"
+    ],
+    "reaches_skin": 0.952,
+    "exposed": 0.881,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 8,
+    "perimeter": 0.171,
+    "centre": [
+     -0.234,
+     0.02,
+     0.605
+    ],
+    "low_z": 0.563,
+    "high_z": 0.647,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0619,
+    "gap_max": 0.0722,
+    "nearest_joints": [
+     "joint-r-knee",
+     "joint-r-upper-leg",
+     "joint-pelvis"
+    ],
+    "dominant_bones": [
+     "upperleg02.R",
+     "upperleg01.R",
+     "lowerleg01.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 8,
+    "perimeter": 0.168,
+    "centre": [
+     0.171,
+     -0.009,
+     0.847
+    ],
+    "low_z": 0.807,
+    "high_z": 0.889,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0053,
+    "gap_max": 0.0074,
+    "nearest_joints": [
+     "joint-l-upper-leg",
+     "joint-pelvis",
+     "joint-spine-4"
+    ],
+    "dominant_bones": [
+     "upperleg01.L",
+     "pelvis.L",
+     "upperleg02.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 0.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 8,
+    "perimeter": 0.16,
+    "centre": [
+     -0.269,
+     -0.022,
+     1.32
+    ],
+    "low_z": 1.296,
+    "high_z": 1.341,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0295,
+    "gap_max": 0.0439,
+    "nearest_joints": [
+     "joint-r-shoulder",
+     "joint-r-scapula",
+     "joint-r-elbow"
+    ],
+    "dominant_bones": [
+     "upperarm01.R",
+     "upperarm02.R",
+     "shoulder01.R"
+    ],
+    "reaches_skin": 0.625,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 6,
+    "perimeter": 0.143,
+    "centre": [
+     -0.21,
+     -0.022,
+     1.142
+    ],
+    "low_z": 1.106,
+    "high_z": 1.159,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0472,
+    "gap_max": 0.0675,
+    "nearest_joints": [
+     "joint-r-elbow",
+     "joint-r-shoulder",
+     "joint-spine-2"
+    ],
+    "dominant_bones": [
+     "upperarm02.R",
+     "spine03",
+     "spine02"
+    ],
+    "reaches_skin": 0.667,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 4,
+    "perimeter": 0.095,
+    "centre": [
+     0.248,
+     0.027,
+     0.527
+    ],
+    "low_z": 0.504,
+    "high_z": 0.551,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0766,
+    "gap_max": 0.0778,
+    "nearest_joints": [
+     "joint-l-knee",
+     "joint-l-upper-leg",
+     "joint-r-knee"
+    ],
+    "dominant_bones": [
+     "upperleg02.L",
+     "lowerleg01.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 4,
+    "perimeter": 0.092,
+    "centre": [
+     -0.256,
+     0.037,
+     0.473
+    ],
+    "low_z": 0.45,
+    "high_z": 0.495,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0706,
+    "gap_max": 0.0742,
+    "nearest_joints": [
+     "joint-r-knee",
+     "joint-l-knee",
+     "joint-r-ankle"
+    ],
+    "dominant_bones": [
+     "lowerleg01.R",
+     "upperleg02.R",
+     "lowerleg02.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 4,
+    "perimeter": 0.091,
+    "centre": [
+     -0.28,
+     0.053,
+     0.32
+    ],
+    "low_z": 0.297,
+    "high_z": 0.342,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0717,
+    "gap_max": 0.0782,
+    "nearest_joints": [
+     "joint-r-knee",
+     "joint-r-ankle",
+     "joint-r-toe-5-1"
+    ],
+    "dominant_bones": [
+     "lowerleg01.R",
+     "lowerleg02.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 20,
+    "perimeter": 0.087,
+    "centre": [
+     0.157,
+     0.003,
+     0.905
+    ],
+    "low_z": 0.903,
+    "high_z": 0.911,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0102,
+    "gap_max": 0.011,
+    "nearest_joints": [
+     "joint-l-upper-leg",
+     "joint-pelvis",
+     "joint-spine-4"
+    ],
+    "dominant_bones": [
+     "upperleg01.L",
+     "pelvis.L",
+     "spine04"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 0.75,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 20,
+    "perimeter": 0.086,
+    "centre": [
+     0.161,
+     -0.033,
+     0.902
+    ],
+    "low_z": 0.896,
+    "high_z": 0.911,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0075,
+    "gap_max": 0.0097,
+    "nearest_joints": [
+     "joint-l-upper-leg",
+     "joint-pelvis",
+     "joint-spine-4"
+    ],
+    "dominant_bones": [
+     "upperleg01.L",
+     "pelvis.L",
+     "spine04"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 0.85,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 4,
+    "perimeter": 0.086,
+    "centre": [
+     -0.174,
+     -0.036,
+     1.037
+    ],
+    "low_z": 1.015,
+    "high_z": 1.058,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0454,
+    "gap_max": 0.0525,
+    "nearest_joints": [
+     "joint-spine-3",
+     "joint-r-elbow",
+     "joint-spine-2"
+    ],
+    "dominant_bones": [
+     "spine03",
+     "spine04",
+     "spine05"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 4,
+    "perimeter": 0.086,
+    "centre": [
+     0.242,
+     0.022,
+     0.572
+    ],
+    "low_z": 0.551,
+    "high_z": 0.593,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0711,
+    "gap_max": 0.0751,
+    "nearest_joints": [
+     "joint-l-knee",
+     "joint-l-upper-leg",
+     "joint-pelvis"
+    ],
+    "dominant_bones": [
+     "upperleg02.L",
+     "lowerleg01.L",
+     "upperleg01.L"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "hem",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 4,
+    "perimeter": 0.084,
+    "centre": [
+     -0.168,
+     -0.026,
+     0.953
+    ],
+    "low_z": 0.931,
+    "high_z": 0.973,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0219,
+    "gap_max": 0.026,
+    "nearest_joints": [
+     "joint-r-upper-leg",
+     "joint-spine-4",
+     "joint-spine-3"
+    ],
+    "dominant_bones": [
+     "spine04",
+     "spine05",
+     "pelvis.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 4,
+    "perimeter": 0.082,
+    "centre": [
+     -0.202,
+     -0.021,
+     1.36
+    ],
+    "low_z": 1.349,
+    "high_z": 1.371,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0046,
+    "gap_max": 0.007,
+    "nearest_joints": [
+     "joint-r-shoulder",
+     "joint-r-scapula",
+     "joint-r-clavicle"
+    ],
+    "dominant_bones": [
+     "upperarm01.R",
+     "shoulder01.R",
+     "upperarm02.R"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "cuff",
+    "kind_by_gap": "trunk"
+   },
+   {
+    "vertices": 4,
+    "perimeter": 0.082,
+    "centre": [
+     0.17,
+     -0.035,
+     1.093
+    ],
+    "low_z": 1.073,
+    "high_z": 1.114,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0444,
+    "gap_max": 0.0451,
+    "nearest_joints": [
+     "joint-l-elbow",
+     "joint-spine-2",
+     "joint-spine-3"
+    ],
+    "dominant_bones": [
+     "spine03",
+     "spine02",
+     "spine04"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "limb"
+   },
+   {
+    "vertices": 4,
+    "perimeter": 0.07,
+    "centre": [
+     -0.187,
+     -0.034,
+     1.09
+    ],
+    "low_z": 1.074,
+    "high_z": 1.106,
+    "component_vertices": 5499,
+    "chains": {},
+    "gap_median": 0.0608,
+    "gap_max": 0.0675,
+    "nearest_joints": [
+     "joint-r-elbow",
+     "joint-spine-2",
+     "joint-spine-3"
+    ],
+    "dominant_bones": [
+     "spine03",
+     "spine02",
+     "spine04"
+    ],
+    "reaches_skin": 1.0,
+    "exposed": 1.0,
+    "kind_by_chains": "trunk",
+    "kind_by_bones": "trunk",
+    "kind_by_gap": "limb"
+   }
+  ],
+  "groups": {
+   "Delete.aethelraed_flapper_dress": 4208
+  },
+  "masks": [
+   [
+    "Hide helpers",
+    "body"
+   ],
+   [
+    "Delete.aethelraed_flapper_dress",
+    "Delete.aethelraed_flapper_dress"
+   ]
+  ],
+  "joint_heights": {
+   "joint-neck": 1.414,
+   "joint-l-hand": 1.016,
+   "joint-l-knee": 0.474,
+   "joint-l-ankle": 0.069,
+   "joint-pelvis": 0.874
+  }
+ },
+ "culturalibre_hero-heroine_gloves_1": {
+  "garment": "Human.culturalibre_hero-heroine_gloves_1",
+  "body_vertices": 13380,
+  "garment_vertices": 2268,
+  "garment_polygons": 2264,
+  "boundary_edges": 0,
+  "components": [
+   1134,
+   1134
+  ],
+  "loops": [],
+  "groups": {
+   "Delete.culturalibre_hero-heroine_gloves_1": 3866
+  },
+  "masks": [
+   [
+    "Hide helpers",
+    "body"
+   ],
+   [
+    "Delete.culturalibre_hero-heroine_gloves_1",
+    "Delete.culturalibre_hero-heroine_gloves_1"
+   ]
+  ],
+  "joint_heights": {
+   "joint-neck": 1.414,
+   "joint-l-hand": 1.016,
+   "joint-l-knee": 0.474,
+   "joint-l-ankle": 0.069,
+   "joint-pelvis": 0.874
+  }
+ },
+ "culturalibre_hero_boots_1": {
+  "garment": "Human.culturalibre_hero_boots_1",
+  "body_vertices": 13380,
+  "garment_vertices": 1448,
+  "garment_polygons": 1444,
+  "boundary_edges": 0,
+  "components": [
+   724,
+   724
+  ],
+  "loops": [],
+  "groups": {
+   "Delete.culturalibre_hero_boots_1": 2718
+  },
+  "masks": [
+   [
+    "Hide helpers",
+    "body"
+   ],
+   [
+    "Delete.culturalibre_hero_boots_1",
+    "Delete.culturalibre_hero_boots_1"
+   ]
+  ],
+  "joint_heights": {
+   "joint-neck": 1.414,
+   "joint-l-hand": 1.016,
+   "joint-l-knee": 0.474,
+   "joint-l-ankle": 0.069,
+   "joint-pelvis": 0.874
+  }
+ },
+ "callharvey3d_harvey_croptopsweater1": {
+  "garment": "Human.callharvey3d_harvey_croptopsweater1",
+  "body_vertices": 13380,
+  "garment_vertices": 4032,
+  "garment_polygons": 4036,
+  "boundary_edges": 0,
+  "components": [
+   4032
+  ],
+  "loops": [],
+  "groups": {},
+  "masks": [
+   [
+    "Hide helpers",
+    "body"
+   ]
+  ],
+  "joint_heights": {
+   "joint-neck": 1.414,
+   "joint-l-hand": 1.016,
+   "joint-l-knee": 0.474,
+   "joint-l-ankle": 0.069,
+   "joint-pelvis": 0.874
+  }
+ }
+}

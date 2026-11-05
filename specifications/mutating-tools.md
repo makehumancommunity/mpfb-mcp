@@ -482,3 +482,11 @@ different tabs and a human sees sliders move. Across MCP there is no such feedba
   and a spread at all (a hook, a twist), which an amount cannot express. Amounts keep seven
   decimals, so a live round trip put every channel back within 1e-5, the bound single-precision
   Euler channels allow ([FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md)).
+- **Where the undo is too large to return, a kept copy is the undo, and the answer names it.**
+  `mpfb_generate_delete_group` changes a vertex group of perhaps 3,209 members, about 20 KB as a list. So
+  the group as it first found it stays on the body as `<group>.original`, reported as `original_kept_as`.
+  It is written once and never again, and is also what makes the tool rerunnable: a group that only grows
+  cannot be tuned, so every `merge` starts from it. A name that would collide with it, or that Blender
+  would silently truncate, is refused. **The cost is that putting it back is generic Blender work**, which
+  the description says. It reaches no export and no MHCLO, checked live
+  ([FR 051](../feature-requests/done/051-delete-groups/README.md)).

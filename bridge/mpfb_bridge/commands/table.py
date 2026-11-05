@@ -51,6 +51,7 @@ from . import check_mesh_asset
 from . import create_human
 from . import create_export_copy
 from . import create_human_from_preset
+from . import generate_delete_group
 from . import generate_rigify_rig
 from . import export_character
 from . import get_character_summary
@@ -159,6 +160,12 @@ COMMANDS = {
         # does - export_directory.py reads it from this add-on's preferences.
         requires_mpfb=True,
         summary=export_character.SUMMARY),
+    "generate_delete_group": Command(
+        name="generate_delete_group",
+        handler=generate_delete_group.generate_delete_group,
+        params=generate_delete_group.PARAMS,
+        requires_mpfb=True,
+        summary=generate_delete_group.SUMMARY),
     "generate_rigify_rig": Command(
         name="generate_rigify_rig",
         handler=generate_rigify_rig.generate_rigify_rig,
