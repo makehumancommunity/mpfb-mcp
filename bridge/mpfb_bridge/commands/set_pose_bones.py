@@ -96,6 +96,7 @@ from ..log import get_logger
 from ..shared import pose_controls
 from ..shared import pose_reading
 from ..shared import pose_writing
+from ..shared import view_layer
 from ..shared.character_frame import AXES
 from ..shared.character_frame import Frame
 from ..shared.performed import with_performed
@@ -467,7 +468,7 @@ def _refused(answer, errors):
     return with_performed(answer, False)
 
 
-def set_pose_bones(params, resolution):  # pylint: disable=too-many-locals
+def _set_pose_bones(params, resolution):  # pylint: disable=too-many-locals
     """Resolve every entry, write all of them parent first or none, and report each."""
     not_done = ", so nothing was changed"
     resolved = pose_controls.resolve_posing_subject(
@@ -526,3 +527,9 @@ def set_pose_bones(params, resolution):  # pylint: disable=too-many-locals
     answer["message"] = _message(rig, changes, consequence, shown)
     _LOG.debug("set_pose_bones: %d change(s) to %r", len(changes), rig.name)
     return with_performed(answer, changes)
+
+
+def set_pose_bones(params, resolution):
+    """Write the batch, with the rig in the view layer: an excluded rig is never evaluated."""
+    return view_layer.run(resolution.services, params["name"],
+                          lambda: _set_pose_bones(params, resolution))

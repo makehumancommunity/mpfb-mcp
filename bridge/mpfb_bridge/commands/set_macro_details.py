@@ -69,8 +69,10 @@ __all__ = (
 from ..log import get_logger
 from ..shared import macro_reading
 from ..shared import mpfb_surface
+from ..shared import refit_pose
 from ..shared import selection
 from ..shared import subject_resolution
+from ..shared import view_layer
 from ..shared.performed import with_performed
 from ..shared.refit_blocker import rig_refit_is_blocked
 from ..validation import Param
@@ -95,6 +97,10 @@ PARAMS = (
           description="Re-fit clothes and the rig to the new body shape. False is MPFB's own "
                       "default: a refit is expensive, so make a series of changes and call "
                       "refit_human once."),
+    Param("keep_pose", TYPE_BOOLEAN, default=True,
+          description="Put the pose and the switches back if the refit resets them, as it does on "
+                      "a generated Rigify rig. False leaves MPFB's result and answers with "
+                      "restore_with."),
 )
 
 SUMMARY = "Write a character's macro phenotype sliders and rebuild the shape from them."
@@ -178,7 +184,7 @@ def _message_for(basemesh, changed, refit_performed, refit_incomplete_reason,
     return "".join(parts)
 
 
-def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
+def _set_macro_details(params, resolution):  # pylint: disable=too-many-locals
     """Write the named sliders, rebuild the shape once, and report both."""
     services = resolution.services
     object_service = services["ObjectService"]
@@ -258,7 +264,7 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
     # Nothing in reapply_macro_details() obviously requires it, but the refit
     # below reaches bpy.ops through ClothesService, so follow MPFB - and put
     # back what was borrowed: the user is looking at this scene.
-    with selection.restored(basemesh):
+    with selection.restored_all():
         for change in changes:
             HumanObjectProperties.set_value(
                 change["property"], change["value"], entity_reference=basemesh)
@@ -271,10 +277,12 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
 
         rig = object_service.find_object_of_type_amongst_nearest_relatives(basemesh, "Skeleton")
         refit_incomplete_reason = None
+        pose = refit_pose.no_refit()
         refit_performed = False
         if refit_requested:
             refit_incomplete_reason = _rig_refit_blocker(services, rig)
-            services["HumanService"].refit(basemesh)
+            with refit_pose.kept(resolution, basemesh, params["keep_pose"]) as pose:
+                services["HumanService"].refit(basemesh)
             refit_performed = refit_incomplete_reason is None
 
     details_after = macro_reading.macro_details_of(target_service, basemesh)
@@ -331,4 +339,11 @@ def set_macro_details(params, resolution):  # pylint: disable=too-many-locals
 
     # The verb is "recalculated", which is false in every refusal and in the
     # no-op call that named no slider. See shared/performed.py.
-    return with_performed(result, result["recalculated"])
+    return with_performed(pose.add_to(result), result["recalculated"])
+
+
+def set_macro_details(params, resolution):
+    """Change the phenotype, with the character in the view layer."""
+    return refit_pose.answered(view_layer.run(
+        resolution.services, params["name"], lambda: _set_macro_details(params, resolution),
+        refits=params["refit"], refused_with=dict(refit_performed=False, changes=[])))

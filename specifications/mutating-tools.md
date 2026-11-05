@@ -35,7 +35,9 @@ breaking it has side effects on somebody's `.blend` rather than a different-look
 | A precondition is an answer, not an exception | The **far side**. Every `blocked_by` branch runs before the mutating call |
 | `performed` means the same thing everywhere | A **shared module**, [`bridge/mpfb_bridge/shared/performed.py`](../bridge/mpfb_bridge/shared/performed.py), imported by every mutating command |
 | The before/after report | The **far side**, which is the only place that can observe both |
-| The caller's selection is restored | A **shared module**: `with selection.restored(...)`, from [`bridge/mpfb_bridge/shared/selection.py`](../bridge/mpfb_bridge/shared/selection.py), around every `refit()` and every operator call. It puts back the active object and the borrowed object's own selection, and **not** the selection of other objects an operator selected, such as a new armature ([NEXT_STEPS](../feature-requests/NEXT_STEPS.md#selection-restore-covers-one-object)). The two export commands use `selection.restored_all()`, which puts back every object's selection and leaves what the command created deselected ([FR 039](../feature-requests/done/039-exporting-characters/README.md)). `mpfb_generate_rigify_rig` reports `active_object_after` instead |
+| The caller's selection is restored | A **shared module**: `with selection.restored_all()`, from [`bridge/mpfb_bridge/shared/selection.py`](../bridge/mpfb_bridge/shared/selection.py), around every `refit()` and every operator call. It puts back every object's selection and the active object, and leaves what the command created deselected ([FR 039](../feature-requests/done/039-exporting-characters/README.md), [FR 054](../feature-requests/done/054-refits-keep-the-pose/README.md)). `mpfb_generate_rigify_rig` reports `active_object_after` instead, except around an inclusion |
+| The view layer ends as it began | A **shared module**, [`bridge/mpfb_bridge/shared/view_layer.py`](../bridge/mpfb_bridge/shared/view_layer.py): `view_layer.run()` around each command that needs its character in the view layer, on the outside of the selection restore ([below](#a-collection-excluded-from-the-view-layer)) |
+| A refit keeps the pose | A **shared module**, [`bridge/mpfb_bridge/shared/refit_pose.py`](../bridge/mpfb_bridge/shared/refit_pose.py), around each of the six `refit()` calls ([below](#a-refit-keeps-the-pose)) |
 | A batch resolves before it writes | The **far side**. It is a property of the *code*, and nothing below the socket would enforce it |
 | A name that becomes a path is a name and never a path | **Both sides, deliberately.** `artifact_names.py` before anything is sent, `shared/artifact_names.py` as the last statement before `open()` - one rule for presets, saved expressions and exports, and a narrower one for stored MakeSkin materials |
 | The directory of an export is the human's | The **add-on**: [`bridge/mpfb_bridge/export_directory.py`](../bridge/mpfb_bridge/export_directory.py) reads the bridge's preference or `--export-dir`. The near side has nothing to enforce, because no tool takes a directory |
@@ -113,12 +115,64 @@ by omission.
   genuinely *cannot* — `RigService.generate_rigify_rig()`'s own final act is to select and activate
   the rig it produced, so there is no state left to restore to — say what the selection now is
   (`active_object_after`) rather than quietly leaving the caller to assume nothing moved.
+  **The view layer is borrowed too**, and owes more: see
+  [A collection excluded from the view layer](#a-collection-excluded-from-the-view-layer).
 - **A write that preserves something reports how well it did**, as a measured number rather than
   that it ran. `mpfb_set_pose_switches` snaps a limb so that changing a switch does not move it,
   and reports `snap_error`: the furthest any joint of the limb's deforming chain moved
   ([FR 042](../feature-requests/done/042-posing-bones-switches-and-reset/README.md)). A snap that failed then shows up as millimetres, which the effort
   found is not hypothetical: a limb `IK_Stretch` has stretched snaps back to IK a millimetre or
   two out, because Blender's stretching IK shares the stretch between the segments differently.
+
+## A refit keeps the pose
+
+`HumanService.refit()` regenerates a generated Rigify rig, which leaves every control at rest and every
+`IK_FK` at its default, and says nothing. A session found out from a `chain_not_in_charge` three
+characters later ([FR 054](../feature-requests/done/054-refits-keep-the-pose/README.md)). It is the worst
+kind of consequence: invisible in the answer, and caused by a call about something else, since
+`mpfb_set_face_units` refits by default.
+
+- **Kept by default, on all six refitting tools.** `keep_pose: false` gives MPFB's behaviour. Restoring was
+  chosen over reporting, because 50 ms beside an 850 ms refit leaves no reason to make a caller send the
+  pose back itself, and the opt-out exists because it is a call about what a refit does.
+- **Decided by what happened, not by the rig's type.** Everything is read before and compared after, and only
+  what differs is written, so a default rig has nothing written to it. Every channel, rotation mode and numeric
+  custom property; a driven channel is neither compared nor written, since it follows by itself.
+- **The answer can always be trusted about the pose**: `pose_after_refit` is `"unchanged"`, `"kept"` (with
+  `pose_kept_count`, `limbs_made_stretched`, `limbs_made_unreachable`, `bones_not_restored`) or `"reset"` (with
+  `pose_reset_count`, `restore_with`, `not_restorable`, `bones_not_restored`), and `null` when no refit happened. A
+  blocked refit left the rig untouched, so is `"unchanged"`. **Even with the opt-out the caller is told and handed
+  the undo.**
+- **A kept pose is values, not places.** After a body change a hand target holds the value it held and stands
+  somewhere new with the body, and the limb may no longer reach it, which the two limbs lists measure. Keeping
+  a limb at its old place in the world is another feature.
+- **`restore_with` agrees with `kept`.** It is read on the new body with the old values written back for a moment,
+  so sending it reaches what keeping would have. Built before a body change it would send each control to where it used to
+  stand.
+- **A refit that raises still restores what it can**, and the failure stays the refit's own.
+
+## A collection excluded from the view layer
+
+One collection per character, all but one excluded, is the easy way to manage several characters at the origin, and
+everything that selects or activates raises on an object outside the view layer. `mpfb_set_skin` did so after
+deleting the materials. [FR 054](../feature-requests/done/054-refits-keep-the-pose/README.md) was asked for a refusal, and
+**includes the collection instead**, since a refusal would leave a caller with no MPFB tool to continue:
+
+- **Which commands was measured**, by a scan of every mutating command, and the table lives on in
+  `eee_composite/excluded_character_test.py`, held to `ddd_mutating/`'s listing. A command that raises, refuses for no
+  reason a caller could act on, or answers from a pose an excluded rig never evaluated is wrapped. One that works, or says what
+  stopped it, is not.
+- **Only what is needed, and exactly that put back**, however the work ends. The excluded collections holding the family, with
+  their excluded parents, as a stack of writes undone in reverse, because Blender's `exclude` remembers what a child was
+  before its parent went, and that memory is the user's as well.
+- **The answer says so**: `temporarily_included` names them, `[]` on an ordinary call, and the message says it.
+- **What a command creates joins the character.** `objects_moved_to_collection` names it. Otherwise a garment stands visible at the
+  origin beside a character the user excluded. Only during an inclusion; other calls keep following the active collection.
+- **What cannot be included is still a refusal**, before anything is written: `blocked_by: "not_in_view_layer"`, with
+  `not_in_view_layer` naming the object, its collections and why. That is an object in another scene or in no collection, and a
+  hidden collection **only where it stops the work**, which was measured: Rigify regenerating or generating.
+- **`hide_set()` is the exclude's to lose.** Blender keeps it on the view layer's base, and it reads false after an exclude and include
+  with no tool involved. What is put back is the state of what was in the view layer when the work began.
 
 ## The flag a caller branches on is called `performed`
 

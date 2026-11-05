@@ -52,10 +52,12 @@ __all__ = (
 )
 
 from ..log import get_logger
+from ..shared import refit_pose
 from ..shared import selection
 from ..shared import subject_resolution
 from ..shared import target_categories
 from ..shared import target_rollup
+from ..shared import view_layer
 from ..shared.modifier_reading import modifier_reading
 from ..shared.performed import with_performed
 from ..shared.refit_blocker import rig_refit_is_blocked
@@ -83,6 +85,10 @@ PARAMS = (
           description="Delete a shape key whose value falls to zero. MPFB's own default."),
     Param("refit", TYPE_BOOLEAN, default=False,
           description="Re-fit clothes and the rig afterwards. False is MPFB's own default."),
+    Param("keep_pose", TYPE_BOOLEAN, default=True,
+          description="Put the pose and the switches back if the refit resets them, as it does on "
+                      "a generated Rigify rig. False leaves MPFB's result and answers with "
+                      "restore_with."),
 )
 
 SUMMARY = "Copy one side of a character's detail modeling onto the other."
@@ -267,7 +273,7 @@ def _message_for(dry_run, source_side, destination_side, basemesh, changed, alre
     return "".join(parts)
 
 
-def symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,too-many-branches
+def _symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,too-many-branches
     """Measure both sides everywhere, then copy one onto the other - or say what it would."""
     services = resolution.services
     object_service = services["ObjectService"]
@@ -370,6 +376,7 @@ def symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,t
 
     changed = []
     refit_incomplete_reason = None
+    pose = refit_pose.no_refit()
     refit_performed = False
     rig = object_service.find_object_of_type_amongst_nearest_relatives(basemesh, "Skeleton")
     shapekeys_before = target_rollup.shapekey_names(basemesh)
@@ -388,7 +395,7 @@ def symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,t
             reported["targets"] = None
             changed.append(reported)
     elif planned:
-        with selection.restored(basemesh):
+        with selection.restored_all():
             object_service.activate_blender_object(basemesh)
             for entry, section_name, category, source_value in planned:
                 touched = _write_side(target_service, tables, basemesh, section_name, category,
@@ -400,7 +407,8 @@ def symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,t
                 changed.append(reported)
             if refit_requested:
                 refit_incomplete_reason = _rig_refit_blocker(services, rig)
-                services["HumanService"].refit(basemesh)
+                with refit_pose.kept(resolution, basemesh, params["keep_pose"]) as pose:
+                    services["HumanService"].refit(basemesh)
                 refit_performed = refit_incomplete_reason is None
         shapekeys_after = target_rollup.shapekey_names(basemesh)
 
@@ -450,4 +458,11 @@ def symmetrize_targets(params, resolution):  # pylint: disable=too-many-locals,t
     # The one command whose list of changes is not enough on its own: a dry run
     # reports the changes it would make in "changes" and writes none of them.
     # See shared/performed.py.
-    return with_performed(result, result["changes"] and not result["dry_run"])
+    return with_performed(pose.add_to(result), result["changes"] and not result["dry_run"])
+
+
+def symmetrize_targets(params, resolution):
+    """Symmetrize, with the character in the view layer."""
+    return refit_pose.answered(view_layer.run(
+        resolution.services, params["name"], lambda: _symmetrize_targets(params, resolution),
+        refits=params["refit"], refused_with=dict(refit_performed=False, changes=[])))

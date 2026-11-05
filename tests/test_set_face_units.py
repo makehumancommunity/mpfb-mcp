@@ -53,7 +53,7 @@ class ArgumentValidationTests(unittest.TestCase):
             send_command.return_value = {"status": "ok", "result": {}}
             self.tool()
         self.assertEqual(send_command.call_args[0][1], {
-            "name": None, "face_units": [], "mode": "merge", "refit": True})
+            "name": None, "face_units": [], "mode": "merge", "refit": True, "keep_pose": True})
 
     def test_entries_are_normalized_before_they_cross_the_socket(self):
         with mock.patch.object(bridge_connection, "send_command") as send_command:

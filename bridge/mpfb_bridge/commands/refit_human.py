@@ -31,12 +31,17 @@ otherwise, children only. Enumerating afterwards would describe what is there
 now rather than what was touched, and enumerating with different rules would be
 a second, differently-scoped answer wearing the same field names.
 
-**The caller's selection and active object are restored**, in a ``finally``, as
-twelve of the thirteen mutating commands do. ``ClothesService`` restores the
-active object itself, but only around its own edit-mode excursion; this covers
-the whole call, and the user is looking at this scene.
+**The caller's selection and active object are restored**, in a ``finally``, with
+``selection.restored_all()``. ``ClothesService`` restores the active object itself, but only around its
+own edit-mode excursion; this covers the whole call, and the user is looking at this scene.
 
-The behaviours above are **MPFB's, reproduced rather than tidied up**. Each
+**The pose is kept, and an excluded character is reached**, by the two context managers every refitting
+command shares ([`shared/refit_pose.py`](../shared/refit_pose.py) and
+[`shared/view_layer.py`](../shared/view_layer.py), [FR
+054](../../../feature-requests/done/054-refits-keep-the-pose/README.md)): ``HumanService.refit()``
+regenerates a generated rig with every control at rest, and raises on anything out of the view layer.
+
+The behaviours above but those two are **MPFB's, reproduced rather than tidied up**. Each
 arrived here from the generated program this command replaced, where it had
 been established against a real install; a reimplementation that fixed one
 would be changing what the tool answers under cover of a migration.
@@ -49,11 +54,14 @@ __all__ = (
 )
 
 from ..log import get_logger
+from ..shared import refit_pose
 from ..shared import selection
 from ..shared import subject_resolution
+from ..shared import view_layer
 from ..shared.performed import with_performed
 from ..shared.refit_blocker import rig_refit_is_blocked
 from ..validation import Param
+from ..validation import TYPE_BOOLEAN
 from ..validation import TYPE_STRING
 
 _LOG = get_logger("commands.refithuman")
@@ -62,6 +70,10 @@ PARAMS = (
     Param("name", TYPE_STRING, default=None, nullable=True,
           description="Any object in the character's family - the basemesh, its rig, a garment. "
                       "Omit or pass null to use whatever object is currently active."),
+    Param("keep_pose", TYPE_BOOLEAN, default=True,
+          description="Put the pose and the switches back if the refit resets them, as it does on "
+                      "a generated Rigify rig. False leaves MPFB's result and answers with "
+                      "restore_with."),
 )
 
 SUMMARY = "Refit a character's assets and rig to its current body shape."
@@ -112,7 +124,7 @@ def _message_for(basemesh, mesh_assets, rig, subrigs, refit_incomplete_reason):
     return "".join(parts)
 
 
-def refit_human(params, resolution):
+def _refit_human(params, resolution):
     """Refit one character, and say honestly what could not be refitted."""
     services = resolution.services
     object_service = services["ObjectService"]
@@ -176,7 +188,8 @@ def refit_human(params, resolution):
 
     # ClothesService restores the active object itself, but only around its own
     # edit-mode excursion. Restoring here covers the whole call.
-    with selection.restored(basemesh):
+    with selection.restored_all(), refit_pose.kept(resolution, basemesh,
+                                                   params["keep_pose"]) as pose:
         services["HumanService"].refit(basemesh)
 
     _LOG.debug("refit_human: %d mesh asset(s), rig=%r, blocked=%r",
@@ -201,4 +214,11 @@ def refit_human(params, resolution):
         message=_message_for(basemesh, mesh_assets, rig, subrigs, refit_incomplete_reason),
     )
 
-    return _stamped(result)
+    return _stamped(pose.add_to(result))
+
+
+def refit_human(params, resolution):
+    """Keep the pose through the refit, with the character in the view layer."""
+    return refit_pose.answered(view_layer.run(
+        resolution.services, params["name"], lambda: _refit_human(params, resolution),
+        refits=True, refused_with=dict(refit_performed=False)))

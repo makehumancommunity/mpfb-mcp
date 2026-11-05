@@ -119,7 +119,8 @@ def register(mcp: FastMCP) -> None:
     def mpfb_apply_expressions(name: str | None = None,
                                expressions: list[dict] | None = None,
                                mode: str = "merge",
-                               refit: bool = True) -> dict[str, object]:
+                               refit: bool = True,
+                               keep_pose: bool = True) -> dict[str, object]:
         """
         Put a MakeHuman character into saved expressions, through MPFB's
         applied-expressions stack - the mechanism its expressions-library panel
@@ -141,6 +142,8 @@ def register(mcp: FastMCP) -> None:
         with `mpfb_set_face_units` are discarded and named in
         `discarded_face_units` - call `mpfb_save_expression` first to keep them.
         `refit` (default true, as MPFB's library panel) refits the mesh assets and the rig.
+        `pose_after_refit` says what that did to the pose, which `keep_pose`
+        (default true) puts back; see `mpfb_refit_human`.
 
         `result` carries `changed` (the stack or the face moved), `requested`
         (per row: `action` of added / updated /
@@ -160,5 +163,7 @@ def register(mcp: FastMCP) -> None:
                 "mode": arguments.validated_mode(mode),
                 # Not truthiness: refit="false" is a true value.
                 "refit": arguments.validated_flag(refit, "refit"),
+                # Not truthiness: keep_pose="false" would keep the pose.
+                "keep_pose": arguments.validated_flag(keep_pose, "keep_pose"),
             },
         )

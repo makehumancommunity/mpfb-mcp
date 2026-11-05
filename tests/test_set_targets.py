@@ -60,7 +60,7 @@ class ArgumentValidationTests(unittest.TestCase):
             "name": None,
             "modifiers": [{"section": "nose", "category": "c", "value": 1.0, "side": None}],
             "targets": [{"shapekey_name": "vwide", "value": 0.0}],
-            "symmetry": False, "prune": True, "refit": False})
+            "symmetry": False, "prune": True, "refit": False, "keep_pose": True})
 
     def test_a_failure_reaches_the_caller_with_a_slug_to_branch_on(self):
         # The envelope is this package's: `status` and `message` are unchanged,

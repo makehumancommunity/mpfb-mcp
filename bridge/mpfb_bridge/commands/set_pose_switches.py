@@ -90,6 +90,7 @@ from ..log import get_logger
 from ..shared import pose_controls
 from ..shared import pose_reading
 from ..shared import pose_writing
+from ..shared import view_layer
 from ..shared.character_frame import Frame
 from ..shared.performed import with_performed
 from ..validation import Param
@@ -619,7 +620,7 @@ def _no_switches_refusal(resolved, classification):
     return refused
 
 
-def set_pose_switches(params, resolution):  # pylint: disable=too-many-locals
+def _set_pose_switches(params, resolution):  # pylint: disable=too-many-locals
     """Resolve every switch, then apply them in request order, snapping unless raw."""
     not_done = ", so nothing was changed"
     resolved = pose_controls.resolve_posing_subject(
@@ -688,3 +689,9 @@ def set_pose_switches(params, resolution):  # pylint: disable=too-many-locals
     _LOG.debug("set_pose_switches: %d change(s) to %r", len(changes), rig.name)
     performed = any(change["previous_value"] != change["new_value"] for change in changes)
     return with_performed(answer, performed)
+
+
+def set_pose_switches(params, resolution):
+    """Write the switches, with the rig in the view layer: a snap measures the evaluated pose."""
+    return view_layer.run(resolution.services, params["name"],
+                          lambda: _set_pose_switches(params, resolution))

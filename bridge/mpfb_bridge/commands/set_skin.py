@@ -80,6 +80,7 @@ from ..shared import blender_data
 from ..shared import mpfb_surface
 from ..shared import selection
 from ..shared import subject_resolution
+from ..shared import view_layer
 from ..shared.performed import with_performed
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
@@ -364,7 +365,7 @@ def _message_for(request, params, basemesh, body_proxy, material_instances_used,
     return "".join(parts)
 
 
-def set_skin(params, resolution):  # pylint: disable=too-many-locals,too-many-statements
+def _set_skin(params, resolution):  # pylint: disable=too-many-locals,too-many-statements
     """Apply one skin, having checked the type and the file before anything is destroyed."""
     services = resolution.services
     object_service = services["ObjectService"]
@@ -416,7 +417,7 @@ def set_skin(params, resolution):  # pylint: disable=too-many-locals,too-many-st
         scale_assumption = _scale_assumption_for(services, basemesh)
 
     failure_message = None
-    with selection.restored(basemesh):
+    with selection.restored_all():
         try:
             # MPFB's own operator runs with the character active, and the material
             # slot assignment goes through bpy.ops, which reads the context.
@@ -510,3 +511,9 @@ def set_skin(params, resolution):  # pylint: disable=too-many-locals,too-many-st
 
     # The verb is "applied". See shared/performed.py.
     return with_performed(result, result["applied"])
+
+
+def set_skin(params, resolution):
+    """Apply the skin, with the character in the view layer: MPFB deletes the old materials first."""
+    return view_layer.run(resolution.services, params["name"],
+                          lambda: _set_skin(params, resolution))

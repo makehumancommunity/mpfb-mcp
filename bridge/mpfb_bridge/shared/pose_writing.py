@@ -93,6 +93,7 @@ __all__ = (
     "channels",
     "charge_refusal",
     "consequences",
+    "controls_of",
     "driven_kinds",
     "edit_mode_refusal",
     "hold_locks",
@@ -103,7 +104,9 @@ __all__ = (
     "parents_first",
     "rest_position_sentence",
     "restore",
+    "restorable_entries",
     "restore_entry",
+    "restore_with",
     "showing_pose",
     "snapshot",
     "switch_value",
@@ -661,6 +664,69 @@ def _precise_rotation(frame, armature_rotation):
     return {"axis": {name: round(frame.axes[name].dot(world_axis), _RESTORE_POSITION_DIGITS)
                      + 0.0 for name in frame.axes},
             "degrees": degrees}
+
+
+def controls_of(rig, classification, parts=None):
+    """The bones a way back is made of: the chosen parts' controls, or every bone if unclassified."""
+    if not classification["classified"]:
+        return [pose_bone.name for pose_bone in rig.pose.bones]
+    return [name for name, control in classification["controls"].items()
+            if parts is None or control["body_part"] in parts]
+
+
+def _not_restorable(pose_bone, classification, in_charge, driven):
+    """Why ``mpfb_set_pose_bones`` would refuse to restore this bone, or ``None``."""
+    if classification["classified"]:
+        refusal = charge_refusal(classification, in_charge, pose_bone.name)
+        if refusal is not None:
+            return refusal[0]
+    now = channels(pose_bone)
+    if set(changed_kinds(pose_bone, REST_CHANNELS, now)) & driven.get(pose_bone.name, set()):
+        return "driven_channel"
+    if lock_violations(pose_bone, REST_CHANNELS, now):
+        return "locked_channel"
+    return None
+
+
+def restorable_entries(frame, rig, classification, names, in_charge, driven):
+    """``(entries, not_restorable)`` for those of ``names`` that are off rest, parents first.
+
+    Named rather than listed when ``set_pose_bones`` would refuse the bone, since one refused entry
+    fails that tool's whole batch and the restore would restore nothing. ``reset_pose``'s docstring
+    says why that loses nothing visible.
+    """
+    entries = []
+    not_restorable = []
+    for name in parents_first(rig, names):
+        pose_bone = rig.pose.bones[name]
+        if not pose_reading.off_rest(pose_bone):
+            continue
+        reason = _not_restorable(pose_bone, classification, in_charge, driven)
+        if reason is not None:
+            not_restorable.append({"bone": name, "reason": reason})
+            continue
+        entry = restore_entry(frame, pose_bone)
+        if entry is not None:
+            entries.append(entry)
+    return (entries, not_restorable)
+
+
+def restore_with(rig, entries, switch_writes):
+    """The calls that put a pose back: the switches' raw values first, then the bones.
+
+    ``switch_writes`` is ``(switch, value to restore, value now)``, and neither list is capped: a capped
+    restore would not restore anything.
+    """
+    calls: dict = {}
+    if switch_writes:
+        calls["mpfb_set_pose_switches"] = {
+            "name": rig.name,
+            "switches": [{"body_part": switch["body_part"], "switch": switch["switch"],
+                          "value": value, "raw": True}
+                         for switch, value, _now in switch_writes]}
+    if entries:
+        calls["mpfb_set_pose_bones"] = {"name": rig.name, "bones": entries}
+    return calls
 
 
 # ----------------------------------------------------------------------

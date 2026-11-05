@@ -87,6 +87,7 @@ from ..shared import placement
 from ..shared import rig_lookup
 from ..shared import selection
 from ..shared import subject_resolution
+from ..shared import view_layer
 from ..shared.performed import with_performed
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
@@ -349,7 +350,7 @@ def _message_for(requested_family, requested_identifier, basemesh, rig_object, i
     return "".join(parts)
 
 
-def add_rig(params, resolution_context):  # pylint: disable=too-many-locals
+def _add_rig(params, resolution_context):  # pylint: disable=too-many-locals
     """Attach one rig to one character, having checked everything first."""
     services = resolution_context.services
     object_service = services["ObjectService"]
@@ -401,7 +402,7 @@ def add_rig(params, resolution_context):  # pylint: disable=too-many-locals
 
     rig_object = None
     assertion_message = None
-    with selection.restored(basemesh):
+    with selection.restored_all():
         try:
             # MPFB's own operators run with the basemesh active, and the armature is
             # created through bpy.ops, which reads the context.
@@ -504,3 +505,9 @@ def add_rig(params, resolution_context):  # pylint: disable=too-many-locals
 
     # The verb is "added". See shared/performed.py.
     return with_performed(result, result["added"])
+
+
+def add_rig(params, resolution):
+    """Add the rig, with the character in the view layer."""
+    return view_layer.run(resolution.services, params["name"],
+                          lambda: _add_rig(params, resolution))

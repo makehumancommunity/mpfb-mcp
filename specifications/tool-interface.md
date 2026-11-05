@@ -396,6 +396,8 @@ dictionaries, so they were checked by the FR's own `census.py --check` instead.
 | An export copy's processing of a modifier type | `mask_modifiers`, `subdiv_modifiers`: `"KEEP"`, `"REMOVE"`, `"BAKE"`, the panel's own spelling | lower case |
 | A whole field before and after | `<field>_before` / `<field>_after` | `previous_<field>`, `current_<field>` |
 | Adding to what is there, or making it exactly this | `mode: "merge" \| "replace"`, and what a replace dropped is `removed_by_replace` | `clear_first` |
+| Whether a refit should put back the pose it resets, and what happened to it | `keep_pose`, and `pose_after_refit: "unchanged" \| "kept" \| "reset"`, `null` with no refit | |
+| A collection a call included for its own duration, and what it put there | `temporarily_included`, `objects_moved_to_collection` | |
 | The echo of an argument `X` | `requested_X`, `X_recognized`, `known_Xs` — `X` the argument's own name | a shortened `X` |
 | What a shape key holds, a face unit included, and a float socket | `value` | `weight` |
 | A colour socket's value, four scene-linear RGBA numbers | `color` | a hex string, or `value` carrying a list |

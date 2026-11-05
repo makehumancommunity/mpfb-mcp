@@ -69,7 +69,7 @@ class ArgumentValidationTests(unittest.TestCase):
                       dry_run=True, prune=False, refit=True)
         self.assertEqual(send_command.call_args[0][1], {
             "name": "Human.rig", "direction": "right_to_left", "section": "eyes",
-            "dry_run": True, "prune": False, "refit": True})
+            "dry_run": True, "prune": False, "refit": True, "keep_pose": True})
 
     def test_a_failure_reaches_the_caller_with_a_slug_to_branch_on(self):
         # The envelope is this package's: `status` and `message` are unchanged,

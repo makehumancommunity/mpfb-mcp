@@ -63,6 +63,7 @@ from ..log import get_logger
 from ..shared import pose_controls
 from ..shared import pose_reading
 from ..shared import pose_writing
+from ..shared import view_layer
 from ..shared.character_frame import Frame
 from ..shared.performed import with_performed
 from ..validation import Param
@@ -115,28 +116,6 @@ def _switch_resets(rig, classification, parts):
     return resets
 
 
-def _bones_to_reset(rig, classification, parts):
-    if not classification["classified"]:
-        return [pose_bone.name for pose_bone in rig.pose.bones]
-    return [name for name, control in classification["controls"].items()
-            if control["body_part"] in parts]
-
-
-def _not_restorable(pose_bone, classification, in_charge, driven):
-    """Why ``mpfb_set_pose_bones`` would refuse to restore this bone, or ``None``."""
-    if classification["classified"]:
-        refusal = pose_writing.charge_refusal(classification, in_charge, pose_bone.name)
-        if refusal is not None:
-            return refusal[0]
-    now = pose_writing.channels(pose_bone)
-    rest = pose_writing.REST_CHANNELS
-    if set(pose_writing.changed_kinds(pose_bone, rest, now)) & driven.get(pose_bone.name, set()):
-        return "driven_channel"
-    if pose_writing.lock_violations(pose_bone, rest, now):
-        return "locked_channel"
-    return None
-
-
 def _left_off_rest(rig, classification, driven):
     """Bones that are not controls and are off rest in a channel no driver sets."""
     if not classification["classified"]:
@@ -151,19 +130,6 @@ def _left_off_rest(rig, classification, driven):
         if set(off) - driven.get(pose_bone.name, set()):
             left.append(pose_bone.name)
     return left
-
-
-def _restore_with(rig, entries, switch_resets):
-    restore: dict = {}
-    if switch_resets:
-        restore["mpfb_set_pose_switches"] = {
-            "name": rig.name,
-            "switches": [{"body_part": switch["body_part"], "switch": switch["switch"],
-                          "value": value, "raw": True}
-                         for switch, value, _default in switch_resets]}
-    if entries:
-        restore["mpfb_set_pose_bones"] = {"name": rig.name, "bones": entries}
-    return restore
 
 
 def _message(rig, reset, switch_resets, *, not_restorable, left_off_rest, consequence, shown):
@@ -195,7 +161,7 @@ def _unclassified_refusal(resolved):
     return refused
 
 
-def reset_pose(params, resolution):  # pylint: disable=too-many-locals
+def _reset_pose(params, resolution):  # pylint: disable=too-many-locals
     """Reset the chosen parts to rest, switches first when asked, and answer with the way back."""
     not_done = ", so nothing was changed"
     resolved = pose_controls.resolve_posing_subject(
@@ -232,19 +198,11 @@ def reset_pose(params, resolution):  # pylint: disable=too-many-locals
         landmarks_before = (pose_reading.landmarks(frame, rig, classification["landmarks"])
                             if classification["classified"] else None)
 
-        names = pose_writing.parents_first(rig, _bones_to_reset(rig, classification, parts))
+        names = pose_writing.parents_first(
+            rig, pose_writing.controls_of(rig, classification, parts))
         posed = [name for name in names if pose_reading.off_rest(rig.pose.bones[name])]
-        entries = []
-        not_restorable = []
-        for name in posed:
-            pose_bone = rig.pose.bones[name]
-            reason = _not_restorable(pose_bone, classification, in_charge, driven)
-            if reason is not None:
-                not_restorable.append({"bone": name, "reason": reason})
-                continue
-            entry = pose_writing.restore_entry(frame, pose_bone)
-            if entry is not None:
-                entries.append(entry)
+        entries, not_restorable = pose_writing.restorable_entries(
+            frame, rig, classification, posed, in_charge, driven)
 
         if not posed and not switch_resets:
             answer.update(reset=False, bones_reset=[], reset_count=0, switches_reset=[], restore_with={},
@@ -276,7 +234,7 @@ def reset_pose(params, resolution):  # pylint: disable=too-many-locals
         switches_reset=[{"body_part": switch["body_part"], "switch": switch["switch"],
                          "bone": switch["bone"], "previous_value": value, "new_value": default}
                         for switch, value, default in switch_resets],
-        restore_with=_restore_with(rig, entries, switch_resets),
+        restore_with=pose_writing.restore_with(rig, entries, switch_resets),
         not_restorable=not_restorable,
         left_off_rest=left,
     )
@@ -286,3 +244,9 @@ def reset_pose(params, resolution):  # pylint: disable=too-many-locals
     _LOG.debug("reset_pose: %d bone(s), %d switch(es) on %r", len(posed), len(switch_resets),
                rig.name)
     return with_performed(answer, True)
+
+
+def reset_pose(params, resolution):
+    """Reset, with the rig in the view layer: consequences are read off the evaluated pose."""
+    return view_layer.run(resolution.services, params["name"],
+                          lambda: _reset_pose(params, resolution))

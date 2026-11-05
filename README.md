@@ -123,6 +123,10 @@ sub-rig, such as a ponytail, equipped on a character away from the origin is bou
 character is refitted. The tools report the violation they can see rather than
 enforcing it.
 
+**A refit keeps a pose**, which MPFB's own does not on a generated Rigify rig: `keep_pose` says otherwise, and
+`pose_after_refit` says what happened. **A character whose collection is excluded from the view layer** is included for
+the call and excluded again, so one collection per character works, and `temporarily_included` says when it happened.
+
 See [src/mpfbmcp](src/mpfbmcp) and [CLAUDE.md](CLAUDE.md) for how they work and how to run them.
 
 ## Authoring a mesh asset

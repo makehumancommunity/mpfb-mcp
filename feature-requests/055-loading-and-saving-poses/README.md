@@ -167,7 +167,7 @@ and load that onto another character, without touching the rest of what the char
   `shared/pose_writing.py` writes, so locks and the snapshot apply.
 - **The BVH importer is an operator**, so it needs a view-layer collection and it selects.
   Everything it makes is deleted. If the character is excluded, [FR
-  054](../054-refits-keep-the-pose/README.md)'s `view_layer.included()` applies.
+  054](../done/054-refits-keep-the-pose/README.md)'s `view_layer.run()` applies, on the outside of `selection.restored_all()`.
 - **The default's write** is, for each bone parent first: `delta = source_pose @ source_rest⁻¹` and
   `dest_pose = delta @ dest_rest`, on rotation only, keeping the bone's head. Scoping updated the
   depsgraph per bone at 0.4 s. Check whether that can be one pass, computing children from a stored

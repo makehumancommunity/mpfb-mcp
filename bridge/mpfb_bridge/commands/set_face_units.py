@@ -92,8 +92,10 @@ import difflib
 
 from ..log import get_logger
 from ..shared import mpfb_surface
+from ..shared import refit_pose
 from ..shared import selection
 from ..shared import subject_resolution
+from ..shared import view_layer
 from ..shared.expression_divergence import divergence
 from ..shared.performed import with_performed
 from ..shared.refit_blocker import rig_refit_is_blocked
@@ -125,6 +127,10 @@ PARAMS = (
           description="Re-fit clothes and the rig afterwards. True, unlike every other "
                       "refitting command here and unlike the composer panel: composing across "
                       "MCP is one batched call rather than a dragged slider."),
+    Param("keep_pose", TYPE_BOOLEAN, default=True,
+          description="Put the pose and the switches back if the refit resets them, as it does on "
+                      "a generated Rigify rig. False leaves MPFB's result and answers with "
+                      "restore_with."),
 )
 
 SUMMARY = "Compose a character's face from ARKit face units, directly and transiently."
@@ -209,7 +215,7 @@ def _message_for(basemesh, applied, loaded_from_disk, could_not_load, skipped_ab
     return "".join(parts)
 
 
-def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-many-branches
+def _set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-many-branches
     """Resolve the whole batch and the asset pack, then compose - or refuse cleanly."""
     services = resolution.services
     face_service = services["FaceService"]
@@ -350,6 +356,7 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
         ))
 
     refit_incomplete_reason = None
+    pose = refit_pose.no_refit()
     refit_performed = False
     changed_something = bool(applied_entries) or bool(cleared)
     rig = object_service.find_object_of_type_amongst_nearest_relatives(basemesh, "Skeleton")
@@ -357,8 +364,9 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
         refit_incomplete_reason = _rig_refit_blocker(services, rig)
         # refit() reaches bpy.ops through ClothesService. Put back what was
         # borrowed, as refit_human does: the user is looking at this scene.
-        with selection.restored(basemesh):
-            services["HumanService"].refit(basemesh)
+        with selection.restored_all():
+            with refit_pose.kept(resolution, basemesh, params["keep_pose"]) as pose:
+                services["HumanService"].refit(basemesh)
         refit_performed = refit_incomplete_reason is None
 
     mesh_assets = [asset.name for asset in object_service.find_related_mesh_assets(basemesh)]
@@ -402,4 +410,11 @@ def set_face_units(params, resolution):  # pylint: disable=too-many-locals,too-m
             compared),
     )
 
-    return with_performed(result, changed_something)
+    return with_performed(pose.add_to(result), changed_something)
+
+
+def set_face_units(params, resolution):
+    """Compose the face, with the character in the view layer."""
+    return refit_pose.answered(view_layer.run(
+        resolution.services, params["name"], lambda: _set_face_units(params, resolution),
+        refits=params["refit"], refused_with=dict(refit_performed=False, changes=[])))

@@ -56,6 +56,7 @@ from ..shared import pose_controls
 from ..shared import pose_reading
 from ..shared import pose_writing
 from ..shared import rigify_hands
+from ..shared import view_layer
 from ..shared.character_frame import Frame
 from ..shared.performed import with_performed
 from ..validation import Param
@@ -472,7 +473,7 @@ def _read(frame, rig, hands, hand):
             for name, finger in hands[hand]["fingers"].items()}
 
 
-def set_rigify_hand_shape(params, resolution):  # pylint: disable=too-many-locals
+def _set_rigify_hand_shape(params, resolution):  # pylint: disable=too-many-locals
     """Resolve every entry, write every finger or none, and report each hand."""
     not_done = ", so nothing was changed"
     resolved = pose_controls.resolve_posing_subject(
@@ -542,3 +543,9 @@ def set_rigify_hand_shape(params, resolution):  # pylint: disable=too-many-local
                   message=_message(rig, answers, changed, restore, shown))
     _LOG.debug("set_rigify_hand_shape: %d finger(s) changed on %r", len(changed_fingers), rig.name)
     return with_performed(answer, changed)
+
+
+def set_rigify_hand_shape(params, resolution):
+    """Shape the hands, with the rig in the view layer: tips are measured on the evaluated pose."""
+    return view_layer.run(resolution.services, params["name"],
+                          lambda: _set_rigify_hand_shape(params, resolution))

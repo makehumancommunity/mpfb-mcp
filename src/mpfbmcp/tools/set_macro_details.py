@@ -92,6 +92,7 @@ def register(mcp: FastMCP) -> None:
         race_african: float | None = None,
         prune: bool = True,
         refit: bool = False,
+        keep_pose: bool = True,
     ) -> dict[str, object]:
         """
         Change a MakeHuman character's macro details - its phenotype sliders -
@@ -118,6 +119,8 @@ def register(mcp: FastMCP) -> None:
         is expensive, not because it is unnecessary**: leave it false, read
         `assets_possibly_stale`, and call `mpfb_refit_human` once after a
         series of changes rather than paying for a refit per slider.
+        `pose_after_refit` says what a refit did to the pose, which `keep_pose`
+        (default true) puts back; see `mpfb_refit_human`.
 
         `result` carries `changes` (one `{name, previous_value, new_value}`
         per slider named), the full `macro_details` after the change,
@@ -159,5 +162,7 @@ def register(mcp: FastMCP) -> None:
                 "prune": arguments.validated_flag(prune, "prune"),
                 # Not truthiness: refit="false" would pay for a full asset refit.
                 "refit": arguments.validated_flag(refit, "refit"),
+                # Not truthiness: keep_pose="false" would keep the pose.
+                "keep_pose": arguments.validated_flag(keep_pose, "keep_pose"),
             },
         )

@@ -112,6 +112,7 @@ from ..shared import mpfb_surface
 from ..shared import placement
 from ..shared import selection
 from ..shared import subject_resolution
+from ..shared import view_layer
 from ..shared.performed import with_performed
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
@@ -599,7 +600,7 @@ def _message_for(request, basemesh, asset_object, existing_rig, set_up_rigging,
     return "".join(parts)
 
 
-def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-statements
+def _add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-statements
     """Equip one MHCLO asset, having checked the type and the file first."""
     services = resolution.services
     object_service = services["ObjectService"]
@@ -638,7 +639,7 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
 
     asset_object = None
     failure_message = None
-    with selection.restored(basemesh):
+    with selection.restored_all():
         try:
             # MPFB's own operators run with the basemesh active, and the import and
             # the fitting both go through bpy.ops, which reads the context.
@@ -801,3 +802,9 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
 
     # The verb is "added". See shared/performed.py.
     return with_performed(result, result["added"])
+
+
+def add_asset(params, resolution):
+    """Equip the asset, with the character in the view layer."""
+    return view_layer.run(resolution.services, params["name"],
+                          lambda: _add_asset(params, resolution))

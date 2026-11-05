@@ -530,7 +530,7 @@ asks all eighteen commands about the same three misses.
 Bridge suite 359 → 389, unit suite 428 → 446, smoke run 34 in 1.5 s, and `census.py --check`
 exits 0 with eleven names left, each kept with a recorded reason. Four findings went to NEXT_STEPS.md:
 [the `resolved_from` vocabulary](NEXT_STEPS.md#resolved-from-and-subject-resolved-by),
-[selection restore covering one object](NEXT_STEPS.md#selection-restore-covers-one-object),
+[selection restore covering one object](done/054-refits-keep-the-pose/README.md),
 [twenty-nine test helpers reaching FastMCP's private `_tool_manager`](NEXT_STEPS.md#one-helper-for-the-tool-under-test),
 and [`mpfb_create_human` refusing a non-number with a `TypeError`](NEXT_STEPS.md#create-human-typeerror).
 
@@ -1194,3 +1194,33 @@ went fine through generic code. The recipe, and the traps this session found, ar
   control. [FR 049](done/049-makeskin-materials/README.md)'s tools do not call it; filed.
 - The MHMAT writer emits `bumpmapIntensity 1.0` with no bump map and `roughness 0.7` beside a roughness
   map. Both are harmless, and `mpfb_get_makeskin_material`'s `in_effect` now tells a reader which are.
+
+## [FR 054](done/054-refits-keep-the-pose/README.md) — a refit keeps the pose, and reaches a character its view layer excludes
+
+Two NEXT_STEPS entries and a third that fell in by accident, all a refit, or something like one, doing the wrong thing without being asked.
+
+**`shared/refit_pose.py` keeps the pose**, around all six `refit()` calls. Everything is read before and compared after, and only what
+differs goes back, so a default rig has nothing written to it: decided by what happened, not by the rig's type. `keep_pose` opts out and
+`pose_after_refit` always says which, `"unchanged"`, `"kept"` or `"reset"`. Under the opt-out `restore_with` is built after the refit, with
+the old values written back for a moment, because one built before a body change would send each control to where it used to stand.
+A kept pose is values rather than places: on the check's height and muscle change every control held to the digit, and the hand moved 588 mm with the
+body. On the dressed character of 1,090 bones it costs 50 ms beside an 850 ms refit.
+
+**`shared/view_layer.py` includes an excluded collection for the call**, which the entry had asked to be a refusal. The scan of every mutating
+command is the part worth remembering. Sixteen need it, ten more than scoping named, and **the worst were not the ones that raised**: `mpfb_set_skin`
+refused having already deleted the materials, and all four pose writers answered from a rig nothing had evaluated, so that `mpfb_set_pose_bones` said a
+write which took had "not ended where asked". The table lives on as `eee_composite/excluded_character_test.py`, held to `ddd_mutating/`'s listing. Its
+first version passed with half its rows refused for unrelated reasons, and wrote a preset to the real config directory: a row now states what was
+measured, the refusal included.
+
+**Blender's `exclude` remembers** which child was excluded on its own, and rewrites that memory on a careless round trip, so the inclusion is a stack of writes
+undone in reverse. **`hide_set()` is lost by the exclude itself**, measured with no tool involved, which settles what scoping could not. **A hidden collection
+stops only Rigify**, measured, so only that is refused. The new asset joins its excluded character, or it would stand visible at the origin.
+
+**Moving the wrapped commands off `selection.restored()` moved all ten of its callers**, so it is deleted and that NEXT_STEPS entry closed, rather than
+narrowed as the request expected. Both MPFB defects are in `mpfb2/features/MCP_DISCOVERED_BUGS.md`.
+
+Verified by [`live_check.py`](done/054-refits-keep-the-pose/live_check.py), 0 failures of 23, and by the same tools against a windowed Blender and a real
+scene of 301 objects: the pose back at 0.0 m, `restore_with` back at 0.0 m, the collection excluded again and a lamp still selected and active. What was left
+out: keeping a limb at its old place in the world, a tool to include a collection, and `mpfb_get_pose` on an excluded rig, which still reads what was last
+evaluated and says nothing false about a rig nobody has moved since.

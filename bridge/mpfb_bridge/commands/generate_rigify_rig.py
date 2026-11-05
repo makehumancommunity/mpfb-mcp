@@ -70,6 +70,7 @@ import bpy
 
 from ..log import get_logger
 from ..shared import subject_resolution
+from ..shared import view_layer
 from ..shared.performed import with_performed
 from ..validation import Param
 from ..validation import TYPE_STRING
@@ -260,7 +261,7 @@ def _message_for(generated, rig_object, metarig_name_before, metarig_name_after,
     return "".join(parts)
 
 
-def generate_rigify_rig(params, resolution):  # pylint: disable=too-many-locals
+def _generate_rigify_rig(params, resolution):  # pylint: disable=too-many-locals
     """Generate one Rigify rig, and say what happened even when nothing was generated."""
     services = resolution.services
     object_service = services["ObjectService"]
@@ -364,3 +365,19 @@ def generate_rigify_rig(params, resolution):  # pylint: disable=too-many-locals
     # rig - a ready: true answer that changed the scene without producing a rig.
     # See shared/performed.py.
     return with_performed(result, result["generated"])
+
+
+def generate_rigify_rig(params, resolution):
+    """Generate, with the meta rig in the view layer, and say what is active once that is over.
+
+    The operator selects its own result, and this tool leaves it so. Around an inclusion the result is
+    about to leave the view layer, so the caller's selection goes back, and ``active_object_after``
+    has to be read after that rather than where the rest of the answer is built.
+    """
+    answer = view_layer.run(resolution.services, params["name"],
+                            lambda: _generate_rigify_rig(params, resolution),
+                            generates=True)
+    if answer["temporarily_included"]:
+        answer["active_object_after"] = _active_object_name()
+        answer["selection_restored"] = True
+    return answer

@@ -546,6 +546,23 @@ that effort:
   warns and skips each target that does not resolve, so a load with nothing installed succeeds and
   loads nothing. The per-target resolution before writing is what makes that visible.
 
+## An MPFB call that loses state is wrapped, rather than only reported
+
+`HumanService.refit()` is the service function six tools exist around, and on a generated Rigify rig it
+loses the pose and the switches ([FR 054](../feature-requests/done/054-refits-keep-the-pose/README.md)).
+Reporting that would have been the smallest change, and it was the first of the two the entry
+proposed. It is not enough **when what is lost is plain numbers, and putting them back costs a
+few percent of the call**: a caller told that its pose is gone still has nine calls to make.
+
+- **Compare, rather than predict.** Whether a call loses state is read off what it left, not worked out
+  from which rig it was given. A second rig family that starts losing its pose is covered, and a future MPFB
+  that keeps it writes nothing here. This does not depend on the fix upstream.
+- **Find by name afterwards.** What the call rebuilt may keep its object and its names and lose its identity,
+  so nothing is held across it but names.
+- **The opt-out gives MPFB's behaviour, and says so.** That is what lets the default differ from MPFB's panel.
+- **Propose it upstream as well**: both defects are in
+  `mpfb2/features/MCP_DISCOVERED_BUGS.md`. The wrap is why this package does not have to wait.
+
 ## When mpfb-mcp models a concept MPFB's UI has but its services do not
 
 Not every concept a tool needs is a service concept. A modeling *modifier* — a slider from -1.0 to

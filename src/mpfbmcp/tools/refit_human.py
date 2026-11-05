@@ -20,6 +20,10 @@ is therefore detected on the far side of the socket and reported here instead -
 by ``bridge/mpfb_bridge/commands/refit_human.py``, which shares one statement of
 the condition with the three other refitting commands, because **a precondition
 is an answer rather than an exception**.
+
+``keep_pose`` is here and on the five tools that refit after a change, and what it
+does is one module on the far side: ``bridge/mpfb_bridge/shared/refit_pose.py``.
+This is the description that explains it, and they point here.
 """
 
 from __future__ import annotations
@@ -45,7 +49,7 @@ def register(mcp: FastMCP) -> None:
             openWorldHint=False,
         )
     )
-    def mpfb_refit_human(name: str | None = None) -> dict[str, object]:
+    def mpfb_refit_human(name: str | None = None, keep_pose: bool = True) -> dict[str, object]:
         """
         Re-fit everything on a MakeHuman character to the current shape of its
         basemesh: every mesh asset (garments, body parts, the body proxy), the
@@ -72,6 +76,21 @@ def register(mcp: FastMCP) -> None:
         the meta rig kept - is the user's to make in Blender. A basemesh left
         in edit mode answers with `ready: false`, and an unresolvable subject
         with `found: false` and `blocked_by: "subject_not_found"`.
+
+        **A refit keeps the pose.** On a generated Rigify rig MPFB's refit
+        puts every control at rest and every `IK_FK` back at its default, so the
+        values are put back afterwards. `pose_after_refit` says what happened:
+        `"unchanged"` when nothing was lost, `"kept"` with `pose_kept_count`,
+        `limbs_made_stretched`, `limbs_made_unreachable` and
+        `bones_not_restored`, or, with `keep_pose: false`, `"reset"` with
+        `restore_with`, the `mpfb_set_pose_switches` and `mpfb_set_pose_bones`
+        calls that put it back. After a body change a kept control holds the
+        same values, so a hand target stays where it was and the arm may no
+        longer reach it; the limbs lists say so.
+
+        A collection excluded from the view layer is included for the call and
+        excluded again, named in `temporarily_included`. One that cannot be, in
+        another scene, is `blocked_by: "not_in_view_layer"`.
         """
         # `result` (built in bridge/mpfb_bridge/commands/refit_human.py) is plain
         # JSON-safe data. The bridge serializes a result before it commits to an
@@ -79,5 +98,7 @@ def register(mcp: FastMCP) -> None:
         # rather than a repr() quietly standing in for one.
         return backend.send(
             "refit_human",
-            params={"name": arguments.validated_subject(name)},
+            params={"name": arguments.validated_subject(name),
+                    # Not truthiness: keep_pose="false" would keep the pose.
+                    "keep_pose": arguments.validated_flag(keep_pose, "keep_pose")},
         )

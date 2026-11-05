@@ -1,19 +1,19 @@
 # A refit keeps the pose, and reaches a character its view layer excludes
 
-**Status:** Proposed
+**Status:** Done
 
 Two entries in NEXT_STEPS, one request, because both are a refit doing the wrong thing without being
 asked and both are fixed in the same place: around the call.
 
 **[A refit silently resets a generated Rigify rig's pose and
-switches](../NEXT_STEPS.md#refit-resets-a-rigify-pose).** The photo studio session posed a character
+switches](../../HISTORY.md).** The photo studio session posed a character
 and then composed its smile. `mpfb_set_face_units` refits by default, the refit regenerated the rig,
 and every control went to rest and every `IK_FK` back to 0. The answer said `refit_performed: true`.
 It showed up only when a later write was refused with `chain_not_in_charge`. The cost was three
 characters re-posed, about nine calls and a wasted render.
 
 **[Refits raise on a character whose collection is excluded from the view
-layer](../NEXT_STEPS.md#refit-raises-on-excluded-collection).** One collection per character, all
+layer](../../HISTORY.md).** One collection per character, all
 but one excluded, is the easy way to manage several characters at the origin. A refit then fails
 with a raw traceback, and `mpfb_set_face_units` had already written its shape keys when it did.
 
@@ -58,7 +58,7 @@ user organised the scene.
 - **A tool to include or exclude a collection.** Nothing here needs one.
 - **Other view-layer states.** A collection with `hide_viewport` on, or in another scene, is refused
   if it stops the work, and no more than that.
-- **Fixing it in MPFB.** A refit that keeps the pose would be better there. FR 12 proposes it.
+- **Fixing it in MPFB.** A refit that keeps the pose would be better there. FR 14 proposes it.
 
 ## Functional requirements
 
@@ -144,20 +144,20 @@ user organised the scene.
   name, so the restore finds bones by name, after the refit, never by a reference held across it.
 - **Pitfall:** `exclude` changes need a `view_layer.update()` before the first selection.
 - **This overlaps [Selection restore covers one
-  object](../NEXT_STEPS.md#selection-restore-covers-one-object)** for the wrapped commands only. The
+  object](../../HISTORY.md)** for the wrapped commands only. The
   other commands stay in that entry.
 
 ## Affected specifications
 
-- [mutating-tools.md](../../specifications/mutating-tools.md): "Restore what was borrowed" gains the
+- [mutating-tools.md](../../../specifications/mutating-tools.md): "Restore what was borrowed" gains the
   view layer; a refit's pose as a consequence reported; `keep_pose` and `restore_with`.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md): an MPFB call that loses state is
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md): an MPFB call that loses state is
   wrapped rather than reported only.
-- [architecture.md](../../specifications/architecture.md#shared-modules-and-what-warrants-one): the
+- [architecture.md](../../../specifications/architecture.md#shared-modules-and-what-warrants-one): the
   two new shared modules.
-- [tool-interface.md](../../specifications/tool-interface.md): the glossary (`keep_pose`,
+- [tool-interface.md](../../../specifications/tool-interface.md): the glossary (`keep_pose`,
   `pose_after_refit`, `temporarily_included`).
-- [vision.md](../../specifications/vision.md): no change.
+- [vision.md](../../../specifications/vision.md): no change.
 
 ## Tests
 
@@ -174,6 +174,68 @@ user organised the scene.
   change and on one of several excluded characters. Records the timings and FR 12's finding, and
   renders one before and one after.
 - **No smoke item.** No tool is added.
+
+## What landed
+
+Everything above, verified by [`live_check.py`](live_check.py), 23 checks and 0 failures headless, and by
+the same tools against a windowed Blender holding a real 301-object scene: pose kept at 0.0 m on every
+landmark, `restore_with` back at 0.0 m, the collection excluded again and a lamp left selected and active.
+Renders: [before](renders/before_body_change.jpg) and [after](renders/after_body_change.jpg) the body change.
+**No smoke item**, as the request says, since no tool was added; the smoke run still covers all fifty-one.
+
+### What the scan found (FR 8)
+
+Every mutating command against an excluded character, on the real install. The table lives on as
+`eee_composite/excluded_character_test.py`, held to `ddd_mutating/`'s listing so that a new command cannot miss it.
+
+| Before | Commands | Now |
+|---|---|---|
+| Raised | `refit_human`, the five that refit, `add_asset`, `add_rig`, `generate_rigify_rig` | Wrapped |
+| **Refused after doing damage** | `set_skin` (`skin_failed`, materials already deleted), `set_asset_material` | Wrapped |
+| Refused for no reason a caller could act on | `export_character` (`export_failed`, "list index out of range") | Wrapped |
+| **Answered falsely** | `set_pose_bones` ("did not end where asked", on a write that took), `set_pose_switches`, `set_rigify_hand_shape`, `reset_pose` | Wrapped: an excluded rig is never evaluated, so all four read a stale pose |
+| Worked | `remove_asset`, `place_character`, `save_preset`, `save_expression`, `set_material_settings`, `create_export_copy`, `set_makeskin_material`, `store_makeskin_material` | Not wrapped |
+| Refused in words a caller can act on | `write_mesh_asset` (`mesh_not_visible`), `generate_delete_group` (`mesh_not_evaluated`) | Not wrapped |
+
+Scoping named six wrapped commands and "at least four" unwrapped. The pose writers were not expected: `get_pose`'s
+working on an excluded character hid that nothing there is evaluated, and `mpfb_get_pose` itself still reads what was last
+evaluated. It reports nothing false about a rig nobody has moved since.
+
+### Findings
+
+- **FR 12: `hide_set()` is lost by the exclude itself.** Set, excluded and included with no tool involved, it reads false after
+  each of five runs (`live_check.py`, and `bbb_shared/view_layer_test.py`). Blender keeps it on the view layer's base, and an excluded object
+  has none. Scoping's "one of two runs" was the order of its reads: `exclude` reaches `view_layer.objects` only after an update. So no tool is the
+  cause and nothing is reported. What is put back is the state of what was in the view layer when the work began.
+- **Blender's `exclude` remembers**, and a careless round trip would have rewritten that memory: including a parent brings back
+  any child not excluded on its own, and a child learns it was "previously excluded" only when a parent is excluded around it. So
+  the inclusion is a stack of writes undone in reverse, and a sibling that came along is excluded again for the duration.
+  `test_what_a_parent_remembers_of_its_children_survives` reads that the only way it can be read, by including the parent afterwards.
+- **Hidden collections, measured** (non-goal: "refused if it stops the work"). `add_asset`, `set_skin`, and a refit of a default rig or
+  an ungenerated meta-rig all work in one. Regenerating raises "Target rig is not visible", and generating raises too. Only those two are refused.
+- **A sub-rig's pose is untouched by a refit** (`live_check.py`), so `refit_pose.py` does not read it, and no tool poses one.
+- **`pose_position`**: with a sub-rig, `refit()` sets it to `POSE` however it found it. It is put back with the rest.
+- **What keeping costs** on the dressed character, 1,090 bones, with a full suite running beside it: read 4.6 ms, classify 4.4 ms, limbs 12.1
+  ms, compare 7.4 ms, put back 21.9 ms: 50 ms beside an 850 ms refit. The windowed Blender with 301 objects refits in about 1,050 ms.
+
+### Departures from the text above
+
+- **All ten commands on `selection.restored()` turned out to be wrapped**, so "in part" became all of them: `restored()` is deleted and
+  Selection restore covers one object is closed rather than narrowed. Each of the ten now leaves a bystander's selection alone.
+- **`ddd_mutating/`'s tests for the six are `eee_composite/keep_pose_test.py`**, one table, because that layer's rule puts a claim
+  about several commands there and `ddd_mutating/` has one module per command.
+- **`restore_with` is built after the refit**, with the old values written back for a moment, rather than before it "as `mpfb_reset_pose`
+  builds it". The functions are that tool's, moved to `pose_writing.py`. Read before a body change, a call would send each control to where
+  it used to stand rather than give it the value it held, and `kept` and `restore_with` would then disagree on any body but the old one.
+- **`pose_reset_count` and `not_restorable`** join `restore_with`, the latter because a bone left out of it needs naming.
+- **`bones_not_restored` also names a property gone from a surviving bone**, as `bone["property"]`.
+- **Commands call `view_layer.run()` rather than the context manager directly**: every wrapped command owes the same refusal, the same two keys and the
+  same sentence, and fourteen copies of that would drift. `included()` is what it calls, and what FR 055 needs.
+- **"FR 12 proposes it" in the non-goals was a stale number**, and is corrected to FR 14.
+
+### Budgets
+
+Descriptions to 106,600 B and schemas to 22,500 B. `test_description_budget.py` says what they went on.
 
 ## Decisions taken while scoping
 
@@ -193,8 +255,8 @@ comparison rather than by rig type (FR 2); moving a new object to the character'
 
 ## References
 
-- [NEXT_STEPS: A refit silently resets](../NEXT_STEPS.md#refit-resets-a-rigify-pose), [Refits
-  raise](../NEXT_STEPS.md#refit-raises-on-excluded-collection).
+- [NEXT_STEPS: A refit silently resets](../../HISTORY.md), [Refits
+  raise](../../HISTORY.md).
 - `interacting_with_blender/PHOTO_STUDIO_TEMPLATE.md`.
 - mpfb2: `services/humanservice.py` (`refit`), `services/rigservice.py` (`refit_existing_armature`).
 - `bridge/mpfb_bridge/shared/refit_blocker.py`, `selection.py`, `pose_writing.py`.

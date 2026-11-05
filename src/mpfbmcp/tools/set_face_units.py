@@ -121,7 +121,8 @@ def register(mcp: FastMCP) -> None:
     def mpfb_set_face_units(name: str | None = None,
                             face_units: list[dict] | None = None,
                             mode: str = "merge",
-                            refit: bool = True) -> dict[str, object]:
+                            refit: bool = True,
+                            keep_pose: bool = True) -> dict[str, object]:
         """
         Compose a MakeHuman character's face from ARKit face units - the same
         52-unit vocabulary `mpfb_get_face_units` reads and MPFB's own composer
@@ -148,6 +149,8 @@ def register(mcp: FastMCP) -> None:
 
         `refit` (default **true**, unlike every other refitting tool here:
         composing is normally one call) re-fits the mesh assets and the rig afterwards.
+        `pose_after_refit` says what that did to the pose, which `keep_pose`
+        (default true) puts back; see `mpfb_refit_human`.
 
         **A composed face is transient.** MPFB has two mechanisms over one set
         of shape keys: this tool writes them directly, while saved expressions
@@ -181,5 +184,7 @@ def register(mcp: FastMCP) -> None:
                 # and no misspelling of either word is safe to guess at.
                 "mode": arguments.validated_mode(mode),
                 "refit": arguments.validated_flag(refit, "refit"),
+                # Not truthiness: keep_pose="false" would keep the pose.
+                "keep_pose": arguments.validated_flag(keep_pose, "keep_pose"),
             },
         )

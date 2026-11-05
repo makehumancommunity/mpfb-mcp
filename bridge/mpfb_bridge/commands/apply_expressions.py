@@ -92,8 +92,10 @@ import os
 
 from ..log import get_logger
 from ..shared import expression_panel
+from ..shared import refit_pose
 from ..shared import selection
 from ..shared import subject_resolution
+from ..shared import view_layer
 from ..shared.expression_divergence import TOLERANCE
 from ..shared.expression_divergence import divergence
 from ..shared.performed import with_performed
@@ -120,6 +122,10 @@ PARAMS = (
     Param("refit", TYPE_BOOLEAN, default=True,
           description="Re-fit clothes and the rig afterwards. True is the expressions-library "
                       "panel's own auto_refit default."),
+    Param("keep_pose", TYPE_BOOLEAN, default=True,
+          description="Put the pose and the switches back if the refit resets them, as it does on "
+                      "a generated Rigify rig. False leaves MPFB's result and answers with "
+                      "restore_with."),
 )
 
 SUMMARY = "Apply saved expressions to a character through MPFB's applied-expressions stack."
@@ -293,7 +299,7 @@ class _Blocked:
         return with_performed(answer, False)
 
 
-def apply_expressions(params, resolution):  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
+def _apply_expressions(params, resolution):  # pylint: disable=too-many-locals,too-many-branches,too-many-statements
     """Settle every precondition and fragment, then rewrite the stack once."""
     services = resolution.services
     FaceService = services["FaceService"]
@@ -399,14 +405,16 @@ def apply_expressions(params, resolution):  # pylint: disable=too-many-locals,to
     stack_changed = before_rows != after_rows
 
     refit_incomplete_reason = None
+    pose = refit_pose.no_refit()
     refit_performed = False
     rig = ObjectService.find_object_of_type_amongst_nearest_relatives(basemesh, "Skeleton")
     if refit_requested and face_changed:
         refit_incomplete_reason = _rig_refit_blocker(services, rig)
         # refit() reaches bpy.ops through ClothesService. Put back what was
         # borrowed, as refit_human does: the user is looking at this scene.
-        with selection.restored(basemesh):
-            services["HumanService"].refit(basemesh)
+        with selection.restored_all():
+            with refit_pose.kept(resolution, basemesh, params["keep_pose"]) as pose:
+                services["HumanService"].refit(basemesh)
         refit_performed = refit_incomplete_reason is None
 
     after = divergence(services, basemesh)
@@ -459,4 +467,11 @@ def apply_expressions(params, resolution):  # pylint: disable=too-many-locals,to
                              refit_incomplete_reason, panel_synced),
     )
     result.update(after)
-    return with_performed(result, result["changed"])
+    return with_performed(pose.add_to(result), result["changed"])
+
+
+def apply_expressions(params, resolution):
+    """Change the stack, with the character in the view layer."""
+    return refit_pose.answered(view_layer.run(
+        resolution.services, params["name"], lambda: _apply_expressions(params, resolution),
+        refits=params["refit"], refused_with=dict(refit_performed=False, changed=False)))

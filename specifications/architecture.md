@@ -802,6 +802,13 @@ now four parts, and it applies on both sides of the socket:
   `pack` derivation out of `list_assets` rather than adding a second join beside it. The index is
   read once per call and passed down, never per row; the module takes a path and the roots to
   judge it against, because the two catalogues derive a subdir differently.
+- **A rule six commands must agree about, on the far side of one call.** `refit_pose.py` is
+  `refit_blocker.py`'s neighbour ([FR 054](../feature-requests/done/054-refits-keep-the-pose/README.md)):
+  one command calling a pose `unchanged` that another calls `kept` is exactly what rule 1 is for. It yields an
+  outcome each command adds to its answer, and shares only the sentence that is the same in all six.
+  `view_layer.py` is the same rule for sixteen commands, and takes the whole command as a function
+  (`run()`), since every one owes the same refusal, keys and sentence: a command's own wording starts
+  once its character can be reached. Which commands call it is a measurement, kept as a test.
 - **A shared module may share the condition and leave the wording alone.** `refit_blocker.py` is
   that case: `HumanService.refit()` cannot refit a generated Rigify rig with no meta rig left in
   the scene, reports it only through an `operator` no MCP tool has one of, and returns having

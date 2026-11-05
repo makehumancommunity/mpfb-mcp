@@ -80,6 +80,7 @@ from ..log import get_logger
 from ..shared import blender_data
 from ..shared import mpfb_surface
 from ..shared import selection
+from ..shared import view_layer
 from ..shared.performed import with_performed
 from ..validation import Param
 from ..validation import TYPE_BOOLEAN
@@ -401,7 +402,7 @@ def _message_for(params, request, materials_destroyed, material_name, diffuse_co
     return "".join(parts)
 
 
-def set_asset_material(params, resolution):  # pylint: disable=too-many-locals
+def _set_asset_material(params, resolution):  # pylint: disable=too-many-locals
     """Apply one alternative material, or put the asset's own back."""
     services = resolution.services
     object_service = services["ObjectService"]
@@ -421,7 +422,7 @@ def set_asset_material(params, resolution):  # pylint: disable=too-many-locals
     failure_message = None
     material_name = None
     diffuse_color_from = None
-    with selection.restored(asset):
+    with selection.restored_all():
         try:
             object_service.activate_blender_object(asset)
             material_name, diffuse_color_from = _apply_mhmat(
@@ -488,3 +489,9 @@ def set_asset_material(params, resolution):  # pylint: disable=too-many-locals
 
     # The verb is "applied". See shared/performed.py.
     return with_performed(result, result["applied"])
+
+
+def set_asset_material(params, resolution):
+    """Apply the material, with the asset in the view layer: MPFB pops the old slots first."""
+    return view_layer.run(resolution.services, params["name"],
+                          lambda: _set_asset_material(params, resolution))

@@ -15,9 +15,6 @@ records what has already landed and why. When an effort below is finished, move 
 
 - [A hand cannot be placed at a point on a standard rig](#a-hand-cannot-be-placed-at-a-point-on-a-standard-rig): FR 052 and FR 053
 - [Hand-to-hand contact on a Rigify rig](#hand-to-hand-contact-on-rigify): FR 052, in part
-- [A refit silently resets a generated Rigify rig's pose and switches](#refit-resets-a-rigify-pose): FR 054
-- [Refits raise on a character whose collection is excluded from the view layer](#refit-raises-on-excluded-collection): FR 054
-- [Selection restore covers one object](#selection-restore-covers-one-object): FR 054, in part
 - [Loading poses](#loading-poses): FR 055
 - [A summary mode for the asset catalogue](#a-summary-mode-for-the-asset-catalogue): FR 056
 - [Response bulk on the read-only tools](#response-bulk-on-the-read-only-tools): FR 056, in part
@@ -216,59 +213,6 @@ additions would have saved most of the hour:
 
 Also worth saying in the tool description: negative thumb `spread` brings the thumb across the palm,
 out of the palm plane and toward whatever the palm faces; positive brings it back beside the index.
-
-<a id="refit-resets-a-rigify-pose"></a>
-
-## A refit silently resets a generated Rigify rig's pose and switches
-
-**Scoped on 2026-11-03 as [FR 054](054-refits-keep-the-pose/README.md), not yet implemented.** Measured: a default rig keeps its pose
-through a refit, so this is Rigify's alone, and snapshot and restore puts one back at 0.0 mm in 23 ms.
-
-Found by the photo studio template session (`interacting_with_blender/PHOTO_STUDIO_TEMPLATE.md`).
-`mpfb_set_face_units` refits by default, and so do `mpfb_refit_human`,
-`mpfb_apply_expressions` and `mpfb_set_macro_details(refit=True)`. On a generated Rigify rig the
-refit leaves every control at rest **and every limb's `IK_FK` back at 0 (IK)**. Nothing in the
-response says so: `refit_performed: true` and the pose is gone. Character A had been posed
-(switches, arms, head) before its smile was composed. The pose vanished, and it showed up only
-when a later `mpfb_set_pose_bones` call on C and D was refused with `chain_not_in_charge`,
-because their height changes had refitted them too. The cost: three characters re-posed, about
-nine extra calls, and one wasted test render.
-
-Two cheap improvements:
-
-- Every refitting tool reports `pose_reset: true` with `restore_with`, built the way
-  `mpfb_reset_pose` already builds it, when the rig was off rest before the refit.
-- Better: capture the pose and switches before the refit and re-apply them after it, behind an
-  argument that defaults to on.
-
-<a id="refit-raises-on-excluded-collection"></a>
-
-## Refits raise on a character whose collection is excluded from the view layer
-
-**Scoped on 2026-11-03 in [FR 054](054-refits-keep-the-pose/README.md), which includes the collection temporarily rather than refusing
-as proposed below.** It keeps the refusal for what cannot be included. `mpfb_add_asset` raises the same way, and is in scope.
-
-Several characters at the origin are easiest to manage one collection each, with all but one
-excluded from the view layer. Any refit then fails with a raw traceback
-(`RuntimeError: ViewLayer 'ViewLayer' does not contain object 'TestB_Human.metarig'`, from
-`RigService._do_refit_existing_armature` setting the active object). Three
-`mpfb_set_face_units` calls failed this way in one batch. This should be a refusal like the
-others (`blocked_by: "not_in_view_layer"`, naming the collection), checked before anything is
-written. `mpfb_set_face_units` had already written the shape keys when the refit raised.
-
-<a id="selection-restore-covers-one-object"></a>
-
-## Selection restore covers one object
-
-**[FR 054](054-refits-keep-the-pose/README.md) moves the commands it wraps onto `restored_all()`.** The others stay here.
-
-Ten mutating commands put the caller's selection back with `shared/selection.py`'s `restored()`,
-which restores the active object and the **borrowed** object's own selection and nothing else, so an
-object an operator selected on the way - a new armature, an imported garment - is left selected.
-`restored_all()`, which `mpfb_create_export_copy` and `mpfb_export_character` use, records every
-object's selection and the active object, puts them back however the block ends, and leaves what
-the block created deselected. What is left is moving the other ten onto it. It changes what each leaves behind,
-so each command's bridge test has to say what the selection is after a call, which none does today.
 
 ## Loading poses
 

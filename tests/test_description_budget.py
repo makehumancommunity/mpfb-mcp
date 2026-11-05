@@ -216,7 +216,13 @@ import mpfbmcp
 # Raised from 102,000 to 104,700 by FR 051: `mpfb_generate_delete_group` at about 2,800 B, over the
 # average because two counts on a mesh nobody can see into need saying what each one counts, and
 # nonzero being normal is not something a caller could guess.
-DESCRIPTION_CEILING = 104700
+#
+# Raised from 104,700 to 106,600 by
+# [FR 054](../feature-requests/done/054-refits-keep-the-pose/README.md), which adds no tool: an argument
+# and an answer key on six, explained once in `mpfb_refit_human` at about 650 B and pointed at from the
+# other five in a sentence each, because a refit that keeps a pose changes what a caller should expect
+# from each of them. The ceiling keeps its paragraph of headroom.
+DESCRIPTION_CEILING = 106600
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -284,7 +290,7 @@ DESCRIPTION_CEILING = 104700
 # Raised from 20,200 to 21,400 by FR 050: 1,190 B for `mpfb_write_mesh_asset`'s thirteen arguments.
 #
 # Raised from 21,400 to 22,000 by FR 051: 600 B for `mpfb_generate_delete_group`'s six.
-SCHEMA_CEILING = 22000
+SCHEMA_CEILING = 22500
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.

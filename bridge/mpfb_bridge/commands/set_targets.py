@@ -74,10 +74,12 @@ __all__ = (
 )
 
 from ..log import get_logger
+from ..shared import refit_pose
 from ..shared import selection
 from ..shared import subject_resolution
 from ..shared import target_categories
 from ..shared import target_rollup
+from ..shared import view_layer
 from ..shared.performed import with_performed
 from ..shared.refit_blocker import rig_refit_is_blocked
 from ..validation import Param
@@ -106,6 +108,10 @@ PARAMS = (
     Param("refit", TYPE_BOOLEAN, default=False,
           description="Re-fit clothes and the rig afterwards. False is MPFB's own default: a "
                       "refit is expensive, so make a batch of changes and call refit_human once."),
+    Param("keep_pose", TYPE_BOOLEAN, default=True,
+          description="Put the pose and the switches back if the refit resets them, as it does on "
+                      "a generated Rigify rig. False leaves MPFB's result and answers with "
+                      "restore_with."),
 )
 
 SUMMARY = "Set detail morph targets on a character, as one all-or-nothing batch."
@@ -495,7 +501,7 @@ def _message_for(basemesh, applied, refit_performed, refit_incomplete_reason,
     return "".join(parts)
 
 
-def set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many-branches
+def _set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many-branches
     """Resolve every requested change, then apply all of them or none."""
     services = resolution.services
     object_service = services["ObjectService"]
@@ -627,7 +633,7 @@ def set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many
     # MPFB's own slider callback activates the basemesh before writing, and the
     # refit below reaches bpy.ops through ClothesService. Put back what was
     # borrowed: the user is looking at this scene.
-    with selection.restored(basemesh):
+    with selection.restored_all():
         object_service.activate_blender_object(basemesh)
         for resolved in resolved_entries:
             if resolved["kind"] == "modifier":
@@ -658,10 +664,12 @@ def set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many
 
         rig = object_service.find_object_of_type_amongst_nearest_relatives(basemesh, "Skeleton")
         refit_incomplete_reason = None
+        pose = refit_pose.no_refit()
         refit_performed = False
         if refit_requested:
             refit_incomplete_reason = _rig_refit_blocker(services, rig)
-            services["HumanService"].refit(basemesh)
+            with refit_pose.kept(resolution, basemesh, params["keep_pose"]) as pose:
+                services["HumanService"].refit(basemesh)
             refit_performed = refit_incomplete_reason is None
 
     shapekeys_after = target_rollup.shapekey_names(basemesh)
@@ -706,4 +714,11 @@ def set_targets(params, resolution):  # pylint: disable=too-many-locals,too-many
     # wrote nothing - including the all-or-nothing resolution failure. It is a
     # list rather than a verb (FR 037, R3), so `performed` is this tool's only
     # flag. See shared/performed.py.
-    return with_performed(result, result["changes"])
+    return with_performed(pose.add_to(result), result["changes"])
+
+
+def set_targets(params, resolution):
+    """Change the targets, with the character in the view layer."""
+    return refit_pose.answered(view_layer.run(
+        resolution.services, params["name"], lambda: _set_targets(params, resolution),
+        refits=params["refit"], refused_with=dict(refit_performed=False, changes=[])))

@@ -329,6 +329,13 @@ first complete run passed every check, its counts level with the finished asset'
 character's chest. The counts were about the asset once loaded, the wedges were on the body as it stood, and no number there
 could have said so: a new number could, once a picture had said what it was for.
 
+**A scan is a table held to a listing.** "Every mutating command against an excluded character" would
+rot as a list of the ones somebody remembered, so `eee_composite/excluded_character_test.py` asserts that its rows
+are exactly `ddd_mutating/`'s modules. A row states what was measured of that command, the refusal included, so a row that
+quietly stops doing anything fails rather than passing ([FR
+054](../feature-requests/done/054-refits-keep-the-pose/README.md), whose first version of the table passed with
+half its rows refused for unrelated reasons, and wrote a preset to the developer's real config directory).
+
 ## What the suite can never establish
 
 Stated once here rather than repeated in every module, because the list is a property of the

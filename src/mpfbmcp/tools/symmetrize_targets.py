@@ -63,7 +63,8 @@ def register(mcp: FastMCP) -> None:
                                 section: str | None = None,
                                 dry_run: bool = False,
                                 prune: bool = True,
-                                refit: bool = False) -> dict[str, object]:
+                                refit: bool = False,
+                                keep_pose: bool = True) -> dict[str, object]:
         """
         Make a MakeHuman character's modeling targets left/right symmetric, by
         copying one side's modeling onto the other.
@@ -92,6 +93,8 @@ def register(mcp: FastMCP) -> None:
         its value reaches zero. `refit` (default false, MPFB's own) re-fits
         the mesh assets and the rig afterwards; read `assets_possibly_stale` and call
         `mpfb_refit_human` when the modeling is done.
+        `pose_after_refit` says what a refit did to the pose, which `keep_pose`
+        (default true) puts back; see `mpfb_refit_human`.
 
         `result` carries `changes` - per category, both sides' values before,
         the value after, and every target file touched, with `targets` being
@@ -122,5 +125,7 @@ def register(mcp: FastMCP) -> None:
                 "dry_run": arguments.validated_flag(dry_run, "dry_run"),
                 "prune": arguments.validated_flag(prune, "prune"),
                 "refit": arguments.validated_flag(refit, "refit"),
+                # Not truthiness: keep_pose="false" would keep the pose.
+                "keep_pose": arguments.validated_flag(keep_pose, "keep_pose"),
             },
         )

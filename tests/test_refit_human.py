@@ -55,7 +55,7 @@ class RefitHumanToolTests(unittest.TestCase):
         self.mpfb_refit_human("Human.rig")
 
         (command, params), _kwargs = mock_send_command.call_args
-        self.assertEqual(params, {"name": "Human.rig"})
+        self.assertEqual(params, {"name": "Human.rig", "keep_pose": True})
 
     def test_blank_and_non_string_names_are_rejected_locally(self) -> None:
         with mock.patch("mpfbmcp.bridge_connection.send_command") as mock_send_command:
@@ -88,12 +88,13 @@ class RefitHumanOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.call()
 
         self.assertEqual(self.bridge.commands()[-1], "refit_human")
-        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {"name": None})
+        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {"name": None, "keep_pose": True})
 
     def test_a_named_subject_is_passed_through_verbatim(self) -> None:
         self.call(name="Human.rigify")
 
-        self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {"name": "Human.rigify"})
+        self.assertEqual(self.bridge.decoded_requests()[-1]["params"],
+                         {"name": "Human.rigify", "keep_pose": True})
 
     def test_neither_shared_fragment_reaches_the_bridge(self) -> None:
         # Two fragments rather than one, which is what makes this worth

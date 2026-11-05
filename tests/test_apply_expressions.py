@@ -64,7 +64,7 @@ class ArgumentValidationTests(unittest.TestCase):
 
     def test_a_call_with_no_arguments_is_legal(self):
         self.assertEqual(self._sent(), {
-            "name": None, "expressions": [], "mode": "merge", "refit": True})
+            "name": None, "expressions": [], "mode": "merge", "refit": True, "keep_pose": True})
 
     def test_replace_with_an_empty_list_is_legal_and_is_how_everything_comes_off(self):
         self.assertEqual(self._sent(expressions=[], mode="replace")["expressions"], [])
@@ -157,7 +157,7 @@ class ApplyExpressionsOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.assertEqual(self.bridge.commands()[-1], "apply_expressions")
         self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {
             "name": None, "expressions": [{"fragment": "Wink.json", "weight": 0.4}],
-            "mode": "replace", "refit": True})
+            "mode": "replace", "refit": True, "keep_pose": True})
 
     def test_local_validation_runs_before_a_transport_is_chosen(self) -> None:
         with self.assertRaises(ValueError):

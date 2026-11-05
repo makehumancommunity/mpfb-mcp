@@ -85,7 +85,7 @@ take them off again.
       a game engine expects, and `mpfb_export_character`'s `readiness` should name it if so.
 11. **Refusals:** `rig_not_supported` (no `levator03.L`, naming what the rig was identified as),
     `rig_not_found`, a meta-rig, and an object not in the view layer as [FR
-    054](../054-refits-keep-the-pose/README.md) settles it.
+    054](../done/054-refits-keep-the-pose/README.md) settles it: `shared/view_layer.py`'s `run()`, which includes it.
 12. **Selection, active object and mode are put back**, using `selection.restored_all()`.
 
 ## Non-functional requirements

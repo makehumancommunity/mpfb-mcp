@@ -116,6 +116,7 @@ from ..shared import blender_data
 from ..shared import mpfb_surface
 from ..shared import selection
 from ..shared import subject_resolution
+from ..shared import view_layer
 from ..shared.artifact_names import file_facts
 from ..shared.artifact_names import name_rejection
 from ..shared.performed import with_performed
@@ -449,7 +450,7 @@ def _message(answer):
     return "".join(parts)
 
 
-def export_character(params, resolution):  # pylint: disable=too-many-locals
+def _export_character(params, resolution):  # pylint: disable=too-many-locals
     """Select one character, export it to one file, and put the selection back."""
     services = resolution.services
     request = _request(services, params)
@@ -534,3 +535,9 @@ def export_character(params, resolution):  # pylint: disable=too-many-locals
     answer["message"] = _message(answer)
     _LOG.debug("export_character: wrote %r", request["path"])
     return with_performed(answer, True)
+
+
+def export_character(params, resolution):
+    """Export, with the character in the view layer, since an exporter writes the selection."""
+    return view_layer.run(resolution.services, params["name"],
+                          lambda: _export_character(params, resolution))
