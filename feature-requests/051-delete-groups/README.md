@@ -4,7 +4,7 @@
 
 The last of four requests scoping
 [The MakeClothes and MakeSkin workflows](../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows). It
-uses [FR 048](../048-measuring-mesh-assets/README.md)'s overlap module, and its result reaches a file
+uses [FR 048](../done/048-measuring-mesh-assets/README.md)'s overlap module, and its result reaches a file
 through [FR 050](../050-writing-mesh-assets/README.md).
 
 **The delete group was the longest part of the gi session: eleven runs of a ray-casting script.** A delete
@@ -116,7 +116,7 @@ decision to bring back to the maintainer, not one to take during implementation.
   one the next character gets. The answer's two counts use the second, reimplementing the rule, with a bridge
   test against MPFB's private function so that drift is noticed.
 - **The measure must not be blind.** Masks off, by
-  [FR 048's rule](../048-measuring-mesh-assets/README.md#what-is-measured-for-all-three), which is what silently
+  [FR 048's rule](../done/048-measuring-mesh-assets/README.md#what-is-measured-for-all-three), which is what silently
   disabled the session's own clearance step.
 - **A mutation with no undo across the socket.** The group is on the basemesh and may be large (3,209 vertices,
   about 20 KB as a list), so `restore_with` as a vertex list is not reasonable. `<group>.original` is the undo,

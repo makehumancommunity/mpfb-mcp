@@ -1,7 +1,7 @@
 """
-All thirty commands that take a subject, asked about the same three misses.
+All thirty-two commands that take a subject, asked about the same three misses.
 
-The claim is about thirty commands at once, which is why it is here: every
+The claim is about thirty-two commands at once, which is why it is here: every
 command that takes a subject resolves it the same way, because all of them go
 through ``shared/subject_resolution.py``
 ([FR 036](../../../../feature-requests/done/036-subject-resolver-and-duplication/README.md)).
@@ -14,9 +14,9 @@ The three misses are the three sentences:
 
 - **nothing active**, a state no command can make, so the fixture makes it;
 - **a name that does not exist** anywhere in the file;
-- **a plain object with no basemesh** among its relatives. ``get_object_info``
-  and ``generate_rigify_rig`` stop at the subject, so for them this is not a
-  miss at all, and that is asserted too.
+- **a plain object with no basemesh** among its relatives. ``get_object_info``,
+  ``generate_rigify_rig`` and FR 048's two measuring commands stop at the subject,
+  so for them this is not a miss at all, and that is asserted too.
 
 For each, every command must report the same ``found``, subject name and
 ``subject_resolved_by``, and a message that begins with the shared sentence.
@@ -51,13 +51,16 @@ CUBE = "BridgeTestSubjectCube"
 NO_SUCH = "BridgeTestSubjectNoSuchObject"
 
 # The commands that stop at the subject rather than going on to a basemesh.
-SUBJECT_ONLY = ("get_object_info", "generate_rigify_rig")
+SUBJECT_ONLY = ("get_object_info", "generate_rigify_rig", "check_intersections",
+                "check_mesh_asset")
 
 
 def _calls(subject):
-    """The thirty commands, each with the least that passes its parameter contract."""
+    """The thirty-two commands, each with the least that passes its parameter contract."""
     return {
         "get_object_info": dict(name=subject),
+        "check_intersections": dict(name=subject),
+        "check_mesh_asset": dict(name=subject),
         "get_macro_details": dict(name=subject),
         "get_character_summary": dict(name=subject),
         "get_target_stack": dict(name=subject),

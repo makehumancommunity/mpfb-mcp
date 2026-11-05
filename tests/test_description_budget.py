@@ -195,7 +195,15 @@ import mpfbmcp
 # could tell it; `mpfb_get_rigify_hand_shape` (840 B) points at the writer for
 # the vocabulary and spends its bytes on what is measured beside the amounts.
 # The shapes' amounts are in every reader answer (`known_shapes`), not here.
-DESCRIPTION_CEILING = 88400
+#
+# Raised from 88,400 to 94,100 by
+# [FR 048](../feature-requests/done/048-measuring-mesh-assets/README.md):
+# `mpfb_check_intersections` at 2,040 B and `mpfb_check_mesh_asset` at 2,600 B,
+# against a 2,050 B per-tool average, and 260 B on `mpfb_add_asset` for the field.
+# The second is over the average because it is six sections, each of which a caller
+# has to be told how to read, and because `outward_fraction` near 0.5 reads as a
+# defect in a closed shell unless the description says otherwise.
+DESCRIPTION_CEILING = 94100
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -252,7 +260,11 @@ DESCRIPTION_CEILING = 88400
 #
 # Raised from 17,200 to 17,800 by FR 047: 580 B across two tools, a nullable
 # `name` each, the reader's `body_parts` list and the writer's batched `hands`.
-SCHEMA_CEILING = 17800
+#
+# Raised from 17,800 to 18,800 by FR 048: 868 B across three tools, most of it
+# `mpfb_check_intersections`' four nullable arguments and `mpfb_check_mesh_asset`'s
+# three, and one bool on `mpfb_add_asset`.
+SCHEMA_CEILING = 18800
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.
@@ -304,7 +316,7 @@ class DescriptionBudgetTests(unittest.TestCase):
         self.measured = measure()
 
     def test_every_registered_tool_is_measured(self) -> None:
-        self.assertEqual(44, len(self.measured))
+        self.assertEqual(46, len(self.measured))
 
     def test_total_description_size_is_under_the_ceiling(self) -> None:
         total = sum(entry["description_bytes"] for entry in self.measured)

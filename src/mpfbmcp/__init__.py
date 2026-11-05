@@ -170,6 +170,10 @@ def build_server() -> FastMCP:
             "MPFB builds every character at the origin: lay several out with "
             "mpfb_place_character, spaced by the footprint it and "
             "mpfb_get_character_summary report. "
+            "To know whether meshes pass through each other, measure with "
+            "mpfb_check_intersections rather than looking at a render, or ask "
+            "mpfb_add_asset to with measure_intersections; a mesh being "
+            "authored into an asset is measured by mpfb_check_mesh_asset. "
             "A character exists only in the running .blend until it is saved "
             "as an MPFB preset: mpfb_save_preset writes one - a file, and not "
             "undoable - mpfb_list_presets says which exist, and "
@@ -213,7 +217,8 @@ def build_server() -> FastMCP:
     )
 
     from mpfbmcp.tools import (
-        add_asset, add_rig, apply_expressions, create_export_copy, create_human,
+        add_asset, add_rig, apply_expressions, check_intersections, check_mesh_asset,
+        create_export_copy, create_human,
         create_human_from_preset, export_character, generate_rigify_rig, get_character_summary, get_expression, get_face_units,
         get_macro_details, get_material_settings, get_object_info, get_pose, get_pose_controls,
         get_rigify_hand_shape, get_status, get_target_stack,
@@ -226,6 +231,8 @@ def build_server() -> FastMCP:
     add_asset.register(mcp)
     add_rig.register(mcp)
     apply_expressions.register(mcp)
+    check_intersections.register(mcp)
+    check_mesh_asset.register(mcp)
     create_export_copy.register(mcp)
     create_human.register(mcp)
     create_human_from_preset.register(mcp)

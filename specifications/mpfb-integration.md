@@ -178,6 +178,13 @@ versus services" to *any* two MPFB code paths.
   collection it is iterating, which looks like it skips each removed modifier's neighbour, and on
   Blender 5.1 does not. The smoke run writes outside the `.blend` too now, but exactly one file, always the
   same one, and [verification/README.md](../verification/README.md) names it.
+- **A check of MPFB's can change things, so a tool that promises it changes nothing has to look.**
+  `ClothesService.mesh_is_valid_as_clothes()` creates the xref cache's directory when it is absent, which MPFB's
+  panel and writer then read as a built cache, and leaves orphaned meshes behind
+  ([FR 048](../feature-requests/done/048-measuring-mesh-assets/README.md#mpfbs-validator-has-side-effects-confirmed-and-undone)).
+  `shared/mesh_asset_report.py`'s `validator()` undoes both, and `write_state()` looks inside the directory rather
+  than at its name, reading before the validator runs. Found by a test that compared `bpy.data.meshes` before and
+  after, which a reading of the validator's own body would not have suggested.
 - **Filing it changes nothing here.** A confirmed defect is written up in a defect list kept for
   MPFB's maintainers, `MCP_DISCOVERED_BUGS.md`, one section each; it lives beside a local mpfb2
   checkout and is not published. That is where the reporting ends: MPFB has its own priorities, so a reported

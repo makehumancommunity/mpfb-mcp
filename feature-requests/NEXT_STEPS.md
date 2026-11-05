@@ -13,9 +13,7 @@ records what has already landed and why. When an effort below is finished, move 
 
 **With a feature request**, in request order:
 
-- [The MakeClothes and MakeSkin workflows](#the-makeclothes-and-makeskin-workflows): FR 048-051
-- [Nothing reports that two meshes interpenetrate](#nothing-reports-that-two-meshes-interpenetrate): FR 048
-- [Garment fit intersections that no MPFB tool can fix](#garment-fit-intersections): FR 048, in part
+- [The MakeClothes and MakeSkin workflows](#the-makeclothes-and-makeskin-workflows): FR 049-051
 - [A hand cannot be placed at a point on a standard rig](#a-hand-cannot-be-placed-at-a-point-on-a-standard-rig): FR 052 and FR 053
 - [Hand-to-hand contact on a Rigify rig](#hand-to-hand-contact-on-rigify): FR 052, in part
 - [A refit silently resets a generated Rigify rig's pose and switches](#refit-resets-a-rigify-pose): FR 054
@@ -33,6 +31,9 @@ records what has already landed and why. When an effort below is finished, move 
 - [A material whose textures do not resolve is reported as applied](#a-material-whose-textures-do-not-resolve-is-reported-as-applied)
 - [The Rigify `fist` shape intersects itself, and "straight" is out of reach](#rigify-fist-intersects-itself)
 - [`mpfb_create_human` takes no name, and no targets](#create-human-takes-no-name)
+- [Whether `mpfb_add_asset` should measure intersections by default](#add-asset-intersections-by-default)
+- [A clearance line in `mpfb_place_character`](#a-clearance-line-in-place-character)
+- [Garment fit intersections that no MPFB tool can fix](#garment-fit-intersections)
 - [A garment behind a sub-rig is missing from the family](#a-garment-behind-a-sub-rig-is-missing-from-the-family)
 - [Trying an asset without touching the scene](#trying-an-asset-without-touching-the-scene)
 - [Visemes and lip sync](#visemes-and-lip-sync)
@@ -53,8 +54,9 @@ records what has already landed and why. When an effort below is finished, move 
 
 ## The MakeClothes and MakeSkin workflows
 
-**Scoped on 2026-11-03 as four requests, not yet implemented:**
-[FR 048](048-measuring-mesh-assets/README.md) (`mpfb_check_mesh_asset` and `mpfb_check_intersections`),
+**Scoped on 2026-11-03 as four requests.**
+[FR 048](done/048-measuring-mesh-assets/README.md) (`mpfb_check_mesh_asset` and `mpfb_check_intersections`)
+has landed; [HISTORY.md](HISTORY.md) has it. Not yet implemented:
 [FR 049](049-makeskin-materials/README.md) (set, get and store a MakeSkin material),
 [FR 050](050-writing-mesh-assets/README.md) (`mpfb_write_mesh_asset`, and the try-on recipe) and
 [FR 051](051-delete-groups/README.md) (`mpfb_generate_delete_group`, behind a spike). They rename the
@@ -82,26 +84,8 @@ gave misleading answers because the object's source record was stale (below).
 
 ### Proposed tools, in order of what they would have saved
 
-**1. `mpfb_check_clothes`.** Read-only, and the highest value here. Today's validator checks vertex
-groups, scale and face type, and passed the draft with these defects:
-
-| Defect in the draft | Measure | Consequence |
-|---|---|---|
-| Coat normals inward (hakama correct) | Sleeves 8 % outward, back panel 0 %, hakama legs 100 % | Found only by plotting the mesh from outside Blender |
-| Coat through the hakama's waist | 77 face pairs | Visible at the waist |
-| Coat through the body | 25 face pairs | Under the flaps |
-| Under flap through the top flap | 14 face pairs | A visible crease at the hem |
-
-So the tool should wrap the validator and add, per connected component:
-- normal orientation;
-- overlap counts against the **unmasked** body and against the garment's other components (see the
-  trap below);
-- the fit offset range;
-- UV islands, overlaps, out-of-range coordinates and texels per metre per island;
-- every texture node's resolved path;
-- the three metadata groups, the xref cache's state, and `asset_source`.
-
-It belongs beside [Nothing reports that two meshes interpenetrate](#nothing-reports-that-two-meshes-interpenetrate).
+**1. `mpfb_check_clothes`.** Landed as `mpfb_check_mesh_asset`, in
+[FR 048](done/048-measuring-mesh-assets/README.md).
 
 **2. `mpfb_write_clothes_asset`.** Takes a garment and writes MHCLO + OBJ + MHMAT + textures, following
 the [mutating-tools rules](../specifications/mutating-tools.md):
@@ -176,54 +160,14 @@ about 500 lines to write and 20 s to run.
 - The MHMAT writer emits `bumpmapIntensity 1.0` with no bump map and `roughness 0.7` beside a roughness
   map. Both are harmless, but a reader can't tell which values are in effect.
 
-<a id="nothing-reports-that-two-meshes-interpenetrate"></a>
-
-## Nothing reports that two meshes interpenetrate
-
-**Scoped on 2026-11-03 in [FR 048](048-measuring-mesh-assets/README.md), not yet implemented**, as
-`mpfb_check_intersections` and a line in `mpfb_add_asset`'s answer. The clearance line in
-`mpfb_place_character` stays here.
-
-The man-and-woman scene session's other large cost, and the one with the clearest payoff.
-
-The brief was to avoid the defect that sank the previous attempt at this image: two characters whose
-hands passed through each other. Nothing in the forty-two tools can see that. `mpfb_set_pose_bones`
-reports `achieved` per bone, `limbs_made_stretched` and `limbs_made_unreachable`;
-`mpfb_place_character` reports a `footprint` box and `subrigs_broken`. All of them describe one
-character. Two characters can occupy the same cubic centimetres and every tool reports success.
-
-So the session wrote its own check: build a `BVHTree` per evaluated mesh in world space and call
-`overlap()`, which returns intersecting face pairs, plus `find_nearest` for the minimum surface
-distance. That turned an unanswerable aesthetic question into a number, and the number moved: the
-first hand-holding pose scored **148 intersecting face pairs**; a pose-and-placement search drove it
-to **0 with a 3.7 mm minimum gap**, which is what shipped. The same check then caught two problems
-nobody was looking for — a boot shaft punching through a trouser leg (76 pairs, visible in the
-render as dark ragged holes at the ankle) and a hand disappearing into the other character's skirt
-(73 pairs) — both of which had already survived a visual pass.
-
-What would help, in order:
-- **`mpfb_check_intersections`**, read-only: given two subjects (or one, against itself), report
-  intersecting face pairs and minimum surface distance per mesh pair, optionally restricted to a
-  bounding box or a z-band. Thirty lines of `mathutils.bvhtree` in a bridge command, and it is the
-  difference between "looks fine" and "0 pairs, 3.7 mm".
-- **A clearance line in the mutating tools.** `mpfb_place_character` already computes a footprint;
-  reporting whether that footprint overlaps another character's, and what the closest approach is,
-  would catch the common case for free.
-- A garment-vs-garment check on `mpfb_add_asset` would have caught the boots immediately. The boot
-  and the trousers are both MPFB's own fitted assets; nothing warns that they do not fit together.
-
-This is also the honest answer to "is the image deceptive". It is not: the hands are 3.7 mm apart
-and touch nowhere, which is a measurement, not a judgement. No tool here could have produced it.
-
 <a id="garment-fit-intersections"></a>
 
 ## Garment fit intersections that no MPFB tool can fix
 
-**[FR 048](048-measuring-mesh-assets/README.md) takes the intersection count in `mpfb_add_asset`'s
-answer.** The fitted offset and the `license` filter over alternative materials stay here.
+[FR 048](done/048-measuring-mesh-assets/README.md) made these counts something a tool answers.
+What it could not do stays here: the fitted offset, and the `license` filter over alternative materials.
 
-A data point for [Nothing reports that two meshes interpenetrate](#nothing-reports-that-two-meshes-interpenetrate),
-from four single, unposed-then-relaxed characters (scripted check:
+From four single, unposed-then-relaxed characters (scripted check:
 `interacting_with_blender/photo_studio_verification/check_intersections.py`). Pose changes drove
 arms-vs-trunk and hands-vs-garment overlaps to 0-2 face pairs. What pose cannot reach is
 asset fit, and MPFB has no offset control for it:
@@ -254,9 +198,33 @@ are where this bites hardest; the session ended up choosing garments by BVH coun
 | `toigo_ballet_flats` / `toigo_flats` x body | 148 / 972 | foot through the sole; `toigo_mj_cloth_shoes` scored 0 |
 | `toigo_keyhole_neck_dress` x body | 0 | the only CC0 one-piece female outfit tested that fits cleanly |
 
-Two cheap things would have saved most of this: an intersection count in `mpfb_add_asset`'s answer
-(against the body and every other equipped asset), and a `license` filter that also covers
-alternative materials, since every candidate had to be joined against the pack JSONs by hand.
+An intersection count in `mpfb_add_asset`'s answer would have saved most of this, and now exists when
+asked for. The rest is a `license` filter that also covers alternative materials, since every candidate
+had to be joined against the pack JSONs by hand.
+
+<a id="add-asset-intersections-by-default"></a>
+
+## Whether `mpfb_add_asset` should measure intersections by default
+
+**It is opt-in, by [FR 048](done/048-measuring-mesh-assets/README.md#intersections-is-opt-in-and-this-is-the-number)'s
+own rule**: always on unless it costs more than a quarter of the call, and it costs a mean of 36 %. That line
+assumed equipping takes seconds. On a headless Blender it takes 20-60 ms for anything small, and the field's 9-47
+ms is what looks large beside it; nothing removes the floor of reading the body twice.
+
+The case for reversing it: the sessions behind the request wanted the count on the call that caused the problem,
+and nobody asks for what they do not know they need. Against a windowed Blender's round trip, the share would fall
+well under the line. **It needs someone to decide, and flipping it is one default in two files.** The evidence
+to weigh is a measurement of the same calls on a windowed Blender, which that request did not make.
+
+<a id="a-clearance-line-in-place-character"></a>
+
+## A clearance line in `mpfb_place_character`
+
+`mpfb_place_character` already computes a footprint. Reporting whether that footprint overlaps another
+character's, and what the closest approach is, would catch the common case without a second call.
+`shared/mesh_overlap.py` has the measurement, so what is left is deciding when it is worth what it costs on a call
+that is otherwise nearly free: the question [FR 048](done/048-measuring-mesh-assets/README.md) just answered
+for `mpfb_add_asset` the other way.
 
 More from the action image session (2026-11-03, script:
 `interacting_with_blender/action_image_with_normal_map_skins/fit_tools.py`). Two things here are new.
@@ -329,7 +297,7 @@ effectively final at the moment it is made, which raises the cost of getting it 
 **The `orient` entry is scoped in [FR 052](052-reaching-and-orienting/README.md).** The rest stays here.
 
 A cost data point beside [A hand cannot be placed at a point on a standard rig](#a-hand-cannot-be-placed-at-a-point-on-a-standard-rig)
-and [Nothing reports that two meshes interpenetrate](#nothing-reports-that-two-meshes-interpenetrate),
+and [FR 048](done/048-measuring-mesh-assets/README.md),
 this time on `rigify.human_toes`, where `move_to` on `hand_ik` does work. Placing the hand was easy;
 **orienting** it was not. `aim` plus `twist` does not say what twist 0 is relative to: on the same
 hand, twist 0, -90, +90 and 180 gave "back of hand forward", "palm forward", "hands crossed" and

@@ -50,7 +50,7 @@ the rig the character already has, in one call rather than ten.
 
 - **Live IK controls.** That is [FR 053](../053-rig-helpers/README.md).
 - **Finding a pose that does not intersect.** The 500-placement search that made a hand hold stays a
-  caller's job, with [FR 048](../048-measuring-mesh-assets/README.md)'s `mpfb_check_intersections`
+  caller's job, with [FR 048](../done/048-measuring-mesh-assets/README.md)'s `mpfb_check_intersections`
   as its score.
 - **Bending the spine or stepping** to extend a reach. A limb that cannot get there says so.
 - **Joint limits.** The solver can produce an elbow no arm has. FR 8 makes it visible rather than

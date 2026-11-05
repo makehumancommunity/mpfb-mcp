@@ -628,6 +628,13 @@ the values are read off the armature at call time - so both conditions hold.
 `mpfb_surface.rig_helpers_properties()` reads it with `sys.modules.get()`, and a miss reports the
 helper modes as `null` with a reason; the helper bones are still recognised by name.
 
+**`MakeClothesObjectProperties` and `MakeSkinObjectProperties` are two more**, on
+`<root>.ui.create_assets.makeclothes` and `.makeskin`, reached the same way for
+`mpfb_check_mesh_asset`'s `metadata` section
+([FR 048](../feature-requests/done/048-measuring-mesh-assets/README.md)). MPFB imports both while registering
+its panels, and each is definitions read from JSON with the values on the object. A miss reports that group as
+`applies: false` with a reason; the other sections are not affected.
+
 **Calling a UI module is a third case, and FR 027 is where it was decided.** MPFB's
 expressions-library panel draws one slider per expression file, registered as a scene property
 **once, when `ui/apply_assets/useexpression` is imported**; `write_slider_values()` in that module

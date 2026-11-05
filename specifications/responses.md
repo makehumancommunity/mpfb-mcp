@@ -411,6 +411,30 @@ millimetre, unit vectors to three decimals, angles to a tenth of a degree, all i
   feet) is the head of a `DEF-` bone on Rigify, or of the bone itself on the default rig, never of a
   control: `hand_ik.L` and the hand differ exactly when a limb is in FK or cannot reach.
 
+## A measurement is reported beside what it cannot see
+
+**A count on a masked body is blind**, and it fails in the worst way: toward zero. A delete group's mask
+takes the skin under a garment out of the evaluated mesh, so the count falls exactly where a garment passes
+through it on the next character. One session's clearance step stopped working that way, without a word
+([FR 048](../feature-requests/done/048-measuring-mesh-assets/README.md)). So:
+
+- **Both numbers, always, and saying which is which.** `face_pairs` is the masks as they are, and
+  `face_pairs_unmasked` is every mask off but the one hiding helper geometry, which is not skin. The same
+  goes for `region` and `min_distance`, each with its `_unmasked` twin. A row with no body in it has no
+  `_unmasked` fields, since a mesh that is not a body has nothing hidden for them to say.
+- **No verdict, because no threshold would be objective.** A finished garment scored 7 against the masked
+  body and 627 against the unmasked one, and renders cleanly. A tool that measures reports the number and says
+  in its description what the number cannot see, and the caller's judgement is the caller's.
+- **Say what was measured at.** The geometry is what the viewport evaluates, and MPFB's Subdivision sits at
+  viewport level 0 and render level 1, so every row carries `subdiv_levels`. It is why a count here may not be
+  what renders.
+- **A measure with a known bias says which way.** `min_distance` is an upper bound, being from vertices to
+  the other surface, and `outward_fraction` reads about 0.5 for a closed shell whichever way it faces.
+- **Sorted by the larger count.** Sorting by the masked one would bury the pair a mask is hiding.
+
+The measurement exists once, in `shared/mesh_overlap.py`, and reaches three answers, which is the
+[second-opinion rule](#a-summary-is-never-a-second-opinion) applied before a summary exists.
+
 ## A summary is never a second opinion
 
 A summary tool answers several detailed tools' questions at once, and is only worth having if an

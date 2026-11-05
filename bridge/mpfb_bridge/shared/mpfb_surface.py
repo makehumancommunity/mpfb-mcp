@@ -61,6 +61,8 @@ __all__ = (
     "dotted",
     "general_object_properties",
     "human_object_properties",
+    "make_clothes_properties",
+    "make_skin_properties",
     "module_level",
     "property_value",
     "required_module_level",
@@ -117,6 +119,23 @@ def rig_helpers_properties(root_name):
     """
     module = sys.modules.get(str(root_name) + ".ui.rigging.standardrig")
     return getattr(module, "RigHelpersProperties", None)
+
+
+def make_clothes_properties(root_name):
+    """MPFB's ``MakeClothesObjectProperties``, off its MakeClothes UI package, or ``None``.
+
+    Reached as :func:`rig_helpers_properties` is, for the same two reasons: MPFB
+    imports the package while registering its panels, and what it holds is
+    property definitions read from JSON, with the values on the object.
+    """
+    module = sys.modules.get(str(root_name) + ".ui.create_assets.makeclothes")
+    return getattr(module, "MakeClothesObjectProperties", None)
+
+
+def make_skin_properties(root_name):
+    """MPFB's ``MakeSkinObjectProperties``, as :func:`make_clothes_properties` is reached."""
+    module = sys.modules.get(str(root_name) + ".ui.create_assets.makeskin")
+    return getattr(module, "MakeSkinObjectProperties", None)
 
 
 def required_module_level(services, service_name, name):

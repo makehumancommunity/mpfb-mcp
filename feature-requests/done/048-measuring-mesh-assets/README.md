@@ -1,12 +1,12 @@
 # Measuring meshes: intersections, and whether a mesh is ready to be an asset
 
-**Status:** Proposed
+**Status:** Done
 
 This is the first of four requests scoping
-[The MakeClothes and MakeSkin workflows](../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows),
-and the one the others build on: [FR 049](../049-makeskin-materials/README.md) reports through it,
-[FR 050](../050-writing-mesh-assets/README.md) carries its summary and
-[FR 051](../051-delete-groups/README.md) uses its overlap module.
+[The MakeClothes and MakeSkin workflows](../../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows),
+and the one the others build on: [FR 049](../../049-makeskin-materials/README.md) reports through it,
+[FR 050](../../050-writing-mesh-assets/README.md) carries its summary and
+[FR 051](../../051-delete-groups/README.md) uses its overlap module.
 
 **MPFB's clothes check passed a garment with real defects, and nothing in the forty-four tools can
 see two meshes pass through each other.** `ClothesService.mesh_is_valid_as_clothes()` checks vertex
@@ -16,8 +16,8 @@ waist, 25 through the body and 14 of one flap through the other. The inverted no
 by plotting the mesh outside Blender.
 
 The same gap appears outside authoring, and three more sessions paid for it
-([Nothing reports that two meshes interpenetrate](../NEXT_STEPS.md#nothing-reports-that-two-meshes-interpenetrate),
-[Garment fit intersections](../NEXT_STEPS.md#garment-fit-intersections)). A hand-holding pose went
+([Nothing reports that two meshes interpenetrate](../../NEXT_STEPS.md#nothing-reports-that-two-meshes-interpenetrate),
+[Garment fit intersections](../../NEXT_STEPS.md#garment-fit-intersections)). A hand-holding pose went
 from 148 pairs to 0 with a 3.7 mm gap only once a script could count them. A hat buried in hair, at
 7903 pairs, was found from a render. So this request builds the measurement once and exposes it
 three ways: a general tool, a garment report, and a line in `mpfb_add_asset`'s answer.
@@ -45,11 +45,11 @@ render.
 - **A verdict.** No threshold turns a count into pass or fail. The finished gi has 613 unmasked pairs
   and is fine.
 - **Fixing a fit**, or the fitted-offset slider
-  [Garment fit intersections](../NEXT_STEPS.md#garment-fit-intersections) asks for.
+  [Garment fit intersections](../../NEXT_STEPS.md#garment-fit-intersections) asks for.
 - **A clearance line in `mpfb_place_character`** and the footprint-overlap idea from the same entry.
   Both stay there.
 - **Trying an asset on another body.** That is the recipe in
-  [FR 050](../050-writing-mesh-assets/README.md), which uses `mpfb_check_intersections`.
+  [FR 050](../../050-writing-mesh-assets/README.md), which uses `mpfb_check_intersections`.
 - **A check for the narrow-strip texture warp** (a band one face wide ripples under subdivision). It
   stays a documented trap until a second garment shows that a check would catch it.
 
@@ -119,11 +119,11 @@ render.
     in pixels, colour space, and whether the image is packed or has unsaved changes.
 19. **`metadata`:** the three groups a written asset draws on (MakeClothes', MakeSkin's, MPFB's general
     object properties), each value beside whether it was set or is MPFB's default, where
-    [that can be told](../050-writing-mesh-assets/README.md#architecture). MakeClothes and MakeSkin each
+    [that can be told](../../050-writing-mesh-assets/README.md#architecture). MakeClothes and MakeSkin each
     hold their own `license` and `author`, and a disagreement is a `warnings` entry.
 20. **`write_state`:** whether the xref cache exists, `asset_source` and whether it still resolves, and
     the named delete group with its vertex count. A viewport subdivision above level 0 is reported
-    too, since [FR 050](../050-writing-mesh-assets/README.md#architecture) found that it changes what
+    too, since [FR 050](../../050-writing-mesh-assets/README.md#architecture) found that it changes what
     MPFB's exporter writes.
 21. **`sections`** narrows the answer, as `section` does in `mpfb_get_material_settings`. The live
     check measures the full answer on the gi and records it.
@@ -148,7 +148,7 @@ render.
 - **MPFB's property sets for MakeClothes and MakeSkin live on UI modules**
   (`ui.create_assets.makeclothes`, `ui.create_assets.makeskin`). Reach them with `sys.modules.get()` in
   `mpfb_surface.py`, as `RigHelpersProperties` is reached. Both
-  [conditions](../../specifications/architecture.md#a-ui-module-with-no-service-behind-it) hold: MPFB
+  [conditions](../../../specifications/architecture.md#a-ui-module-with-no-service-behind-it) hold: MPFB
   imports them while registering its panels, and what they hold is definitions read from JSON, with
   values on the object. A miss is an ordinary answer with a reason.
 - **`mesh_is_valid_as_clothes()` creates and deletes temporary objects** through `MeshCrossRef`. The
@@ -161,15 +161,15 @@ render.
 
 ## Affected specifications
 
-- [vision.md](../../specifications/vision.md#target-tool-catalog): the two read tools, under
-  Introspection. Authoring as an area is added by [FR 050](../050-writing-mesh-assets/README.md).
-- [responses.md](../../specifications/responses.md): reporting a measurement beside what it cannot
+- [vision.md](../../../specifications/vision.md#target-tool-catalog): the two read tools, under
+  Introspection. Authoring as an area is added by [FR 050](../../050-writing-mesh-assets/README.md).
+- [responses.md](../../../specifications/responses.md): reporting a measurement beside what it cannot
   see; `face_pairs` and `face_pairs_unmasked` as vocabulary.
-- [tool-interface.md](../../specifications/tool-interface.md): the glossary (`face_pairs`, `region`,
+- [tool-interface.md](../../../specifications/tool-interface.md): the glossary (`face_pairs`, `region`,
   `min_distance`).
-- [architecture.md](../../specifications/architecture.md#a-ui-module-with-no-service-behind-it): the
+- [architecture.md](../../../specifications/architecture.md#a-ui-module-with-no-service-behind-it): the
   two property sets as further cases of a readable UI module.
-- [testing.md](../../specifications/testing.md): no change expected.
+- [testing.md](../../../specifications/testing.md): no change expected.
 
 ## Tests
 
@@ -188,6 +188,108 @@ render.
   also records `mpfb_add_asset`'s added time (FR 13).
 - **Smoke items** for both tools, default arguments, nothing written.
 
+## Outcome
+
+Both tools and the field landed on the two shared modules the request named. Verified by
+[`live_check.py`](live_check.py), 26 checks with no failures, on Blender 5.1.0 headless; 744 bridge tests,
+630 unit tests, and the smoke run at 48 of 48 in 2.4 s. What the effort settled, found and changed from
+the text above:
+
+### `intersections` is opt-in, and this is the number
+
+**FR 13's condition was not met, so the field is opt-in, through a new `measure_intersections` argument
+defaulting to false.** On a rigged character dressed with nine assets, timing the function behind the field
+inside Blender:
+
+| Asset | The call | The field | Share |
+|---|---|---|---|
+| Eyes | 44 ms | 10.9 ms | 25 % |
+| Eyebrows | 20 ms | 8.6 ms | 44 % |
+| Eyelashes | 21 ms | 9.5 ms | 44 % |
+| Teeth | 53 ms | 13.0 ms | 24 % |
+| Tongue | 24 ms | 10.9 ms | 46 % |
+| Hair | 51 ms | 17.8 ms | 35 % |
+| Dress | 343 ms | 37.5 ms | 11 % |
+| Hat, 2,250 pairs through the hair | 59 ms | 38.5 ms | 65 % |
+| Sweater | 151 ms | 47.0 ms | 31 % |
+
+A mean of **36 %, against the line of 25 %**. That was after the work below brought it down from 38 %.
+
+**What the line assumed turned out not to be so.** The request was written from a session where equipping
+took seconds, and on a headless Blender it takes 20-60 ms for anything small. The field itself is cheap in
+absolute terms, 9-47 ms, and its floor is evaluating and reading the body twice, which no optimisation here
+removes. This is the maintainer's to revisit: the call's own share would fall well under the line on a windowed
+Blender, where a round trip costs far more, and flipping the default is one word. It is left as the request
+says, and NEXT_STEPS records the question.
+
+**The tree is now built only from what can intersect.** Two different surfaces can only intersect inside the box
+they share, so a hat asks about a few hundred of the body's triangles and two meshes whose boxes do not meet build
+no tree at all. A test holds the limited trees to the whole ones' answer. It took a dressed character's 45 pairs
+from 225 ms to 146 ms.
+
+### The draft is not in the file the request named
+
+**`taido_gi.blend` has no inverted coat.** The tool answered 1.0 for its coat, and that was checked three
+independent ways before it was believed, because the request said the file had the defect: the polygons' own
+normals against the body's agree on 925 of 925 faces. The coat with inward normals is **`gi_draft_mesh`, a mesh
+the session stashed inside `taido_gi_v2.blend`**, which is what `build_gi_mesh.py` starts from on every run. The
+finished coat's vertices are that file's mirrored in X, which is why a reversed winding reads the same way out
+in both. The gi's README calling `taido_gi.blend` "the draft as it was on disk" is true of the file and not of
+the mesh the numbers came from. The live check puts the stash on the garment in memory and never saves.
+
+| On the real draft | Measured | Recorded |
+|---|---|---|
+| Coat `outward_fraction` | **0.0** | sleeves 8 %, back panel 0 % |
+| Hakama `outward_fraction` | 0.981 | legs 100 % |
+| Coat through the hakama | **77** | 77 |
+| Coat through itself | 9 | 14 |
+| Coat through the body | 4 masked, 412 unmasked | 25 |
+| MPFB's `all_checks_ok` | `true` | `true` |
+
+The 77 is exact. The other two are of the recorded order: the stash meets the delete group as it finished, at
+3,209 vertices rather than 2,563, and the recorded 14 and 25 came from a script reading the mesh unevaluated. On
+`taido_gi_v2.blend` the hakama and coat read 0.98 and 0.998, and nothing of the coat passes through the hakama.
+**The body scores 7 masked and 627 unmasked**, against the 6 and 613 recorded while scoping.
+
+### What the requirements did not anticipate
+
+- **The helper mask needs more than its vertex group (FR 2).** A proxied character's `Hide base mesh` is a `MASK`
+  on `body` too, inverted, so finding the helper mask by its group would have left a proxied body reading as
+  nothing even "unmasked". It is the group and not inverted, and the inverted one comes off with the delete groups,
+  so "unmasked" means the body the garment was fitted to.
+- **`min_distance_unmasked` and `region_unmasked` were added**, since the request's trap applies to them as much as
+  to the count. The session's own clearance step was disabled by exactly this.
+- **A closed shell reads about 0.5 whichever way it faces**, because half of it faces the body. The finished belt
+  reads 0.36 to 0.71 and is right. The description says so, or a correct belt reads as a defect.
+- **`bpy_extras.mesh_utils.mesh_linked_uv_islands()` was tried first and is wrong for this.** It joins polygons
+  holding one UV coordinate in common, whether or not a vertex or edge is shared, so two unrelated islands
+  packed corner to corner read as one. Islands are worked out from shared edges instead.
+- **A mesh hidden with the eye icon is measured** (FR 1). It is evaluated, measured on a live file, so
+  `placement.footprint`'s `visible_get()` test would have dropped real geometry here. One in an excluded collection
+  or with `hide_viewport` is reported in `not_measured`, since `evaluated_get()` quietly hands back the original.
+- **A region counts a face by its centre.** The request left this open. It also bounds `min_distance`.
+- **`metadata`'s "set" is `is_property_set()`**, which answers [FR 050](../../050-writing-mesh-assets/README.md#architecture)'s
+  open question: it tells a chosen `CC0` from MPFB's default on the gi.
+
+### MPFB's validator has side effects, confirmed and undone
+
+Provoked on a running install with the cache redirected to an empty directory, and filed in
+`mpfb2/features/MCP_DISCOVERED_BUGS.md`:
+
+- **It creates `basemesh_xref` when absent**, because `MeshCrossRef` does for any `cache_dir` it is given, and MPFB's
+  panel and writer check only that the directory exists. So after a check, MPFB believes an empty directory is a cache.
+  The command removes a directory it caused and `write_state` looks inside rather than at the name.
+- **It leaves orphaned meshes behind**: two per call here, `base.001` and `g.001`, since `MeshCrossRef` deletes its copy's
+  object and not the copied data. They are removed after the call.
+- **It takes 7.9 s with no cache** rather than the 30 s FR 050 gives for building one, and the description says so.
+
+### Sizes and times
+
+The full `mpfb_check_mesh_asset` answer is **6.8 KB on the draft, 11.5 KB on the finished gi, at 650 and 980 ms**. So
+`sections` narrows an answer under the 16 KB line, and it exists because the request asked for it rather than because
+that was crossed. `mpfb_check_intersections` on the gi takes about 30 ms; on the dressed character, with 45 pairs at 7.5
+KB, 146 ms, and 211 ms posed.
+
 ## Decisions taken while scoping
 
 Asked on 2026-11-03:
@@ -198,16 +300,16 @@ Asked on 2026-11-03:
   expensive. Opt-in from the start and leaving it out were the alternatives.
 
 *Not asked*, each argued where it is stated: the name `mpfb_check_mesh_asset`, since the
-[glossary](../../specifications/tool-interface.md) reserves "clothes" for quoting MPFB and MakeClothes
+[glossary](../../../specifications/tool-interface.md) reserves "clothes" for quoting MPFB and MakeClothes
 writes all three kinds of mesh asset; both counts rather than the unmasked one alone (FR 2); no verdict
 (Non-goals); per connected component plus self-overlap, measured against the draft's real two
 components (FR 16).
 
 ## References
 
-- [NEXT_STEPS: The MakeClothes and MakeSkin workflows](../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows),
-  [Nothing reports that two meshes interpenetrate](../NEXT_STEPS.md#nothing-reports-that-two-meshes-interpenetrate),
-  [Garment fit intersections](../NEXT_STEPS.md#garment-fit-intersections).
+- [NEXT_STEPS: The MakeClothes and MakeSkin workflows](../../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows),
+  [Nothing reports that two meshes interpenetrate](../../NEXT_STEPS.md#nothing-reports-that-two-meshes-interpenetrate),
+  [Garment fit intersections](../../NEXT_STEPS.md#garment-fit-intersections).
 - `interacting_with_blender/taido/gi/tools/check_gi.py`, and the scripted checks under
   `interacting_with_blender/photo_studio_verification/` and `man_and_woman_holding_hands/`.
 - mpfb2: `services/clothesservice.py` (`mesh_is_valid_as_clothes`), `services/humanservice.py`

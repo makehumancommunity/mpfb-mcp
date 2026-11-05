@@ -67,7 +67,10 @@ both material settings commands and the character summary must agree about, and
 [FR 045](../../../feature-requests/done/045-placing-a-character/README.md), which the
 place command, the summary and ``add_asset`` must agree about, and ``rigify_hands`` with
 [FR 047](../../../feature-requests/done/047-rigify-hand-shapes/README.md), which the two
-hand-shape commands must agree about for a read-back to be a write.
+hand-shape commands must agree about for a read-back to be a write, and
+``mesh_overlap`` and ``mesh_asset_report`` with
+[FR 048](../../../feature-requests/done/048-measuring-mesh-assets/README.md), which
+one measurement of two meshes reaches through three commands.
 """
 
 __all__ = ()

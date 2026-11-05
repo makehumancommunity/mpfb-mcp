@@ -95,3 +95,15 @@ def test_dotted_joins_a_tuple_and_refuses_anything_else():
     assert _module().dotted([4, 2]) == "4.2"
     assert _module().dotted(None) is None
     assert _module().dotted("2.0") is None, "a string would be joined character by character"
+
+
+def test_the_makeclothes_and_makeskin_property_sets_are_reachable_where_mpfb_keeps_them():
+    """Both are on UI modules no service imports, so a live install is what shows it."""
+    services = services_or_skip()
+    root = services["ObjectService"].__module__.rsplit(".services", 1)[0]
+    surface = bridge_module("shared.mpfb_surface")
+    for config_set in (surface.make_clothes_properties(root), surface.make_skin_properties(root)):
+        assert config_set is not None, "MPFB imports the package while registering its panels"
+        assert "license" in config_set.get_keys()
+    assert surface.make_clothes_properties("no.such.root") is None, "a miss is an ordinary answer"
+    assert surface.make_skin_properties("no.such.root") is None

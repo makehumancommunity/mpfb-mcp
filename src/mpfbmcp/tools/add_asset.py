@@ -107,6 +107,7 @@ def register(mcp: FastMCP) -> None:
         interpolate_weights: bool = True,
         import_subrig: bool = True,
         import_weights: bool = True,
+        measure_intersections: bool = False,
     ) -> dict[str, object]:
         """
         Equip a MakeHuman character with one mesh asset from an MHCLO - a
@@ -156,9 +157,14 @@ def register(mcp: FastMCP) -> None:
         `subrig_object_name` with `subrigs_broken` (see
         `mpfb_place_character`), `delete_group_name` and
         `delete_group_applied_to`, `subdiv_modifier_added`, `warnings` for what
-        MPFB only logs, and `proxy_extras` - the four things a `Proxymeshes`
-        asset gets from MPFB's `.mhm` loading path, which this follows rather
-        than its proxy library panel.
+        MPFB only logs, `proxy_extras` - the four things a `Proxymeshes` asset
+        gets from MPFB's `.mhm` loading path, which this follows rather than its
+        proxy library panel - and `intersections`, `null` unless
+        `measure_intersections` asks. Asked, it is how the asset fits: a row per
+        pair against the body and each other equipped asset, shaped as
+        `mpfb_check_intersections` gives them but for `min_distance`, largest
+        first, costing tens of milliseconds. A count never refuses, and `null`
+        on a call that asked means the measurement failed, which `warnings` says.
 
         Refusals come back as `added: false` (and so `performed: false`) with a
         `blocked_by` and a sentence: `subject_not_found`, `asset_not_found`,
@@ -188,6 +194,8 @@ def register(mcp: FastMCP) -> None:
                 # Not truthiness: import_weights="false" would produce a garment parented to the
                 # armature but not deformed by it.
                 "import_weights": arguments.validated_flag(import_weights, "import_weights"),
+                "measure_intersections": arguments.validated_flag(
+                    measure_intersections, "measure_intersections"),
             },
             # Shared with mpfb_list_assets' command, which reported the
             # object_type and fragment this call is holding. Mapping the first

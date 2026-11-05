@@ -69,6 +69,24 @@ that far off after the character was moved back to the origin;
 ``mpfb_refit_human`` re-binds it. It is the same measured list
 ``place_character`` reports, read by [`shared/placement.py`](../shared/placement.py),
 so it names every badly bound sub-rig on the character, not only a new one.
+
+**Asked, the answer says how the asset fits, and that is never a refusal**
+([FR 048](../../../feature-requests/done/048-measuring-mesh-assets/README.md)):
+``intersections`` has a row per pair for the new asset against the body and each
+other equipped asset, from [`shared/mesh_overlap.py`](../shared/mesh_overlap.py),
+so a hat buried in hair (7903 pairs in one session, found from a render) can be
+seen on the call that caused it. It is measured after everything else, since a
+proxy's extras change what the body shows. The asset is already on the character
+when it runs, so a failure in the measurement costs the field and a warning, not
+the answer.
+
+**It is opt-in because it was measured.** The request made it always-on unless it
+cost more than a quarter of the call. On a rigged character dressed with nine
+assets it cost 9-47 ms, a mean of 36 % of the call and 65 % at worst: most of the
+cost is evaluating and reading the body twice, and equipping turned out to take as
+little as 20 ms rather than the seconds that request assumed. ``intersections`` is
+``null`` unless ``measure_intersections`` asks, which is "not computed", as
+[the rule](../../../specifications/responses.md#response-shape) has it.
 """
 
 # The local bindings below are spelled with MPFB's own capitalisation, which is
@@ -89,6 +107,7 @@ import bpy
 from ..log import get_logger
 from ..shared import asset_sections
 from ..shared import blender_data
+from ..shared import mesh_overlap
 from ..shared import mpfb_surface
 from ..shared import placement
 from ..shared import selection
@@ -143,6 +162,9 @@ PARAMS = (
           description="Import the asset's own sub-rig where it ships one."),
     Param("import_weights", TYPE_BOOLEAN, default=True,
           description="Load the asset's own .mhw weights file where it ships one."),
+    Param("measure_intersections", TYPE_BOOLEAN, default=False,
+          description="Also measure how the asset fits, against the body and each other equipped "
+                      "asset. Tens of milliseconds, which is a large share of this call."),
 )
 
 SUMMARY = "Equip one MHCLO asset - clothes, hair, eyes, a proxy - on a character."
@@ -481,6 +503,32 @@ def _proxy_extras(services, basemesh, asset_object, general_properties, warnings
     )
 
 
+def _intersections(services, basemesh, asset_object, warnings):
+    """The new asset against the body and each other equipped asset, or ``None``.
+
+    Without ``min_distance``, which is the part of a row that costs a walk over
+    every vertex, and which a garment on a body answers with 0.0 anyway. ``None``
+    is "not measured", on a call that has otherwise succeeded.
+    """
+    try:
+        family = mesh_overlap.family_of(services, basemesh)
+        readings, _unmeasured = mesh_overlap.read_all(
+            family, mesh_overlap.bodies_among(services, family))
+        new_asset = readings.get(asset_object.name)
+        if new_asset is None:
+            return []
+        rows = [mesh_overlap.pair_row(new_asset, reading, distances=False)
+                for name, reading in readings.items() if name != asset_object.name]
+    except Exception as error:  # pylint: disable=broad-except
+        warnings.append("The asset is equipped, but measuring how it fits raised {:s}: {!s}. "
+                        "mpfb_check_intersections asks the same question.".format(
+                            type(error).__name__, error))
+        return None
+    rows.sort(key=lambda row: (-max(row["face_pairs"], row.get("face_pairs_unmasked", 0)),
+                               row["other_object_name"]))
+    return rows
+
+
 def _warnings_for(params, request, names_material, existing_rig, weights_beside,
                   rig_is_generated_rigify, warnings):
     """Everything MPFB does silently that a caller would want to have been told."""
@@ -519,7 +567,7 @@ def _warnings_for(params, request, names_material, existing_rig, weights_beside,
 
 
 def _message_for(request, basemesh, asset_object, existing_rig, set_up_rigging,
-                 delete_group_name, subrig, subrigs_broken, warnings):
+                 delete_group_name, subrig, subrigs_broken, intersections, warnings):
     """What happened, said once, in the order a reader wants it."""
     parts = ["Equipped '{:s}' on '{:s}' as '{:s}', of type {:s}.".format(
         os.path.basename(request.resolved_path), basemesh.name,
@@ -542,6 +590,10 @@ def _message_for(request, basemesh, asset_object, existing_rig, set_up_rigging,
                          "sub-rig-weighted vertices are dragged {:.2f} m away (subrigs_broken). "
                          "Call mpfb_refit_human to re-bind it.".format(
                              subrig.name, record["displacement"]))
+    intersecting = [row for row in intersections or [] if row["face_pairs"] > 0]
+    if intersecting:
+        parts.append(" It intersects {:d} other mesh(es) as they stand; see "
+                     "'intersections'.".format(len(intersecting)))
     if warnings:
         parts.append(" {:d} warning(s); see 'warnings'.".format(len(warnings)))
     return "".join(parts)
@@ -693,6 +745,9 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
 
     bpy.context.view_layer.update()
     subrigs_broken = placement.subrigs_broken(services, placement.root_of(basemesh))
+    intersections = None
+    if params["measure_intersections"]:
+        intersections = _intersections(services, basemesh, asset_object, warnings)
 
     _LOG.debug("add_asset: equipped %r as %r", request.resolved_path,
                None if asset_object is None else asset_object.name)
@@ -737,10 +792,11 @@ def add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-s
         weights_files_beside_asset=weights_beside,
         proxy_extras=proxy_extras,
         objects_created=sorted(blender_data.object_names() - names_before),
+        intersections=intersections,
         warnings=warnings,
         message=_message_for(request, basemesh, asset_object, existing_rig,
                              params["set_up_rigging"], delete_group_name, subrig,
-                             subrigs_broken, warnings),
+                             subrigs_broken, intersections, warnings),
     )
 
     # The verb is "added". See shared/performed.py.

@@ -27,6 +27,7 @@ import os
 
 import bpy
 
+from .. import bridge_module
 from .._fixtures import Character as _Character
 from .._fixtures import dispatch
 from .._fixtures import redirected_locations
@@ -67,6 +68,58 @@ def test_a_garment_is_equipped_and_reported_by_the_name_it_got():
         assert result["path_resolved_by"] == "path"
         assert result["resolved_path"] == mhclo
         assert result["objects_created"], "the answer should name what appeared"
+
+
+def test_intersections_are_null_unless_asked_and_a_count_is_never_a_refusal():
+    """FR 048's field, opt-in because it was measured at a third of the call."""
+    services = _services_or_skip()
+    root = os.path.join(bpy.app.tempdir, "add-asset-intersections")
+    mhclo = _library(root)
+    with _Character() as character:
+        with redirected_locations(services, user_data=root):
+            unasked = _result({"name": character.basemesh.name, "path": mhclo,
+                               "object_type": "Clothes"})
+            assert unasked["added"] is True, unasked["message"]
+            assert unasked["intersections"] is None, "not computed, rather than none"
+
+            asked = _result({"name": character.basemesh.name, "path": mhclo,
+                             "object_type": "Clothes", "measure_intersections": True})
+        assert asked["added"] is True, "the asset is equipped whatever the count"
+        rows = asked["intersections"]
+        others = {row["other_object_name"] for row in rows}
+        assert character.basemesh.name in others, "against the body"
+        assert unasked["asset_object_name"] in others, "and against what is already equipped"
+        assert asked["asset_object_name"] not in others, "and never against itself"
+        for row in rows:
+            assert row["object_name"] == asked["asset_object_name"]
+            assert "min_distance" not in row, "the part of a row that would cost a walk"
+            assert "subdiv_levels" in row
+        against_body = next(row for row in rows if row["other_object_name"]
+                            == character.basemesh.name)
+        assert "face_pairs_unmasked" in against_body
+        against_garment = next(row for row in rows if row["other_object_name"]
+                               == unasked["asset_object_name"])
+        assert "face_pairs_unmasked" not in against_garment, "neither is a body"
+
+
+def test_a_failed_measurement_costs_the_field_and_not_the_asset(monkeypatch):
+    services = _services_or_skip()
+    root = os.path.join(bpy.app.tempdir, "add-asset-failed-measure")
+    mhclo = _library(root)
+    overlap = bridge_module("shared.mesh_overlap")
+
+    def raising(*_arguments, **_keywords):
+        raise RuntimeError("induced")
+
+    monkeypatch.setattr(overlap, "read_all", raising)
+    with _Character() as character:
+        with redirected_locations(services, user_data=root):
+            result = _result({"name": character.basemesh.name, "path": mhclo,
+                              "object_type": "Clothes", "measure_intersections": True})
+        assert result["added"] is True, "the asset is on the character already"
+        assert result["performed"] is True
+        assert result["intersections"] is None
+        assert any("induced" in warning for warning in result["warnings"])
 
 
 def test_a_fragment_is_resolved_against_the_subdir_its_object_type_names():

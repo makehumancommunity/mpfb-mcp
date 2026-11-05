@@ -4,7 +4,7 @@
 
 The third of four requests scoping
 [The MakeClothes and MakeSkin workflows](../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows).
-It needs [FR 048](../048-measuring-mesh-assets/README.md)'s report and shares
+It needs [FR 048](../done/048-measuring-mesh-assets/README.md)'s report and shares
 [FR 049](../049-makeskin-materials/README.md)'s texture writing, so it lands after both.
 
 **Writing an asset took `bpy.ops.mpfb.write_makeclothes_clothes(filepath=...)` with exactly the
@@ -112,7 +112,7 @@ location an agent can then try it from, and says exactly what it wrote.
 
 18. **`path`** on every answer, and `files` with each one's size and action. **`match_counts`** (exact and
     offset), `delete_vertices`, `max_pole`, `allow_exact_matching`, `selection` restored.
-    **`check`** is a summary of [FR 048](../048-measuring-mesh-assets/README.md)'s report: per component, the
+    **`check`** is a summary of [FR 048](../done/048-measuring-mesh-assets/README.md)'s report: per component, the
     lowest `outward_fraction` and largest overlap counts. **`try_with`** gives the recipe's next calls:
     `mpfb_create_human_from_preset`, `mpfb_add_asset` with this asset's `fragment` or `path`, and
     `mpfb_check_intersections`.
@@ -155,10 +155,14 @@ location an agent can then try it from, and says exactly what it wrote.
   and collapses runs, so `my-gi` would land as `my_gi`, breaking the rule that
   [every accepted name is one MPFB's panel would accept unchanged](../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more).
   `artifact_names.py` gains a noun and a pattern for this, on both sides of the socket.
-- **Unverified: telling "never set" from "chose CC0"**, which FR 5's `"mpfb_default"` depends on.
-  `BlenderConfigSet.has_key_with_value()` cannot do it, since it reads through to the default. Try Blender's
-  `is_property_set()` on the property's full name (`MC_license`). If that cannot tell either, `"mpfb_default"` is
-  dropped, and FR 5's warning fires whenever a `CC0` came from the object rather than an argument.
+- **Telling "never set" from "chose CC0"**, which FR 5's `"mpfb_default"` depends on, is settled:
+  `BlenderConfigSet.has_key_with_value()` cannot do it, since it reads through to the default, and Blender's
+  `is_property_set()` on the property's full name can.
+  [FR 048](../done/048-measuring-mesh-assets/README.md#what-the-requirements-did-not-anticipate) found it on the gi,
+  and `shared/mesh_asset_report.py`'s `metadata()` reports it as `set`.
+- **The asset's report is `shared/mesh_asset_report.py`**, and its `validator()` undoes two side effects of MPFB's own.
+  One of them matters here: the xref cache's directory can exist and be empty, so `write_state()`'s
+  `xref_cache_exists` is what FR 12 should ask, not `os.path.exists()`.
 - **`MeshCrossRef`** is in `entities`. Read it off `clothesservice`'s module through `mpfb_surface`, for the
   cache build, as other names are read. It writes under `LocationService.get_user_cache("basemesh_xref")`.
 - **Unverified pitfall, for the live check: a posed body.** `MeshCrossRef(after_modifiers=True)` strips only

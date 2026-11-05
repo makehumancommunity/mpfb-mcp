@@ -97,8 +97,8 @@ entire reason for starting outside. The three options and the argument between t
 
 ## What runs today
 
-**Everything above describes the machine that runs, and it is the only one.** All forty tools
-that cross the socket send a command name and its parameters to the bridge; the forty-first,
+**Everything above describes the machine that runs, and it is the only one.** All forty-five tools
+that cross the socket send a command name and its parameters to the bridge; the forty-sixth,
 `mpfb_list_docs`, answers from a local table and reaches no Blender at all.
 
 **The machine it replaced is gone.** Until
@@ -174,14 +174,14 @@ answer changes.
 
 | Area | An agent must be able to | Today |
 |---|---|---|
-| **Introspection** | ask what is already there, and what state it is in, before acting — always cheaply, and always getting an answer rather than an error — and, since FR 041, what a character's rig can move and what its pose is now, and since FR 047 the shape of a Rigify character's hands | 12 tools |
+| **Introspection** | ask what is already there, and what state it is in, before acting — always cheaply, and always getting an answer rather than an error — and, since FR 041, what a character's rig can move and what its pose is now, since FR 047 the shape of a Rigify character's hands, and since FR 048 how much two meshes intersect and whether a mesh is ready to be written as an asset, in numbers and with no verdict | 14 tools |
 | **Catalogues** | learn what *could* be added, each entry named exactly as the acting tool will want it | 5 tools |
 | **Creation and modification** | build a character and change it: phenotype, modeling targets, rig, garments, materials, face, since FR 042 its pose, since FR 045 where it stands in the scene and since FR 047 a Rigify character's hands by a named shape or a curl per finger — and undo a mistake, for which `mpfb_reset_pose` and its `restore_with` are the first tool built; and **keep** it, as a preset that outlives the session and a face as an expression the library can apply, and since FR 039 **take it elsewhere**, as a processed copy written to a file a game engine or another application opens | 25 tools |
 | **Documentation** | answer "how does MPFB do X" without the client shipping its own copy of the manual | 2 tools |
 
-[README.md](../README.md) lists the forty-four that exist, grouped this way;
-[CLAUDE.md](../CLAUDE.md#the-forty-four-tools) gives one line each and points at the module
-docstring that explains it. **Forty-four tools are forty-three bridge commands**, one for one
+[README.md](../README.md) lists the forty-six that exist, grouped this way;
+[CLAUDE.md](../CLAUDE.md#the-forty-six-tools) gives one line each and points at the module
+docstring that explains it. **Forty-six tools are forty-five bridge commands**, one for one
 except `mpfb_list_docs`, which needs no Blender at all. Exporting is part of keeping a character
 rather than a fifth area: it is the same act, a character outliving the scene, aimed at another
 application rather than at MPFB.

@@ -963,6 +963,43 @@ A helper for the default rig and the `game_engine` conversion stay in
 
 <a id="autostarting-the-bridge"></a>
 
+## [FR 048](done/048-measuring-mesh-assets/README.md) — `mpfb_check_intersections` and `mpfb_check_mesh_asset`, and how much a garment passes through what
+
+**MPFB's clothes check passed a garment with an inside-out coat, and nothing in the forty-four tools could see two
+meshes pass through each other.** Sessions kept writing the same BVH script, and each result was a number nobody could
+have had otherwise: 148 pairs to 0 with a 3.7 mm gap on two hands, a hat buried in hair at 7,903. So one measurement,
+in `shared/mesh_overlap.py`, now reaches three answers: **`mpfb_check_intersections`** for any pairs,
+**`mpfb_check_mesh_asset`** per connected component, beside MPFB's report unchanged and five more sections from
+`shared/mesh_asset_report.py`, and **`mpfb_add_asset`'s `intersections`**.
+
+**A body is counted twice, because a count on a masked one is blind**: `face_pairs` is the masks as they are, and
+`face_pairs_unmasked` is every mask but the one hiding helper geometry. **Neither is judged**: the finished gi has 7
+and 627 and renders cleanly. Finding that mask by its vertex group, as the request said, is not enough, because a
+proxied body's `Hide base mesh` is on the same group, inverted.
+
+**Three things landed other than as written.**
+
+**`intersections` is opt-in**, under `measure_intersections`, by the request's own rule. Always on unless it cost over
+a quarter of the call, and it costs a mean of 36 %, 9-47 ms, on a dressed character. That line assumed equipping
+takes seconds, and it takes 20-60 ms for anything small. NEXT_STEPS holds the question of reversing it.
+
+**The draft is not in the file the request named.** `taido_gi.blend`'s coat is fine, which took three independent checks
+to believe; the inverted one is `gi_draft_mesh`, stashed inside `taido_gi_v2.blend`. On that mesh the tool gives
+`outward_fraction` **0.0** for the coat, 0.981 for the hakama, and **exactly the recorded 77** pairs between them, while
+MPFB says `all_checks_ok: true`.
+
+**MPFB's validator turned out to have side effects**, found by a test comparing `bpy.data.meshes` before and after. It
+creates the xref cache's directory when absent, which its panel and writer then take for a built cache, and it leaves two
+orphaned meshes per call. Both are undone around the call and filed in `MCP_DISCOVERED_BUGS.md`.
+
+Also: `is_property_set()` tells a chosen `CC0` from MPFB's default, which FR 050 had asked; Blender's
+`mesh_linked_uv_islands()` joins islands that share a coordinate and no edge, so islands are worked out from edges; a closed
+shell reads about 0.5 whichever way it faces, so a correct belt reads 0.36-0.71 and the description says so; trees are
+built only from what lies in the box two surfaces share, which took a dressed character's 45 pairs from 225 ms to 146 ms.
+
+Verified by [`live_check.py`](done/048-measuring-mesh-assets/live_check.py), 26 checks and no failures on Blender 5.1.0, and the
+smoke run at 48 of 48 in 2.4 s. 62 new bridge tests (744), 21 new unit tests (630).
+
 ## [FR 058](done/058-autostarting-the-bridge/README.md) — auto-starting the bridge
 
 A windowed Blender had to be told to serve, by hand, every session. **A checkbox now does that, off by

@@ -46,6 +46,8 @@ __all__ = (
 from . import add_asset
 from . import add_rig
 from . import apply_expressions
+from . import check_intersections
+from . import check_mesh_asset
 from . import create_human
 from . import create_export_copy
 from . import create_human_from_preset
@@ -109,6 +111,18 @@ COMMANDS = {
         params=apply_expressions.PARAMS,
         requires_mpfb=True,
         summary=apply_expressions.SUMMARY),
+    "check_intersections": Command(
+        name="check_intersections",
+        handler=check_intersections.check_intersections,
+        params=check_intersections.PARAMS,
+        requires_mpfb=True,
+        summary=check_intersections.SUMMARY),
+    "check_mesh_asset": Command(
+        name="check_mesh_asset",
+        handler=check_mesh_asset.check_mesh_asset,
+        params=check_mesh_asset.PARAMS,
+        requires_mpfb=True,
+        summary=check_mesh_asset.SUMMARY),
     "create_export_copy": Command(
         name="create_export_copy",
         handler=create_export_copy.create_export_copy,

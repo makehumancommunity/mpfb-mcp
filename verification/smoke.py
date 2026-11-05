@@ -493,6 +493,20 @@ def _reset_pose(run: _Run) -> dict:
     return _posable(run.tools["mpfb_reset_pose"](name=_character(run), include_switches=True))
 
 
+@_item("mpfb_check_intersections", "pairs", "pairs_measured", "pairs_clear", "pairs_truncated",
+       "closest_pair", "not_measured")
+def _check_intersections(run: _Run) -> dict:
+    # Here rather than beside the other readers, so that a garment is still on the
+    # character to measure against the body.
+    return run.tools["mpfb_check_intersections"](name=_character(run))
+
+
+@_item("mpfb_check_mesh_asset", "validator", "components", "uv", "textures", "metadata",
+       "write_state")
+def _check_mesh_asset(run: _Run) -> dict:
+    return run.tools["mpfb_check_mesh_asset"](name=_asset_object(run))
+
+
 @_item("mpfb_remove_asset", "asset_object_name", "object_type", "basemesh_name",
        "objects_removed")
 def _remove_asset(run: _Run) -> dict:

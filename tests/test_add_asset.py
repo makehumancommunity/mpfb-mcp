@@ -94,12 +94,20 @@ class ArgumentValidationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.tool(object_type="Clothes", path="/a.mhclo", subdiv_levels=-1)
 
-    def test_the_four_flags_must_be_real_bools(self):
+    def test_the_five_flags_must_be_real_bools(self):
         for flag in ("set_up_rigging", "interpolate_weights", "import_subrig",
-                     "import_weights"):
+                     "import_weights", "measure_intersections"):
             with self.subTest(flag=flag):
                 with self.assertRaises(ValueError):
                     self.tool(object_type="Clothes", path="/a.mhclo", **{flag: "false"})
+
+    def test_measuring_intersections_is_off_unless_asked(self):
+        # It costs a large share of a fast call, which is FR 048's measurement.
+        params = self._sent_params(object_type="Clothes", path="/a.mhclo")
+        self.assertIs(params["measure_intersections"], False)
+        params = self._sent_params(object_type="Clothes", path="/a.mhclo",
+                                   measure_intersections=True)
+        self.assertIs(params["measure_intersections"], True)
 
     def test_the_material_type_vocabulary_is_not_checked_here(self):
         # Deliberately: which material types are valid for which asset type is

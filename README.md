@@ -36,6 +36,12 @@ Early beta. Forty-two tools are implemented.
   where does it rest?
 - `mpfb_get_pose` — what is this character's pose now: what is off rest, where are its hands, feet,
   hips and head, and is a limb stretched or out of reach?
+- `mpfb_check_intersections` — how much meshes pass through each other and how close they come, in
+  numbers, with the body's delete-group masks on and off: a count on a masked body cannot see through
+  the mask, and that is the trap. Two characters, a character and a held prop, or one character's own
+  garments.
+- `mpfb_check_mesh_asset` — whether a mesh is ready to be an asset, beyond MPFB's own check: which way
+  each part's faces point, how it fits the body and itself, its UV islands, its textures and its metadata.
 - `mpfb_get_rigify_hand_shape` — on a Rigify character, how curled and spread is each finger, what
   shape is each hand making, and where are the fingertips?
 
@@ -68,7 +74,8 @@ Early beta. Forty-two tools are implemented.
   survive: apply the file, and presets carry it.
 - `mpfb_refit_human` — refit everything to a changed body.
 - `mpfb_add_rig` / `mpfb_generate_rigify_rig` — attach an armature, and finish a Rigify meta rig.
-- `mpfb_add_asset` / `mpfb_remove_asset` — equip an MHCLO asset, and take it off properly.
+- `mpfb_add_asset` / `mpfb_remove_asset` — equip an MHCLO asset, optionally saying how it fits what is
+  already on the character, and take it off properly.
 - `mpfb_set_skin` — give the character a skin, in any of MPFB's five material models.
 - `mpfb_set_asset_material` — recolour an equipped asset, or restore its own material.
 - `mpfb_set_material_settings` — change iris colours, the layered skin and the tint of hair and
