@@ -203,7 +203,13 @@ import mpfbmcp
 # The second is over the average because it is six sections, each of which a caller
 # has to be told how to read, and because `outward_fraction` near 0.5 reads as a
 # defect in a closed shell unless the description says otherwise.
-DESCRIPTION_CEILING = 94100
+#
+# Raised from 94,100 to 99,400 by
+# [FR 049](../feature-requests/done/049-makeskin-materials/README.md): the reader at
+# 1,659 B and the writer at 2,077 B, about the 2,050 B average, and the store at 2,206 B,
+# over it because `values_not_restored` is a surprise a caller cannot discover until a
+# material comes back different, and a surprise stays in full.
+DESCRIPTION_CEILING = 99400
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -264,7 +270,10 @@ DESCRIPTION_CEILING = 94100
 # Raised from 17,800 to 18,800 by FR 048: 868 B across three tools, most of it
 # `mpfb_check_intersections`' four nullable arguments and `mpfb_check_mesh_asset`'s
 # three, and one bool on `mpfb_add_asset`.
-SCHEMA_CEILING = 18800
+#
+# Raised from 18,800 to 20,200 by FR 049: 1,390 B across three tools, most of it the
+# setter's three nullable objects of objects and the store's seven arguments.
+SCHEMA_CEILING = 20200
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.
@@ -316,7 +325,7 @@ class DescriptionBudgetTests(unittest.TestCase):
         self.measured = measure()
 
     def test_every_registered_tool_is_measured(self) -> None:
-        self.assertEqual(46, len(self.measured))
+        self.assertEqual(49, len(self.measured))
 
     def test_total_description_size_is_under_the_ceiling(self) -> None:
         total = sum(entry["description_bytes"] for entry in self.measured)

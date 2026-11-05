@@ -37,7 +37,7 @@ breaking it has side effects on somebody's `.blend` rather than a different-look
 | The before/after report | The **far side**, which is the only place that can observe both |
 | The caller's selection is restored | A **shared module**: `with selection.restored(...)`, from [`bridge/mpfb_bridge/shared/selection.py`](../bridge/mpfb_bridge/shared/selection.py), around every `refit()` and every operator call. It puts back the active object and the borrowed object's own selection, and **not** the selection of other objects an operator selected, such as a new armature ([NEXT_STEPS](../feature-requests/NEXT_STEPS.md#selection-restore-covers-one-object)). The two export commands use `selection.restored_all()`, which puts back every object's selection and leaves what the command created deselected ([FR 039](../feature-requests/done/039-exporting-characters/README.md)). `mpfb_generate_rigify_rig` reports `active_object_after` instead |
 | A batch resolves before it writes | The **far side**. It is a property of the *code*, and nothing below the socket would enforce it |
-| A name that becomes a path is a name and never a path | **Both sides, deliberately.** `artifact_names.py` before anything is sent, `shared/artifact_names.py` as the last statement before `open()` - one rule for presets, saved expressions and exports |
+| A name that becomes a path is a name and never a path | **Both sides, deliberately.** `artifact_names.py` before anything is sent, `shared/artifact_names.py` as the last statement before `open()` - one rule for presets, saved expressions and exports, and a narrower one for stored MakeSkin materials |
 | The directory of an export is the human's | The **add-on**: [`bridge/mpfb_bridge/export_directory.py`](../bridge/mpfb_bridge/export_directory.py) reads the bridge's preference or `--export-dir`. The near side has nothing to enforce, because no tool takes a directory |
 | `overwrite: False`, and the absolute path in every answer | The **far side** |
 | Refuse to write where the result cannot be found | The **far side**, which alone can walk MPFB's roots |
@@ -258,7 +258,10 @@ Everything else here changes a `.blend` that the user can undo, revert or simply
 second, writing `<name>.json` into the expressions directory of MPFB's user data; and
 `mpfb_export_character` ([FR 039](../feature-requests/done/039-exporting-characters/README.md)) is
 the third, writing `<export_name>.fbx`, `.glb` or `.usdz` - the first file meant for another
-application. Four properties follow, and they are the whole of the extra obligation:
+application; and `mpfb_store_makeskin_material`
+([FR 049](../feature-requests/done/049-makeskin-materials/README.md)) is the fourth, writing an MHMAT and its
+textures, the first to write several files as one artifact. Four properties follow, and they are the whole of the
+extra obligation:
 
 - **Address the artifact by name, never by a path.** A preset is `<name>` within MPFB's user config
   directory, resolving to `human.<name>.json`. A tool that took a caller-supplied path would write
@@ -311,6 +314,22 @@ precondition is settled before the writing call is made. MPFB's own path happens
 (`serialize_to_json_string()` runs to completion before the file is opened), but that is an
 inherited property rather than a guarantee, so the ordering is the command's own.
 
+**Several files are one artifact, so they arrive together.** `shared/texture_writing.py` writes into a directory
+beside the destination and moves each file in, the MHMAT last, and a directory it made is removed if that fails.
+And `dry_run` settles every refusal above and writes nothing, directories included, which MakeSkin's operators
+cannot say: they make the directory first.
+
+**A path a tool reads breaks none of this.** The rule is about where a tool *writes*.
+`mpfb_set_makeskin_material` takes an absolute path to a texture, as `mpfb_add_asset` has always taken one to an
+MHCLO, because an agent generates textures somewhere and no name in a directory MPFB owns can address them. Its shape
+is checked before sending: absolute, with an image extension.
+
+**A file a tool reads is never changed, even where MPFB would.** MakeSkin's store calls `image.save()` on every
+texture, which took the gi's diffuse map from 2.5 to 3.2 MB and its normal map from 17.0 to 18.2 MB. A clean image is
+copied byte for byte, and one with unsaved changes or no file goes through `image.save(filepath=..., save_copy=True)`,
+which leaves the image's own path, format and dirty flag alone. The bridge tests compare hash and modification time,
+and FR 049's live check did the same on the gi's own files.
+
 The counterpart on the reading side is that a tool addressing an artifact by name must be able to
 say **which names exist**: a misspelling is the likeliest way such a tool is called wrongly, so the
 refusal names them, per
@@ -356,6 +375,11 @@ is written, and if any entry fails, none of them are applied.**
   user set, **except** on a socket whose current value already lies outside it: MPFB's `MpfbBody`
   declares `NavelWidthMultiplier` as 0.001-0.2 and defaults it to 11.0, and a range MPFB does not
   keep is not one this package holds a caller to. Measured against the installed MPFB, not read.
+- **The third form: build the new thing beside the old.** Where what is written is a datablock of its own,
+  `mpfb_set_makeskin_material` builds the whole material on no object, judges each value on the real socket that
+  will hold it, and only then pops the old one. A failure inside MPFB's template code leaves the mesh with what it
+  had, and removes the new material and any image the call loaded
+  ([FR 049](../feature-requests/done/049-makeskin-materials/README.md)).
 - **Batch because per-call cost dominates, not on principle**, and the number that argument rests
   on has moved twice. It was originally made against a ~1.0 s round trip, then against the ~250 ms
   [FR 013](../feature-requests/done/013-live-verification/README.md) measured; on the bridge the

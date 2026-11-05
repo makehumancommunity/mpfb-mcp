@@ -635,6 +635,12 @@ helper modes as `null` with a reason; the helper bones are still recognised by n
 its panels, and each is definitions read from JSON with the values on the object. A miss reports that group as
 `applies: false` with a reason; the other sections are not affected.
 
+**`_TEXTURE_NAMES`, `_NONCOLOR`, `_NODE_SOCKET_VALUES` and `MHMAT_KEYS` are on `makeskinmaterial.py` itself**, which no
+service's module imports, so `mpfb_surface.required_makeskin_level()` reaches that module through the
+`MakeSkinMaterial` class that `HumanService`'s module does import
+([FR 049](../feature-requests/done/049-makeskin-materials/README.md)). Required rather than given a fallback, since a
+made-up slot list would be a stale copy of MPFB's presented as MPFB's.
+
 **Calling a UI module is a third case, and FR 027 is where it was decided.** MPFB's
 expressions-library panel draws one slider per expression file, registered as a scene property
 **once, when `ui/apply_assets/useexpression` is imported**; `write_slider_values()` in that module

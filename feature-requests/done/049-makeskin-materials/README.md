@@ -1,10 +1,10 @@
 # MakeSkin materials: building, reading and storing them
 
-**Status:** Proposed
+**Status:** Done
 
 The second of four requests scoping
-[The MakeClothes and MakeSkin workflows](../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows).
-It depends on nothing else here, though [FR 050](../050-writing-mesh-assets/README.md) shares its way
+[The MakeClothes and MakeSkin workflows](../../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows).
+It depends on nothing else here, though [FR 050](../../050-writing-mesh-assets/README.md) shares its way
 of writing textures.
 
 **An agent cannot build a MakeSkin material from textures it generated.** In the gi session this meant
@@ -26,7 +26,7 @@ what it got, and store it where `mpfb_list_asset_materials` or `mpfb_set_skin` w
 **Secondary:**
 
 - **What the reader reports, the writer accepts**, as in
-  [FR 047](../done/047-rigify-hand-shapes/README.md).
+  [FR 047](../047-rigify-hand-shapes/README.md).
 - **A source texture is never changed.** MPFB's save path re-encodes it in place; this one does not.
 
 ## Non-goals
@@ -34,7 +34,7 @@ what it got, and store it where `mpfb_list_asset_materials` or `mpfb_set_skin` w
 - **The template material with blank images to paint on** (`mpfb.create_makeskin_material`). An agent
   does not paint in Blender's image editor. Offered and declined.
 - **Saving a free-standing MHMAT to an arbitrary file** (`Save as MHMAT`). A garment's MHMAT is written
-  by [FR 050](../050-writing-mesh-assets/README.md). Alternates and skins are written here.
+  by [FR 050](../../050-writing-mesh-assets/README.md). Alternates and skins are written here.
 - **Generating textures, unwrapping, packing.** General Blender and image work, and it went fine through
   generic code. FR 050 documents the recipe.
 - **The enhanced, layered and procedural materials.** `mpfb_set_skin` and `mpfb_set_material_settings`
@@ -61,7 +61,7 @@ what it got, and store it where `mpfb_list_asset_materials` or `mpfb_set_skin` w
    properties, since that is where `populate_from_object()` reads them when the material is stored. The
    effort's round trip (below) decides which keys actually survive, and only those are accepted.
 7. **All or nothing.** Every texture, slot and value resolves before any material is touched, per
-   [the batch rule](../../specifications/mutating-tools.md#a-batched-mutating-tool-resolves-before-it-writes).
+   [the batch rule](../../../specifications/mutating-tools.md#a-batched-mutating-tool-resolves-before-it-writes).
 8. **`specularmap` with `roughnessmap` is refused**, as the panel refuses it.
 9. **An existing material is refused unless `replace: true`**, matching the panel's default of `false`,
    and a replacing call lists `materials_destroyed`. Where the material is shared with another object,
@@ -72,7 +72,7 @@ what it got, and store it where `mpfb_list_asset_materials` or `mpfb_set_skin` w
     the answer says `reloaded`. Without this a second call quietly keeps the old pixels, which is why
     `apply_material.py` removes its images first.
 12. **A texture that fails to resolve is a refusal**, unlike the silent case in
-    [A material whose textures do not resolve](../NEXT_STEPS.md#a-material-whose-textures-do-not-resolve-is-reported-as-applied).
+    [A material whose textures do not resolve](../../NEXT_STEPS.md#a-material-whose-textures-do-not-resolve-is-reported-as-applied).
 
 ### `mpfb_get_makeskin_material`
 
@@ -84,7 +84,7 @@ what it got, and store it where `mpfb_list_asset_materials` or `mpfb_set_skin` w
     carries `path` when it has a file and `image` when it does not, plus read-only facts the setter ignores.
 16. **A material that is not MakeSkin is `not_makeskin`**, naming what MPFB identifies it as. An
     untextured MakeSkin material must be accepted, although `identify_material()` calls it `gameengine`
-    ([why](../../specifications/mpfb-integration.md)). So recognition uses the template's named nodes.
+    ([why](../../../specifications/mpfb-integration.md)). So recognition uses the template's named nodes.
 
 ### `mpfb_store_makeskin_material`
 
@@ -92,10 +92,10 @@ what it got, and store it where `mpfb_list_asset_materials` or `mpfb_set_skin` w
 18. **An alternate lands where MPFB's panel puts it**, `<asset dir>/<name>/<name>.mhmat`, and needs an
     `asset_source` that resolves. A body or body proxy is refused for `alternate`, and everything else
     for `skin`, as the panels' polls do. `asset_not_in_library` refuses an asset
-    [FR 050](../050-writing-mesh-assets/README.md) wrote to the export directory, since there would be
+    [FR 050](../../050-writing-mesh-assets/README.md) wrote to the export directory, since there would be
     nowhere MPFB would look.
 19. **A skin lands in `<user data>/skins/<name>/<name>.mhmat`.**
-20. **The properties in the [obligation](../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more)
+20. **The properties in the [obligation](../../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more)
     hold:** `overwrite: false`, `path` in every answer, a refusal carrying the existing file's size and
     time, `name_shadowed` when a higher-priority root would hide the file, and no directory created
     before the last refusal has been passed. MPFB's operators create the directory first and overwrite
@@ -118,7 +118,7 @@ what it got, and store it where `mpfb_list_asset_materials` or `mpfb_set_skin` w
   A round trip through `mpfb_set_makeskin_material`, store, and `mpfb_set_asset_material` must read back
   equal, and a skin through `mpfb_set_skin`.
 - **Honesty about paths.** Reading from a path breaks no rule, since the
-  [name-not-a-path obligation](../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more)
+  [name-not-a-path obligation](../../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more)
   is about where a tool *writes*. `mpfb_add_asset` has always taken an absolute read path. The
   specification says this explicitly rather than leaving it implied.
 
@@ -140,7 +140,7 @@ what it got, and store it where `mpfb_list_asset_materials` or `mpfb_set_skin` w
   image's own path and state alone. `export_to_disk()` then finds source and destination equal and
   copies nothing.
 - **This departs from MPFB's panel on purpose**, and the
-  [integration rule](../../specifications/mpfb-integration.md#where-a-service-falls-short-of-what-its-own-code-says-it-does-follow-the-stated-intent)
+  [integration rule](../../../specifications/mpfb-integration.md#where-a-service-falls-short-of-what-its-own-code-says-it-does-follow-the-stated-intent)
   covers it: the operator's docstring warns only that images are saved "alongside the MHMAT file". The
   behaviour is filed upstream when provoked.
 - **Reaching `_TEXTURE_NAMES` and `_NONCOLOR`:** both are private to `makeskinmaterial.py`. Read them
@@ -154,14 +154,14 @@ what it got, and store it where `mpfb_list_asset_materials` or `mpfb_set_skin` w
 
 ## Affected specifications
 
-- [mutating-tools.md](../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more):
+- [mutating-tools.md](../../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more):
   a read path is not a write path; a source file is never changed.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md): the panel's re-encoding as a named
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md): the panel's re-encoding as a named
   departure; the MakeSkin store operators reimplemented from services.
-- [tool-interface.md](../../specifications/tool-interface.md): `known_slots`; `path` and `image` as a
+- [tool-interface.md](../../../specifications/tool-interface.md): `known_slots`; `path` and `image` as a
   source; the new name rule.
-- [responses.md](../../specifications/responses.md): `in_effect`.
-- [vision.md](../../specifications/vision.md#target-tool-catalog): three more tools.
+- [responses.md](../../../specifications/responses.md): `in_effect`.
+- [vision.md](../../../specifications/vision.md#target-tool-catalog): three more tools.
 
 ## Tests
 
@@ -176,7 +176,98 @@ what it got, and store it where `mpfb_list_asset_materials` or `mpfb_set_skin` w
   as an alternate of the written `taido_gi`, then confirm `mpfb_list_asset_materials` lists it and that
   it renders the same in a headless Cycles still. The source hashes are compared before and after.
 - **Smoke items** for all three. The store uses `dry_run`, so
-  [verification/](../../verification/README.md)'s file list does not grow.
+  [verification/](../../../verification/README.md)'s file list does not grow.
+
+## Outcome
+
+All three tools landed, on the two shared modules, `shared/makeskin.py` and `shared/texture_writing.py`.
+Verified by [`live_check.py`](live_check.py), 20 checks with no failures, on Blender 5.1.0 headless: the
+gi's material rebuilt from its three textures in 716 ms, stored as an alternate of a copy of `taido_gi`,
+listed at once, and rendering in Cycles with a mean difference from the original of 0.000000 per channel
+(worst pixel under 0.007 across two runs), both rebuilt and stored. The three source files were byte-identical and unwritten.
+846 bridge tests (102 new), 668 unit tests (38 new), the smoke run at 51 of 51 in 2.6 s. What the effort
+settled, found and changed from the text above:
+
+### The fidelity requirement holds in part, and MPFB is why
+
+**The non-functional requirement says a round trip through a file must read back equal. For the numbers,
+it cannot.** `apply_node_tree()` fills the template from the textures and `diffuseColor` alone. An MHMAT's
+`roughness`, `metallic`, `ior`, `diffuseIntensity`, `normalmapIntensity`, `bumpmapIntensity` and
+`displacementMapIntensity` are parsed and then dropped, and the nodes hold the template's constants. Provoked
+with an MHMAT carrying `roughness 0.33`: the socket read 0.7. MPFB's panel, `mpfb_set_asset_material` and
+`mpfb_set_skin` all go through it.
+
+| Through a file and either tool | Reads back |
+|---|---|
+| Which slots, wiring, colour space, size, pixels | Equal |
+| `diffuseColor` | Equal, to the file's four decimals |
+| Any value not in effect (`roughness` beside its map) | Changes, with no visible effect |
+| Any other value away from the template's | **Comes back as the template has it** |
+
+**So the store reports it rather than hiding it**: `values_not_restored` names each value in effect that an
+apply will lose, with `stored` and `after_apply`, measured against a scratch build of the template rather than
+kept in a list, so that it empties by itself the day MPFB reads them. The file holds the numbers. The caller's
+way back is one call, `mpfb_set_makeskin_material` after applying, and
+`eee_composite/makeskin_roundtrip_test.py` proves it and is written to fail when MPFB changes.
+
+**Repairing it in the two apply tools was not done, and is the maintainer's to decide.** It would meet the
+requirement as written. It would also make every existing MHMAT in every installed pack look different through
+those tools than through MPFB's panel and through `mpfb_add_asset`, against a standing decision in
+`set_asset_material`'s docstring and the bar that a character be reproducible through MPFB's UI. The fix that
+meets both is two lines in `apply_node_tree()`, and it is filed. The gi itself loses nothing: it uses three
+maps, and its one odd number, `roughness 0.9`, has a map over it.
+
+### No temporary MHMAT
+
+The Architecture section planned one, for MPFB's parser to read. **A Blender image has no filename**, so its
+slot has to go in as `has_<slot>` with an empty filename, and `apply_node_tree()` takes its template values
+whole or not at all. Given that form is needed anyway, every slot uses it and the image is assigned afterwards.
+That also keeps a caller's textures away from `set_image_in_image_node()`, which **reuses any loaded image with
+the same basename**. Provoked: a second material naming `blue/diffuse.png`, after one naming
+`red/diffuse.png`, renders red, with nothing said. The numbers need no parser, since each is checked against the
+socket that will hold it.
+
+### Built beside the mesh, not resolved and then built
+
+FR 7's all-or-nothing is stronger than planned. **The new material is a complete datablock on no object until the
+last step**, so a value's range is judged on its real socket, and a failure inside MPFB's own template code leaves
+the mesh with what it had, as a test provokes. The bridge test that provoked it first found a real bug here: a
+half-built material left in the file.
+
+### What the requirements did not anticipate
+
+- **A value's shape.** `{"roughness": 0.9}` is refused. FR 14 puts `in_effect` on each value and FR 15 has the
+  reading sent back unchanged, so an entry is an object, `{"value": 0.9}`, or `{"color": [...]}` by the
+  [one-key-per-type rule](../../../specifications/tool-interface.md#validate-before-crossing-the-socket).
+- **An image with unsaved changes** has a file and answers with `image`, not `path`, or a read-back would reload
+  the edits away. For the same reason a path whose loaded image is dirty is refused, naming the `image` form.
+- **Blender 5.1 reports a mix node's factor as `Factor`**, and `_NODE_SOCKET_VALUES` looks for `Fac`, so
+  `populate_from_object()` never reads `diffuseIntensity`, on top of the displacement spelling the request's
+  pitfall named. The store now writes both, from its own reading. Filed.
+- **Metadata (FR 6): every MHMAT key with a property on the object survives**, sixteen of them, and
+  `test_every_accepted_metadata_key_reaches_the_file` holds that list to the file. `name` is out, being
+  `material_name`. A line break is refused everywhere, since an MHMAT is one key per line and it would write a
+  second key.
+- **`set_value()` refuses an alias** though `has_key()` and `get_value()` accept one, so writes go by the full
+  property name, read off the private `_alias_to_prop`.
+- **A plain Blender material passes as untextured MakeSkin.** Node for node it is what the template builds, and
+  MakeSkin's panel stores one. `recognized_by` says which test answered.
+- **`name_shadowed` covers this root as well as earlier ones.** `find_asset_absolute_path()` takes the first
+  `<name>/<name>.mhmat` it walks, so two assets' alternates called `blue` in one root can answer for each other.
+- **A replaced file must reach the image MPFB would reuse.** The store reloads a loaded image of the same path,
+  and warns about one of the same name from elsewhere.
+
+### The pack question: a warning is enough
+
+The Architecture section's pitfall was half right. An alternate does land in a directory the pack owns, and
+`asset_packs` and a warning say so, since a reinstall may take it away. **FR 046's attribution does not then claim
+it**: its rule looks at the file's own directory, and an alternate has one of its own. A refusal would have made
+alternates impossible for most installed assets.
+
+### Sizes and times
+
+Descriptions 1,659, 2,077 and 2,206 B. Setting the gi's three 4096 px textures takes 716 ms, nearly all of it
+Blender reading them; storing them took 7 ms with the files in the page cache.
 
 ## Decisions taken while scoping
 
@@ -189,14 +280,14 @@ Asked on 2026-11-03:
 - **Sources are never changed**, rather than reproducing MPFB and reporting it, or fixing MPFB first and
   depending on that release.
 - **`license` and `author` default from the object and are reported**, as in
-  [FR 050](../050-writing-mesh-assets/README.md#decisions-taken-while-scoping). Requiring them was offered.
+  [FR 050](../../050-writing-mesh-assets/README.md#decisions-taken-while-scoping). Requiring them was offered.
 
 *Not asked*, each argued where it is stated: `replace` defaulting to false as the panel's does (FR 9);
 reloading a regenerated path (FR 11); recognising MakeSkin by node names (FR 16); `dry_run` (FR 25).
 
 ## References
 
-- [NEXT_STEPS: The MakeClothes and MakeSkin workflows](../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows).
+- [NEXT_STEPS: The MakeClothes and MakeSkin workflows](../../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows).
 - `interacting_with_blender/taido/gi/tools/apply_material.py`.
 - mpfb2: `entities/material/makeskinmaterial.py`, `entities/material/mhmaterial.py`,
   `ui/create_assets/makeskin/operators/` (`importmaterial.py`, `writelibrary.py`, `writealternate.py`),

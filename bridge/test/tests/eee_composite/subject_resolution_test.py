@@ -1,7 +1,7 @@
 """
-All thirty-two commands that take a subject, asked about the same three misses.
+All thirty-five commands that take a subject, asked about the same three misses.
 
-The claim is about thirty-two commands at once, which is why it is here: every
+The claim is about thirty-five commands at once, which is why it is here: every
 command that takes a subject resolves it the same way, because all of them go
 through ``shared/subject_resolution.py``
 ([FR 036](../../../../feature-requests/done/036-subject-resolver-and-duplication/README.md)).
@@ -15,8 +15,9 @@ The three misses are the three sentences:
 - **nothing active**, a state no command can make, so the fixture makes it;
 - **a name that does not exist** anywhere in the file;
 - **a plain object with no basemesh** among its relatives. ``get_object_info``,
-  ``generate_rigify_rig`` and FR 048's two measuring commands stop at the subject,
-  so for them this is not a miss at all, and that is asserted too.
+  ``generate_rigify_rig``, FR 048's two measuring commands and FR 049's three
+  MakeSkin commands stop at the subject, so for them this is not a miss at all, and
+  that is asserted too.
 
 For each, every command must report the same ``found``, subject name and
 ``subject_resolved_by``, and a message that begins with the shared sentence.
@@ -52,15 +53,20 @@ NO_SUCH = "BridgeTestSubjectNoSuchObject"
 
 # The commands that stop at the subject rather than going on to a basemesh.
 SUBJECT_ONLY = ("get_object_info", "generate_rigify_rig", "check_intersections",
-                "check_mesh_asset")
+                "check_mesh_asset", "get_makeskin_material", "set_makeskin_material",
+                "store_makeskin_material")
 
 
 def _calls(subject):
-    """The thirty-two commands, each with the least that passes its parameter contract."""
+    """The thirty-five commands, each with the least that passes its parameter contract."""
     return {
         "get_object_info": dict(name=subject),
         "check_intersections": dict(name=subject),
         "check_mesh_asset": dict(name=subject),
+        "get_makeskin_material": dict(name=subject),
+        "set_makeskin_material": dict(name=subject, material_name="bridge_test_never_made"),
+        "store_makeskin_material": dict(name=subject, store_as="alternate",
+                                        material_name="bridge_test_never_written"),
         "get_macro_details": dict(name=subject),
         "get_character_summary": dict(name=subject),
         "get_target_stack": dict(name=subject),
@@ -199,13 +205,17 @@ def test_a_name_that_does_not_exist(tmp_path):
 
 
 def test_an_object_with_no_basemesh(tmp_path):
-    """The third sentence from twenty-eight commands, and a found subject from two."""
+    """The third sentence from twenty-eight commands, and a found subject from seven."""
     import bpy  # pylint: disable=import-outside-toplevel
     cube = linked_plain_object(CUBE)
     try:
         answers = _answers(tmp_path, CUBE)
     finally:
         bpy.data.objects.remove(cube, do_unlink=True)
+        # The one command here that does its work on a subject with no character.
+        made = bpy.data.materials.get("bridge_test_never_made")
+        if made is not None:
+            bpy.data.materials.remove(made)
     for command, answer in answers.items():
         assert _subject_name(command, answer) == CUBE, command
         assert _resolved_by(command, answer) == "name", command

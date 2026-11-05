@@ -1000,6 +1000,35 @@ built only from what lies in the box two surfaces share, which took a dressed ch
 Verified by [`live_check.py`](done/048-measuring-mesh-assets/live_check.py), 26 checks and no failures on Blender 5.1.0, and the
 smoke run at 48 of 48 in 2.4 s. 62 new bridge tests (744), 21 new unit tests (630).
 
+## [FR 049](done/049-makeskin-materials/README.md) — MakeSkin materials: building, reading and storing them
+
+An agent could not build a MakeSkin material from textures it generated: the gi's session wrote an MHMAT by hand
+and read an operator to find out what to call, and nothing read the result back. **Three tools**:
+`mpfb_set_makeskin_material`, from image files or Blender images, and numbers; `mpfb_get_makeskin_material`,
+whose answer the writer takes back unchanged, with `in_effect` on each number; and
+`mpfb_store_makeskin_material`, as an alternate or a skin, where `mpfb_list_asset_materials` and `mpfb_set_skin`
+find it. **A source texture is never changed**: `shared/texture_writing.py` copies byte for byte or saves a copy,
+where MPFB's store re-encoded the gi's normal map from 17.0 to 18.2 MB.
+
+**One requirement holds only in part, and MPFB is why.** `apply_node_tree()` reads a file's textures and
+`diffuseColor` and no other number, so a round trip through a file reads back equal for those and returns
+`roughness` and the rest to the template's. `values_not_restored` says which, measured, and the file holds them.
+Repairing it in the two apply tools would make every installed MHMAT differ from MPFB's panel, so it was not done;
+[NEXT_STEPS](NEXT_STEPS.md#mpfbs-loader-drops-a-stored-materials-numbers) holds the decision, and the two-line fix
+is filed. The gi loses nothing.
+
+Otherwise the effort built beside the mesh rather than resolving and then building, so that a failure in MPFB's own
+template leaves the mesh as it was, and took no temporary MHMAT, since a Blender image has no filename for one; that
+also avoids `set_image_in_image_node()`, which gave a second material the first one's pixels when two files shared a
+basename. Filed with it: the re-encoding, and `_NODE_SOCKET_VALUES` missing the mix factor and misspelling the
+displacement key, both of which the store now writes itself. `name_shadowed` covers this root too, and a warning is
+what an alternate in a pack's directory gets.
+
+Verified by [`live_check.py`](done/049-makeskin-materials/live_check.py), 20 checks and no failures on Blender 5.1.0:
+the gi rebuilt from its three textures and stored as an alternate of a copy of `taido_gi`, rendering in Cycles at a
+mean difference of 0.000000 per channel, its sources byte-identical. The smoke run is 51 of 51 in 2.6 s, its store
+item a `dry_run`, so its file list did not grow. 102 new bridge tests (846), 38 new unit tests (668).
+
 ## [FR 058](done/058-autostarting-the-bridge/README.md) — auto-starting the bridge
 
 A windowed Blender had to be told to serve, by hand, every session. **A checkbox now does that, off by

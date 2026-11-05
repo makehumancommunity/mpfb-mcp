@@ -435,6 +435,23 @@ through it on the next character. One session's clearance step stopped working t
 The measurement exists once, in `shared/mesh_overlap.py`, and reaches three answers, which is the
 [second-opinion rule](#a-summary-is-never-a-second-opinion) applied before a summary exists.
 
+## A number is reported with whether it does anything
+
+**A stored or displayed value can be inert, and nothing about the value says so.** MPFB writes `roughness 0.7` beside a
+roughness map, and `bumpmapIntensity 1.0` with no bump map. `mpfb_get_makeskin_material` puts `in_effect` on each number:
+false when its socket is linked, with `overridden_by` naming the slot driving it; false when it scales a map the
+material does not have, with `needs_slot` naming that map; and false for `diffuseColor` when the diffuse texture's mix
+factor leaves none of it showing ([FR 049](../feature-requests/done/049-makeskin-materials/README.md)). It is worked out
+from the live tree rather than a table, so the rule holds on a material someone rewired by hand.
+
+**What the tree has no socket for is not a value at all**, and is listed apart as `values_absent`, with the slots that
+would bring its node into being. Reporting it as `null` among the others would give the writer an entry it must refuse,
+which is the one thing a read-back may not do.
+
+**A consequence that is measured beats one that is stated.** `mpfb_store_makeskin_material`'s `values_not_restored` names
+each number in effect that MPFB's loader will not give back, from a scratch build of MPFB's template rather than a list
+kept here, so it is true of the MPFB that is running and empties itself if that MPFB starts reading them.
+
 ## A summary is never a second opinion
 
 A summary tool answers several detailed tools' questions at once, and is only worth having if an

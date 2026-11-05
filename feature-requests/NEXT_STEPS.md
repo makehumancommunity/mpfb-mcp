@@ -13,7 +13,7 @@ records what has already landed and why. When an effort below is finished, move 
 
 **With a feature request**, in request order:
 
-- [The MakeClothes and MakeSkin workflows](#the-makeclothes-and-makeskin-workflows): FR 049-051
+- [The MakeClothes and MakeSkin workflows](#the-makeclothes-and-makeskin-workflows): FR 050 and FR 051
 - [A hand cannot be placed at a point on a standard rig](#a-hand-cannot-be-placed-at-a-point-on-a-standard-rig): FR 052 and FR 053
 - [Hand-to-hand contact on a Rigify rig](#hand-to-hand-contact-on-rigify): FR 052, in part
 - [A refit silently resets a generated Rigify rig's pose and switches](#refit-resets-a-rigify-pose): FR 054
@@ -30,6 +30,7 @@ records what has already landed and why. When an effort below is finished, move 
 - [Posing support](#posing-support)
 - [A material whose textures do not resolve is reported as applied](#a-material-whose-textures-do-not-resolve-is-reported-as-applied)
 - [The Rigify `fist` shape intersects itself, and "straight" is out of reach](#rigify-fist-intersects-itself)
+- [MPFB's loader drops a stored material's numbers](#mpfbs-loader-drops-a-stored-materials-numbers)
 - [`mpfb_create_human` takes no name, and no targets](#create-human-takes-no-name)
 - [Whether `mpfb_add_asset` should measure intersections by default](#add-asset-intersections-by-default)
 - [A clearance line in `mpfb_place_character`](#a-clearance-line-in-place-character)
@@ -56,8 +57,8 @@ records what has already landed and why. When an effort below is finished, move 
 
 **Scoped on 2026-11-03 as four requests.**
 [FR 048](done/048-measuring-mesh-assets/README.md) (`mpfb_check_mesh_asset` and `mpfb_check_intersections`)
-has landed; [HISTORY.md](HISTORY.md) has it. Not yet implemented:
-[FR 049](049-makeskin-materials/README.md) (set, get and store a MakeSkin material),
+and [FR 049](done/049-makeskin-materials/README.md) (set, get and store a MakeSkin material) have landed;
+[HISTORY.md](HISTORY.md) has them. Not yet implemented:
 [FR 050](050-writing-mesh-assets/README.md) (`mpfb_write_mesh_asset`, and the try-on recipe) and
 [FR 051](051-delete-groups/README.md) (`mpfb_generate_delete_group`, behind a spike). They rename the
 tools proposed below, since the [glossary](../specifications/tool-interface.md) keeps "clothes" for
@@ -98,14 +99,12 @@ the [mutating-tools rules](../specifications/mutating-tools.md):
 The logic sits in the `ClothesCommon` operator mixin rather than a service, so like
 `mpfb_set_asset_material` this has to reproduce a panel. Destination is a design question: the
 library is the natural "where the result can be found", but a work-in-progress may not belong there.
-This session wrote to a project directory, and **"Store in library" is untested**. It must also say
-that it rewrites source textures (below).
+This session wrote to a project directory, and **"Store in library" is untested**.
+[FR 049](done/049-makeskin-materials/README.md)'s `shared/texture_writing.py` does not rewrite source textures,
+and neither should this.
 
-**3. `mpfb_set_makeskin_material`.** Takes a name, a map of `{diffuse, normalmap, roughnessmap, ...}`
-to image paths, and values, and builds the node tree through MPFB's own template. Agents generate
-textures outside Blender, so this is one tool that has to accept input paths. It needs a matching
-read: which maps are wired, at what strength, in which colour space. `mpfb_get_material_settings`
-reports only `diffuseIntensity` for a garment.
+**3. `mpfb_set_makeskin_material`.** Landed with `mpfb_get_makeskin_material` and
+`mpfb_store_makeskin_material`, in [FR 049](done/049-makeskin-materials/README.md).
 
 **4. `mpfb_generate_delete_group`.** This was the longest part of the session, and it is a real
 algorithm rather than a call:
@@ -156,9 +155,9 @@ about 500 lines to write and 20 s to run.
 - `check_that_all_textures_are_saved` calls `image.save()` on every texture, which **re-encodes the
   source files in place**: here the diffuse went from 2.5 to 3.2 MB and the normal map from 17.0 to
   18.2 MB. Nothing says so, and it is a surprise if those files are generated or under version
-  control.
+  control. [FR 049](done/049-makeskin-materials/README.md)'s tools do not call it; filed.
 - The MHMAT writer emits `bumpmapIntensity 1.0` with no bump map and `roughness 0.7` beside a roughness
-  map. Both are harmless, but a reader can't tell which values are in effect.
+  map. Both are harmless, and `mpfb_get_makeskin_material`'s `in_effect` now tells a reader which are.
 
 <a id="garment-fit-intersections"></a>
 
@@ -536,7 +535,7 @@ Two gaps the karate session found, which the posing requests did not take:
 
 ## A material whose textures do not resolve is reported as applied
 
-[FR 049](049-makeskin-materials/README.md) refuses this in its own new tool; the two tools below stay
+[FR 049](done/049-makeskin-materials/README.md) refuses this in its own new tool; the two tools below stay
 here.
 
 `mpfb_set_asset_material` returned `applied: true`, named the file and listed what it destroyed,
@@ -556,6 +555,19 @@ material, check each image node for a `None` image or a `filepath` that does not
 them. `mpfb_add_asset` wants the same check — it builds materials by the same path, and its
 `material_created: true` carries the same false reassurance. It is cheap, it needs no new MPFB
 capability, and it converts a render nobody can explain into one line in the response.
+
+<a id="mpfbs-loader-drops-a-stored-materials-numbers"></a>
+
+## MPFB's loader drops a stored material's numbers
+
+[FR 049](done/049-makeskin-materials/README.md#the-fidelity-requirement-holds-in-part-and-mpfb-is-why) required a
+material stored and applied again to read back equal, and it does for textures and `diffuseColor` only:
+`apply_node_tree()` parses `roughness`, `metallic`, `ior` and every intensity and uses none of them.
+`mpfb_store_makeskin_material` says so in `values_not_restored`, and the file holds them. **A decision is open**:
+fix it in MPFB, where it is two lines and every path benefits, which is filed in `MCP_DISCOVERED_BUGS.md`; or apply
+the file's numbers in `mpfb_set_asset_material` and `mpfb_set_skin` after MPFB builds, which meets the requirement
+today and makes every installed MHMAT look different through those tools than through MPFB's panel and
+`mpfb_add_asset`. FR 049 did neither.
 
 <a id="rigify-fist-intersects-itself"></a>
 

@@ -107,3 +107,13 @@ def test_the_makeclothes_and_makeskin_property_sets_are_reachable_where_mpfb_kee
         assert "license" in config_set.get_keys()
     assert surface.make_clothes_properties("no.such.root") is None, "a miss is an ordinary answer"
     assert surface.make_skin_properties("no.such.root") is None
+
+
+def test_the_makeskin_module_is_reached_through_the_class():
+    """FR 049: names no service's module holds, on the module of a class one does."""
+    services = services_or_skip()
+    surface = bridge_module("shared.mpfb_surface")
+    assert "diffuse" in surface.required_makeskin_level(services, "_TEXTURE_NAMES")
+    with pytest.raises(surface.MissingFromMpfb) as raised:
+        surface.required_makeskin_level(services, "_NO_SUCH_NAME")
+    assert "_NO_SUCH_NAME" in str(raised.value)

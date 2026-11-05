@@ -210,9 +210,13 @@ versus services" to *any* two MPFB code paths.
 - **`identify_material()` calls an untextured MakeSkin material `gameengine`.** MakeSkin creates
   its `diffuseIntensity` node only for a diffuse texture, and that node is how MakeSkin is
   recognized, so a MakeSkin material whose MHMAT names none is identified by its Principled BSDF
-  instead. Observed in FR 040's bridge tests. Every real MHMAT names a texture, which is why it is
-  recorded here as a trap for fixtures rather than filed; `material_identified_as` reports MPFB's
-  verdict as it is.
+  instead. Observed in FR 040's bridge tests, and recorded then as a trap for fixtures, on the
+  reading that every real MHMAT names a texture. [FR 049](../feature-requests/done/049-makeskin-materials/README.md)
+  made it matter, since `mpfb_set_makeskin_material` builds untextured materials on purpose. So
+  `shared/makeskin.py` accepts a `gameengine` verdict on a tree holding only nodes `makeskin.json` names,
+  and `recognized_by` says which test answered; `material_identified_as` still reports MPFB's verdict
+  as it is. A plain Principled material from Blender passes too: node for node it is what the template
+  builds, and MakeSkin's panel stores one.
 - **Do not merge them.** Picking one and naming it is the rule; synthesizing a fourth behavior that
   matches none of MPFB's own would make the result unreproducible from inside Blender.
 - **Not reproducing something MPFB's UI does is the same decision and carries the same burden**, so
@@ -603,6 +607,36 @@ copy.
   [a rule of its own](#where-mpfbs-own-code-paths-disagree-mpfb-mcp-picks-one-and-names-it): there
   is one implementation, and its comment and its code disagree. Where the stated intent is not
   clear, report rather than repair.
+
+### MakeSkin: three departures named, and one defect reported rather than repaired
+
+[FR 049](../feature-requests/done/049-makeskin-materials/README.md) reimplements `mpfb.import_makeskin_material`,
+`mpfb.write_alternate` and `mpfb.write_makeskin_to_library` from `MaterialService` and `MakeSkinMaterial`. Those
+operators read scene properties, and report `{'ERROR'}` and then return `{'FINISHED'}`. Each departure from them is
+in the command's docstring:
+
+- **Sources are not re-encoded.** The operators' `check_that_all_textures_are_saved()` saves every image in place.
+  Their docstring warns only that images are saved "alongside the MHMAT file", which is the stated intent this
+  follows.
+- **The directory is made last, and nothing is overwritten unasked.** See
+  [a tool whose effect is outside the `.blend`](mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more).
+- **An image is assigned rather than named to the template.** `set_image_in_image_node()` reuses any loaded image with
+  the same basename, so a second material naming another directory's `diffuse.png` silently showed the first one's
+  pixels. Provoked against a running install.
+
+**`apply_node_tree()` reads a file's textures and `diffuseColor`, and no other number**, though its docstring says
+"filled in from this material" and `populate_from_object()` writes them all. By the
+[stated-intent rule](#where-a-service-falls-short-of-what-its-own-code-says-it-does-follow-the-stated-intent) a repair
+looks due. **It was not made, and whether it should be is an open decision**
+([NEXT_STEPS](../feature-requests/NEXT_STEPS.md#mpfbs-loader-drops-a-stored-materials-numbers)). A repair in
+`mpfb_set_asset_material` and `mpfb_set_skin` would change how every existing MHMAT looks through those two, against
+MPFB's panel and `mpfb_add_asset`, which is the reproducibility bar at the head of this document. So
+`mpfb_store_makeskin_material` reports it, measured, as `values_not_restored`, and it is filed.
+
+**`_NODE_SOCKET_VALUES` misses two of its own keys**: `displacementmapIntensity` matches no MHMAT key, and `Fac` is not
+what Blender 5.1 calls a mix node's factor, so neither strength reaches a file through `populate_from_object()`. The
+store writes both from `shared/makeskin.py`'s own reading, and takes the MHMAT's spelling as the key. **This is the
+repair the rule asks for**: it changes only a file this package writes, and costs nothing if MPFB is fixed.
 
 ### A character away from the origin: repair what MPFB visibly intends, report what it does not
 

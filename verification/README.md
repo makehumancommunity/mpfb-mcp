@@ -162,7 +162,9 @@ builds a whole second character, which is the only honest way to call that tool.
   is too, in MPFB's preset dropdown. FR 027 weighed keeping its item refusal-only instead and
   did not: a mutating item must come back `performed: true`, and a smoke item that never writes
   would never find out that writing broke. Delete them by hand if you want them gone; nothing here
-  does.
+  does. `mpfb_store_makeskin_material` ([FR 049](../feature-requests/done/049-makeskin-materials/README.md)) would be a
+  fourth, so its item passes `dry_run` instead, and is the one mutating item that must come back ready and **not**
+  performed (`harness.DRY_RUN_TOOLS`). What it cannot find out, writing, its own request's live check established.
 - **The `mpfb_set_material_settings` item names one socket**, the other non-default argument in the
   table: the call naming nothing - what FR 040 planned as its item - answers `performed: false`,
   which the rule above does not allow. It writes the first writable float on the first colour

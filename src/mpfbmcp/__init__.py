@@ -174,6 +174,10 @@ def build_server() -> FastMCP:
             "mpfb_check_intersections rather than looking at a render, or ask "
             "mpfb_add_asset to with measure_intersections; a mesh being "
             "authored into an asset is measured by mpfb_check_mesh_asset. "
+            "To give a mesh a material from textures, use "
+            "mpfb_set_makeskin_material, read it with "
+            "mpfb_get_makeskin_material, and keep it as an alternate or a skin "
+            "with mpfb_store_makeskin_material. "
             "A character exists only in the running .blend until it is saved "
             "as an MPFB preset: mpfb_save_preset writes one - a file, and not "
             "undoable - mpfb_list_presets says which exist, and "
@@ -220,13 +224,13 @@ def build_server() -> FastMCP:
         add_asset, add_rig, apply_expressions, check_intersections, check_mesh_asset,
         create_export_copy, create_human,
         create_human_from_preset, export_character, generate_rigify_rig, get_character_summary, get_expression, get_face_units,
-        get_macro_details, get_material_settings, get_object_info, get_pose, get_pose_controls,
+        get_macro_details, get_makeskin_material, get_material_settings, get_object_info, get_pose, get_pose_controls,
         get_rigify_hand_shape, get_status, get_target_stack,
         list_asset_materials, list_assets, list_docs, list_expressions, list_objects,
         list_presets, list_rigs, list_targets, list_urls, place_character, refit_human, remove_asset, reset_pose,
         save_expression, save_preset, set_asset_material, set_face_units, set_macro_details,
-        set_material_settings, set_pose_bones, set_pose_switches, set_rigify_hand_shape, set_skin,
-        set_targets,
+        set_makeskin_material, set_material_settings, set_pose_bones, set_pose_switches, set_rigify_hand_shape, set_skin,
+        set_targets, store_makeskin_material,
         symmetrize_targets)
     add_asset.register(mcp)
     add_rig.register(mcp)
@@ -242,6 +246,7 @@ def build_server() -> FastMCP:
     get_expression.register(mcp)
     get_face_units.register(mcp)
     get_macro_details.register(mcp)
+    get_makeskin_material.register(mcp)
     get_material_settings.register(mcp)
     get_object_info.register(mcp)
     get_pose.register(mcp)
@@ -267,12 +272,14 @@ def build_server() -> FastMCP:
     set_asset_material.register(mcp)
     set_face_units.register(mcp)
     set_macro_details.register(mcp)
+    set_makeskin_material.register(mcp)
     set_material_settings.register(mcp)
     set_pose_bones.register(mcp)
     set_pose_switches.register(mcp)
     set_rigify_hand_shape.register(mcp)
     set_skin.register(mcp)
     set_targets.register(mcp)
+    store_makeskin_material.register(mcp)
     symmetrize_targets.register(mcp)
 
     _shipped_without_source_indentation(mcp)

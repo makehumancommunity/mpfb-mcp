@@ -65,6 +65,7 @@ __all__ = (
     "make_skin_properties",
     "module_level",
     "property_value",
+    "required_makeskin_level",
     "required_module_level",
     "rig_helpers_properties",
 )
@@ -151,6 +152,28 @@ def required_module_level(services, service_name, name):
             "without it. The installed MPFB is probably newer than this add-on; check "
             "mpfb_get_status and upgrade the MPFB Bridge.".format(
                 service_name, module.__name__, name))
+    return getattr(module, name)
+
+
+def required_makeskin_level(services, name):
+    """``name`` off MPFB's ``makeskinmaterial.py``, or :class:`MissingFromMpfb` saying which.
+
+    **No service's module holds these.** ``_TEXTURE_NAMES``, ``_NONCOLOR`` and
+    ``_NODE_SOCKET_VALUES`` are private to the entity's own module, which
+    humanservice.py imports only the class from. So the module is reached through
+    the class, which :func:`module_level` can read, and ``sys.modules`` already
+    holds it because that class exists. Required rather than given a fallback, as
+    ``FaceService``'s vocabulary is: a made-up slot list would be a stale copy of
+    MPFB's presented as MPFB's, and the three commands reading it have nothing to
+    answer without one.
+    """
+    entity = module_level(services, "HumanService", "MakeSkinMaterial", fallback=None)
+    module = None if entity is None else sys.modules.get(entity.__module__)
+    if module is None or not hasattr(module, name):
+        raise MissingFromMpfb(
+            "MPFB's MakeSkinMaterial entity no longer defines {:s}, and this command cannot "
+            "answer without it. The installed MPFB is probably newer than this add-on; check "
+            "mpfb_get_status and upgrade the MPFB Bridge.".format(name))
     return getattr(module, name)
 
 

@@ -22,6 +22,8 @@ call each, the tool's own defaults, three shallow assertions.
 3. for a mutating tool, ``performed`` is true and agrees with that tool's verb
    (``harness.MUTATING_VERBS``) - the one check the unit suite genuinely cannot
    make, because there the flag and the verb are read out of the same stub run.
+   ``harness.DRY_RUN_TOOLS`` is the one exception: an item called with ``dry_run``
+   so as to write nothing must come back ready and not performed.
 
 It asserts nothing about *values*. Whether a garment equipped through the tool
 is indistinguishable from one equipped through MPFB's panel is FR 010's claim,
@@ -507,6 +509,32 @@ def _check_mesh_asset(run: _Run) -> dict:
     return run.tools["mpfb_check_mesh_asset"](name=_asset_object(run))
 
 
+@_item("mpfb_set_makeskin_material", "material_name", "requested_material_name", "textures",
+       "values", "metadata", "known_slots", "known_values", "known_metadata",
+       "materials_destroyed", "material_shared_with", "resolution_errors")
+def _set_makeskin_material(run: _Run) -> dict:
+    # Here, just before the asset comes off again, because it replaces the asset's material.
+    return run.tools["mpfb_set_makeskin_material"](
+        name=_asset_object(run), material_name="mpfbmcp_smoke_run", replace=True)
+
+
+@_item("mpfb_get_makeskin_material", "textures", "values", "values_absent", "metadata",
+       "metadata_unset", "empty_slots", "known_slots", "material_name", "recognized_by")
+def _get_makeskin_material(run: _Run) -> dict:
+    return run.tools["mpfb_get_makeskin_material"](name=_asset_object(run))
+
+
+@_item("mpfb_store_makeskin_material", "path", "fragment", "textures_written", "values_not_restored",
+       "license_resolved_by", "author_resolved_by", "apply_with", "cache_invalidated",
+       "asset_packs", "warnings")
+def _store_makeskin_material(run: _Run) -> dict:
+    # dry_run, so that the file list in this module's docstring does not grow. It is the one
+    # mutating item that does not come back performed: harness.DRY_RUN_TOOLS.
+    return run.tools["mpfb_store_makeskin_material"](
+        name=_asset_object(run), store_as="alternate", material_name="mpfbmcp_smoke_run",
+        dry_run=True)
+
+
 @_item("mpfb_remove_asset", "asset_object_name", "object_type", "basemesh_name",
        "objects_removed")
 def _remove_asset(run: _Run) -> dict:
@@ -719,7 +747,12 @@ def _run_item(run: _Run, item: dict) -> None:
     problems += ["contract key {!r} is not named by the tool's own description".format(key)
                  for key in item["keys"] if key not in named]
     if tool_name in harness.MUTATING_VERBS:
-        if result.get("performed") is not True:
+        if tool_name in harness.DRY_RUN_TOOLS:
+            if result.get("ready") is not True or result.get("performed") is not False:
+                problems.append("a dry run should be ready and not performed, got ready={!r}, "
+                                "performed={!r}".format(result.get("ready"),
+                                                        result.get("performed")))
+        elif result.get("performed") is not True:
             problems.append("performed is {!r}, and this is a mutating tool".format(
                 result.get("performed")))
         disagreement = harness.performed_disagreement(tool_name, envelope)

@@ -5,7 +5,7 @@
 The third of four requests scoping
 [The MakeClothes and MakeSkin workflows](../NEXT_STEPS.md#the-makeclothes-and-makeskin-workflows).
 It needs [FR 048](../done/048-measuring-mesh-assets/README.md)'s report and shares
-[FR 049](../049-makeskin-materials/README.md)'s texture writing, so it lands after both.
+[FR 049](../done/049-makeskin-materials/README.md)'s texture writing, so it lands after both.
 
 **Writing an asset took `bpy.ops.mpfb.write_makeclothes_clothes(filepath=...)` with exactly the
 basemesh and garment selected.** It leaves the selection cleared, reports only through `self.report`,
@@ -37,7 +37,7 @@ location an agent can then try it from, and says exactly what it wrote.
 
 - **The asset can be iterated on** without filling the library, through `destination`.
 - **The mesh knows what it became.** After a library write, `mpfb_get_object_info` and the alternates in
-  [FR 049](../049-makeskin-materials/README.md) work on the object.
+  [FR 049](../done/049-makeskin-materials/README.md) work on the object.
 - **An agent is told how to try it on another body**, with the tools that already exist.
 
 ## Non-goals
@@ -99,7 +99,10 @@ location an agent can then try it from, and says exactly what it wrote.
     colour adjustments by it. An existing one is kept across an overwrite.
 14. **The OBJ matches the MHCLO.** It is exported without modifiers applied (see Architecture).
 15. **The material's MHMAT and textures are written whenever it is MakeSkin**, untextured ones included, and
-    through [FR 049](../049-makeskin-materials/README.md)'s module, so no source file changes. Other material
+    through [FR 049](../done/049-makeskin-materials/README.md)'s modules, so no source file changes:
+    `shared/makeskin.py`'s `recognized()` and `file_settings()`, and `shared/texture_writing.py`'s `plan()`,
+    `staging()` and `move_into_place()`, which already write beside the destination and move. Report
+    `values_not_restored` as `mpfb_store_makeskin_material` does, since MPFB's loader drops the same numbers. Other material
     types write none, and `material_written: false` says why. Proxies get none, as the panel gives them none.
 16. **Overwriting replaces this asset's own files only.** Alternates in subdirectories, weights files and a
     thumbnail beside it are not removed. Files are written first to a temporary directory beside the

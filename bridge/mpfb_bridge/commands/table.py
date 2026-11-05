@@ -57,6 +57,7 @@ from . import get_character_summary
 from . import get_expression
 from . import get_face_units
 from . import get_macro_details
+from . import get_makeskin_material
 from . import get_material_settings
 from . import get_mpfb_status
 from . import get_object_info
@@ -83,12 +84,14 @@ from . import save_preset
 from . import set_asset_material
 from . import set_face_units
 from . import set_macro_details
+from . import set_makeskin_material
 from . import set_material_settings
 from . import set_pose_bones
 from . import set_pose_switches
 from . import set_rigify_hand_shape
 from . import set_skin
 from . import set_targets
+from . import store_makeskin_material
 from . import symmetrize_targets
 from .command import Command
 
@@ -185,6 +188,12 @@ COMMANDS = {
         params=get_macro_details.PARAMS,
         requires_mpfb=True,
         summary=get_macro_details.SUMMARY),
+    "get_makeskin_material": Command(
+        name="get_makeskin_material",
+        handler=get_makeskin_material.get_makeskin_material,
+        params=get_makeskin_material.PARAMS,
+        requires_mpfb=True,
+        summary=get_makeskin_material.SUMMARY),
     "get_material_settings": Command(
         name="get_material_settings",
         handler=get_material_settings.get_material_settings,
@@ -363,6 +372,12 @@ COMMANDS = {
         params=set_macro_details.PARAMS,
         requires_mpfb=True,
         summary=set_macro_details.SUMMARY),
+    "set_makeskin_material": Command(
+        name="set_makeskin_material",
+        handler=set_makeskin_material.set_makeskin_material,
+        params=set_makeskin_material.PARAMS,
+        requires_mpfb=True,
+        summary=set_makeskin_material.SUMMARY),
     "set_material_settings": Command(
         name="set_material_settings",
         handler=set_material_settings.set_material_settings,
@@ -399,6 +414,12 @@ COMMANDS = {
         params=set_targets.PARAMS,
         requires_mpfb=True,
         summary=set_targets.SUMMARY),
+    "store_makeskin_material": Command(
+        name="store_makeskin_material",
+        handler=store_makeskin_material.store_makeskin_material,
+        params=store_makeskin_material.PARAMS,
+        requires_mpfb=True,
+        summary=store_makeskin_material.SUMMARY),
     "symmetrize_targets": Command(
         name="symmetrize_targets",
         handler=symmetrize_targets.symmetrize_targets,

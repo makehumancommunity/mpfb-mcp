@@ -33,6 +33,7 @@ Nothing here is unit-tested and nothing here may be imported by ``src/``.
 from __future__ import annotations
 
 __all__ = (
+    "DRY_RUN_TOOLS",
     "MUTATING_VERBS",
     "Report",
     "descriptions",
@@ -80,6 +81,8 @@ MUTATING_VERBS = {
     "mpfb_remove_asset": "removed",
     "mpfb_set_skin": "applied",
     "mpfb_set_asset_material": "applied",
+    "mpfb_set_makeskin_material": "applied",
+    "mpfb_store_makeskin_material": "saved",
     "mpfb_set_pose_bones": "changes",
     "mpfb_set_pose_switches": "changes",
     "mpfb_reset_pose": "reset",
@@ -88,6 +91,11 @@ MUTATING_VERBS = {
     "mpfb_create_export_copy": "created",
     "mpfb_export_character": "exported",
 }
+
+
+# The smoke run calls these with dry_run, because what they write would otherwise
+# grow the list of files it leaves behind. Saved and performed both come back false.
+DRY_RUN_TOOLS = ("mpfb_store_makeskin_material",)
 
 
 def performed_disagreement(tool_name: str, envelope: dict) -> str | None:

@@ -5,7 +5,7 @@ What a file this add-on writes by name may be called.
 [`__init__.py`](__init__.py) for why this directory exists beside
 ``commands/``.
 
-Three artifacts are addressed by a name that becomes a filename in a directory
+Several artifacts are addressed by a name that becomes a filename in a directory
 nobody on the far side of the socket chose: a character preset
 (``<user config>/human.<name>.json``, written by ``save_preset`` and read by
 ``create_human_from_preset``), a saved expression
@@ -43,9 +43,11 @@ nothing out of MPFB, so like ``performed`` it takes no ``services``.
 """
 
 __all__ = (
+    "MATERIAL_NAME_PATTERN",
     "NAME_MAX_LENGTH",
     "NAME_PATTERN",
     "file_facts",
+    "material_name_rejection",
     "modified_iso",
     "name_rejection",
 )
@@ -62,6 +64,10 @@ NAME_MAX_LENGTH = 64
 # made of is outside it, on every platform, which is what makes the escape
 # unreachable rather than merely unlikely.
 NAME_PATTERN = "^[A-Za-z0-9_.-]+$"
+
+# What a stored MakeSkin material may be called. Narrower than the above: see
+# material_name_rejection().
+MATERIAL_NAME_PATTERN = "^[a-z0-9_]+$"
 
 
 def name_rejection(name, noun):
@@ -91,6 +97,30 @@ def name_rejection(name, noun):
         return ("A {:s} name may hold only letters, digits, '_', '-' and '.', so that it "
                 "cannot become a path. This one also holds: {:s}.".format(
                     noun, ", ".join(repr(character) for character in illegal)))
+    return None
+
+
+def material_name_rejection(name):
+    """Why this name may not become a stored MakeSkin material, as a sentence, or None.
+
+    Stricter than :func:`name_rejection`, for one reason: MakeSkin's two store
+    operators lowercase a name and turn its spaces into underscores before
+    using it, so a name holding either would be written under a name other than
+    the one given, and be looked up under the other by anyone reading the panel.
+    The hyphen and the dot go for the same reason of being read back: the file is
+    ``<name>/<name>.mhmat`` beside textures called ``<name>_<slot>.<ext>``, and
+    only what survives MPFB's normalisation unchanged is addressable both ways.
+    """
+    rejection = name_rejection(name, "material")
+    if rejection is not None:
+        return rejection
+    if re.match(MATERIAL_NAME_PATTERN, name) is None:
+        illegal = sorted(set(
+            character for character in name
+            if re.match(MATERIAL_NAME_PATTERN, character) is None))
+        return ("A material name may hold only lower case letters, digits and '_', which is "
+                "what survives MPFB's normalisation unchanged. This one also holds: {:s}.".format(
+                    ", ".join(repr(character) for character in illegal)))
     return None
 
 

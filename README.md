@@ -16,7 +16,7 @@ you can speed up things and save some tokens.
 
 ## Status
 
-Early beta. Forty-two tools are implemented.
+Early beta. Forty-nine tools are implemented.
 
 **Introspection** — read-only, and each of them always answers rather than failing:
 
@@ -78,6 +78,11 @@ Early beta. Forty-two tools are implemented.
   already on the character, and take it off properly.
 - `mpfb_set_skin` — give the character a skin, in any of MPFB's five material models.
 - `mpfb_set_asset_material` — recolour an equipped asset, or restore its own material.
+- `mpfb_set_makeskin_material` / `mpfb_get_makeskin_material` — give any mesh a MakeSkin material from image
+  files or Blender images and numbers, and read which maps are wired and which numbers are in effect.
+- `mpfb_store_makeskin_material` — keep one as an alternate of its asset or as a body skin, without changing a
+  source texture. MPFB's loader then restores the textures and the diffuse colour, and the answer names any
+  other number it will not.
 - `mpfb_set_material_settings` — change iris colours, the layered skin and the tint of hair and
   garments, batched, in a way a preset keeps.
 - `mpfb_set_pose_bones` — pose a character: move, rotate, aim and scale its controls in the
