@@ -26,6 +26,10 @@ matched pack with nothing installed, and claimants that disagree. How each file
 is attributed is ``bbb_shared/pack_attribution_test.py``'s; what is checked here
 is that the catalogue reports it.
 
+The summary (FR 056) is asked of the same library. What it must never become is a
+second opinion, so its ``facets`` are summed against the rows they stand for,
+filter by filter, rather than against numbers written down here.
+
 The cap and the paging are checked here rather than on mpfb-mcp's side because
 they are about a real library's ordering: MPFB's cached dict is insertion
 ordered from an ``rglob``, whose order is filesystem-dependent, so "page 2 does
@@ -332,3 +336,168 @@ def test_a_pack_filter_reports_each_pack_it_matched_and_what_is_installed(attrib
 
     assert answer["matched_packs"] == {"capes01_cc0": 0, "hats01_cc0": 1}
     assert result(COMMAND)["matched_packs"] is None, "no pack filter, nothing matched"
+
+
+def _facet_counts_from_rows(rows):
+    counts = dict()
+    for row in rows:
+        key = (row["asset_subdir"], row["pack"], row["license"])
+        counts[key] = counts.get(key, 0) + 1
+    return counts
+
+
+def _facet_counts(answer):
+    return {(facet["asset_subdir"], facet["pack"], facet["license"]): facet["count"]
+            for facet in answer["facets"]}
+
+
+def test_a_bare_call_answers_with_a_summary(attributed):
+    """No rows, nothing cut, and the keys a caller reads for a page still there"""
+    answer = result(COMMAND)
+
+    assert answer["summary"] is True
+    assert answer["requested_summary"] is None, "nothing was asked for, and it says so"
+    assert answer["assets"] == [] and answer["count"] == 0
+    assert answer["offset"] is None and answer["limit"] is None, "no page, and keys still present"
+    assert answer["truncated"] is False, "no part of the library was cut"
+    assert "not the whole library" not in answer["message"]
+    assert "This is a summary" in answer["message"] and "summary=false" in answer["message"]
+
+
+def test_facets_stand_for_exactly_the_rows(attributed):
+    """Never a second opinion: every filter, against the rows the same filter lists"""
+    for filters in (dict(), {"asset_subdir": "clothes"}, {"name_contains": "e"},
+                    {"pack": "_cc0"}, {"pack": "hats01"}, {"license": "CC0"}):
+        rows = result(COMMAND, dict(filters, summary=False, limit=1000))
+        summary = result(COMMAND, dict(filters, summary=True))
+
+        assert _facet_counts(summary) == _facet_counts_from_rows(rows["assets"]), filters
+        assert sum(facet["count"] for facet in summary["facets"]) == summary["total_count"], \
+            filters
+        assert summary["total_count"] == rows["total_count"], filters
+        assert summary["counts_by_asset_subdir"] == rows["counts_by_asset_subdir"], filters
+        assert summary["counts_by_license"] == rows["counts_by_license"], filters
+        assert summary["license_unknown_count"] == rows["license_unknown_count"], filters
+        assert summary["pack_ambiguous_count"] == \
+            sum(1 for row in rows["assets"] if row["pack_ambiguous"]), filters
+
+
+def test_facets_are_sorted_by_subdir_and_then_by_count(attributed):
+    facets = result(COMMAND)["facets"]
+
+    keys = [(facet["asset_subdir"], -facet["count"]) for facet in facets]
+    assert keys == sorted(keys), "by subdir, then largest first: {!r}".format(facets)
+    assert all(sorted(facet) == ["asset_subdir", "count", "license", "pack"] for facet in facets)
+
+
+def test_an_asset_with_two_claimants_counts_once_under_the_pack_a_row_reports(attributed):
+    """fedora: hats01 and hats01_cc0"""
+    bare = result(COMMAND, {"summary": True, "asset_subdir": "clothes", "name_contains": "fedora"})
+    assert _facet_counts(bare) == {("clothes", "hats01", "CC0"): 1}
+    assert bare["pack_ambiguous_count"] == 1
+
+    filtered = result(COMMAND, {"summary": True, "pack": "_cc0"})
+    assert _facet_counts(filtered) == {("clothes", "hats01_cc0", "CC0"): 1}, \
+        "under the claimant the filter matched, as a row would be"
+
+
+def test_an_unknown_pack_and_an_unknown_license_are_kept(attributed):
+    """plain is claimed by nothing, and ponytail's claimants disagree"""
+    plain = result(COMMAND, {"summary": True, "name_contains": "plain"})
+    assert [(facet["pack"], facet["license"]) for facet in plain["facets"]] == [(None, None)]
+
+    ponytail = result(COMMAND, {"summary": True, "name_contains": "ponytail"})
+    assert [facet["license"] for facet in ponytail["facets"]] == [None]
+
+
+def test_a_summary_reports_the_conflicts_of_everything_it_counts(attributed):
+    """An empty list beside a whole library's facets would say there are none"""
+    conflicted = [conflict["path"] for conflict in
+                  result(COMMAND, {"asset_subdir": "hair"})["attribution_conflicts"]]
+    assert conflicted, "the fixture's ponytail should be reported beside its page"
+
+    assert [conflict["path"] for conflict in result(COMMAND)["attribution_conflicts"]] \
+        == conflicted
+
+
+def test_a_filter_narrows_a_summary_and_says_what_it_left_out(attributed):
+    everything = result(COMMAND)
+    cc0 = result(COMMAND, {"summary": True, "license": "CC0"})
+
+    assert cc0["total_count"] == everything["counts_by_license"]["CC0"]
+    assert all(facet["license"] == "CC0" for facet in cc0["facets"])
+    assert cc0["counts_by_license"] == everything["counts_by_license"], \
+        "taken before the license filter, as on a page"
+    assert "excluded, not checked" in cc0["message"]
+    assert cc0["requested_summary"] is True and cc0["requested_license"] == "CC0"
+
+    clothes = result(COMMAND, {"summary": True, "asset_subdir": "CLOTHES"})
+    assert {facet["asset_subdir"] for facet in clothes["facets"]} == {"clothes"}
+
+    named = result(COMMAND, {"summary": True, "name_contains": "fedora"})
+    assert named["total_count"] == 1
+
+
+def test_naming_anything_gets_rows_and_summary_false_gets_todays_page(attributed):
+    """What a null summary decides by, argument by argument"""
+    for named in ({"asset_subdir": "clothes"}, {"name_contains": "fedora"}, {"pack": "hats01"},
+                  {"license": "CC0"}, {"limit": 200}, {"offset": 0}):
+        answer = result(COMMAND, named)
+        assert answer["summary"] is False, named
+        assert answer["requested_summary"] is None, named
+        assert answer["assets"], named
+        assert "facets" not in answer and "pack_ambiguous_count" not in answer, named
+        assert "known_packs" in answer and "asset_roots_searched" in answer, named
+
+    explicit = result(COMMAND, {"summary": False})
+    assert explicit["summary"] is False and explicit["requested_summary"] is False
+    assert explicit["limit"] == 200 and explicit["offset"] == 0, "the defaults a page always had"
+    assert explicit["assets"], "a bare call is not the only way in, and rows stay in reach"
+
+
+def test_refresh_alone_is_still_a_summary(attributed):
+    """It says when to scan, not what to answer"""
+    answer = result(COMMAND, {"refresh": True})
+
+    assert answer["summary"] is True and answer["facets"]
+
+
+def test_limit_zero_stays_a_page_of_no_rows(attributed):
+    """Counts and no rows, without facets, and the answer says what it is"""
+    answer = result(COMMAND, {"limit": 0})
+
+    assert answer["summary"] is False and "facets" not in answer
+    assert answer["assets"] == [] and answer["limit"] == 0
+    assert answer["truncated"] is True, "the matches were cut, down to nothing"
+    assert answer["counts_by_asset_subdir"] and answer["counts_by_license"]
+    assert "limit=0" in answer["message"] and "summary=true" in answer["message"]
+
+
+def test_the_self_correction_keys_come_back_only_for_a_filter_not_recognised(attributed):
+    """known_packs and asset_roots_searched"""
+    bare = result(COMMAND)
+    assert "known_packs" not in bare and "asset_roots_searched" not in bare
+    assert "known_licenses" in bare and "known_asset_subdirs" in bare, "both are short and stay"
+
+    for filters in ({"asset_subdir": "clothing"}, {"pack": "no-such-pack-is-installed"},
+                    {"license": "GPL"}):
+        answer = result(COMMAND, dict(filters, summary=True))
+        assert "known_packs" in answer and "asset_roots_searched" in answer, filters
+        assert answer["facets"] == [] and answer["total_count"] == 0, filters
+        assert "This is a summary" in answer["message"], filters
+
+
+def test_a_page_beside_a_summary_is_refused_for_a_caller_that_is_not_the_tool(attributed):
+    """The socket is reachable by anything on this machine"""
+    for params in ({"summary": True, "limit": 5}, {"summary": True, "limit": 0},
+                   {"summary": True, "offset": 0}):
+        answer = result(COMMAND, params)
+        assert answer["reason"] == "invalid_arguments", params
+        assert "assets" not in answer, "a refusal must not read as an empty library"
+
+
+def test_a_summary_flag_of_the_wrong_type_is_refused_before_the_handler_runs():
+    command_server = bridge_module("command_server")
+
+    assert dispatch(COMMAND, {"summary": "true"})["error"] == command_server.ERROR_INVALID_PARAMS
+    assert dispatch(COMMAND, {"summary": 1})["error"] == command_server.ERROR_INVALID_PARAMS

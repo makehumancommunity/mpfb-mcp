@@ -42,7 +42,8 @@ Early beta. Fifty-one tools are implemented.
 **Catalogues** — what could be added, each entry named the way the acting tool will want it:
 
 - `mpfb_list_rigs` — which armatures could be attached?
-- `mpfb_list_assets` — which garments, body parts, body proxies and skins are installed?
+- `mpfb_list_assets` — which garments, body parts, body proxies and skins are installed? With no
+  arguments, a summary of the library across subdir, pack and license.
 - `mpfb_list_targets` — which modeling targets could be set?
 - `mpfb_list_asset_materials` — which other materials ship beside this equipped asset?
 - `mpfb_list_presets` — which characters have been saved?

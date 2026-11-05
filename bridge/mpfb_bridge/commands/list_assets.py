@@ -24,7 +24,9 @@ around, and its two filters are quirks in their own right:
 
 - ``AssetService.get_asset_list()`` **populates MPFB's own cache**, which loads
   a Blender preview image per thumbnailed asset. A real side effect, and
-  exactly the one MPFB's asset panels already pay for.
+  exactly the one MPFB's asset panels already pay for. It is not a slow one:
+  FR 056 measured the first summary, scanning all 926 assets, at about 130 ms in
+  a windowed Blender and 22 ms in a headless one.
 - That cache is keyed by **label**, so two assets whose filenames differ only in
   case or underscores collapse into one entry and the counts here under-report
   by that much. Reaching around it would mean reimplementing
@@ -35,6 +37,26 @@ around, and its two filters are quirks in their own right:
 - The **pack** filter *is* a substring, because that is
   ``get_asset_names_in_pack_pattern()``'s own rule: "hair03" finds
   "hair03_ccby".
+
+**A call naming nothing answers with a summary**
+([FR 056](../../../feature-requests/done/056-asset-library-summary/README.md)).
+Such a call used to get 200 rows, all clothes, because ``clothes`` sorts first,
+and a session read that as "200 clothes and nothing else". ``facets`` is the
+library across subdir, pack and license in a few KB where the rows run to hundreds.
+
+- **The rule lives here, and it needs to see what was named.** ``limit`` and
+  ``offset`` therefore arrive as null when unnamed and their defaults are applied
+  below, since a ``limit=200`` a caller named has to count as named. The tool
+  passes ``summary`` through unjudged.
+- **A facet is never a second opinion.** It is counted from the entries a row
+  would report, after the same filters, and reads the ``pack`` the same loop gives
+  a row. ``attribution_conflicts`` covers what the answer stands for, which in a
+  summary is every match: an empty list beside facets that had only looked at a
+  page of no rows would say there are none.
+- **``truncated`` is false in a summary**, since nothing was cut, and ``limit=0``
+  stays what it was: a page of no rows, cut, with no ``facets``.
+- **``known_packs`` and ``asset_roots_searched`` come back only when a filter was
+  not recognised.** Both exist so a caller can correct itself.
 
 ``pack`` itself is derived from a **directory naming convention** and is
 recorded nowhere, which is why the answer says so and flags the ambiguous case
@@ -88,16 +110,35 @@ PARAMS = (
           description="A license as pack metadata records it (\"CC0\", \"CC-BY\"), matched "
                       "exactly and case-insensitively. An asset with no recorded license never "
                       "matches."),
-    Param("limit", TYPE_INTEGER, default=200, minimum=0, maximum=1000,
-          description="How many assets to return. The answer always says whether it was cut."),
-    Param("offset", TYPE_INTEGER, default=0, minimum=0,
-          description="How many matching assets to skip. The order is deterministic."),
+    Param("summary", TYPE_BOOLEAN, default=None, nullable=True,
+          description="True for facets and no rows, false for rows. Omit to decide by what was "
+                      "named: nothing named is a summary, anything named is rows."),
+    Param("limit", TYPE_INTEGER, default=None, nullable=True, minimum=0, maximum=1000,
+          description="How many assets to return; omitted, 200. The answer always says whether "
+                      "it was cut. Refused beside summary: true."),
+    Param("offset", TYPE_INTEGER, default=None, nullable=True, minimum=0,
+          description="How many matching assets to skip; omitted, 0. The order is deterministic. "
+                      "Refused beside summary: true."),
     Param("refresh", TYPE_BOOLEAN, default=False,
           description="Rescan the whole asset library before answering, invalidating MPFB's "
                       "alternative-material and pack-metadata caches on the way."),
 )
 
 SUMMARY = "List the installed assets, with the fragment and path an adding command takes."
+
+_DEFAULT_LIMIT = 200
+_DEFAULT_OFFSET = 0
+
+# Naming any of these asks for rows. Not `refresh`, which says when to scan rather
+# than what to answer.
+_ASKS_FOR_ROWS = ("asset_subdir", "name_contains", "pack", "license", "limit", "offset")
+
+
+def _answers_with_summary(params):
+    """What ``summary`` says, or when it says nothing, whether anything was named."""
+    if params["summary"] is not None:
+        return params["summary"]
+    return all(params[name] is None for name in _ASKS_FOR_ROWS)
 
 
 def _read_asset_roots(services, subdir):
@@ -219,7 +260,27 @@ def _reported_pack(entry, pack_pattern):
     return entry["packs"][0] if entry["packs"] else None
 
 
+def _facets(entries):
+    """One row per subdir, pack and license that occurs, counted from ``entries``.
+
+    Each entry counts once, under the ``pack`` a row of it would report, and a
+    null is kept: assets with no recorded license are worth seeing. Ties are broken
+    so that two calls over one library read the same.
+    """
+    counts = dict()
+    for entry in entries:
+        key = (entry["asset_subdir"], entry["pack"], entry["license"])
+        counts[key] = counts.get(key, 0) + 1
+    facets = [{"asset_subdir": subdir, "pack": pack, "license": recorded, "count": count}
+              for (subdir, pack, recorded), count in counts.items()]
+    facets.sort(key=lambda facet: (facet["asset_subdir"], -facet["count"],
+                                   facet["pack"] is None, facet["pack"] or "",
+                                   facet["license"] is None, facet["license"] or ""))
+    return facets
+
+
 def _message(requested, recognized, matched, licensed, page, unknown_excluded, index):
+    summarised = requested["summarised"]
     parts = []
     if requested["asset_subdir"] is not None and not recognized["asset_subdir"]:
         parts.append("No asset subdir called '{:s}'. See 'known_asset_subdirs'.".format(
@@ -231,18 +292,28 @@ def _message(requested, recognized, matched, licensed, page, unknown_excluded, i
         parts.append("No installed pack records the license '{:s}'. See "
                      "'known_licenses'.".format(str(requested["license"])))
     else:
-        parts.append("{:d} assets matched, {:d} returned".format(len(licensed), len(page)))
-        if len(licensed) > len(page):
-            parts.append(" - the rest were not returned, so this is not the whole library")
-        parts.append(
-            ". Each asset is named twice: 'path' is what an adding function takes, 'fragment' "
-            "is the portable identifier MPFB records on the object it produces. 'pack' and "
-            "'license' are derived from a directory name, not recorded.")
+        if summarised:
+            parts.append("{:d} assets matched, counted in 'facets'. 'pack' and 'license' are "
+                         "derived from a directory name, not recorded.".format(len(licensed)))
+        else:
+            parts.append("{:d} assets matched, {:d} returned".format(len(licensed), len(page)))
+            if requested["limit"] == 0:
+                parts.append(", since limit=0 asks for a page of no rows; summary=true counts "
+                             "them across subdir, pack and license")
+            elif len(licensed) > len(page):
+                parts.append(" - the rest were not returned, so this is not the whole library")
+            parts.append(
+                ". Each asset is named twice: 'path' is what an adding function takes, "
+                "'fragment' is the portable identifier MPFB records on the object it produces. "
+                "'pack' and 'license' are derived from a directory name, not recorded.")
         if requested["license"] is not None:
             parts.append(
                 " The license filter left out {:d} of {:d}; {:d} of those have no recorded "
                 "license and were excluded, not checked.".format(
                     len(matched) - len(licensed), len(matched), unknown_excluded))
+    if summarised:
+        parts.append(" This is a summary, so it has no rows and nothing was cut. For rows, pass "
+                     "summary=false, or leave summary out and name a filter or a limit.")
     if not index.entries_read:
         parts.append(" MPFB's pack metadata could not be read, so every license is null; "
                      "'pack' still comes from the pack names.")
@@ -256,8 +327,17 @@ def list_assets(params, resolution):  # pylint: disable=too-many-locals
     requested_pack = params["pack"]
     requested_license = params["license"]
     name_contains = params["name_contains"]
-    limit = params["limit"]
-    offset = params["offset"]
+    limit = _DEFAULT_LIMIT if params["limit"] is None else params["limit"]
+    offset = _DEFAULT_OFFSET if params["offset"] is None else params["offset"]
+
+    if params["summary"] and (params["limit"] is not None or params["offset"] is not None):
+        # The tool refuses this before sending. Here for a caller that is not the
+        # tool, and an answer rather than a raise, since nothing has failed: a
+        # summary with the page quietly ignored would be the silent kind of wrong.
+        return {"reason": "invalid_arguments",
+                "message": "limit and offset page a list of rows, and summary=true answers "
+                           "with none. Leave them out, or pass summary=false."}
+    summarised = _answers_with_summary(params)
 
     sections, sections_from_mpfb = asset_sections.read_sections(services)
     known_subdirs = [row[0] for row in sections]
@@ -320,9 +400,10 @@ def list_assets(params, resolution):  # pylint: disable=too-many-locals
         licensed = [entry for entry in matched
                     if entry["license"] is not None and entry["license"].lower() == license_wanted]
 
-    page = licensed[offset:offset + limit]
+    page = [] if summarised else licensed[offset:offset + limit]
     conflicts = []
-    for entry in page:
+    # Every match in a summary, which is what its facets and conflicts stand for.
+    for entry in licensed if summarised else page:
         entry["pack"] = _reported_pack(entry, pack_pattern)
         attribution = entry.pop("_attribution")
         if attribution["claims_disagree"]:
@@ -332,19 +413,21 @@ def list_assets(params, resolution):  # pylint: disable=too-many-locals
                len(scanned), len(matched), len(licensed), len(page))
 
     requested = {"asset_subdir": requested_subdir, "pack": requested_pack,
-                 "license": requested_license}
+                 "license": requested_license, "limit": limit, "summarised": summarised}
     recognized = {"asset_subdir": subdir_recognized, "pack": pack_recognized,
                   "license": license_recognized}
-    return {
+    answer = {
+        "summary": summarised,
+        "requested_summary": params["summary"],
         "assets": page,
         "count": len(page),
         "total_count": len(licensed),
         # Always present, and the field an agent has to read before concluding
         # the library lacks something: a capped answer must never look like a
         # complete one.
-        "truncated": len(licensed) > len(page),
-        "offset": offset,
-        "limit": limit,
+        "truncated": not summarised and len(licensed) > len(page),
+        "offset": None if summarised else offset,
+        "limit": None if summarised else limit,
         "counts_by_asset_subdir": counts_by_subdir,
         "counts_by_license": counts_by_license,
         "license_unknown_count": license_unknown_count,
@@ -365,3 +448,10 @@ def list_assets(params, resolution):  # pylint: disable=too-many-locals
         "message": _message(requested, recognized, matched, licensed, page,
                             license_unknown_count if license_wanted is not None else 0, index),
     }
+    if summarised:
+        answer["facets"] = _facets(licensed)
+        answer["pack_ambiguous_count"] = sum(1 for entry in licensed if entry["pack_ambiguous"])
+        if all(recognized.values()):
+            del answer["known_packs"]
+            del answer["asset_roots_searched"]
+    return answer

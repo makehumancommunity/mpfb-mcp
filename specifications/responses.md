@@ -116,6 +116,28 @@ filtered response must never be readable as a complete one.**
   this whole convention guards against is an agent reporting that an asset is not installed because
   it was not on page one.
 
+**A capped catalogue may answer a call naming nothing with a summary, rather than a first page.**
+All of the above was honest, and `mpfb_list_assets()` still gave 200 rows, all `Clothes`, that a
+session read as "200 clothes and nothing else"; a first page of a sorted list is one type's worth of
+answer to a question about the whole. Since
+[FR 056](../feature-requests/done/056-asset-library-summary/README.md) such a call answers with
+`facets`, one row per `{asset_subdir, pack, license, count}` that occurs, 8.1 KB where a page was
+128 KB and a sweep 600 KB. What follows from being a summary and not a page:
+
+- **`truncated` is false**, since no part of the library was cut, and the sentence saying otherwise
+  goes with it. `assets` is `[]`, `count` 0, and `offset` and `limit` stay as `null`, so a caller
+  reading the usual keys finds them.
+- **`summary` says which applied and `requested_summary` what was asked**, since a caller outside this
+  package gets no error for having expected rows. The message says how to get them, and `summary:
+  false` keeps today's 200 in reach.
+- **Filters narrow it**, and `counts_by_license` is still taken before the license filter.
+- **A key that exists for self-correction comes back only when needed:** `known_packs` and
+  `asset_roots_searched` appear in a summary only when a filter was not recognised.
+- **A report about the page covers what the answer stands for.** `attribution_conflicts` lists every
+  match in a summary, since an empty list beside a whole library's facets would say there are none.
+- **`limit: 0` stays a page of no rows**, cut and saying so, with no `facets`. Two ways of asking for
+  no rows mean two different things, and each says which it is.
+
 **A filter on sections is the same obligation in a different shape.** `mpfb_get_material_settings`
 answers 21-22 KB for a character with procedural eyes, a layered skin and six mesh assets, of which
 the skin's nine groups are 16 KB, so it takes a `section` argument - added because the answer was
@@ -468,7 +490,10 @@ in `warnings`. `allow_exact_matching_resolved_by` and `uuid_resolved_by` follow 
 A summary tool answers several detailed tools' questions at once, and is only worth having if an
 agent can trust it as much as the tools it stands in for. `mpfb_get_character_summary`
 ([FR 034](../feature-requests/done/034-character-summary/README.md)) is the one there is, and the
-contract it set applies to any other:
+contract it set applies to any other. `mpfb_list_assets`' `summary`
+([above](#how-tools-bound-a-large-answer)) is a mode rather than a tool, counting its own rows after
+its own filters from the entries a row would report, so the agreement holds by construction, and the
+rule below against a filter does not apply: its filters narrow one question rather than making it dozens.
 
 - **Each section is a subset of one detailed tool's answer, under the same field names.** A caller
   that learned `rigify_role` or `unexplained_face_units` from one tool reads it the same way in the

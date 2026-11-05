@@ -16,8 +16,6 @@ records what has already landed and why. When an effort below is finished, move 
 - [A hand cannot be placed at a point on a standard rig](#a-hand-cannot-be-placed-at-a-point-on-a-standard-rig): FR 052 and FR 053
 - [Hand-to-hand contact on a Rigify rig](#hand-to-hand-contact-on-rigify): FR 052, in part
 - [Loading poses](#loading-poses): FR 055
-- [A summary mode for the asset catalogue](#a-summary-mode-for-the-asset-catalogue): FR 056
-- [Response bulk on the read-only tools](#response-bulk-on-the-read-only-tools): FR 056, in part
 - [No way to verify an install without an MCP client](#no-way-to-verify-an-install-without-an-mcp-client): FR 057
 
 **Without one**, by apparent impact:
@@ -38,6 +36,7 @@ records what has already landed and why. When an effort below is finished, move 
 - [Enhanced skin settings, and MPFB's named material settings files](#eye-and-layered-skin-colours)
 - [Layered skin: what `mpfb_set_material_settings` cannot reach](#layered-skin-sockets-out-of-reach)
 - [`tongue01` does not follow `jawOpen`](#tongue-does-not-follow-jaw-open)
+- [Response bulk on the read-only tools](#response-bulk-on-the-read-only-tools)
 - [License in the catalogues](#license-in-the-catalogues)
 - [Direct tests of the bridge's shared modules](#direct-tests-of-the-bridges-shared-modules)
 - [A garment's sub-rig is bound wrong when it is equipped away from the origin](#sub-rig-child-of-breaks-away-from-the-origin)
@@ -230,46 +229,13 @@ needed this and did without: six characters were taken out of the A-pose by rota
 `upperarm01`, `lowerarm01` and `head` by hand through blender mcp. `mpfb_list_assets` already
 lists `poses` as a subdir, so the catalogue half exists and only the acting tool is missing.
 
-<a id="a-summary-mode-for-the-asset-catalogue"></a>
-
-## A summary mode for the asset catalogue
-
-**Scoped on 2026-11-03 as [FR 056](056-asset-library-summary/README.md), not yet implemented.** Measured, against what is below: the cost is
-the answer's size (605 KB for a sweep, 128 KB for a bare call, 3.2 KB for the faceting), not the time, since the preview load did
-not show up headless. `limit=0` already gives the counts with no rows, and says nothing about it.
-
-From the man-and-woman scene session, and deliberately *not* an argument against the cap. `mpfb_list_assets`
-is documented as "a filtering tool rather than a listing one", its answer is capped on purpose, and
-`truncated` / `total_count` exist so a caller cannot mistake a page for the library. That design is
-right for "find me a garment".
-
-It is the wrong shape for the question a session actually opens with, which is *what is in this
-install at all* — how many garments, hair, skins and poses there are, how they divide across packs,
-and how they divide by license. Answering that today costs one call per
-`asset_subdir`, ten in this session's case, each returning up to 1000 full rows — name, label,
-fragment, absolute path, thumb path — when the caller wants counts. The first call also pays MPFB's
-one-preview-image-per-asset load for that subdir, so the cheapest possible phrasing of "what do I
-have" is also among the most expensive calls the server offers.
-
-A `summary=True` mode (or a separate `mpfb_describe_asset_library`) returning counts faceted by
-`asset_subdir` × `pack` × `license`, and nothing else, would answer it in one call and read in a
-dozen lines. [FR 046](done/046-license-in-the-catalogues/README.md) gave every call
-`counts_by_license`, taken before the license filter and the cap, so "226 of 639 clothes are CC0"
-is now one call per subdir; the faceting across subdirs and packs is what is left for this entry.
-
-A smaller version of the same point: `mpfb_list_assets()` with no arguments returns 200 rows that
-are all `Clothes`, because `clothes` sorts first and the default limit stops there. `truncated` is
-true and `total_count` is honest, so the response is not wrong — but the shape of it invites the
-reading "this install has 200 clothes and nothing else", which is what happened here before the
-docstring was read. Defaulting a no-argument call to the summary above would be strictly more
-informative than a truncated page of one type.
-
 <a id="response-bulk-on-the-read-only-tools"></a>
 
 ## Response bulk on the read-only tools
 
-**Measured while scoping [FR 056](056-asset-library-summary/README.md):** `known_packs` is 1.65 KB of a 128 KB answer, so its bullet below
-is worth little on its own. The rows, at 622 bytes each, are the cost. FR 056 drops it from a summary only.
+**Measured for [FR 056](done/056-asset-library-summary/README.md):** `known_packs` is 1.65 KB of a 128 KB answer, so its bullet below
+is worth little on its own. The rows, at 622 bytes each, are the cost, and a `fields` or `compact` argument is what is left here for them.
+FR 056 dropped `known_packs` from a summary only, and a bare call is a summary now, so a page of rows is the only answer still carrying it.
 
 Not a defect, and not urgent — recorded because one session hit all three and they share a shape:
 the tools return everything they know rather than what was asked for, and the catalogues are now big

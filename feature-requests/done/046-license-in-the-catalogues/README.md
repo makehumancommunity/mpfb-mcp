@@ -50,7 +50,7 @@ this request must report it as unknown rather than guess it.
   is not in a directory named for it, so the join below does not hold for targets; see
   [Decisions taken while scoping](#decisions-taken-while-scoping)). Nor a summary mode for the
   asset catalogue, which is
-  [its own entry](../../NEXT_STEPS.md#a-summary-mode-for-the-asset-catalogue). This request gives
+  [its own entry](../056-asset-library-summary/README.md). This request gives
   that entry its license facet and nothing else. Nor any judgement about what a license permits:
   the tools report what the metadata says, and never say "safe to use".
 

@@ -290,7 +290,10 @@ DESCRIPTION_CEILING = 106600
 # Raised from 20,200 to 21,400 by FR 050: 1,190 B for `mpfb_write_mesh_asset`'s thirteen arguments.
 #
 # Raised from 21,400 to 22,000 by FR 051: 600 B for `mpfb_generate_delete_group`'s six.
-SCHEMA_CEILING = 22500
+#
+# Raised from 22,500 to 22,650 by FR 056: 150 B, for `mpfb_list_assets`' `summary` and for `limit`
+# and `offset` becoming nullable, since an unnamed one has to be told from a named one.
+SCHEMA_CEILING = 22650
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.

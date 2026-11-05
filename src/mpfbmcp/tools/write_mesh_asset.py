@@ -52,10 +52,6 @@ def _validated_line(value: object, argument: str) -> str | None:
     return checked
 
 
-def _validated_optional_flag(value: object, argument: str) -> bool | None:
-    return None if value is None else arguments.validated_flag(value, argument)
-
-
 def register(mcp: FastMCP) -> None:
     @mcp.tool(
         annotations=ToolAnnotations(
@@ -136,7 +132,7 @@ def register(mcp: FastMCP) -> None:
                 "description": _validated_line(description, "description"),
                 "delete_group": arguments.validated_text(
                     delete_group, "delete_group", "omit it to take the object's"),
-                "allow_exact_matching": _validated_optional_flag(
+                "allow_exact_matching": arguments.validated_optional_flag(
                     allow_exact_matching, "allow_exact_matching"),
                 "write_material": arguments.validated_flag(write_material, "write_material"),
             },

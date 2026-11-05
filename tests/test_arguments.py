@@ -100,6 +100,19 @@ class ValidatedFlagTests(unittest.TestCase):
                              "refit must be a bool, got {!r}".format(value))
 
 
+class ValidatedOptionalFlagTests(unittest.TestCase):
+    def test_a_bool_and_none_are_returned_as_they_came(self):
+        for value in (True, False, None):
+            self.assertIs(arguments.validated_optional_flag(value, "summary"), value)
+
+    def test_anything_else_is_refused_by_name(self):
+        for value in (1, 0, "true", "false", []):
+            with self.assertRaises(ValueError) as caught:
+                arguments.validated_optional_flag(value, "summary")
+            self.assertEqual(str(caught.exception),
+                             "summary must be a bool or omitted, got {!r}".format(value))
+
+
 class ValidatedCountTests(unittest.TestCase):
     def test_zero_and_a_positive_int_pass(self) -> None:
         self.assertEqual(arguments.validated_count(0, "offset"), 0)

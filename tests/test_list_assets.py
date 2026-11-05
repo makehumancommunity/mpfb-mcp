@@ -6,7 +6,9 @@ socket.
 Two layers (see ``tests/test_list_objects.py``, the template): the wrapper with
 ``send_command`` mocked below the seam, and the bridge path against
 ``tests/fake_bridge.py``. The wrapper carries the cap-and-page rules, which are
-about the size of an *answer* and are enforced here and nowhere else.
+about the size of an *answer* and are enforced here and nowhere else. Whether a
+call is a summary is the command's rule and is asked of it there; what is pinned
+here is that an unnamed ``limit`` reaches the wire able to tell it so.
 
 The awkward cases a real install has - an asset claimed by two packs, an asset
 claimed by none, a pack listing an asset that is not installed, two assets whose
@@ -69,15 +71,18 @@ class ArgumentValidationTests(unittest.TestCase):
             "name_contains": None,
             "pack": None,
             "license": None,
-            "limit": 200,
-            "offset": 0,
+            # All three null: what a bare call answers is the command's rule, and
+            # it has to be able to tell an unnamed limit from a named one.
+            "summary": None,
+            "limit": None,
+            "offset": None,
             "refresh": False,
         })
 
     def test_arguments_are_carried_across_verbatim(self):
         params = self._sent_params(
             asset_subdir="clothes", name_contains="fedora", pack="hair03",
-            license="cc0", limit=10, offset=20, refresh=True)
+            license="cc0", summary=False, limit=10, offset=20, refresh=True)
 
         self.assertEqual(params, {
             "asset_subdir": "clothes",
@@ -86,10 +91,44 @@ class ArgumentValidationTests(unittest.TestCase):
             # Unchanged, case included: the bridge matches it case-insensitively
             # against the metadata's own spelling, which only it can read.
             "license": "cc0",
+            "summary": False,
             "limit": 10,
             "offset": 20,
             "refresh": True,
         })
+
+    def test_a_named_limit_and_offset_reach_the_wire_as_themselves(self):
+        # 200 and 0 are the command's defaults, and naming them still names them:
+        # that is what makes `limit=200` rows and a bare call a summary.
+        params = self._sent_params(limit=200, offset=0)
+        self.assertEqual((params["limit"], params["offset"]), (200, 0))
+
+    def test_summary_is_passed_through_unjudged(self):
+        for value in (True, False, None):
+            with self.subTest(summary=value):
+                self.assertIs(self._sent_params(summary=value)["summary"], value)
+        self.assertIs(self._sent_params(summary=True, license="CC0")["summary"], True)
+
+    def test_summary_must_be_a_real_bool_or_null(self):
+        for bad in (1, 0, "true", "false", [], {}):
+            with self.subTest(summary=bad):
+                with mock.patch("mpfbmcp.bridge_connection.send_command") as send_command:
+                    with self.assertRaises(ValueError):
+                        self.tool(summary=bad)
+                send_command.assert_not_called()
+
+    def test_a_page_beside_a_summary_is_refused_locally(self):
+        for kwargs in ({"limit": 10}, {"limit": 0}, {"offset": 0}, {"offset": 5},
+                       {"limit": 10, "offset": 5}):
+            with self.subTest(**kwargs):
+                with mock.patch("mpfbmcp.bridge_connection.send_command") as send_command:
+                    with self.assertRaisesRegex(ValueError, "summary=false"):
+                        self.tool(summary=True, **kwargs)
+                send_command.assert_not_called()
+
+    def test_a_page_beside_rows_is_not_refused(self):
+        params = self._sent_params(summary=False, limit=0, offset=5)
+        self.assertEqual((params["summary"], params["limit"], params["offset"]), (False, 0, 5))
 
     def test_non_string_filters_are_rejected_locally(self):
         for argument in ("asset_subdir", "name_contains", "pack", "license"):
@@ -183,23 +222,24 @@ class ListAssetsOverTheBridgeTests(fake_bridge.BridgeTestCase):
         self.assertEqual(self.bridge.commands()[-1], "list_assets")
         self.assertEqual(self.bridge.decoded_requests()[-1]["params"], {
             "asset_subdir": None, "name_contains": None, "pack": None, "license": None,
-            "limit": 200, "offset": 0, "refresh": False})
+            "summary": None, "limit": None, "offset": None, "refresh": False})
 
     def test_arguments_cross_the_wire_verbatim(self):
         self.tool(asset_subdir="clothes", name_contains="fedora", pack="system",
-                  license="CC0", limit=5, offset=10, refresh=True)
+                  license="CC0", summary=False, limit=5, offset=10, refresh=True)
 
         request = self.bridge.decoded_requests()[-1]
         self.assertEqual(request["params"], {
             "asset_subdir": "clothes", "name_contains": "fedora", "pack": "system",
-            "license": "CC0", "limit": 5, "offset": 10, "refresh": True})
+            "license": "CC0", "summary": False, "limit": 5, "offset": 10, "refresh": True})
         # asset_sections.py is a property of how a program is assembled; on the
         # bridge it is a module the command imports.
         self.assertNotIn("asset_sections", str(request))
 
     def test_local_validation_runs_before_a_transport_is_chosen(self):
         for arguments in ({"limit": True}, {"limit": -1}, {"offset": True},
-                          {"limit": 1001}, {"refresh": "false"}, {"asset_subdir": "  "}):
+                          {"limit": 1001}, {"refresh": "false"}, {"asset_subdir": "  "},
+                          {"summary": "true"}, {"summary": True, "limit": 5}):
             with self.subTest(**arguments):
                 with self.assertRaises(ValueError):
                     self.tool(**arguments)

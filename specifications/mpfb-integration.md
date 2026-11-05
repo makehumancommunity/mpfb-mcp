@@ -418,9 +418,12 @@ Several of MPFB's own caches sit under this package's catalogue tools, and each 
 answer means rather than merely how fast it arrives.
 
 - **The asset list.** The first scan of a subdir loads a Blender preview image for every
-  thumbnailed asset — the slow, memory-hungry part of `mpfb_list_assets`, paid once per subdir per
-  Blender session, and shared with MPFB's own asset panels, so a session where those were opened
-  has already paid it. Worse, the cache is keyed by a *label* derived from the filename alone, so
+  thumbnailed asset, once per subdir per Blender session, shared with MPFB's own asset panels. This
+  was long described here as the slow part of `mpfb_list_assets`, on no measurement.
+  [FR 056](../feature-requests/done/056-asset-library-summary/README.md) took one: the first
+  summary, which scans all 926 assets on the maintainer's install, took about 130 ms in a windowed
+  Blender and 22 ms in a headless one, against about 30 ms and 4 ms for the second. Memory was not measured. The cost
+  of this catalogue is the size of its answer. More to the point, the cache is keyed by a *label* derived from the filename alone, so
   two assets whose filenames differ only in case or underscores collapse into one entry: a count
   from here can under-report, and one of the two is missing entirely rather than merely
   mislabelled. That is a limitation of MPFB's cache and not of the filters, and it is why a

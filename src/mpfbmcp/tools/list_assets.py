@@ -12,6 +12,15 @@ capped. That makes the response a subset by design, which is the one thing it
 must never be mistaken for the library itself; ``truncated``, ``total_count``,
 ``asset_subdir_recognized`` and ``pack_recognized`` all exist for that.
 
+**A call naming nothing gets a summary rather than a first page**, since it is
+what a session opens with and a page of one type read as the whole library
+([FR 056](../../../feature-requests/done/056-asset-library-summary/README.md)).
+The rule is the command's, so this module passes ``summary`` through unjudged and
+sends an unnamed ``limit`` and ``offset`` as null: a default filled in here would
+make a named ``limit=200`` and an unnamed one the same thing on the wire. What it
+does check is ``limit`` or ``offset`` beside ``summary=True``, a page of no rows
+and a mistake worth naming.
+
 What the tool description no longer carries lives one link away: the two
 costs of MPFB's asset cache are
 [MPFB caches what it scans](../../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides),
@@ -62,8 +71,9 @@ def register(mcp: FastMCP) -> None:
                          name_contains: str | None = None,
                          pack: str | None = None,
                          license: str | None = None,  # pylint: disable=redefined-builtin
-                         limit: int = 200,
-                         offset: int = 0,
+                         summary: bool | None = None,
+                         limit: int | None = None,
+                         offset: int | None = None,
                          refresh: bool = False) -> dict[str, object]:
         """
         Find the MakeHuman assets installed in this Blender - garments, hair,
@@ -72,36 +82,43 @@ def register(mcp: FastMCP) -> None:
         `mpfb_get_object_info`, which says what an existing object was made
         from.
 
-        **The answer is capped and is usually a subset.** Check `truncated`
+        **A call naming nothing answers with a summary**, the place to start:
+        `facets` has one row per `{asset_subdir, pack, license, count}` and
+        `assets` is empty. Name a filter, `limit` or `offset` for rows.
+
+        **Rows are capped and usually a subset.** Check `truncated`
         before concluding an asset is not installed; `total_count` says how
-        many matched. The first call for a subdir is the slow one: MPFB loads a
-        preview image per asset, once per subdir per Blender session.
+        many matched.
 
         Arguments, all optional and combining with AND:
 
           - `asset_subdir` - one of `"clothes"`, `"hair"`, `"eyes"`,
             `"eyebrows"`, `"eyelashes"`, `"teeth"`, `"tongue"`,
             `"proxymeshes"`, `"skins"`, `"poses"`, `"ink_layers"`, matched
-            exactly and case-insensitively. Omit it to search every subdir,
-            then read `counts_by_asset_subdir` to pick a narrower one.
+            exactly and case-insensitively. Omit it to search every subdir.
           - `name_contains` - case-insensitive substring of the asset's name or
             label.
           - `pack` - substring of an installed pack's name, so `"hair03"` finds
             `hair03_ccby`.
           - `license` - exact, case-insensitive: `"CC0"`, `"CC-BY"`. An asset
             with no recorded license never matches.
+          - `summary` - true for `facets`, which the filters narrow; false for
+            rows, even from a bare call.
           - `limit` (default 200, max 1000) and `offset` - paging over the
-            matched set, sorted by subdir then name.
+            matched set, sorted by subdir then name. Refused beside
+            `summary: true`.
           - `refresh` - rescan first. Needed only when assets were installed
             after Blender started; it rescans the **whole** library and writes
             MPFB's caches.
 
         `result` carries:
 
-          - `assets`: this page's entries, each with `name` (filename without
-            extension), `label` (MPFB's display text), `fragment`, `path`,
-            `object_type`, `asset_subdir`, `file_type`, `pack` (the claimant
-            your filter matched), `packs`, `pack_ambiguous`, `license`,
+          - `summary`, which applied, and `requested_summary`, what was asked.
+          - In a summary only, `facets` and `pack_ambiguous_count`: assets with
+            several claimants, each counted once under the one a row reports.
+          - `assets`: this page's entries, with `name`, `label`, `fragment`,
+            `path`, `object_type`, `asset_subdir`, `file_type`, `pack` (the
+            claimant your filter matched), `packs`, `pack_ambiguous`, `license`,
             `author`, `source_url` (the page to credit) and `thumb_path`.
           - `counts_by_asset_subdir`: how many assets each scanned subdir
             holds, ignoring `name_contains`, `pack` and the cap.
@@ -115,7 +132,8 @@ def register(mcp: FastMCP) -> None:
           - `asset_roots_searched`: per subdir, the directories actually
             scanned. A configured data root that does not hold that subdir is
             not searched, which is the usual explanation for "I installed it
-            and it is not listed".
+            and it is not listed". A summary carries it and `known_packs` only
+            when a filter was not recognised.
           - `count`, `total_count`, `truncated`, `offset`, `limit`.
 
         **How to name an asset when applying it.** Pass an entry's `path`
@@ -132,13 +150,22 @@ def register(mcp: FastMCP) -> None:
         by MPFB.** `null` is ordinary for a hand-installed asset and means
         unknown, never permissive; `attribution_conflicts` lists claimants that
         disagree. `total_count` can under-report: MPFB's cache is
-        keyed by a label derived from the filename alone, so two assets whose
-        filenames differ only in case or underscores collapse into one entry.
+        keyed by a label from the filename, so two files differing only in case
+        or underscores collapse into one.
         """
         # `result` (built in bridge/mpfb_bridge/commands/list_assets.py) is plain
         # JSON-safe data. The bridge serializes a result before it commits to an
         # answer, so a value that is not JSON-safe would be a failed command
         # rather than a repr() quietly standing in for one.
+        summary = arguments.validated_optional_flag(summary, "summary")
+        if limit is not None:
+            limit = arguments.validated_count(limit, "limit", MAX_LIMIT)
+        if offset is not None:
+            offset = arguments.validated_count(offset, "offset", None)
+        if summary and (limit is not None or offset is not None):
+            raise ValueError(
+                "limit and offset page a list of rows, and summary=true answers with none. "
+                "Leave them out, or pass summary=false.")
         return backend.send(
             "list_assets",
             params={
@@ -152,8 +179,9 @@ def register(mcp: FastMCP) -> None:
                     pack, "pack", "omit it to match assets from every pack"),
                 "license": arguments.validated_text(
                     license, "license", "omit it to match assets under any license"),
-                "limit": arguments.validated_count(limit, "limit", MAX_LIMIT),
-                "offset": arguments.validated_count(offset, "offset", None),
+                "summary": summary,
+                "limit": limit,
+                "offset": offset,
                 # Not truthiness: refresh="false" would rescan the entire library.
                 "refresh": arguments.validated_flag(refresh, "refresh"),
             },

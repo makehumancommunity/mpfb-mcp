@@ -47,16 +47,6 @@ from mpfbmcp import backend
 from mpfbmcp.artifact_names import validated_preset_name
 
 
-def _validated_optional_flag(value: object, argument: str) -> bool | None:
-    if value is None:
-        return None
-    if not isinstance(value, bool):
-        # Deliberately not truthiness: "false" is a true value, and
-        # load_clothes="false" would load the clothes it was asking to skip.
-        raise ValueError("{:s} must be a bool or omitted, got {!r}".format(argument, value))
-    return value
-
-
 def _stripped_text(value: object, argument: str, hint: str) -> str | None:
     """:func:`arguments.validated_text`, stripped.
 
@@ -187,7 +177,9 @@ def register(mcp: FastMCP) -> None:
                 "override_eyes_material_type": _stripped_text(
                     override_eyes_material_type, "override_eyes_material_type",
                     "omit it to use the preset's eye material type"),
-                "load_clothes": _validated_optional_flag(load_clothes, "load_clothes"),
+                # Not truthiness: load_clothes="false" would load the clothes it
+                # was asking to skip.
+                "load_clothes": arguments.validated_optional_flag(load_clothes, "load_clothes"),
                 "scale": _validated_scale(scale),
                 "material_instances_policy": _stripped_text(
                     material_instances_policy, "material_instances_policy",

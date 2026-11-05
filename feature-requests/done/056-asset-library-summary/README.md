@@ -1,9 +1,9 @@
 # A summary of the asset library
 
-**Status:** Proposed
+**Status:** Done
 
-This scopes [A summary mode for the asset
-catalogue](../NEXT_STEPS.md#a-summary-mode-for-the-asset-catalogue).
+This scoped the NEXT_STEPS entry "A summary mode for the asset catalogue", which moved to
+[HISTORY.md](../../HISTORY.md) when it landed.
 
 **Sessions open with a question `mpfb_list_assets` answers at the wrong size:** what is in this
 install at all? How many garments, hair, skins and poses are there, across which packs, under which
@@ -27,7 +27,7 @@ answer's size, not its time:
 the whole library". The preview-load cost the entry describes did not show up at all headless: the
 whole sweep took 70 ms. A windowed Blender may differ, and the live check records it. And
 `known_packs` is 1.65 KB of the 128 KB, so trimming it, as [Response bulk on the read-only
-tools](../NEXT_STEPS.md#response-bulk-on-the-read-only-tools) proposes, would not be noticed. The
+tools](../../NEXT_STEPS.md#response-bulk-on-the-read-only-tools) proposes, would not be noticed. The
 rows, at 622 bytes each, are the cost.
 
 ## Goals
@@ -45,7 +45,7 @@ call a session makes first.
 - **Narrower rows.** A `fields` or `compact` argument would make listing cheaper, at 622 bytes a
   row. It stays in NEXT_STEPS, and nothing here depends on it.
 - **Targets and saved poses.** `mpfb_list_targets` and [FR
-  055](../055-loading-and-saving-poses/README.md)'s `mpfb_list_saved_poses` have their own answers.
+  055](../../055-loading-and-saving-poses/README.md)'s `mpfb_list_saved_poses` have their own answers.
 - **Alternative materials.** They are not in this catalogue.
 - **A new tool.** Offered, and declined.
 
@@ -113,12 +113,12 @@ call a session makes first.
 
 ## Affected specifications
 
-- [responses.md](../../specifications/responses.md): a capped catalogue gains a summary as its first
+- [responses.md](../../../specifications/responses.md): a capped catalogue gains a summary as its first
   answer; `truncated` in that answer.
-- [tool-interface.md](../../specifications/tool-interface.md): the glossary (`summary`, `facets`); a
+- [tool-interface.md](../../../specifications/tool-interface.md): the glossary (`summary`, `facets`); a
   null default decided by what was named, which is new and earns a sentence.
-- [vision.md](../../specifications/vision.md): no change.
-- [architecture.md](../../specifications/architecture.md): no change.
+- [vision.md](../../../specifications/vision.md): no change.
+- [architecture.md](../../../specifications/architecture.md): no change.
 
 ## Tests
 
@@ -132,6 +132,34 @@ call a session makes first.
   size, and the first call's time in a **windowed** Blender, which settles the preview cost.
 - **The existing smoke item** is unchanged; its call now gets a summary, and its keys still hold.
 
+## What landed, against the above
+
+All thirteen requirements, verified by [`live_check.py`](live_check.py), 14 checks, 0 failures, run
+twice against this install in temporary Blenders, and by 13 new bridge tests and 7 new unit tests.
+Where the text above turned out wrong or short:
+
+- **`facets` is 6.9 KB, not 3.2 KB**, and the whole summary 8,129 B: 84 rows at about 82 B each,
+  where 3.2 KB allows 38 B a row, about what the four key names take alone. FR 11's 8 KB holds only
+  as 8,192 B, by 63 B (7,367 B with no spaces), measured as the sizes above were, by `json.dumps` of
+  the envelope. Nothing was cut to meet it, and the facets grow with the packs installed, so this
+  is a line to watch rather than a margin.
+- **The preview cost is settled, and it is small.** The first summary in a windowed Blender took 134
+  and 128 ms in two runs, against 30 and 34 ms for the second and up to 66 ms for a `get_status`.
+  Memory was not measured. The sentence calling the first call slow is gone from the description, and
+  [mpfb-integration.md](../../../specifications/mpfb-integration.md#mpfb-caches-what-it-scans-and-a-tool-says-what-that-costs-and-what-it-hides)
+  is corrected.
+- **`attribution_conflicts` was not considered above**, and is reported over every match in a
+  summary rather than left empty: `[]` would say there are none. On this install it is `[]` anyway.
+- **`limit` or `offset` beside `summary: true` is refused on both sides**, not only here, since the
+  socket is reachable by anything. The command's refusal is an answer with `reason:
+  "invalid_arguments"`, as `mpfb_place_character`'s is.
+- **`refresh` alone does not count as naming something**, since FR 8 does not list it: it says when to
+  scan, not what to answer.
+- **`arguments.validated_optional_flag`** replaces the private copies in
+  `mpfb_create_human_from_preset` and `mpfb_write_mesh_asset`, since this would have been the third.
+- **The schema ceiling rose by 150 B**, to 22,650, for three nullable arguments. The description
+  ceiling did not move: dropping the slow-call sentence and the per-row glosses paid for the summary.
+
 ## Decisions taken while scoping
 
 Asked on 2026-11-03:
@@ -143,12 +171,11 @@ Asked on 2026-11-03:
 *Not asked*, each argued where it is stated: the shape of `facets` (FR 3), whose 3.2 KB is why the
 whole product fits; `limit` beside `summary` refused (FR 7); `known_packs` out of a summary (FR 11),
 which is the one small piece of [Response
-bulk](../NEXT_STEPS.md#response-bulk-on-the-read-only-tools) worth taking.
+bulk](../../NEXT_STEPS.md#response-bulk-on-the-read-only-tools) worth taking.
 
 ## References
 
-- [NEXT_STEPS: A summary mode for the asset
-  catalogue](../NEXT_STEPS.md#a-summary-mode-for-the-asset-catalogue), [Response bulk on the
-  read-only tools](../NEXT_STEPS.md#response-bulk-on-the-read-only-tools).
-- [FR 046](../done/046-license-in-the-catalogues/README.md): `counts_by_license` and the
+- [NEXT_STEPS: Response bulk on the read-only
+  tools](../../NEXT_STEPS.md#response-bulk-on-the-read-only-tools).
+- [FR 046](../046-license-in-the-catalogues/README.md): `counts_by_license` and the
   attribution.

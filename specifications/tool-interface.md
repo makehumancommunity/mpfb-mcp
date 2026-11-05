@@ -197,6 +197,15 @@ per-field validation into a hand-written dict walk that no schema checks. Flat a
 express something a dict cannot without a sentinel: on a mutating tool, an *omitted* argument means
 "leave this alone", which is what makes a relative change ("a bit older") a single call.
 
+**An argument may default to `null`, decided by what else was named.** `mpfb_list_assets`' `summary`
+is the one case ([FR 056](../feature-requests/done/056-asset-library-summary/README.md)): nothing
+named is a summary, and a filter, `limit` or `offset` is rows. That needs an unnamed argument to reach
+the command as itself, so `limit` and `offset` cross the socket as `null` and their defaults of 200
+and 0 are applied by the command, since a default filled in on this side would make a named
+`limit=200` look like no limit named. The rule has one home, on the far side, and the answer reports
+it as `summary` beside `requested_summary`. Reserve it for a default that really does depend: a
+caller cannot read it from the schema, so the description has to say so.
+
 Round-tripping is preserved on the **output** side instead: a tool returns the nested dict in
 MPFB's own shape, so a caller can read a character, hand the dict elsewhere, and map it back onto
 flat arguments mechanically. Assemble MPFB's structure in the tool function, from the flat
@@ -408,6 +417,7 @@ dictionaries, so they were checked by the FR's own `census.py --check` instead.
 | The object names of a character's mesh assets | `mesh_assets`, qualified by moment or subset (`mesh_assets_present`, `mesh_assets_not_rigged`) | |
 | One record per mesh asset on a character | `equipped_assets` | `assets`, which is `mpfb_list_assets`' catalogue |
 | Who made an installed file and under what terms, as pack metadata records it ([FR 046](../feature-requests/done/046-license-in-the-catalogues/README.md)) | `license`, `author`, `source_url` (the asset's community page) and `packs` (every claimant, sorted), beside `pack` (one claimant, the one a `pack` filter matched); on an equipped asset's `asset_info`, `material_license`/`material_author`/`material_packs` for its material. `license` is also `mpfb_list_assets`' exact, case-insensitive filter, echoed as `requested_license`/`license_recognized`/`known_licenses`; `counts_by_license` with `license_unknown_count` beside it, since `null` is no JSON key; `matched_packs`, per pack a `pack` filter matched, the installed files it claims; `attribution_conflicts`, claimants that disagree | `source`, which reads as a short form of `asset_source` - a fragment, a different concept |
+| The library across subdir, pack and license ([FR 056](../feature-requests/done/056-asset-library-summary/README.md)) | `facets`, rows of `{asset_subdir, pack, license, count}`; `summary`, which applied, beside `requested_summary`, what was asked, `null` when decided by what was named; `pack_ambiguous_count`, assets with several claimants, each counted once under the `pack` a row reports | `summary` for prose: a `message` is a `message` |
 | A part of the body a posing tool groups bones by | `body_part` in an answer, `body_parts` the argument; one of `root`, `torso`, `head`, `face`, `left_arm`, `right_arm`, `left_hand`, `right_hand`, `left_leg`, `right_leg` — feet and toes belong to the leg | Rigify's collection names (`Arm.L (IK)`), `limb` |
 | What a control is for, on a classified rig | `role` in an answer, `roles` the argument (a filter, `mpfb_get_pose_controls` only); one of `root`, `body`, `fk`, `ik_control`, `pole`, `ik_chain`, `foot_roll`, `switches`, `finger_master`, `finger_segment`, `toe_master`, `toe_segment`, `tweak`, `look_target`, `face_control` | `type`, `kind` |
 | A control a person posing the rig starts without | `hidden_by_default`, a static flag decided by the rig - never whether a collection is visible now ([FR 043](../feature-requests/done/043-narrower-pose-controls/README.md)) | `visible`, `hidden` |

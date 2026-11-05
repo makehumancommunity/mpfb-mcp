@@ -1224,3 +1224,24 @@ Verified by [`live_check.py`](done/054-refits-keep-the-pose/live_check.py), 0 fa
 scene of 301 objects: the pose back at 0.0 m, `restore_with` back at 0.0 m, the collection excluded again and a lamp still selected and active. What was left
 out: keeping a limb at its old place in the world, a tool to include a collection, and `mpfb_get_pose` on an excluded rig, which still reads what was last
 evaluated and says nothing false about a rig nobody has moved since.
+
+## [FR 056](done/056-asset-library-summary/README.md) — a summary of the asset library
+
+**A call to `mpfb_list_assets` naming nothing now answers with `facets`**, one row per `{asset_subdir, pack, license, count}` that occurs, and no
+rows. It used to answer with 200 clothes, because `clothes` sorts first, and one session read that as "200 clothes and nothing else". On this
+install of 926 assets that is 8.1 KB where the bare call was 128 KB and a sweep of every subdir 600 KB, so the question a session opens with costs
+one call. `summary: false` keeps the old page, naming any filter, `limit` or `offset` gets rows as before, and filters narrow a summary.
+
+**This changes what a bare call answers, on purpose**, and a caller outside the repository gets no error for it: `assets` is empty, the message says why,
+and `summary` says which applied. The rule lives on the bridge, which needs to tell an unnamed `limit` from a named one, so an unnamed one now crosses the
+socket as null and the 200 is applied there.
+
+**A facet is never a second opinion.** It reads the `pack` the same loop gives a row, and the tests sum the facets against the rows filter by filter, on the
+fixture library and, in the live check, on the real one.
+
+**Two of the scoping measurements did not survive.** The facets are 6.9 KB rather than 3.2 KB, because four keys per row were not in the estimate, so the
+summary clears its 8 KB line only as 8,192 B, by 63 B; it grows with the packs installed. And the slow first call the catalogue was described as having did not show up: the first summary, scanning every subdir on a fresh windowed Blender, took about
+130 ms against about 30 for the second. That claim is gone from the tool description and corrected in [mpfb-integration.md](../specifications/mpfb-integration.md). Memory was not measured.
+
+Verified by [`live_check.py`](done/056-asset-library-summary/live_check.py), 14 checks and 0 failures, run twice. What was left out, in
+[NEXT_STEPS](NEXT_STEPS.md#response-bulk-on-the-read-only-tools): narrower rows, at 622 bytes each, which are still what a page costs.

@@ -49,6 +49,7 @@ __all__ = (
     "validated_flag",
     "validated_mode",
     "validated_names",
+    "validated_optional_flag",
     "validated_subject",
     "validated_text",
 )
@@ -112,6 +113,15 @@ def validated_flag(value: object, argument: str) -> bool:
     """
     if not isinstance(value, bool):
         raise ValueError("{:s} must be a bool, got {!r}".format(argument, value))
+    return value
+
+
+def validated_optional_flag(value: object, argument: str) -> bool | None:
+    """:func:`validated_flag`, or ``None`` where leaving it out means something of its own."""
+    if value is None:
+        return None
+    if not isinstance(value, bool):
+        raise ValueError("{:s} must be a bool or omitted, got {!r}".format(argument, value))
     return value
 
 
