@@ -4,8 +4,13 @@
 The preloaded tool surface, measured and capped.
 
 An MCP client downloads every tool's description and parameter schema before
-any work happens, so the thirty-nine docstrings in ``src/mpfbmcp/tools/`` are a
-call-time cost paid by every session whether or not a tool is used.
+any work happens, so the docstrings in ``src/mpfbmcp/tools/`` are a call-time
+cost paid by every session that loads the tool, and by every session on a host
+that loads every tool up front. The server instructions are paid by every
+session on every host, and since
+[FR 059](../feature-requests/done/059-what-a-session-pays-for/README.md) they are
+measured here too, beside the two limits a client was seen or reported to cut
+them at.
 [FR 013](../feature-requests/done/013-live-verification/review.md) measured it
 for the first time and found 66.7 KB of descriptions against an estimate of
 58.5 KB - it had grown unnoticed across five requests, because nothing counted
@@ -222,7 +227,20 @@ import mpfbmcp
 # and an answer key on six, explained once in `mpfb_refit_human` at about 650 B and pointed at from the
 # other five in a sentence each, because a refit that keeps a pose changes what a caller should expect
 # from each of them. The ceiling keeps its paragraph of headroom.
-DESCRIPTION_CEILING = 106600
+#
+# Raised from 106,600 to 108,250 by
+# [FR 059](../feature-requests/done/059-what-a-session-pays-for/README.md), which adds no tool and
+# moves 1,630 B into seven descriptions out of the answers, where the same text cost about 52 KB
+# across the nine sessions that request measured. Most of it is requirement 12: `limb_measures`,
+# `achieved_measure` and `amounts_measure` left every answer, so each tool that reports a limb,
+# an `achieved` or a finger's amounts now says what it measures - `mpfb_get_pose` (+261),
+# `mpfb_set_pose_switches` (+212) and `mpfb_reset_pose` (+202) the limbs, `mpfb_get_rigify_hand_shape`
+# (+164) the amounts. `mpfb_set_pose_bones` (+498) and `mpfb_set_rigify_hand_shape` (+199) carry
+# their definitions and also say that they now report only what the call moved or wrote and where
+# the rest is named; `mpfb_add_asset` (+94) names `weights_from`, the field its weights warning
+# became. Requirement 4 moved nothing: every sentence the instructions lost was already in the
+# description of the tool it named. The ceiling keeps its headroom.
+DESCRIPTION_CEILING = 108250
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -293,11 +311,66 @@ DESCRIPTION_CEILING = 106600
 #
 # Raised from 22,500 to 22,650 by FR 056: 150 B, for `mpfb_list_assets`' `summary` and for `limit`
 # and `offset` becoming nullable, since an unnamed one has to be told from a named one.
-SCHEMA_CEILING = 22650
+#
+# Lowered from 22,650 to 11,700 by
+# [FR 059](../feature-requests/done/059-what-a-session-pays-for/README.md): `build_server()` publishes
+# the schemas without pydantic's `title` on every property and with an optional argument as its own
+# type rather than `anyOf` with `null` and a null default, which was 11.5 KB of 22.5 KB. Both rules
+# apply to whatever is registered, so the nullable arguments the raises above paid `anyOf` for now
+# cost a type each, and every later one will. The ceiling is the 11,008 B measured plus a paragraph.
+SCHEMA_CEILING = 11700
+
+# The server instructions, in characters, since that is what the one observed limit counted.
+# A Claude Code session on 2026-11-05 received them cut off at exactly 4,096 characters, with the
+# conventions - which came last and which no tool description repeats - among what was lost
+# ([FR 059](../feature-requests/done/059-what-a-session-pays-for/README.md)). Nothing had measured
+# them. The ceiling keeps a paragraph of headroom below that limit.
+INSTRUCTIONS_CEILING = 4000
+
+# The conventions end within this many characters of the start, since a secondary source puts the
+# limit at 2 KB, and they are the part that has to survive whatever the limit turns out to be.
+CONVENTIONS_END_CEILING = 2048
+
+# The last words of the conventions, which is where CONVENTIONS_END_CEILING is measured to.
+CONVENTIONS_END = "named in `temporarily_included`."
+
+# A single description, in characters. The same secondary sources give this as the limit on one
+# tool's description where a host loads every tool up front. `mpfb_list_assets` was at 4,094 when
+# FR 059 set it, and arrived whole through tool search, so this is the only warning a later
+# addition would get rather than a constraint today.
+SINGLE_DESCRIPTION_CEILING = 4096
 
 # Every tool the server registers is expected to describe itself. A zero-byte
 # description would otherwise pass every assertion here.
 MINIMUM_DESCRIPTION = 400
+
+
+def instructions() -> str:
+    """The instructions the server that ships sends on initialization."""
+    return mpfbmcp.build_server().instructions or ""
+
+
+def _schema_keys(schema: object, path: tuple = ()):
+    """Every ``(path, key, value)`` of a schema that is a keyword, not a property's name or data.
+
+    A key of ``properties`` names an argument, and an argument named ``title`` is not the
+    generated keyword; a ``default`` or an ``enum`` is data, and a dict inside one is not a schema.
+    """
+    if isinstance(schema, list):
+        for index, item in enumerate(schema):
+            yield from _schema_keys(item, path + (index,))
+        return
+    if not isinstance(schema, dict):
+        return
+    for key, value in schema.items():
+        yield (path, key, value)
+        if key in ("properties", "$defs", "definitions", "patternProperties") \
+                and isinstance(value, dict):
+            for name, sub in value.items():
+                yield from _schema_keys(sub, path + (key, name))
+        elif key in ("anyOf", "allOf", "oneOf", "prefixItems", "items", "additionalProperties",
+                     "not"):
+            yield from _schema_keys(value, path + (key,))
 
 
 def measure() -> list[dict[str, object]]:
@@ -313,8 +386,10 @@ def measure() -> list[dict[str, object]]:
             "name": tool.name,
             "description": tool.description or "",
             "description_bytes": len((tool.description or "").encode("utf-8")),
+            "description_characters": len(tool.description or ""),
             "schema_bytes": len(
                 json.dumps(tool.inputSchema, separators=(",", ":")).encode("utf-8")),
+            "input_schema": tool.inputSchema,
         }
         for tool in tools
     ]
@@ -331,11 +406,17 @@ def report() -> str:
             entry["description_bytes"], entry["schema_bytes"], entry["name"]))
     descriptions = sum(entry["description_bytes"] for entry in measured)
     schemas = sum(entry["schema_bytes"] for entry in measured)
+    text = instructions()
+    instruction_bytes = len(text.encode("utf-8"))
     lines.append("")
+    lines.append("{:d} B of server instructions ({:d} characters, ceiling {:d}; the conventions "
+                 "end at {:d}, ceiling {:d})".format(
+                     instruction_bytes, len(text), INSTRUCTIONS_CEILING,
+                     text.find(CONVENTIONS_END) + len(CONVENTIONS_END), CONVENTIONS_END_CEILING))
     lines.append("{:d} tools, {:d} B of descriptions (ceiling {:d}) plus {:d} B of "
-                 "parameter schemas (ceiling {:d}) = {:d} B preloaded".format(
+                 "parameter schemas (ceiling {:d}) plus the instructions = {:d} B preloaded".format(
                      len(measured), descriptions, DESCRIPTION_CEILING,
-                     schemas, SCHEMA_CEILING, descriptions + schemas))
+                     schemas, SCHEMA_CEILING, descriptions + schemas + instruction_bytes))
     return "\n".join(lines)
 
 
@@ -359,6 +440,59 @@ class DescriptionBudgetTests(unittest.TestCase):
         total = sum(entry["schema_bytes"] for entry in self.measured)
         self.assertLessEqual(total, SCHEMA_CEILING)
 
+    def test_no_single_description_is_over_the_limit_one_host_cuts_at(self) -> None:
+        for entry in self.measured:
+            self.assertLessEqual(
+                entry["description_characters"], SINGLE_DESCRIPTION_CEILING, entry["name"])
+
+    def test_no_input_schema_carries_a_generated_title(self) -> None:
+        for entry in self.measured:
+            for path, key, _value in _schema_keys(entry["input_schema"]):
+                self.assertNotEqual(key, "title", "{:s} at {!r}".format(entry["name"], path))
+
+    def test_no_optional_argument_is_published_as_a_union_with_null(self) -> None:
+        # The shape `str | None = None` would publish: an `anyOf` with a `null` option beside a
+        # null default. A required nullable argument has no default and keeps its null.
+        for entry in self.measured:
+            for path, key, value in _schema_keys(entry["input_schema"]):
+                if key != "anyOf" or not isinstance(value, list):
+                    continue
+                with self.subTest(tool=entry["name"], path=path):
+                    owner = entry["input_schema"]
+                    for step in path:
+                        owner = owner[step]
+                    self.assertFalse(
+                        {"type": "null"} in value and "default" in owner
+                        and owner["default"] is None)
+
+    def test_a_property_named_title_would_keep_its_name(self) -> None:
+        # No tool declares one today, so this asks the rewrite directly.
+        schema = {"title": "xArguments", "type": "object", "required": ["title"],
+                  "properties": {
+                      "title": {"title": "Title", "type": "string"},
+                      "tags": {"anyOf": [{"type": "array", "items": {"type": "string",
+                                                                      "title": "Tag"}},
+                                         {"type": "null"}],
+                               "default": None, "title": "Tags"},
+                      "either": {"anyOf": [{"type": "string"}, {"type": "integer"}],
+                                 "default": None, "title": "Either"},
+                      "kept": {"anyOf": [{"type": "string"}, {"type": "null"}],
+                               "default": "x", "title": "Kept"},
+                      "needed": {"anyOf": [{"type": "string"}, {"type": "null"}],
+                                 "title": "Needed"},
+                      "data": {"default": {"title": "not a keyword"}, "type": "object",
+                               "title": "Data"}}}
+        self.assertEqual(
+            mpfbmcp._without_generated_keys(schema),  # pylint: disable=protected-access
+            {"type": "object", "required": ["title"],
+             "properties": {
+                 "title": {"type": "string"},
+                 "tags": {"type": "array", "items": {"type": "string"}},
+                 "either": {"anyOf": [{"type": "string"}, {"type": "integer"}], "default": None},
+                 "kept": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": "x"},
+                 "needed": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                 "data": {"default": {"title": "not a keyword"}, "type": "object"}}})
+
     def test_every_tool_describes_itself(self) -> None:
         for entry in self.measured:
             self.assertGreaterEqual(
@@ -375,6 +509,37 @@ class DescriptionBudgetTests(unittest.TestCase):
         for entry in self.measured:
             self.assertIn("result", entry["description"], entry["name"])
             self.assertIn("`", entry["description"], entry["name"])
+
+
+class InstructionsBudgetTests(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.instructions = instructions()
+
+    def test_the_instructions_are_under_the_ceiling(self) -> None:
+        self.assertLessEqual(
+            len(self.instructions), INSTRUCTIONS_CEILING,
+            "the server instructions are {:d} characters, over the {:d} ceiling. A fact about one "
+            "tool belongs in its description; see INSTRUCTIONS in src/mpfbmcp/__init__.py.".format(
+                len(self.instructions), INSTRUCTIONS_CEILING))
+
+    def test_the_conventions_come_right_after_the_opening_sentence(self) -> None:
+        opening_ends = self.instructions.index(". ") + 2
+        self.assertTrue(self.instructions[opening_ends:].startswith("Conventions every tool"))
+
+    def test_the_conventions_end_within_the_shorter_limit(self) -> None:
+        self.assertIn(CONVENTIONS_END, self.instructions)
+        self.assertLessEqual(
+            self.instructions.index(CONVENTIONS_END) + len(CONVENTIONS_END),
+            CONVENTIONS_END_CEILING)
+
+    def test_every_convention_is_stated(self) -> None:
+        # What the tool descriptions leave out because the instructions carry it.
+        conventions = self.instructions[:self.instructions.index(CONVENTIONS_END)]
+        for key in ("`status`", "`result`", "`error`", "`message`", "`name`", "`found`",
+                    "`ready`", "`blocked_by`", "`performed`", "`changes`", "`truncated`",
+                    "`total_count`", "`offset`", "`limit`"):
+            self.assertIn(key, conventions)
 
 
 if __name__ == "__main__":

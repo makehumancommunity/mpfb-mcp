@@ -17,7 +17,6 @@ records what has already landed and why. When an effort below is finished, move 
 - [Hand-to-hand contact on a Rigify rig](#hand-to-hand-contact-on-rigify): FR 052, in part
 - [Loading poses](#loading-poses): FR 055
 - [No way to verify an install without an MCP client](#no-way-to-verify-an-install-without-an-mcp-client): FR 057
-- [The server instructions are cut off before the conventions](#the-server-instructions-are-cut-off): FR 059
 
 **Without one**, by apparent impact:
 
@@ -209,8 +208,8 @@ additions would have saved most of the hour:
 - An `orient` entry on `mpfb_set_pose_bones` taking the palm normal and finger direction in the
   character frame (or world), resolved against the deforming hand bone.
 - `mpfb_set_rigify_hand_shape`'s answer is ~2.5 KB per call, mostly unchanged fingers' before/after
-  tips; a written-fingers-only mode would make iterating on curls cheap. **Scoped in
-  [FR 059](059-what-a-session-pays-for/README.md)** as the default rather than a mode, and transcripts put it lower than this suggests:
+  tips; a written-fingers-only mode would make iterating on curls cheap. **Landed in
+  [FR 059](done/059-what-a-session-pays-for/README.md)** as the default rather than a mode, and transcripts put it lower than this suggests:
   35 of 54 hands wrote all five fingers.
 
 Also worth saying in the tool description: negative thumb `spread` brings the thumb across the palm,
@@ -240,7 +239,7 @@ lists `poses` as a subdir, so the catalogue half exists and only the acting tool
 is worth little on its own. The rows, at 622 bytes each, are the cost, and a `fields` or `compact` argument is what is left here for them.
 FR 056 dropped `known_packs` from a summary only, and a bare call is a summary now, so a page of rows is the only answer still carrying it.
 
-**Measured again for [FR 059](059-what-a-session-pays-for/README.md)**, which takes the fixed text and the writers' untouched readings: across 9
+**Measured again for [FR 059](done/059-what-a-session-pays-for/README.md)**, which took the fixed text and the writers' untouched readings: across 9
 sessions the catalogues are small, the largest 2.3 % of result characters, and the writers are not. The batch form below stays here.
 
 Not a defect, and not urgent — recorded because one session hit all three and they share a shape:
@@ -293,14 +292,6 @@ carry every fact it would print.
 Worth saying in `INSTALL.md` either way: the Blender half can be verified on its own, because the
 bridge's port shows up in `ss -ltnp | grep 9877` when the add-on is enabled and not otherwise.
 That single line distinguishes the two most common failures and costs nothing to document.
-
-<a id="the-server-instructions-are-cut-off"></a>
-
-## The server instructions are cut off before the conventions
-
-**Scoped on 2026-11-05 as [FR 059](059-what-a-session-pays-for/README.md), not yet implemented**, with the generated noise in the input
-schemas and the fixed text in answers added. A Claude Code session delivered the first 4,096 of the instructions' 7,134 characters, and
-the conventions no tool description repeats come last.
 
 <a id="windowed-bridge-answers-once-a-second"></a>
 

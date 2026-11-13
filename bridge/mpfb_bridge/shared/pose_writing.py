@@ -56,14 +56,19 @@ for a rig in edit mode), the keys of a call allowed to write
 (:func:`answer_base`), and what a write did to the body
 (:func:`consequences`): the landmarks before and after, and each limb's reach
 and stretch after, read by ``pose_reading`` under ``get_pose``'s own keys, with
-the limbs this call made stretched or unable to reach named.
+the limbs this call made stretched or unable to reach named. :func:`only_moved`
+narrows that to what the call moved, naming the rest, for a writer whose answer
+would otherwise restate a whole body after moving one finger
+([FR 059](../../../feature-requests/done/059-what-a-session-pays-for/README.md)).
 
 **Achieved is measured, with a tolerance that is part of its definition**
 ([a derived rather than recorded fact](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact)).
 A constraint, an IK chain or a limit can stop a bone short of where it was
 sent, and nothing records that it did; :func:`achieved` compares the bone's
-evaluated matrix with the target, and :data:`ACHIEVED_MEASURE` is the sentence
-every answer carries to say so.
+evaluated matrix with the target. The tolerances below are the only place the
+numbers live; the tool descriptions state them, since FR 059 took the sentence
+that restated them out of every answer: a caller has read a tool's description
+before it can call the tool.
 
 **Nothing is borrowed.** No mode, selection or active object is touched and no
 operator is called, so nothing here can insert a keyframe, whatever
@@ -80,7 +85,6 @@ takes no ``services``.
 __all__ = (
     "ACHIEVED_DEGREES",
     "ACHIEVED_DISTANCE",
-    "ACHIEVED_MEASURE",
     "ACHIEVED_SCALE",
     "KINDS",
     "REST_CHANNELS",
@@ -100,7 +104,9 @@ __all__ = (
     "limb_sentences",
     "lock_violations",
     "locks",
+    "only_moved",
     "own_matrix",
+    "placement",
     "parents_first",
     "rest_position_sentence",
     "restore",
@@ -131,12 +137,6 @@ from . import pose_reading
 ACHIEVED_DISTANCE = 0.001
 ACHIEVED_DEGREES = 0.5
 ACHIEVED_SCALE = 0.001
-
-ACHIEVED_MEASURE = (
-    "achieved: after every write in the call, the bone's evaluated head is within {:g} m of "
-    "what was asked, its orientation within {:g} degrees, and each scale factor asked for "
-    "within {:g}; otherwise deviation says by how much".format(
-        ACHIEVED_DISTANCE, ACHIEVED_DEGREES, ACHIEVED_SCALE))
 
 # The three kinds of change, and the channels each one is held in.
 KINDS = ("location", "rotation", "scale")
@@ -740,7 +740,7 @@ def consequences(frame, rig, classification, landmarks_before, limbs_before) -> 
     second one.
     """
     if not classification["classified"]:
-        return dict(landmarks=None, limbs=None, limb_measures=None,
+        return dict(landmarks=None, limbs=None,
                     limbs_made_stretched=[], limbs_made_unreachable=[])
     after = pose_reading.landmarks(frame, rig, classification["landmarks"])
     landmarks = {}
@@ -756,8 +756,92 @@ def consequences(frame, rig, classification, landmarks_before, limbs_before) -> 
     unreachable = [part for part, limb in limbs.items()
                    if limb and limb["target_unreachable"]
                    and not (limbs_before[part] or {}).get("target_unreachable")]
-    return dict(landmarks=landmarks, limbs=limbs, limb_measures=dict(pose_reading.LIMB_MEASURES),
+    return dict(landmarks=landmarks, limbs=limbs,
                 limbs_made_stretched=stretched, limbs_made_unreachable=unreachable)
+
+
+def _limb_bones(limb):
+    """Every bone whose place says where a limb is: its deforming segments, its tip, its IK control."""
+    names = list(limb["segments"] or ())
+    for name in (limb["tip"], limb["ik_control"]):
+        if name is not None and name not in names:
+            names.append(name)
+    return names
+
+
+def placement(frame, rig, classification):
+    """Where every landmark's and limb's bones are, unrounded, to tell afterwards what moved.
+
+    ``None`` on an unclassified rig, which has no landmarks or limbs. Each bone is its world
+    head and its orientation in armature space, which is all :func:`only_moved` compares.
+    """
+    if not classification["classified"]:
+        return None
+    names = {name for name in classification["landmarks"].values() if name is not None}
+    for limb in classification["limbs"].values():
+        names.update(_limb_bones(limb))
+    pose_bones = rig.pose.bones
+    return {name: (frame.armature_world(pose_bones[name].head),
+                   pose_bones[name].matrix.to_quaternion())
+            for name in names if name in pose_bones}
+
+
+def _moved(before, after, name, *, turning_counts):
+    if name not in before or name not in after:
+        return False
+    (head_before, rotation_before), (head_after, rotation_after) = before[name], after[name]
+    if (head_after - head_before).length > ACHIEVED_DISTANCE:
+        return True
+    if not turning_counts:
+        return False
+    angle = rotation_before.rotation_difference(rotation_after).angle
+    return math.degrees(min(angle, 2.0 * math.pi - angle)) > ACHIEVED_DEGREES
+
+
+def only_moved(consequence, classification, placed_before, placed_after):
+    """``consequence`` with only the landmarks and limbs this call moved, and the rest named.
+
+    Moved is measured, never inferred from which body parts were written: a turn of the spine
+    moves every limb and landmark, and then every one is reported. A landmark moved when its
+    bone's head is further than ``ACHIEVED_DISTANCE`` from where it was; a limb moved when any
+    of its segments, its tip or its IK control did, or turned by more than ``ACHIEVED_DEGREES``,
+    so that a forearm twisted about its own length counts. A limb this call made stretched or
+    unable to reach is always reported, whatever the measurement says, since its sentence in the
+    message reads its entry.
+
+    ``landmarks_not_moved`` and ``limbs_not_moved`` name what was left out, without values, so a
+    short answer cannot be read as a body with only these parts
+    ([a deliberately partial answer](../../../specifications/responses.md#a-deliberately-partial-answer-carries-the-size-of-the-whole)).
+    A landmark or limb this rig does not have stays in the map as ``None``, as ``get_pose``
+    reports it. Both lists are ``None`` on an unclassified rig, beside ``landmarks`` and
+    ``limbs``.
+    """
+    narrowed = dict(consequence)
+    if consequence["landmarks"] is None:
+        narrowed.update(landmarks_not_moved=None, limbs_not_moved=None)
+        return narrowed
+    landmarks = {}
+    landmarks_not_moved = []
+    for name, reading in consequence["landmarks"].items():
+        if reading is not None and not _moved(placed_before, placed_after, reading["bone"],
+                                              turning_counts=False):
+            landmarks_not_moved.append(name)
+        else:
+            landmarks[name] = reading
+    reported = set(consequence["limbs_made_stretched"]) | set(consequence["limbs_made_unreachable"])
+    limbs = {}
+    limbs_not_moved = []
+    for part, reading in consequence["limbs"].items():
+        moved = reading is None or part in reported or any(
+            _moved(placed_before, placed_after, name, turning_counts=True)
+            for name in _limb_bones(classification["limbs"][part]))
+        if moved:
+            limbs[part] = reading
+        else:
+            limbs_not_moved.append(part)
+    narrowed.update(landmarks=landmarks, landmarks_not_moved=landmarks_not_moved,
+                    limbs=limbs, limbs_not_moved=limbs_not_moved)
+    return narrowed
 
 
 def blocked_answer(resolved) -> dict:

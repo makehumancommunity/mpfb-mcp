@@ -1245,3 +1245,27 @@ summary clears its 8 KB line only as 8,192 B, by 63 B; it grows with the packs i
 
 Verified by [`live_check.py`](done/056-asset-library-summary/live_check.py), 14 checks and 0 failures, run twice. What was left out, in
 [NEXT_STEPS](NEXT_STEPS.md#response-bulk-on-the-read-only-tools): narrower rows, at 622 bytes each, which are still what a page costs.
+
+## [FR 059](done/059-what-a-session-pays-for/README.md) — instructions that arrive, and schemas and answers without what is generated or repeated
+
+**The server instructions are 3,950 characters, conventions first.** They were 7,134, and Claude Code cut them at exactly character
+4,096 - observed on 2026-11-05 and again, in this effort's own session (2.1.321, desktop), on 2026-11-13 - so the conventions, which
+came last and which no description repeats, never arrived. They now follow the opening sentence and end at character 1,440, and
+`test_description_budget.py` holds 4,000 and 2,048. Every sentence that went was checked against the description of the tool it named;
+the FR lists where each one now lives. A sentence stays only if it states a convention, routes, or states an order across tools.
+
+**The input schemas are half the size**, 11,008 B from 22,528, because `build_server()` publishes them without pydantic's `title`s and
+with an optional argument as its own type rather than `anyOf` with `null`. An explicit `null` is still accepted - FastMCP validates
+through the signature's model and does not validate the published schema - and `test_vocabulary.py` sends one to each of the 119
+arguments that took one, through a real client, so a change in the library fails here first. The output schemas stay.
+
+**Answers stopped repeating fixed text, and two writers report only what they changed.** `limb_measures`, `achieved_measure` and
+`amounts_measure` left every answer and went into the descriptions of the tools reporting them, which grew 1,630 B against about
+52 KB the sentences had cost across nine sessions. `mpfb_set_pose_bones` reports the landmarks and limbs a call **moved, measured** -
+turning the torso turned every limb but left the IK feet where they were, which the bridge test now asserts - and names the rest;
+`mpfb_set_rigify_hand_shape` reports the fingers it wrote and names the rest. `mpfb_add_asset`'s weights warning, which said "was
+requested" on 127 of 134 calls nobody had requested it on, fires only when `import_weights` is named, and `weights_from` carries the fact;
+its Rigify warning went from 306 characters to 100.
+
+**Not run: a fresh client session with the new server, and a real posing task in it**, which would confirm the text arrives whole and
+show how often a caller reads `mpfb_get_pose` after a narrowed write (5 reads to 66 writes before). See the FR's verification section.

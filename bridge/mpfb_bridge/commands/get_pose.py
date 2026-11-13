@@ -28,8 +28,11 @@ left in the air only that way. Each of those is now a field here.
 - ``landmarks``: the hips, head, hands and feet, now and at rest, measured on
   the **deforming** bones - where the body is, not where a control sits.
 - ``limbs``: reach and stretch per limb, which are derived rather than
-  recorded; ``limb_measures`` says how each was computed and with what
-  tolerance.
+  recorded. How each is computed, and with what tolerance, is in the tool
+  description rather than in every answer
+  ([FR 059](../../../feature-requests/done/059-what-a-session-pays-for/README.md));
+  the tolerances themselves live in ``pose_reading``. This is the whole
+  reading, where ``set_pose_bones`` reports only what a call moved.
 
 **Classification is ``get_pose_controls``', not a second opinion**: both read
 [`shared/pose_controls.py`](../shared/pose_controls.py), so a bone that is
@@ -161,7 +164,7 @@ def get_pose(params, resolution):
             requested_body_parts=None, counts_by_body_part=None,
             at_rest=not posed, posed_count=len(posed), posed=None, posed_bones=posed,
             switch_values=None, switch_parents=None, settings_off_default=None,
-            landmarks=None, limbs=None, limb_measures=None,
+            landmarks=None, limbs=None,
             message=_message_for(rig, len(posed), len(posed), None, None)
             + " The rig is '{!s}', which is not classified, so there are no body parts, "
               "switches, landmarks or limbs to report.".format(identified),
@@ -186,7 +189,6 @@ def get_pose(params, resolution):
         settings_off_default=pose_reading.settings_off_default(rig, classification["controls"]),
         landmarks=pose_reading.landmarks(frame, rig, classification["landmarks"]),
         limbs=limbs,
-        limb_measures=dict(pose_reading.LIMB_MEASURES),
         message=_message_for(rig, posed_total, listed, requested, limbs),
     )
     _LOG.debug("get_pose: %d posed, %d listed", posed_total, len(posed))

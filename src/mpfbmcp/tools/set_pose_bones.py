@@ -189,12 +189,20 @@ def register(mcp: FastMCP) -> None:
         that would work.
 
         `result`'s `changes`, in request order, give `head`/`rotation`/
-        `scale` before and after and `achieved` (false with `deviation` when
-        a constraint or IK stopped it short). `landmarks` before and after,
-        `limbs` after as in
-        `mpfb_get_pose`, and `limbs_made_stretched`/`limbs_made_unreachable`
-        say what moved as a consequence. Blender's undo does not see this;
-        `mpfb_reset_pose` does.
+        `scale` before and after and `achieved`: after the whole batch the
+        head is within 1 mm of what was asked, the orientation within 0.5
+        degrees and each scale factor within 0.001, or else `deviation` says
+        by how much a constraint or IK stopped it short.
+
+        **Only what the call moved** is in `landmarks` (before and after)
+        and `limbs` (after, as `mpfb_get_pose` reads them: `stretched` over
+        1 mm longer than at rest, `reach_ratio` root to IK control over rest
+        length, `target_unreachable` IK in charge with the tip over 1 cm
+        short). It is measured, so a turn of the spine reports everything;
+        `landmarks_not_moved` and `limbs_not_moved` name the rest, and
+        `mpfb_get_pose` reads the whole. `limbs_made_stretched`/
+        `limbs_made_unreachable` name what this call did. Blender's undo does
+        not see this; `mpfb_reset_pose` does.
         """
         return backend.send(
             "set_pose_bones",

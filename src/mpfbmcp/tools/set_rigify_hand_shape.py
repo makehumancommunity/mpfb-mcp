@@ -163,10 +163,13 @@ def register(mcp: FastMCP) -> None:
         `symmetry: true` applies the entry to the other hand too. A written
         finger's segment controls are put at rest (`segments_reset`).
 
-        `result`'s `hands` give `fingers_before`/`fingers_after` as the
-        reader reports them, `achieved` per written finger (false with
-        `deviation` in degrees) and `matches_shape_after`. `restore_with` is
-        the call, or two in order, that puts it back.
+        `result`'s `hands` give `fingers_before`/`fingers_after` for the
+        fingers written, as `mpfb_get_rigify_hand_shape` reads them (a fit
+        where `expressible` is false), with `fingers_not_written` naming the
+        rest; `achieved` per written finger, false with `deviation` in
+        degrees when a joint is over 0.5 degrees from what the amounts ask;
+        and `matches_shape_after`, the whole hand's. `restore_with` is the
+        call, or two in order, that puts it back.
         """
         return backend.send(
             "set_rigify_hand_shape",

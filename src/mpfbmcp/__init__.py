@@ -18,6 +18,7 @@ This requires:
 from __future__ import annotations
 
 __all__ = (
+    "INSTRUCTIONS",
     "build_server",
     "main",
 )
@@ -95,6 +96,154 @@ def _shipped_without_source_indentation(mcp: FastMCP) -> None:
             tool.description = inspect.cleandoc(tool.description)
 
 
+# The keywords whose value is a schema, or a list or a map of schemas, and so is walked into.
+# Everything else - `default`, `enum`, `const`, `examples` - is data, and a dict found there is
+# left alone however it is keyed.
+_SUBSCHEMA_KEYWORDS = ("items", "additionalProperties", "not", "if", "then", "else")
+_SUBSCHEMA_LIST_KEYWORDS = ("anyOf", "allOf", "oneOf", "prefixItems")
+_SUBSCHEMA_MAP_KEYWORDS = ("properties", "$defs", "definitions", "patternProperties")
+
+
+def _without_generated_keys(schema: dict) -> dict:
+    """A parameter schema without what pydantic generated and no caller acts on.
+
+    Two things, and nothing else
+    ([FR 059](../../feature-requests/done/059-what-a-session-pays-for/README.md)):
+
+    - **Every `title` keyword.** Pydantic titles the schema `mpfb_list_docsArguments` and each
+      property `Topic`, which is the property's own name restated - 272 of them, 7 KB of a 22 KB
+      schema total. A *property* named `title` is a key of `properties` rather than a keyword, so
+      the walk descends into `properties` by name and never strips one.
+    - **The `null` option of an optional argument.** `str | None = None` is published as
+      `anyOf: [{type: string}, {type: null}]` with `default: null`, which says "a string, or
+      leave it out" at three times the length of `type: string` left out of `required`. Only that
+      exact shape is collapsed: a union of two real types stays a union, a non-null default stays,
+      and an argument with no default - a required nullable one - keeps its `null`, since a
+      schema forbidding what it accepts would be worse than a long one.
+
+    An explicit `null` is still accepted, because FastMCP validates a call through the model
+    built from the signature, which this does not touch, and registers its handler with
+    `validate_input=False`. That second fact is the library's: `tests/test_vocabulary.py` sends
+    `null` to every optional argument through a real client, and is what fails if it changes.
+    """
+    cleaned: dict = {}
+    for key, value in schema.items():
+        if key == "title":
+            continue
+        if key in _SUBSCHEMA_MAP_KEYWORDS and isinstance(value, dict):
+            cleaned[key] = {name: _without_generated_keys(sub) if isinstance(sub, dict) else sub
+                            for name, sub in value.items()}
+        elif key in _SUBSCHEMA_LIST_KEYWORDS and isinstance(value, list):
+            cleaned[key] = [_without_generated_keys(sub) if isinstance(sub, dict) else sub
+                            for sub in value]
+        elif key in _SUBSCHEMA_KEYWORDS and isinstance(value, dict):
+            cleaned[key] = _without_generated_keys(value)
+        else:
+            cleaned[key] = value
+    return _as_its_own_type(cleaned)
+
+
+def _as_its_own_type(schema: dict) -> dict:
+    """``anyOf: [X, {type: null}]`` with ``default: null`` as X, with no default; else unchanged."""
+    options = schema.get("anyOf")
+    if ("default" not in schema or schema["default"] is not None
+            or not isinstance(options, list) or len(options) != 2):
+        return schema
+    real = [option for option in options if option != {"type": "null"}]
+    if len(real) != 1 or not isinstance(real[0], dict):
+        return schema
+    collapsed = {key: value for key, value in schema.items() if key not in ("anyOf", "default")}
+    for key, value in real[0].items():
+        collapsed.setdefault(key, value)
+    return collapsed
+
+
+def _published_without_generated_keys(mcp: FastMCP) -> None:
+    """Rewrite each tool's published parameter schema; the model a call is validated by is not touched."""
+    for tool in _registered_tools(mcp):
+        tool.parameters = _without_generated_keys(tool.parameters)
+
+
+# What every session receives before any tool is loaded, and the one text no tool owns
+# ([FR 059](../../feature-requests/done/059-what-a-session-pays-for/README.md)). It crosses the wire
+# as a single string; the groups below are for the reader of this file.
+#
+# **The conventions come first, and end within 2,048 characters.** One client was observed
+# delivering only the first 4,096 characters of a server's instructions, and a secondary source
+# puts the limit at 2 KB; the conventions are the part no tool description repeats, so they are
+# the part that must survive either. The whole is held to 4,000 characters by
+# `tests/test_description_budget.py`.
+#
+# **A sentence stays only if it states a convention, routes - says which tool does which job,
+# since this may be all a model reads before loading one - or states an order across tools that no
+# single description can own.** A fact about one tool belongs in that tool's description, which a
+# caller reads before it can call the tool, under tool search as much as anywhere.
+INSTRUCTIONS = " ".join((
+    # What this is.
+    "Tools for building and changing MakeHuman characters in Blender, through MPFB and the MPFB "
+    "Bridge add-on.",
+
+    # The conventions.
+    "Conventions every tool shares, which no tool's description repeats. Each returns the same "
+    "envelope: check `status` (\"ok\" or \"error\"), then read `result`; on a failure, branch on "
+    "`error`, a short slug, not on the sentence in `message`. A tool acting on an "
+    "existing character takes `name` - any object in that character's family, the basemesh, its "
+    "rig or a garment fitted to it - or omit `name` to use whatever is active in Blender, and the "
+    "response names the object actually worked on. A tool that cannot do what was asked answers "
+    "rather than failing, so read `found` (the subject could not be resolved), `ready` and "
+    "`blocked_by` (the world was not in a fit state, and which way) before concluding a call went "
+    "wrong. Every tool that changes a character reports `performed`, a real boolean, true exactly "
+    "when something changed; most keep a verb beside it (`added`, `applied`, `removed`, "
+    "`generated`, `recalculated`, `refit_performed`), and the batch tools list their per-entry "
+    "writes as `changes`; the tool says where the flag and its verb can differ. A capped listing "
+    "always reports `truncated`, `total_count`, `offset` and `limit`: check `truncated` before "
+    "concluding something is not installed. A character whose collection is excluded from the "
+    "view layer is included for the call and excluded again, named in `temporarily_included`.",
+
+    # Where to start.
+    "When a tool fails unexpectedly, call mpfb_get_status first. To act on a character this "
+    "session did not create, find it with mpfb_list_objects and identify it with "
+    "mpfb_get_object_info rather than guessing from object names; to change one, read it with "
+    "mpfb_get_character_summary and change only what should differ. The catalogues name entries "
+    "the way the acting tool wants them: mpfb_list_assets (with no arguments, a summary of the "
+    "library), mpfb_list_rigs and mpfb_list_targets.",
+
+    # Building a character, in the order MPFB needs and does not check.
+    "Order matters and MPFB reports no error when it is wrong: add the rig with mpfb_add_rig "
+    "BEFORE equipping anything with mpfb_add_asset, since nothing rigs an asset afterwards. A "
+    "rigify.* rig is only a meta rig until mpfb_generate_rigify_rig, which is not undoable and "
+    "comes after the assets. Take an asset off with mpfb_remove_asset, never by deleting the "
+    "object. A character with no skin is grey: give it one with mpfb_set_skin. Recolour a garment "
+    "with mpfb_list_asset_materials and mpfb_set_asset_material. Shape a body with "
+    "mpfb_set_macro_details, mpfb_set_targets or mpfb_symmetrize_targets, then refit once with "
+    "mpfb_refit_human, or everything fitted to it is left behind. MPFB builds every character at the origin; equip it before laying several out with "
+    "mpfb_place_character.",
+
+    # Face and pose.
+    "Compose a face from ARKit units with mpfb_set_face_units or apply saved expressions with "
+    "mpfb_apply_expressions; a composed face is transient: "
+    "mpfb_save_preset does not keep it and mpfb_save_expression does. Pose with "
+    "mpfb_get_pose_controls (which bones to move, in a frame that turns with the character), "
+    "mpfb_set_pose_bones, mpfb_set_pose_switches and mpfb_reset_pose, a Rigify hand with "
+    "mpfb_set_rigify_hand_shape, and read the result with mpfb_get_pose rather than a "
+    "screenshot.",
+
+    # Measuring, materials and authoring assets.
+    "Whether meshes pass through each other is measured with mpfb_check_intersections, not seen "
+    "in a render. A material from textures is mpfb_set_makeskin_material's, kept with "
+    "mpfb_store_makeskin_material. To author a mesh asset, check it with mpfb_check_mesh_asset, "
+    "give the body a delete group with mpfb_generate_delete_group, write it with "
+    "mpfb_write_mesh_asset and follow its try_with.",
+
+    # Leaving Blender.
+    "A character exists only in the .blend until mpfb_save_preset writes it; mpfb_list_presets "
+    "lists them and mpfb_create_human_from_preset builds a NEW character from one. Export with "
+    "mpfb_create_export_copy, then mpfb_export_character. For a community or documentation "
+    "address, use mpfb_list_urls, which answers even without Blender, or mpfb_list_docs rather "
+    "than composing a URL.",
+))
+
+
 def build_server() -> FastMCP:
     """The configured server, built but not run.
 
@@ -106,127 +255,7 @@ def build_server() -> FastMCP:
     """
     mcp = _Server(
         "mpfb-mcp",
-        instructions=(
-            "Tools for creating MakeHuman characters via the MPFB Blender add-on. "
-            "Requires the MPFB Bridge add-on's command server to be running inside "
-            "Blender (see MPFB_BRIDGE_HOST / MPFB_BRIDGE_PORT), with the MPFB "
-            "extension installed and enabled in that Blender instance. When an "
-            "MPFB tool fails unexpectedly, call mpfb_get_status first: it reports "
-            "whether MPFB is present, initialized and correctly configured. To act "
-            "on a character this session did not create, find it with "
-            "mpfb_list_objects and identify it with mpfb_get_object_info rather "
-            "than guessing from Blender object names. mpfb_list_assets with no "
-            "arguments summarizes what the asset library holds, across subdir, "
-            "pack and license. To find an asset to apply "
-            "or a rig to add, use mpfb_list_assets or mpfb_list_rigs, and "
-            "mpfb_list_targets for the modeling targets: each names its entries "
-            "the way the acting function will want them. Order matters when "
-            "building a character and MPFB reports no error when it is wrong: "
-            "add the rig with mpfb_add_rig BEFORE attaching any garments, since "
-            "a garment is rigged only if a rig exists when it is attached and "
-            "nothing rigs it afterwards. A rigify.* rig is only a meta rig when "
-            "mpfb_add_rig returns; attach the garments with mpfb_add_asset "
-            "and then finish it with mpfb_generate_rigify_rig, which is not "
-            "undoable. mpfb_add_asset equips one mesh asset per call - a "
-            "garment, a body part (eyes, hair, teeth...) or the body proxy - "
-            "and requires the object_type mpfb_list_assets reports, since "
-            "MPFB's own default silently turns hair into a garment. Take an "
-            "asset off with "
-            "mpfb_remove_asset rather than by deleting the object, or the "
-            "body stays masked under something that is no longer there. "
-            "A character with no skin is grey: give it one with mpfb_set_skin, "
-            "whose skin_type picks between five entirely different materials "
-            "and defaults to MAKESKIN as MPFB's own panel does, not to the "
-            "ENHANCED_SSS its service function defaults to. Applying a skin "
-            "deletes every material already on the body, and on the body proxy "
-            "too. To recolour a garment rather than the body, list its "
-            "alternatives with mpfb_list_asset_materials - they are not in "
-            "mpfb_list_assets' answer - and apply one with "
-            "mpfb_set_asset_material. To change an existing "
-            "character rather than create one, read it with "
-            "mpfb_get_character_summary first - one call for its phenotype "
-            "(the eleven sliders MPFB calls macro details), rig, mesh assets, "
-            "skin, modeling targets and face - and change only what should "
-            "differ: mpfb_set_macro_details leaves unnamed sliders alone. "
-            "For the modeling targets below the phenotype level, read "
-            "mpfb_get_target_stack and write mpfb_set_targets - which is "
-            "batched, so send a whole series of modeling changes as one call "
-            "rather than one call each, and which applies nothing at all if any "
-            "entry fails to resolve. mpfb_symmetrize_targets repairs a "
-            "left/right asymmetry that MPFB itself has no way to undo; run it "
-            "with dry_run first. "
-            "To give a character an expression, mpfb_get_face_units reads the "
-            "52 ARKit face units and mpfb_set_face_units composes them; both "
-            "need the faceunits01 asset pack, and a composed face is transient "
-            "- not saved by mpfb_save_preset. "
-            "Changing a body's shape moves it out from under everything fitted "
-            "to it, so finish a series of modeling changes with one call to "
-            "mpfb_refit_human. "
-            "A refit keeps a pose unless told otherwise, and says so in pose_after_refit. A "
-            "character whose collection is excluded from the view layer is included for the call "
-            "and excluded again, and temporarily_included names the collection. "
-            "To pose a character, find its controls with mpfb_get_pose_controls - "
-            "which bones to move, by body part, in a frame that turns with the "
-            "character - and read the result back with mpfb_get_pose rather "
-            "than from a screenshot. On a rig generated from MPFB's Rigify "
-            "meta-rigs, shape a hand with mpfb_set_rigify_hand_shape - a "
-            "named shape, or a curl and spread per finger - and read it with "
-            "mpfb_get_rigify_hand_shape. "
-            "MPFB builds every character at the origin: lay several out with "
-            "mpfb_place_character, spaced by the footprint it and "
-            "mpfb_get_character_summary report. "
-            "To know whether meshes pass through each other, measure with "
-            "mpfb_check_intersections rather than looking at a render, or ask "
-            "mpfb_add_asset to with measure_intersections; a mesh being "
-            "authored into an asset is measured by mpfb_check_mesh_asset. "
-            "To give a mesh a material from textures, use "
-            "mpfb_set_makeskin_material, read it with "
-            "mpfb_get_makeskin_material, and keep it as an alternate or a skin "
-            "with mpfb_store_makeskin_material. "
-            "To author a mesh asset: measure it, give the body a delete group with "
-            "mpfb_generate_delete_group, write it with mpfb_write_mesh_asset, "
-            "then build a second character from a preset, pose it, equip the asset "
-            "and measure with mpfb_check_intersections, reading the unmasked counts. "
-            "A character exists only in the running .blend until it is saved "
-            "as an MPFB preset: mpfb_save_preset writes one - a file, and not "
-            "undoable - mpfb_list_presets says which exist, and "
-            "mpfb_create_human_from_preset builds a NEW character from one "
-            "rather than loading into the current one. "
-            "A preset is addressed by its preset_name, never by a path. "
-            "To take a character to a game engine or another application, "
-            "make a processed copy with mpfb_create_export_copy and write it "
-            "with mpfb_export_character, which names only the file: the "
-            "directory is the Blender user's choice. "
-            "Neither of the two lookup tools acts on Blender at all: they hand "
-            "out addresses for the client to retrieve, and neither fetches "
-            "anything itself. mpfb_list_urls gives the community sites - where "
-            "to download MPFB, get asset packs, ask on the forum, file a bug - "
-            "and answers even when MPFB or Blender is unreachable, which is "
-            "when those links matter most. mpfb_list_docs gives MPFB's "
-            "developer documentation, one document per service and per file "
-            "format, for when a tool response does not say how MPFB actually "
-            "does something. Use them rather than composing a URL. "
-            "Conventions every tool here shares, so that no single tool's "
-            "description repeats them. Each returns the same envelope: "
-            "check `status` (\"ok\" or \"error\"), then read `result` - and on "
-            "a failure branch on `error`, a short slug, rather than on the "
-            "human sentence in `message`. A tool "
-            "acting on an existing character takes `name` - any object in that "
-            "character's family, the basemesh, its rig or a garment fitted to "
-            "it - or omit `name` to use whatever is active in Blender, and the "
-            "response names the object actually worked on. A tool that cannot "
-            "do what was asked answers rather than failing, so read `found` "
-            "(the subject could not be resolved), `ready` and `blocked_by` (the "
-            "world was not in a fit state, and which way) before concluding a "
-            "call went wrong. Every tool that changes a character reports "
-            "`performed`, a real boolean, true exactly when something changed; "
-            "most keep a verb beside it (`added`, `applied`, `removed`, "
-            "`generated`, `recalculated`, `refit_performed`), and the batch "
-            "tools list their per-entry writes as `changes`; the tool says where "
-            "the flag and its verb can differ. A capped listing "
-            "always reports `truncated`, `total_count`, `offset` and `limit`: "
-            "check `truncated` before concluding something is not installed."
-        ),
+        instructions=INSTRUCTIONS,
     )
 
     from mpfbmcp.tools import (
@@ -294,6 +323,7 @@ def build_server() -> FastMCP:
     write_mesh_asset.register(mcp)
 
     _shipped_without_source_indentation(mcp)
+    _published_without_generated_keys(mcp)
     mcp.declared_arguments = {
         tool.name: frozenset(tool.parameters.get("properties", {}))
         for tool in _registered_tools(mcp)}

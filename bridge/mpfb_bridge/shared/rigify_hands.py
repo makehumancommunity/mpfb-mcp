@@ -60,13 +60,15 @@ bend axis, which is singular at exactly 90.
 the angle at each joint, rest-relative, first knuckle first - and is what a
 write's ``achieved`` is checked against; ``tip`` is where the last deforming
 bone ends. The amounts a reader reports are derived from the control channels
-and checked against that measurement (:data:`AMOUNTS_MEASURE`).
+and checked against that measurement, with the tolerances below; the tool
+descriptions say how, since
+[FR 059](../../../feature-requests/done/059-what-a-session-pays-for/README.md) took
+the sentence restating it out of every answer.
 
 Like ``pose_writing``, it reads nothing out of MPFB and takes no ``services``.
 """
 
 __all__ = (
-    "AMOUNTS_MEASURE",
     "BEND_EXPRESSIONS",
     "CALIBRATION",
     "CURL_RANGE",
@@ -193,13 +195,6 @@ DEGREES_TOLERANCE = 0.5
 
 # A hand matches a shape when every finger it has is within this of the row.
 MATCH_TOLERANCE = 0.05
-
-AMOUNTS_MEASURE = (
-    "curl and spread: from each finger master's rotation and Y scale. joint_degrees and "
-    "spread_degrees: measured on the deforming bones, from rest. expressible: the channels are "
-    "a curl and a spread within {:g} degrees and no segment or palm is posed; if not, the "
-    "amounts are a least-squares fit to the measurement. matches_shape: every amount within "
-    "{:g}".format(DEGREES_TOLERANCE, MATCH_TOLERANCE))
 
 _AMOUNT_DIGITS = 3
 _DEGREE_DIGITS = 1

@@ -29,9 +29,11 @@ is, and the two differ exactly when a limb is in FK or cannot reach.
 **Reach and stretch are derived, and their tolerances are part of their
 definition**
 ([a derived rather than recorded fact](../../../specifications/responses.md#how-tools-report-a-derived-rather-than-recorded-fact)).
-Nothing records either. :data:`LIMB_MEASURES` is the sentence each answer
-carries to say how they were computed, and the tolerances below are the only
-place the numbers live:
+Nothing records either. The tolerances below are the only place the numbers
+live, and the descriptions of the tools reporting a limb state them; until
+[FR 059](../../../feature-requests/done/059-what-a-session-pays-for/README.md) a
+``limb_measures`` sentence restated them in every answer, which a caller had
+already read in the description:
 
 - ``reach_ratio``: the distance from the limb's root (the head of its first
   deforming segment, now) to its IK control's head, over the chain's rest
@@ -57,7 +59,6 @@ classification.
 """
 
 __all__ = (
-    "LIMB_MEASURES",
     "OFF_REST_THRESHOLD",
     "REACH_TOLERANCE",
     "STRETCH_TOLERANCE",
@@ -92,14 +93,6 @@ REACH_TOLERANCE = 0.01
 _DEFORMING_TOLERANCE = 0.001
 
 _RATIO_DIGITS = 3
-
-LIMB_MEASURES = {
-    "reach_ratio": "limb root to IK control, over the chain's rest length",
-    "stretched": "chain longer than at rest by over {:g} m".format(STRETCH_TOLERANCE),
-    "target_unreachable": "IK in charge, tip over {:g} m from the IK control, control at "
-                          "least a chain length from the root".format(REACH_TOLERANCE),
-}
-
 
 def evaluated():
     """Bring every pose matrix up to date with the last write, from whichever tool made it."""

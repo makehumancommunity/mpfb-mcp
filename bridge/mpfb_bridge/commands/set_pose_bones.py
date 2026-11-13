@@ -60,8 +60,8 @@ change, reported straight after its source with ``mirrored_from``.
 
 **Requested beside achieved.** A constraint, an IK chain or a limit can stop a
 bone short, so every change reports where it did end up, ``achieved`` and, when
-it did not arrive, ``deviation`` - measured after the whole batch, with the
-tolerance ``achieved_measure`` states. A write to a channel the rig's action
+it did not arrive, ``deviation`` - measured after the whole batch, with
+``pose_writing``'s tolerances, which the tool description states. A write to a channel the rig's action
 animates is made and flagged ``overwritten_on_frame_change``, because the next
 frame change puts the keyed value back; keyframes are never touched.
 
@@ -69,7 +69,15 @@ frame change puts the keyed value back; keyframes are never touched.
 [`shared/pose_reading.py`](../shared/pose_reading.py), the code ``get_pose``
 reads with: the landmarks before and after, and each limb's reach and stretch
 after, under ``get_pose``'s keys, with ``limbs_made_stretched`` and
-``limbs_made_unreachable`` naming what this call did.
+``limbs_made_unreachable`` naming what this call did. **Only what the call
+moved is reported**, measured by ``pose_writing.only_moved()``, and
+``landmarks_not_moved``/``limbs_not_moved`` name the rest
+([FR 059](../../../feature-requests/done/059-what-a-session-pays-for/README.md)):
+moving a finger used to restate both arms, both legs and six landmarks, and
+``mpfb_get_pose`` is the whole reading for a caller who wants it. FR 059's
+transcripts had five reads after sixty-six writes; a narrower answer that sent
+callers back to read after more than about three writes in ten would cost more
+than it saves.
 
 **Nothing is borrowed**: no mode, selection or active object, and no operator.
 An armature showing its rest position is posed anyway and says so
@@ -506,6 +514,7 @@ def _set_pose_bones(params, resolution):  # pylint: disable=too-many-locals
         before = {name: pose_reading.posed_entry(frame, rig.pose.bones[name]) for name in names}
         landmarks_before = (pose_reading.landmarks(frame, rig, classification["landmarks"])
                             if classification["classified"] else None)
+        placed_before = pose_writing.placement(frame, rig, classification)
         try:
             targets, errors = _write_all(rig, frame, plans)
         except Exception:
@@ -519,10 +528,10 @@ def _set_pose_bones(params, resolution):  # pylint: disable=too-many-locals
         changes = [_change(frame, rig, classification, plan,
                            before=before[plan["entry"]["bone"]], targets=targets,
                            animated=animated) for plan in plans]
-        consequence = pose_writing.consequences(frame, rig, classification, landmarks_before,
-                                                 limbs_before)
-    answer.update(changes=changes, change_count=len(changes), resolution_errors=[],
-                  achieved_measure=pose_writing.ACHIEVED_MEASURE)
+        consequence = pose_writing.only_moved(
+            pose_writing.consequences(frame, rig, classification, landmarks_before, limbs_before),
+            classification, placed_before, pose_writing.placement(frame, rig, classification))
+    answer.update(changes=changes, change_count=len(changes), resolution_errors=[])
     answer.update(consequence)
     answer["message"] = _message(rig, changes, consequence, shown)
     _LOG.debug("set_pose_bones: %d change(s) to %r", len(changes), rig.name)

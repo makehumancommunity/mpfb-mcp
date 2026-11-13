@@ -48,14 +48,16 @@ def register(mcp: FastMCP) -> None:
         `right_hand`, default both. Changes nothing; any other rig is refused
         (`rig_not_supported`).
 
-        `result`'s `hands`, per finger, beside the amounts: `joint_degrees`
-        (each joint's bend from rest, first knuckle first) and
-        `spread_degrees`, measured on the deforming bones, and `tip`, the
-        fingertip in the character frame.
-        A finger posed some other way - a bent segment, a hook, a twist - is
+        `result`'s `hands`, per finger: the amounts, read off the finger
+        master's rotation and Y scale, and beside them `joint_degrees` (each
+        joint's bend from rest, first knuckle first) and `spread_degrees`,
+        measured on the deforming bones, and `tip`, the fingertip in the
+        character frame. A finger whose channels are not a curl and a spread
+        within 0.5 degrees - a bent segment or palm, a hook, a twist - is
         `expressible: false` with `not_expressible_because`, and its amounts
-        are then a fit. Per hand, `matches_shape` names the shape it is in,
-        or null. `known_shapes` lists every shape's amounts.
+        are then a least-squares fit to the measurement. Per hand,
+        `matches_shape` names the shape every amount is within 0.05 of, or
+        null. `known_shapes` lists every shape's amounts.
         """
         return backend.send(
             "get_rigify_hand_shape",

@@ -57,7 +57,11 @@ def register(mcp: FastMCP) -> None:
 
         `bones_reset`, `switches_reset` (`previous_value`/`new_value`),
         `left_off_rest` (bones that are not controls, still posed by
-        something else), and `landmarks`/`limbs` as in `mpfb_set_pose_bones`.
+        something else), and `landmarks` (before and after) and `limbs`
+        (after), every one as `mpfb_get_pose` reads them: `stretched` over
+        1 mm longer than at rest, `reach_ratio` root to IK control over rest
+        length, `target_unreachable` IK in charge with the tip over 1 cm
+        short.
         """
         return backend.send(
             "reset_pose",

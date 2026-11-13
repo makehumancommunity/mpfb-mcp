@@ -21,7 +21,8 @@ something, including how it resolves its subject.
 ## A tool description is call-time instruction with a budget
 
 A tool's description is not documentation about the tool — it is the instruction the caller
-reasons from, and an MCP client downloads all twenty-five of them before any work happens. That
+reasons from, and an MCP client downloads every one of them before any work happens on a host that
+loads every tool up front, and each one a session loads on a host with tool search. That
 makes it the one piece of prose in this repository with a **cost per session**, and it is measured:
 [FR 013](../feature-requests/done/013-live-verification/review.md#does-the-tool-surface-fit-its-consumer)
 found 66.7 KB of descriptions against an estimate of 58.5 KB, having grown unnoticed across five
@@ -45,11 +46,42 @@ ceiling, so the next drift is a failing test rather than a discovery.
   concept and not the key (`objects_removed`, `rig_object_name`, `asset_info.material_source`).
   A shorter description a caller has to guess against is worse than a long one.
 - **What every tool would otherwise repeat belongs in the server instructions**, which are sent
-  once rather than twenty-five times: the response envelope — including that a failure carries a
+  once rather than once per tool: the response envelope — including that a failure carries a
   short `error` slug to branch on beside the human `message` — the `name`/active-object subject
   convention, that a refusal is an answer carrying `found`, `ready` and `blocked_by`, the uniform
-  `performed` flag, and that a capped listing always reports `truncated` and `total_count`. A
+  `performed` flag, that a capped listing always reports `truncated` and `total_count`, and that
+  an excluded collection is included for the call (`temporarily_included`). A
   tool then says only where it differs from the convention — which is the part worth reading.
+- **The instructions are at most 4,000 characters, and the conventions come first.** A Claude Code
+  session was seen receiving them cut off at exactly 4,096 characters, and a secondary source puts
+  the limit at 2 KB; the conventions came last, so the part no description repeats was the part
+  lost ([FR 059](../feature-requests/done/059-what-a-session-pays-for/README.md)). They now follow the opening sentence and end within 2,048 characters, and
+  `tests/test_description_budget.py` holds both numbers. A sentence in them does one of three
+  things: states a convention; **routes**, saying which tool does which job, since the instructions
+  may be all a model reads before it loads a tool; or states **an order across tools** that no
+  single description can own (the rig before the garments, the assets before Rigify generation, one
+  refit after a series of changes). A fact about one tool goes in that tool's description, which a
+  caller has read before it can call the tool, under tool search as much as anywhere - and FR 059
+  checked, sentence by sentence, that each one it removed was already there.
+- **No description is longer than 4,096 characters**, the limit the same sources give for one tool
+  loaded up front. It cost nothing when set (the longest was 4,094 and arrived whole through tool
+  search) and is the only warning a later addition would get.
+- **The parameter schema is published without what was generated and no caller acts on.**
+  `build_server()` drops every `title` keyword - pydantic's `mpfb_list_docsArguments` and a
+  `Topic` per property, which restate names - and publishes an optional `x: T | None = None` as
+  plain `T` with no `default`, rather than `anyOf: [T, null]` with `default: null`. That was 11.5 KB
+  of 22.5 KB. A property *named* `title` is a key of `properties` and is kept; a union of two real
+  types, a non-null default and a required nullable argument are left as generated, the last
+  because a schema forbidding what a tool accepts is worse than a long one. **An explicit `null`
+  is still accepted** - `mpfb_write_mesh_asset`'s `try_with` carries one for the caller to fill -
+  because FastMCP validates a call through the model built from the signature and registers its
+  handler with `validate_input=False`. That is the library's fact, not this package's, so
+  `tests/test_vocabulary.py` sends a `null` to every argument that took one and a wrong type to
+  every optional argument, through a real client, and fails if it changes. Every rule applies to
+  whatever is registered, so a new tool needs no work for it. **The output schemas stay**: in the
+  one client measured, results arrive compact, which suggests it reads `structuredContent`, and
+  without an `outputSchema` it would read the pretty-printed `content` instead, about a quarter
+  larger.
 - **Raising the ceiling is a decision, and it is made in the commit that needs the space.** FR 024
   raised it from 48,500 to 52,200 for two new tools: 740 B of headroom against a 400 B per-tool
   floor cannot absorb two, and trimming twenty descriptions to pay for two would have spent the
@@ -72,7 +104,7 @@ ceiling, so the next drift is a failing test rather than a discovery.
   not in each.
 - **The docstring crosses the wire verbatim**, indentation included: FastMCP takes `fn.__doc__`
   as it is written. `mpfbmcp.build_server()` dedents every description once, after registration,
-  because eight spaces per line across twenty-five tools is twelve kilobytes of whitespace an agent
+  because eight spaces per line across fifty-one tools is over twenty kilobytes of whitespace an agent
   pays for and nobody reads.
 
 ## Validate before crossing the socket
@@ -429,7 +461,7 @@ dictionaries, so they were checked by the FR's own `census.py --check` instead.
 | A garment's sub-rig bound wrong | `subrigs_broken`: per sub-rig, `subrig_object_name`, `asset_object_name` and the measured `displacement` in metres; `[]` when none is | `subrigs_broken_by_move`, as scoped - a move breaks none |
 | A change to a pose bone, in an entry of `bones` | a position as `move_by` (an offset) or `move_to` (where the head goes, as `mpfb_get_pose` reports `head`); a rotation as `rotate_by` (about the head), `rotate_to` (from rest, as `mpfb_get_pose` reports `rotation`) or `aim` (head-to-tail direction) with `twist` (degrees about the bone's own axis); `scale_to`, factors keyed `x`/`y`/`z` in the bone's own axes. At most one of each kind | `translate`, `location`, `rotation` as an argument |
 | Also apply to the other side | `symmetry`, a bool: call-level in `mpfb_set_targets`, per entry in `mpfb_set_pose_bones` and `mpfb_set_rigify_hand_shape` - one concept, one spelling. The hand tool copies its entry unmirrored, since a curl and a spread mean the same on both sides | `mirror` |
-| A hand's shape, on a generated Rigify rig ([FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md)) | `hands`, the writer's list, one entry per hand, addressed by `body_part` (`left_hand`/`right_hand`); `shape`, one of `open`, `relaxed`, `fist`, `pointing`, `grip`, `pinch`, listed with every finger's amounts as `known_shapes`; `fingers`, keyed `thumb`, `index`, `middle`, `ring`, `pinky`, each holding `curl` (-0.2 to 1.0, 1.0 the finger as it sits in a fist) and `spread` (-1.0 to 1.0, positive away from the middle finger, the middle toward the index, the thumb away from the palm - the same on both hands). Read back in that shape beside `joint_degrees` (each joint's bend from rest, first knuckle first), `spread_degrees` and `tip` (the fingertip, in the frame), and `matches_shape`, the shape a hand is in or `null`. A write reports `fingers_before`/`fingers_after`, `matches_shape_before`/`matches_shape_after`, `fingers_written`, `segments_reset` and its verb `changed` | `pose`, `amount`, `bend`, `angle`, a per-joint input |
+| A hand's shape, on a generated Rigify rig ([FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md)) | `hands`, the writer's list, one entry per hand, addressed by `body_part` (`left_hand`/`right_hand`); `shape`, one of `open`, `relaxed`, `fist`, `pointing`, `grip`, `pinch`, listed with every finger's amounts as `known_shapes`; `fingers`, keyed `thumb`, `index`, `middle`, `ring`, `pinky`, each holding `curl` (-0.2 to 1.0, 1.0 the finger as it sits in a fist) and `spread` (-1.0 to 1.0, positive away from the middle finger, the middle toward the index, the thumb away from the palm - the same on both hands). Read back in that shape beside `joint_degrees` (each joint's bend from rest, first knuckle first), `spread_degrees` and `tip` (the fingertip, in the frame), and `matches_shape`, the shape a hand is in or `null`. A write reports `fingers_before`/`fingers_after` for the fingers it wrote only, `fingers_not_written` naming the rest, `matches_shape_before`/`matches_shape_after` (the whole hand's), `fingers_written`, `segments_reset` and its verb `changed` | `pose`, `amount`, `bend`, `angle`, a per-joint input |
 | Two meshes intersecting ([FR 048](../feature-requests/done/048-measuring-mesh-assets/README.md)) | `pairs`, a row each: `object_name`, `other_object_name`, `face_pairs` (triangle pairs, with the masks as they are), `region` (the world box of the intersecting faces, `{"min": {x, y, z}, "max": {x, y, z}}`), `min_distance` (metres, an upper bound, 0.0 when they intersect, `null` for a mesh against itself), and for a row with a body in it `face_pairs_unmasked`, `region_unmasked`, `min_distance_unmasked`. `subdiv_levels` and `other_subdiv_levels` are the viewport's. Totals over every pair, cut or not: `pairs_measured`, `pairs_clear`, `closest_pair`; `pairs_truncated` says there was a cut. The argument `region` is the same box with any axis left open, echoed as `counted_in`. `mpfb_add_asset`'s `intersections` is the same rows without `min_distance`. | `overlaps`, `collisions`, `clearance`, a verdict of any kind |
 | A mesh as an asset being authored ([FR 048](../feature-requests/done/048-measuring-mesh-assets/README.md)) | `mesh asset`, as `mpfb_check_mesh_asset` says it, since "clothes" is for quoting MPFB and MakeClothes writes all three kinds. `outward_fraction`, `fit_offset` (signed `min` and `max` from the unmasked body, negative being inside it), `bounds` (a component's extent, where `region` would mean an intersection), `sections`, `requested_sections`, `basemesh_resolved_by` (`argument`, `relative`, `selection`, `only_basemesh`), and `set` beside a metadata `value`, false meaning MPFB's default rather than a choice | `mpfb_check_clothes`, `normal_score`, `is_default` |
 | A delete group's two failure modes ([FR 051](../feature-requests/done/051-delete-groups/README.md)) | `masked_skin_still_visible` (removed faces a sight line reaches: slits) and `unmasked_skin_under_garment` (standing faces the garment covers: what can poke through), both counted as a loaded asset masks, and `masked_skin_still_visible_authoring`, the first on the group as it stands. Faces, never verdicts. `openings`, one row per boundary loop, with `kind` (`trunk`, `cuff`, `hem`, `covered`), `reason`, `centre`, `margin`, `limbs`, `perimeter`, `open_share`, `kept_by_margin`; `margins`, keyed by those kinds. The undo is the vertex group `<group>.original`, reported as `original_kept_as` | `slits`, `poke_through`, `neck` as a kind, since an armhole and a keyhole are the same kind |
@@ -438,11 +470,13 @@ dictionaries, so they were checked by the FR's own `census.py --check` instead.
 | Where a stored MakeSkin material goes | `store_as`: `"alternate"` or `"skin"`; `textures_written`, one row per slot with `source_path`, `source_image`, `how` (`copied`, `saved_from_blender`, `already_in_place`), `path`, `size_bytes`; `license_resolved_by`, `author_resolved_by` (`"argument"`, `"object"`, `"mpfb_default"`); `apply_with`, keyed by the tool, since there are two; `values_not_restored`, each with `stored` and `after_apply`; `asset_packs`; `attribution`, `list_assets`' four fields for the new file | `destination`, which is a mesh asset's |
 | Where a written mesh asset goes, and what it became | `destination`: `"library"` or `"export_directory"`, neither a path; `files`, one row per file with `path`, `kind` (`mhclo`, `proxy`, `obj`, `mhmat`, `texture`), `size_bytes`, `action` (`created`, `replaced`, `kept`) and, for a texture, the `how` of a stored material's; `match_counts` (`exact`, `offset`, as `write_mhclo()` writes them); `delete_vertices`; `asset_source_updated`; `properties_set`; `check`, a summary of `mpfb_check_mesh_asset`'s `components`; `try_with`, keyed by the tool like `restore_with`, the keys in the order to send them, a null being the caller's to fill | `output_path`, `mhclo_path` as an argument |
 | A material a MakeSkin tool will not take, or will not build | `blocked_by: "not_makeskin"` with `material_identified_as`, `"no_material"`, `"material_exists"`, `"specular_with_roughness"`, `"resolution_failed"` with `resolution_errors` (`where`, `error`, `message`), `"material_failed"`; for the store `"type_not_supported"`, `"asset_source_missing"`, `"asset_not_in_library"`, `"invalid_name"`, `"invalid_license"`, `"invalid_author"`, `"texture_unavailable"` with `texture_errors`, `"name_shadowed"` with `shadowed_by`, `"write_failed"` | |
-| A reading that is a fit rather than exact | `expressible: false`, with `not_expressible_because` naming each reason (`master_moved`, `master_twisted`, `knuckle_and_joints_disagree`, `segment_posed`, `palm_posed`, `outside_range`); `amounts_measure` says how the amounts were derived | `exact`, `approximate` |
+| A reading that is a fit rather than exact | `expressible: false`, with `not_expressible_because` naming each reason (`master_moved`, `master_twisted`, `knuckle_and_joints_disagree`, `segment_posed`, `palm_posed`, `outside_range`); both hand tools' descriptions say how the amounts are derived ([FR 059](../feature-requests/done/059-what-a-session-pays-for/README.md) took `amounts_measure` out of the answers) | `exact`, `approximate` |
 | A Rigify switch, addressed | `body_part` and `switch` (Rigify's property name, as `mpfb_get_pose_controls` lists it); its value `value`; `raw: true` to skip the snap | the bone it lives on, which is reported and never asked for - which is why a compact switch entry drops it |
 | Which switches to list, by name | `switch_names` (`mpfb_get_pose_controls` only, [FR 044](../feature-requests/done/044-switches-filter/README.md)), echoed sorted as `requested_switch_names`, counted by `counts_by_switch` under every switch name the rig has. Its vocabulary is the rig's own, not this package's: `human_toes` has `parent_switch` and `game_engine` does not | `switches`, which is `mpfb_set_pose_switches`' list of objects and the key of the answer - one name, one JSON type, as with `include_switches` |
 | Whether a write kept the limb where it was, and how well | `snapped`, with `snap_reason` when false, and `snap_error` (metres) when true | |
-| Whether a write ended where it was sent | `achieved`, with `deviation` when false and `achieved_measure` saying how it was measured | |
+| Whether a write ended where it was sent | `achieved`, with `deviation` when false; the tolerances are in the description, and `achieved_measure` left the answer in FR 059 | |
+| What a pose write moved, and what it did not ([FR 059](../feature-requests/done/059-what-a-session-pays-for/README.md)) | `mpfb_set_pose_bones`' `landmarks` and `limbs` hold only what the call moved, measured; `landmarks_not_moved` and `limbs_not_moved` name the rest without values, `null` beside an unclassified rig's `null`s. `mpfb_get_pose` is the whole reading, and the other two pose writers still report every limb | `unchanged`, `skipped` |
+| Where an equipped asset's weights came from | `weights_from`: `"file"`, `"interpolation"`, `"file_and_interpolation"` (a `.mhw` replaces the groups it names), `null` when the asset was not rigged; beside `weights_files_beside_asset` | `weights_source`, `has_weights` |
 | The arguments that undo what a tool did | `restore_with`, keyed by the tool to call, the keys in the order to send them (`apply_with` is the save's: the call that makes something durable). Three users: `mpfb_reset_pose`, `mpfb_place_character` and `mpfb_set_rigify_hand_shape`, whose way back is its own call and then `mpfb_set_pose_bones`' | `undo` |
 | Also do or list the optional part | `include_<part>`: `include_switches` (a reset) - FR 042 named it `switches`, which `mpfb_set_pose_switches` already takes as a list, and one name carries one JSON type; `include_hidden` (`mpfb_get_pose_controls`, FR 043) | `switches` as a bool, `show_hidden` |
 | A rig a writer cannot act on | `blocked_by: "rig_in_edit_mode"` / `"rig_has_no_switches"` (only a generated Rigify rig has them) / `"rig_not_classified"` (a reset by body part on a rig with none) | |

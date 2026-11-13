@@ -121,8 +121,11 @@ def register(mcp: FastMCP) -> None:
         the limb's end before and after on the deforming bones, and
         `snap_error` - how far any of the limb's joints moved, so a snap that
         failed shows. Also
-        `landmarks`, `limbs` and `limbs_made_stretched`/`_unreachable` as in
-        `mpfb_set_pose_bones`.
+        `landmarks` (before and after), `limbs` (after) and
+        `limbs_made_stretched`/`_unreachable`, every limb and landmark as
+        `mpfb_get_pose` reads them: `stretched` over 1 mm longer than at
+        rest, `reach_ratio` root to IK control over rest length,
+        `target_unreachable` IK in charge with the tip over 1 cm short.
         """
         return backend.send(
             "set_pose_switches",

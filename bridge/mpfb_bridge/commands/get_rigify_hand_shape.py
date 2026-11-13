@@ -18,7 +18,9 @@ may hold channels that are not a curl and a spread at all - a hook, a twisted
 master, a posed segment or palm. Such a finger says so
 (``expressible: false``, ``not_expressible_because``) and its amounts are the
 least-squares fit to the measurement, never presented as exact.
-``amounts_measure`` is the sentence that carries this on every answer.
+The tool description says how the amounts are derived, rather than an
+``amounts_measure`` sentence in every answer
+([FR 059](../../../feature-requests/done/059-what-a-session-pays-for/README.md)).
 
 **``matches_shape``** names the shape a hand is in, within a stated tolerance,
 so a caller learns that a character it did not pose is making a fist.
@@ -128,7 +130,6 @@ def get_rigify_hand_shape(params, resolution):
         character_frame=frame.describe(),
         hands=answer_hands,
         known_shapes=rigify_hands.known_shapes(),
-        amounts_measure=rigify_hands.AMOUNTS_MEASURE,
         message=_message(rig, answer_hands) + pose_writing.rest_position_sentence(rig, shown),
     )
     _LOG.debug("get_rigify_hand_shape: read %s of %r", ", ".join(wanted), rig.name)

@@ -15,6 +15,8 @@ What only a real rig can establish, and so is asserted here:
 - **A written finger's segments are reset, and ``restore_with`` brings them
   back**, with a hook and an ordinary curl elsewhere on the hand: every channel
   within 1e-5 after sending both calls in order.
+- **Only the fingers written carry values** (FR 059): the others are named in
+  ``fingers_not_written``, and ``restore_with`` is unaffected by what is listed.
 - **The refusals of requirement 14, and the rollback**: a finger whose IK
   control is in charge, a driven master, a locked channel found after writing
   that undoes a hand already written, an unknown shape, finger or hand, a
@@ -132,6 +134,7 @@ def test_pointing_is_a_fist_with_the_index_straight(rigify):
     assert hand["matches_shape_after"] == "pointing"
     assert all(abs(value) < 5.0 for value in hand["fingers_after"]["index"]["joint_degrees"])
     assert hand["fingers_written"] == ["thumb", "index", "middle", "ring", "pinky"]
+    assert hand["fingers_not_written"] == []
 
 
 @pytest.mark.parametrize("amounts,bone_channels", [
@@ -149,6 +152,11 @@ def test_one_amount_changes_one_finger_and_nothing_else(rigify, amounts, bone_ch
 
     after = _channels(rig)
     assert answer["hands"][0]["fingers_written"] == ["ring"]
+    # Only the finger written carries values; the rest of the hand is named (FR 059).
+    assert list(answer["hands"][0]["fingers_before"]) == ["ring"]
+    assert list(answer["hands"][0]["fingers_after"]) == ["ring"]
+    assert answer["hands"][0]["fingers_not_written"] == ["thumb", "index", "middle", "pinky"]
+    assert "amounts_measure" not in answer
     # Rigify's drivers turn the ring's later MCH-..._drv bones from the master's
     # Y scale; those follow the write by design and are not the command's.
     driven = {name for name in before if name.startswith("MCH-f_ring.") and "_drv" in name}

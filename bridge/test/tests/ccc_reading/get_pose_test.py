@@ -100,7 +100,7 @@ def test_a_fresh_rig_is_at_rest(rigify):
         assert limb["stretched"] is False, part
         assert limb["target_unreachable"] is False, part
         assert limb["reach_ratio"] < 1.0, part
-    assert set(answer["limb_measures"]) == {"reach_ratio", "stretched", "target_unreachable"}
+    assert "limb_measures" not in answer, "the definition is the description's (FR 059)"
 
 
 def test_an_over_reach_with_stretch_on_stretches_the_arm(rigify):

@@ -173,5 +173,117 @@ class RefusalReachesTheClientTests(unittest.TestCase):
             "This tool accepts keyword, topic.")
 
 
+def _optional_arguments(tool) -> list[tuple[str, dict]]:
+    """Each argument a call may leave out, with its published schema."""
+    schema = tool.inputSchema
+    required = set(schema.get("required", ()))
+    return [(name, sub) for name, sub in schema.get("properties", {}).items()
+            if name not in required]
+
+
+def _wrong_value(schema: dict) -> object:
+    """A value of no type this argument accepts: an object for anything but an object, and a
+    string, which FastMCP's pre-parse cannot read as JSON, for an object."""
+    if "object" in _json_type(schema).split("|"):
+        return "not an object"
+    return {"not": "this type"}
+
+
+# What FastMCP's argument model says when it refuses a call, and what the low-level server would
+# say if it validated the published schema: either one, beside an argument that should have been
+# accepted, is the failure these tests exist for. A tool's own refusal of a combination - naming
+# neither `path` nor `fragment`, say - is a different sentence and not this test's business.
+_MODEL_REFUSAL = "validation error for"
+_SCHEMA_REFUSAL = "Input validation error"
+
+
+class PublishedSchemaTests(unittest.TestCase):
+    """What FR 059's schema rewrite must not have changed, through a real MCP client.
+
+    The rewrite publishes `str | None = None` as `type: string` and no default. An explicit `null`
+    is still accepted only because FastMCP validates through the model built from the signature
+    and registers its handler with `validate_input=False` - a fact about the library rather than
+    this package, and the one that would break `mpfb_write_mesh_asset`'s `try_with`, which carries
+    a `null` for the caller to fill. This is what fails if an `mcp` release changes it.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.tools = asyncio.run(mpfbmcp.build_server().list_tools())
+        # Which arguments accepted an explicit null before the rewrite, read off the schema
+        # FastMCP generated - the published one no longer says, which is the point of it.
+        with mock.patch("mpfbmcp._published_without_generated_keys"):
+            generated = asyncio.run(mpfbmcp.build_server().list_tools())
+        cls.nullable = {
+            (tool.name, name)
+            for tool in generated
+            for name, sub in tool.inputSchema.get("properties", {}).items()
+            if {"type": "null"} in sub.get("anyOf", ())}
+        cls.results = cls._call_every_optional_argument()
+
+    @classmethod
+    def _call_every_optional_argument(cls) -> dict:
+        envelope = {"status": "ok", "result": {}, "message": "stubbed"}
+
+        async def call_all() -> dict:
+            results = {}
+            async with create_connected_server_and_client_session(
+                    mpfbmcp.build_server()) as client:
+                await client.list_tools()
+                for tool in cls.tools:
+                    required = {name: _required_value(sub) for name, sub in
+                                tool.inputSchema.get("properties", {}).items()
+                                if name in tool.inputSchema.get("required", ())}
+                    for name, sub in _optional_arguments(tool):
+                        for label, value in (("null", None), ("wrong", _wrong_value(sub))):
+                            arguments_sent = dict(required)
+                            arguments_sent[name] = value
+                            results[(tool.name, name, label)] = await client.call_tool(
+                                tool.name, arguments_sent)
+            return results
+
+        logging.disable(logging.INFO)
+        try:
+            with mock.patch("mpfbmcp.backend.send", return_value=envelope), \
+                    mock.patch("mpfbmcp.bridge_connection.send_command", return_value=envelope):
+                return asyncio.run(call_all())
+        finally:
+            logging.disable(logging.NOTSET)
+
+    def test_an_explicit_null_is_accepted_wherever_it_was(self) -> None:
+        checked = 0
+        for (tool, name, label), result in self.results.items():
+            if label != "null" or (tool, name) not in self.nullable:
+                continue
+            checked += 1
+            with self.subTest(tool=tool, argument=name):
+                text = "" if not result.isError else result.content[0].text
+                self.assertNotIn(_MODEL_REFUSAL, text)
+                self.assertNotIn(_SCHEMA_REFUSAL, text)
+        self.assertGreater(checked, 100)
+
+    def test_a_wrong_type_is_still_refused_for_every_optional_argument(self) -> None:
+        for (tool, name, label), result in self.results.items():
+            if label != "wrong":
+                continue
+            with self.subTest(tool=tool, argument=name):
+                self.assertTrue(result.isError)
+                self.assertIn(_MODEL_REFUSAL, result.content[0].text)
+                self.assertIn(name, result.content[0].text)
+
+    def test_every_tool_still_declares_an_output_schema(self) -> None:
+        # Kept on purpose: see FR 059's "Why the output schemas stay".
+        for tool in self.tools:
+            with self.subTest(tool=tool.name):
+                self.assertIsNotNone(tool.outputSchema)
+
+
+def _required_value(schema: dict) -> object:
+    """A value of the right type for a required argument, so a call reaches the optional one."""
+    kind = _json_type(schema).split("|")[0]
+    return {"string": "x", "integer": 0, "number": 0.0, "boolean": False, "object": {}}.get(
+        kind, [])
+
+
 if __name__ == "__main__":
     unittest.main()

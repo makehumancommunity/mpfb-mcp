@@ -22,6 +22,10 @@ What only a real rig can establish, and so is asserted here:
   answer says by how much.
 - **An animated channel is written and flagged**, never refused, and no
   keyframe is inserted even with auto-keying on.
+- **Only what moved is reported** (FR 059), measured rather than inferred from
+  body parts: an arm write reports that arm and its hand and names the rest, a
+  finger write moves no landmark or limb, a turn of the torso reports everything,
+  and an over-reach still names the limb it stretched.
 - **Nothing is borrowed**, a rig showing its rest position is posed and says so,
   a rig in edit mode is refused, and an unclassified rig takes transforms.
 """
@@ -113,11 +117,51 @@ def test_each_change_kind_lands_in_the_character_frame(rigify):
     scaled = changes["f_index.01_master.L"]
     assert scaled["scale_before"] is None
     assert scaled["scale_after"] == {"x": 1.0, "y": 0.45, "z": 1.0}
-    assert set(answer["landmarks"]) == {"hips", "head", "left_hand", "right_hand",
-                                        "left_foot", "right_foot"}
+    # The torso turned, which turned the hips and so every limb, legs included - but the feet
+    # stay where their IK controls hold them, and that is measured rather than assumed.
+    assert set(answer["landmarks"]) == {"hips", "head", "left_hand", "right_hand"}
+    assert answer["landmarks_not_moved"] == ["left_foot", "right_foot"]
+    assert set(answer["limbs"]) == {"left_arm", "right_arm", "left_leg", "right_leg"}
+    assert answer["limbs_not_moved"] == []
     assert answer["landmarks"]["left_hand"]["after"] != answer["landmarks"]["left_hand"]["before"]
     assert answer["limbs"]["left_arm"]["in_charge"] == "ik"
-    assert "achieved" in answer["achieved_measure"]
+    assert "achieved_measure" not in answer and "limb_measures" not in answer
+
+
+def test_an_arm_write_reports_that_arm_and_names_the_rest(rigify):
+    """commands.set_pose_bones moving one IK hand: only what it moved, the rest by name"""
+    basemesh, _rig = rigify
+    answer = _result({"name": basemesh, "bones": [
+        {"bone": "hand_ik.L", "move_by": {"forward": 0.15, "up": 0.1}}]})
+    assert set(answer["landmarks"]) == {"left_hand"}
+    assert set(answer["landmarks_not_moved"]) == {"hips", "head", "right_hand", "left_foot",
+                                                  "right_foot"}
+    assert set(answer["limbs"]) == {"left_arm"}
+    assert answer["limbs_not_moved"] == ["right_arm", "left_leg", "right_leg"]
+    whole = _fixture_result("get_pose", {"name": basemesh})
+    assert answer["limbs"]["left_arm"] == whole["limbs"]["left_arm"], "get_pose's reading"
+    assert answer["landmarks"]["left_hand"]["after"] == whole["landmarks"]["left_hand"]["now"]
+
+
+def test_a_finger_write_moves_no_landmark_or_limb(rigify):
+    """commands.set_pose_bones curling one finger: everything is named, nothing restated"""
+    basemesh, _rig = rigify
+    answer = _result({"name": basemesh, "bones": [
+        {"bone": "f_index.01_master.L", "scale_to": {"y": 0.5}}]})
+    assert answer["performed"] is True
+    assert answer["landmarks"] == {} and answer["limbs"] == {}
+    assert len(answer["landmarks_not_moved"]) == 6 and len(answer["limbs_not_moved"]) == 4
+
+
+def test_an_over_reach_still_names_and_reports_the_limb_it_stretched(rigify):
+    """commands.set_pose_bones past reach: limbs_made_stretched as before, and that limb listed"""
+    basemesh, _rig = rigify
+    answer = _result({"name": basemesh, "bones": [
+        {"bone": "hand_ik.L", "move_by": {"left": 0.9}}]})
+    assert answer["limbs_made_stretched"] == ["left_arm"]
+    assert answer["limbs"]["left_arm"]["stretched"] is True
+    assert "left_arm" not in answer["limbs_not_moved"]
+    assert "left_arm stretch" in answer["message"]
 
 
 def test_a_read_back_written_back_is_the_same_pose(rigify):
@@ -392,6 +436,7 @@ def test_an_unclassified_rig_takes_transforms():
         assert (change["body_part"], change["role"]) == (None, None)
         assert change["achieved"] is True and change["rotation_after"]["degrees"] == 45.0
         assert answer["landmarks"] is None and answer["limbs"] is None
+        assert answer["landmarks_not_moved"] is None and answer["limbs_not_moved"] is None
         assert _answer("set_pose_bones", {"name": character.basemesh.name, "bones": [
             {"bone": "mixamorig:LeftArm", "symmetry": True, "move_by": {"up": 0.01}}]}
                        )["status"] == "ok"

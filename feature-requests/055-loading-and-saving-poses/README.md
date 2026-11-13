@@ -148,7 +148,10 @@ and load that onto another character, without touching the rest of what the char
     is a bone and not the object, so `mpfb_reset_pose` undoes it and `mpfb_place_character` is
     unaffected. A rig with no single root is refused this option.
 23. **`limbs`, `landmarks` and `rig_identified_as`** are reported as `mpfb_get_pose` reports them,
-    from the same shared module.
+    from the same shared module. A load moves the whole body, so every limb and landmark, rather
+    than [FR 059](../done/059-what-a-session-pays-for/README.md)'s moved-only narrowing of
+    `mpfb_set_pose_bones`; the description says what each limb fact measures, since no answer
+    carries `limb_measures` any more.
 24. **Selection, active object and mode are put back**, using `selection.restored_all()`.
 
 ## Non-functional requirements

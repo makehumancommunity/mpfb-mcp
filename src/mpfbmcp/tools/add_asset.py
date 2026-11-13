@@ -106,7 +106,7 @@ def register(mcp: FastMCP) -> None:
         set_up_rigging: bool = True,
         interpolate_weights: bool = True,
         import_subrig: bool = True,
-        import_weights: bool = True,
+        import_weights: bool | None = None,
         measure_intersections: bool = False,
     ) -> dict[str, object]:
         """
@@ -156,7 +156,9 @@ def register(mcp: FastMCP) -> None:
         `material_created`/`material_name`, `rigged_to` or `parented_to`,
         `subrig_object_name` with `subrigs_broken` (see
         `mpfb_place_character`), `delete_group_name` and
-        `delete_group_applied_to`, `subdiv_modifier_added`, `warnings` for what
+        `delete_group_applied_to`, `subdiv_modifier_added`, `weights_from`
+        (`file`, `interpolation`, `file_and_interpolation` or `null` when not
+        rigged), `warnings` for what
         MPFB only logs, `proxy_extras` - the four things a `Proxymeshes` asset
         gets from MPFB's `.mhm` loading path, which this follows rather than its
         proxy library panel - and `intersections`, `null` unless
@@ -192,8 +194,12 @@ def register(mcp: FastMCP) -> None:
                     interpolate_weights, "interpolate_weights"),
                 "import_subrig": arguments.validated_flag(import_subrig, "import_subrig"),
                 # Not truthiness: import_weights="false" would produce a garment parented to the
-                # armature but not deformed by it.
-                "import_weights": arguments.validated_flag(import_weights, "import_weights"),
+                # armature but not deformed by it. Left out, it crosses as null and the bridge
+                # takes MPFB's own default, true; null is how the bridge tells "the caller asked
+                # for a weights file" from "nobody mentioned one", which is the difference between
+                # a warning that no file shipped and a field that says so (FR 059).
+                "import_weights": arguments.validated_optional_flag(
+                    import_weights, "import_weights"),
                 "measure_intersections": arguments.validated_flag(
                     measure_intersections, "measure_intersections"),
             },

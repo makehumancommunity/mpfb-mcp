@@ -77,7 +77,7 @@ def test_a_hand_at_rest_is_open(rigify):
             assert finger["joint_degrees"] == [0.0, 0.0, 0.0]
     assert set(answer["known_shapes"]) == {"open", "relaxed", "fist", "pointing", "grip",
                                            "pinch"}
-    assert "least-squares" in answer["amounts_measure"]
+    assert "amounts_measure" not in answer, "the definition is the description's (FR 059)"
     assert _result({"name": basemesh, "body_parts": ["right_hand"]})["hands"].keys() == \
         {"right_hand"}
 

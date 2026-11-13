@@ -12,8 +12,9 @@ reading of MPFB's source as the code under test:
   because MPFB's own ``"Clothes"`` default mislabels six of the eight types
   silently;
 - **the warnings fire on the states that produce them** - no rig at attachment
-  time, no ``.mhw`` beside the asset - because each is something MPFB does in
-  complete silence.
+  time, no ``.mhw`` beside the asset when the caller asked for one - because each
+  is something MPFB does in complete silence; and ``weights_from`` says where the
+  weights came from on every answer, with and without a ``.mhw`` beside it.
 
 **The asset library is a redirected data root**, not a bare temporary
 directory, which is [the spike's](../../../../feature-requests/done/032-creation-and-modification-migrated/SPIKE.md)
@@ -31,6 +32,7 @@ from .. import bridge_module
 from .._fixtures import Character as _Character
 from .._fixtures import dispatch
 from .._fixtures import redirected_locations
+from .._fixtures import rigged_character
 from .._fixtures import result as _fixture_result
 from .._fixtures import services_or_skip as _services_or_skip
 from .._fixtures import supplied_resolution
@@ -239,18 +241,78 @@ def test_missing_weights_beside_the_asset_are_reported():
     """commands.add_asset where no .mhw ships beside the MHCLO
 
     MPFB guards every weights read with ``os.path.isfile()`` and says nothing
-    when the file is absent.
+    when the file is absent. ``weights_from`` says so on every answer; the warning
+    is only for a caller who named ``import_weights``, since until FR 059 it said
+    "was requested" on calls where nobody had.
     """
     services = _services_or_skip()
     root = os.path.join(bpy.app.tempdir, "add-asset-noweights")
     mhclo = _library(root)
     with _Character() as character:
+        services["ObjectService"].activate_blender_object(character.basemesh)
+        services["HumanService"].add_builtin_rig(character.basemesh, "default",
+                                                 import_weights=True)
+        with redirected_locations(services, user_data=root):
+            unnamed = _result({"name": character.basemesh.name,
+                               "path": mhclo, "object_type": "Clothes"})
+            named = _result({"name": character.basemesh.name, "path": mhclo,
+                             "object_type": "Clothes", "import_weights": True})
+
+        for result in (unnamed, named):
+            assert result["weights_files_beside_asset"] == []
+            assert result["weights_from"] == "interpolation"
+        assert not any(".mhw" in warning for warning in unnamed["warnings"]), unnamed["warnings"]
+        assert any(".mhw" in warning for warning in named["warnings"])
+
+
+def test_weights_beside_the_asset_are_loaded_and_said_to_be():
+    """commands.add_asset with a .mhw beside the MHCLO: weights_from names the file"""
+    services = _services_or_skip()
+    root = os.path.join(bpy.app.tempdir, "add-asset-weights")
+    mhclo = _library(root)
+    with open(os.path.splitext(mhclo)[0] + ".mhw", "w", encoding="utf-8") as weights:
+        weights.write('{"weights": {}}')
+    with _Character() as character:
+        services["ObjectService"].activate_blender_object(character.basemesh)
+        services["HumanService"].add_builtin_rig(character.basemesh, "default",
+                                                 import_weights=True)
+        with redirected_locations(services, user_data=root):
+            result = _result({"name": character.basemesh.name, "path": mhclo,
+                              "object_type": "Clothes", "import_weights": True})
+            alone = _result({"name": character.basemesh.name, "path": mhclo,
+                             "object_type": "Clothes", "interpolate_weights": False})
+
+        assert result["weights_files_beside_asset"] == ["spike.mhw"]
+        assert result["weights_from"] == "file_and_interpolation"
+        assert not any(".mhw" in warning for warning in result["warnings"])
+        assert alone["weights_from"] == "file"
+
+
+def test_an_asset_equipped_after_rigify_generation_is_warned_about_in_a_sentence():
+    """commands.add_asset on a generated Rigify rig: what to do, and not which MPFB function"""
+    services = _services_or_skip()
+    root = os.path.join(bpy.app.tempdir, "add-asset-after-rigify")
+    mhclo = _library(root)
+    with _Character() as character:
+        rigged_character(services, character, "generated:human_toes")
         with redirected_locations(services, user_data=root):
             result = _result({"name": character.basemesh.name,
                               "path": mhclo, "object_type": "Clothes"})
+        (warning,) = [warning for warning in result["warnings"] if "Rigify" in warning]
+        assert "before generating" in warning
+        assert "RigifyHelpers" not in warning and len(warning) <= 120
 
-        assert result["weights_files_beside_asset"] == []
-        assert any(".mhw" in warning for warning in result["warnings"])
+
+def test_an_unrigged_asset_has_no_weights_to_come_from_anywhere():
+    """commands.add_asset with no rig: weights_from is null"""
+    services = _services_or_skip()
+    root = os.path.join(bpy.app.tempdir, "add-asset-noweights-norig")
+    mhclo = _library(root)
+    with _Character() as character:
+        with redirected_locations(services, user_data=root):
+            result = _result({"name": character.basemesh.name,
+                              "path": mhclo, "object_type": "Clothes"})
+        assert result["weights_from"] is None
 
 
 def test_an_mhclo_with_no_material_line_is_warned_about():

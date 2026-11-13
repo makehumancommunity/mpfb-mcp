@@ -288,12 +288,18 @@ the asset's containing directory name against the asset names in the installed p
   descriptions say it is derived, and the write takes only the linear value - accepting hex would
   need a second key per entry and a conversion the read could not round-trip exactly
   ([FR 040](../feature-requests/done/040-procedural-material-settings/README.md)).
-- **A measurement of the pose is this kind, and carries its definition with it.** Nothing in
-  Blender records whether a limb is stretched or out of reach. `mpfb_get_pose` derives
-  `stretched` (the deforming chain over 1 mm longer than at rest), `reach_ratio` (root to IK
-  control over rest length) and `target_unreachable` (IK in charge, tip over 1 cm from the
-  control, control at least a chain length away), with the tolerances in one module
-  (`shared/pose_reading.py`) and a short `limb_measures` sentence for each in every answer. Where it
+- **A measurement of the pose is this kind, and its definition is in the description of every
+  tool that reports it.** Nothing in Blender records whether a limb is stretched or out of reach.
+  `mpfb_get_pose` derives `stretched` (the deforming chain over 1 mm longer than at rest),
+  `reach_ratio` (root to IK control over rest length) and `target_unreachable` (IK in charge, tip
+  over 1 cm from the control, control at least a chain length away), with the tolerances in one
+  module (`shared/pose_reading.py`). Until [FR 059](../feature-requests/done/059-what-a-session-pays-for/README.md) a `limb_measures` sentence restated the
+  definition in every answer, and FR 041 had decided it should; FR 059 reversed that because **a
+  caller has read a tool's description before it can call the tool**, under tool search as much as
+  on a host loading every tool up front, so a fixed sentence in an answer is paid on every call for
+  something already delivered - 52 KB, 4.4 % of every result character across the nine sessions it
+  measured, with `achieved_measure` and `amounts_measure` below. A definition that never changes is
+  in the description; one that depends on the call would stay in the answer. Where it
   cannot be computed it is `null`, not `false`: `target_unreachable` is `null` while FK is in
   charge. FR 041's live check found that Rigify's IK chain gives a little even with `IK_Stretch`
   at 0.0 (17 mm on a 480 mm arm), so a message says how much longer a limb is rather than blaming a
@@ -310,7 +316,7 @@ the asset's containing directory name against the asset names in the installed p
   an IK chain or a limit can stop a bone short of where it was sent, and nothing records that it
   did. So `mpfb_set_pose_bones` reports each bone's evaluated position and rotation after the
   whole batch, `achieved` (within 1 mm, 0.5 degrees and 0.001 of a scale factor) and, when not,
-  `deviation` by how much; `achieved_measure` carries the definition in every answer, and the
+  `deviation` by how much; the description states the definition, as for the limbs above, and the
   tolerances live in one module (`shared/pose_writing.py`). The same tolerance decides when a
   locked channel counts as changed: an axis read back to three decimals and sent again leaks about
   5e-4 rad into a locked Euler component, which is rounding to put back, not a request to refuse
@@ -325,8 +331,9 @@ the asset's containing directory name against the asset names in the installed p
   its amounts are then the least-squares fit to the measurement, clamped into the writer's range,
   never presented as exact. `matches_shape` is derived from the amounts within a stated tolerance
   (0.05), and is `null` for any hand with a finger that is not expressible. The tolerances and the
-  calibration live in one module (`shared/rigify_hands.py`) and `amounts_measure` carries the
-  definition in every answer ([FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md)).
+  calibration live in one module (`shared/rigify_hands.py`) and both hand tools' descriptions
+  state the definition ([FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md); an
+  `amounts_measure` sentence in every answer until FR 059).
 
 ## A response says which source answered it
 
@@ -388,6 +395,12 @@ answer, including the unfiltered one — which is the answer most likely to be m
 whole — and including an empty one, where the temptation to report "nothing found" is strongest
 and most wrong.
 
+**A writer that reports only what it changed is partial the same way**, and owes the same: the
+names of what it left out. `mpfb_set_pose_bones` reports the landmarks and limbs a call moved and
+names the others in `landmarks_not_moved` and `limbs_not_moved`; `mpfb_set_rigify_hand_shape`
+reports the fingers it wrote and names the others in `fingers_not_written`
+([FR 059](../feature-requests/done/059-what-a-session-pays-for/README.md)). Names without values, so a short answer cannot be read as a character with only
+those parts, and a pointer in the description to the reader that gives the whole.
 ## A position on a character is in the character frame
 
 Every position and direction a tool reports on a character, or takes as an argument, is in **the

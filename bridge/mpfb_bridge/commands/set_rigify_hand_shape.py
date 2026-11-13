@@ -35,6 +35,13 @@ active object, and no operator.
 deforming bones afterwards and ``achieved`` is false, with ``deviation`` in
 degrees, when a joint is more than half a degree from what the amounts ask.
 
+**Only the fingers written are reported**, before and after; ``fingers_not_written``
+names the rest of the hand without values
+([FR 059](../../../feature-requests/done/059-what-a-session-pays-for/README.md)), and
+``get_rigify_hand_shape`` reads the whole hand. ``matches_shape_before`` and
+``_after`` are still the whole hand's, and ``restore_with`` still restores everything
+the call changed, since neither depends on what the answer lists.
+
 **``restore_with`` is the way back**, per
 [a tool that destroys state it did not create](../../../specifications/mutating-tools.md#a-tool-that-destroys-state-it-did-not-create-owes-the-caller-a-list):
 the ``mpfb_set_rigify_hand_shape`` entries that put back each changed finger's
@@ -415,11 +422,13 @@ def _hand_answer(rig, hands, plan, before_entry, after, after_entry, *, saved, a
     answer: dict = dict(body_part=plan["hand"], shape=plan["entry"].get("shape"))
     if plan["mirrored_from"] is not None:
         answer["mirrored_from"] = plan["mirrored_from"]
+    written = list(plan["amounts"])
     answer.update(
-        fingers_written=list(plan["amounts"]),
+        fingers_written=written,
+        fingers_not_written=[name for name in fingers_after if name not in plan["amounts"]],
         fingers_not_on_rig=plan["not_on_rig"],
-        fingers_before=before_entry["fingers"],
-        fingers_after=fingers_after,
+        fingers_before={name: before_entry["fingers"][name] for name in written},
+        fingers_after={name: fingers_after[name] for name in written},
         matches_shape_before=before_entry["matches_shape"],
         matches_shape_after=after_entry["matches_shape"],
         segments_reset=[segment for name in plan["amounts"]
@@ -539,7 +548,6 @@ def _set_rigify_hand_shape(params, resolution):  # pylint: disable=too-many-loca
         restore = _restore_with(rig, plans, before, changed_fingers)
     changed = bool(changed_fingers)
     answer.update(hands=answers, changed=changed, resolution_errors=[], restore_with=restore,
-                  amounts_measure=rigify_hands.AMOUNTS_MEASURE,
                   message=_message(rig, answers, changed, restore, shown))
     _LOG.debug("set_rigify_hand_shape: %d finger(s) changed on %r", len(changed_fingers), rig.name)
     return with_performed(answer, changed)

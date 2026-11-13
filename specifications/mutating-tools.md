@@ -123,6 +123,26 @@ by omission.
   ([FR 042](../feature-requests/done/042-posing-bones-switches-and-reset/README.md)). A snap that failed then shows up as millimetres, which the effort
   found is not hypothetical: a limb `IK_Stretch` has stretched snaps back to IK a millimetre or
   two out, because Blender's stretching IK shares the stretch between the segments differently.
+- **Report what the call changed, and name what it did not.** A consequence is reported for what
+  it touched: `mpfb_set_pose_bones` once restated both arms, both legs and six landmarks after a
+  finger moved, about 770 characters a call and 4 % of every result character in the sessions
+  [FR 059](../feature-requests/done/059-what-a-session-pays-for/README.md) measured. It now reports
+  the landmarks and limbs the call **moved, measured** before and after with the writers'
+  tolerances - never inferred from which body parts were written, since a turn of the spine moves
+  everything and then everything is reported - and names the rest without values
+  ([a deliberately partial answer](responses.md#a-deliberately-partial-answer-carries-the-size-of-the-whole)).
+  `mpfb_set_rigify_hand_shape` does the same for fingers. What is owed regardless stays whole:
+  `limbs_made_stretched` and `limbs_made_unreachable`, `matches_shape_after`, and `restore_with`,
+  which restores everything the call changed whatever the answer lists. **The rule costs more than
+  it saves if it sends callers back to read**: the reader's answer is about three times what the
+  narrowing saves, so a follow-up read after more than about three writes in ten would cancel it.
+  The transcripts showed five reads against sixty-six writes; if that ratio climbs, the rule goes
+  rather than the reads.
+- **A warning says only what is true of this call.** `mpfb_add_asset` warned that "import_weights
+  was requested" whenever no `.mhw` shipped, on 127 of 134 calls where nobody had named it; the
+  argument is now `null` when left out, the warning fires only when it was named, and
+  `weights_from` carries the fact on every answer. A warning names what to do, not the MPFB
+  function that makes it necessary.
 
 ## A refit keeps the pose
 

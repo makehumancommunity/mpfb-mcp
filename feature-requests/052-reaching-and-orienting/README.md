@@ -130,7 +130,10 @@ the rig the character already has, in one call rather than ten.
   `mpfb_set_pose_bones` call per attempt.
 - **Readable description.** This adds two kinds and one option to a tool that already explains
   itself at length, so the description budget needs watching, and the worked detail belongs in the
-  docstring.
+  docstring. Since [FR 059](../done/059-what-a-session-pays-for/README.md) that description also
+  carries the limb and `achieved` definitions the answers no longer restate, and the answer's
+  `landmarks` and `limbs` hold only what a call moved, measured, naming the rest - which a reach
+  moves, so a reach is reported in full without anything here changing.
 
 ## Architecture
 

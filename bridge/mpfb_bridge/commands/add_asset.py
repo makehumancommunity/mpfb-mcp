@@ -161,8 +161,10 @@ PARAMS = (
           description="Interpolate vertex weights from the basemesh."),
     Param("import_subrig", TYPE_BOOLEAN, default=True,
           description="Import the asset's own sub-rig where it ships one."),
-    Param("import_weights", TYPE_BOOLEAN, default=True,
-          description="Load the asset's own .mhw weights file where it ships one."),
+    Param("import_weights", TYPE_BOOLEAN, default=None, nullable=True,
+          description="Load the asset's own .mhw weights file where it ships one. Omit or pass "
+                      "null for MPFB's own default, true; only a caller who named it is warned "
+                      "that no file ships."),
     Param("measure_intersections", TYPE_BOOLEAN, default=False,
           description="Also measure how the asset fits, against the body and each other equipped "
                       "asset. Tens of milliseconds, which is a large share of this call."),
@@ -530,6 +532,28 @@ def _intersections(services, basemesh, asset_object, warnings):
     return rows
 
 
+def _import_weights(params):
+    """Whether to load a ``.mhw``: what the caller said, else MPFB's own default, true."""
+    return True if params["import_weights"] is None else params["import_weights"]
+
+
+def _weights_from(params, existing_rig, weights_beside):
+    """Where the asset's vertex weights came from, as ``ClothesService.set_up_rigging()`` takes them.
+
+    It interpolates first, then loads every ``.mhw`` it finds with ``replace=True``, which
+    replaces the groups a file names and leaves the others interpolated: ``"file"`` when there
+    was a file and no interpolation, ``"file_and_interpolation"`` when both, ``"interpolation"``
+    when only that, ``None`` when the asset was not rigged at all or neither ran.
+    """
+    if existing_rig is None or not params["set_up_rigging"]:
+        return None
+    from_file = _import_weights(params) and bool(weights_beside)
+    interpolated = bool(params["interpolate_weights"])
+    if from_file:
+        return "file_and_interpolation" if interpolated else "file"
+    return "interpolation" if interpolated else None
+
+
 def _warnings_for(params, request, names_material, existing_rig, weights_beside,
                   rig_is_generated_rigify, warnings):
     """Everything MPFB does silently that a caller would want to have been told."""
@@ -553,17 +577,19 @@ def _warnings_for(params, request, names_material, existing_rig, weights_beside,
             "to the basemesh and will not deform. MPFB rigs a garment only if a rig exists at the "
             "moment it is attached and nothing rigs it afterwards - not mpfb_refit_human either. "
             "Add the rig with mpfb_add_rig first, then re-add this asset.")
-    if params["import_weights"] and not weights_beside:
+    # Only when the caller named it: until FR 059 this fired on the default, saying "was
+    # requested" on 127 of 134 calls where nobody had. `weights_from` carries the fact on every
+    # answer.
+    if params["import_weights"] is True and not weights_beside:
         warnings.append(
             "import_weights was requested but no .mhw weights file ships beside this asset, so "
-            "its weights are whatever interpolation produced. MPFB checks for the file and says "
-            "nothing when it is absent.")
+            "its weights are interpolated from the body.")
     if rig_is_generated_rigify:
+        # What to do, not how MPFB comes to need it: generation adapts the assets present when
+        # it runs (RigifyHelpers.adjust_children_for_rigify()), and nothing adapts a later one.
         warnings.append(
-            "This character's rig is a *generated* Rigify rig. The asset was rigged against it, "
-            "but RigifyHelpers.adjust_children_for_rigify() handles only what is on the character "
-            "when generation runs and will not run again - so this asset did not get that "
-            "handling. Add assets to the meta rig and generate afterwards.")
+            "Equipped after Rigify generation, so it may not deform with the rig: equip assets "
+            "before generating.")
     return warnings
 
 
@@ -653,7 +679,7 @@ def _add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-
                 set_up_rigging=params["set_up_rigging"],
                 interpolate_weights=params["interpolate_weights"],
                 import_subrig=params["import_subrig"],
-                import_weights=params["import_weights"])
+                import_weights=_import_weights(params))
         except IOError as error:
             # add_mhclo_asset() raises this when the mesh import produced nothing.
             # It has already created no object at that point, but the import may
@@ -791,6 +817,7 @@ def _add_asset(params, resolution):  # pylint: disable=too-many-locals,too-many-
         subdiv_levels=params["subdiv_levels"],
         subdiv_modifier_added=subdiv_modifier_added,
         weights_files_beside_asset=weights_beside,
+        weights_from=_weights_from(params, existing_rig, weights_beside),
         proxy_extras=proxy_extras,
         objects_created=sorted(blender_data.object_names() - names_before),
         intersections=intersections,

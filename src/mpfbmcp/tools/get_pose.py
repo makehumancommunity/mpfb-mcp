@@ -60,13 +60,17 @@ def register(mcp: FastMCP) -> None:
           `right_foot`, `now` and at `rest`, measured on the deforming bones:
           where the body is, not where a control sits.
         - `limbs`: per arm and leg, `in_charge` (`ik`, `fk` or `blend`),
-          `length` and `rest_length`, `stretched` (longer than at rest),
-          `reach_ratio` (above 1.0 the IK control is beyond a straight limb)
-          and `target_unreachable`. These are derived; `limb_measures` says
-          how. A limb Rigify's `IK_Stretch` lets grow shows as `stretched`.
+          `length` and `rest_length`, and three derived facts: `stretched`,
+          the deforming chain over 1 mm longer than at rest, which is how
+          Rigify's `IK_Stretch` shows an over-reach; `reach_ratio`, limb root
+          to IK control over the chain's rest length, above 1.0 beyond a
+          straight limb; `target_unreachable`, IK in charge with the tip over
+          1 cm from its control and the control at least a chain length from
+          the root, `null` while FK is in charge.
 
-        A rig that is not classified gets `posed_bones` instead, and no
-        landmarks, limbs or switches (`null`).
+        This is the whole reading: `mpfb_set_pose_bones` reports only what a
+        call moved. A rig that is not classified gets `posed_bones` instead,
+        and no landmarks, limbs or switches (`null`).
         """
         return backend.send(
             "get_pose",
