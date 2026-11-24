@@ -61,6 +61,8 @@ __all__ = (
     "resolution_module",
     "rest_pose",
     "result",
+    "rig_library",
+    "small_rig_table",
     "services_or_skip",
     "supplied_resolution",
     "typed_child",
@@ -1142,3 +1144,48 @@ def rest_pose(rig_object):
                 pose_bone[key] = type(pose_bone[key])(default)
     rig_object.data.pose_position = "POSE"
     bpy.context.view_layer.update()
+
+
+def small_rig_table(prefix="t_"):
+    """A seven-bone deform skeleton against the body's joints, for the rig authoring commands.
+
+    Every end is a joint, so it fits any body with joint cubes and its positions are MPFB's. The
+    names carry ``prefix`` so two tables can be told apart by a store's identification, and
+    the arms and thighs are ``.L``/``.R`` pairs, so a mirror has something to pair.
+    """
+    p = prefix
+
+    def bone(name, parent, head, tail, **extra):
+        entry = {"name": p + name, "parent": (p + parent) if parent else "",
+                 "head": {"joint": head}, "tail": {"joint": tail}}
+        entry.update(extra)
+        return entry
+
+    return [
+        bone("hips", "", "joint-pelvis", "joint-spine-3"),
+        bone("chest", "hips", "joint-spine-3", "joint-neck", connect=True),
+        bone("head", "chest", "joint-neck", "joint-head-2", connect=True),
+        bone("arm.L", "chest", "joint-l-shoulder", "joint-l-elbow"),
+        bone("arm.R", "chest", "joint-r-shoulder", "joint-r-elbow"),
+        bone("thigh.L", "hips", "joint-l-upper-leg", "joint-l-knee"),
+        bone("thigh.R", "hips", "joint-r-upper-leg", "joint-r-knee"),
+    ]
+
+
+@contextlib.contextmanager
+def rig_library(services, root):
+    """MPFB's user data pointed at ``root``, so a stored rig lands there and nowhere else.
+
+    The second root is pointed at a directory that does not exist, so ``get_custom_rigs()``
+    scans ``root`` alone, and the custom rig cache is dropped on the way in and out, so no
+    test sees another's rigs and the developer's own come back afterwards. Yields
+    ``<root>/rigs``, which the store creates.
+    """
+    asset_service = services["AssetService"]
+    missing = os.path.join(root, "no-second-root")
+    with redirected_locations(services, user_data=root, second_root=missing):
+        asset_service.invalidate_custom_rig_cache()
+        try:
+            yield os.path.join(root, "rigs")
+        finally:
+            asset_service.invalidate_custom_rig_cache()

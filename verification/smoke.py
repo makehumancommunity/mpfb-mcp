@@ -113,6 +113,7 @@ class _Run:
         self.expressions = None
         self.saved_expression = None
         self.export_copy = None
+        self.authoring = None
 
     def __call__(self, tool_name: str, **arguments: object) -> dict:
         """A helper call: a prerequisite an item needs, not the item's own call."""
@@ -556,6 +557,53 @@ def _generate_delete_group(run: _Run) -> dict:
        "objects_removed")
 def _remove_asset(run: _Run) -> dict:
     return run.tools["mpfb_remove_asset"](name=_asset_object(run))
+
+
+# A three-bone deform skeleton against the body's joints, its names this harness's own so that
+# the store's dry run can pick identifying bones no other rig has.
+SMOKE_RIG_TABLE = (
+    {"name": "mpfbmcp_smoke_hips", "parent": "",
+     "head": {"joint": "joint-pelvis"}, "tail": {"joint": "joint-spine-3"}},
+    {"name": "mpfbmcp_smoke_chest", "parent": "mpfbmcp_smoke_hips", "connect": True,
+     "head": {"joint": "joint-spine-3"}, "tail": {"joint": "joint-neck"}},
+    {"name": "mpfbmcp_smoke_head", "parent": "mpfbmcp_smoke_chest", "connect": True,
+     "head": {"joint": "joint-neck"}, "tail": {"joint": "joint-head-2"}},
+)
+
+
+@_item("mpfb_get_rig_definition", "bones", "definition_from", "rig_identified_as",
+       "character_frame")
+def _get_rig_definition(run: _Run) -> dict:
+    # Compact, so the line in the run's output is about the rig the character has rather than
+    # its size: the default is the whole table, 53 KB on the default rig.
+    return run.tools["mpfb_get_rig_definition"](name=_character(run), compact=True)
+
+
+@_item("mpfb_create_rig", "rig_object_name", "bones", "snapped_to", "assets_not_rigged")
+def _create_rig(run: _Run) -> dict:
+    # On a character of its own, since the run's character has a shipped rig and a rig cannot
+    # be swapped. It stays in the scene with everything else the run builds.
+    envelope = run.tools["mpfb_create_human"]()
+    if envelope.get("status") != "ok":
+        raise Skipped("the authoring character could not be created")
+    run.authoring = envelope["result"]["basemesh_name"]
+    return run.tools["mpfb_create_rig"](name=run.authoring, bones=list(SMOKE_RIG_TABLE))
+
+
+@_item("mpfb_weight_rig", "bones", "unweighted", "groups_replaced", "deforming_bones_on_ground")
+def _weight_rig(run: _Run) -> dict:
+    if run.authoring is None:
+        raise Skipped("no rig was authored")
+    return run.tools["mpfb_weight_rig"](name=run.authoring, method="automatic")
+
+
+@_item("mpfb_store_rig", "path", "identifying_bones", "masks_on_body", "deform_flags_lost")
+def _store_rig(run: _Run) -> dict:
+    # dry_run, so the library does not gain a rig on every run (harness.DRY_RUN_TOOLS).
+    if run.authoring is None:
+        raise Skipped("no rig was authored")
+    return run.tools["mpfb_store_rig"](name=run.authoring, rig_name="mpfbmcp_smoke_run",
+                                       dry_run=True)
 
 
 @_item("mpfb_place_character", "placed", "root_name", "position_after", "facing_after",

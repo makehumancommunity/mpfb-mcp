@@ -29,6 +29,7 @@ from .._fixtures import dispatch
 from .._fixtures import redirected_locations
 from .._fixtures import rigged_character
 from .._fixtures import services_or_skip
+from .._fixtures import small_rig_table
 from .._fixtures import write_expression
 from .._fixtures import write_loadable_mhclo
 from .._fixtures import write_mhmat
@@ -56,6 +57,10 @@ def _asymmetric(scene):
     return ("set_targets", {"name": scene["body"], "modifiers": [
         {"section": "arms", "category": "lowerarm-scale-depth-decr-incr", "side": "left",
          "value": 0.4}]})
+
+
+def _authored_rig(scene):
+    return ("create_rig", {"name": scene["body"], "bones": small_rig_table()})
 
 
 def _with_a_face(scene):
@@ -89,6 +94,15 @@ WRAPPED = {
     "set_rigify_hand_shape": _row(lambda s: {"name": s["body"], "hands": [
         {"body_part": "left_hand", "shape": "fist"}]}, rig="generated:human_toes"),
     "reset_pose": _row(lambda s: {"name": s["body"]}, prepare=_posed),
+    # The three that build, weight and read an authored rig run operators on it (armature_add,
+    # parent_set, edit mode), which an excluded armature fails. The garment is on before the rig,
+    # which is also what create_rig's assets_not_rigged reports.
+    "create_rig": _row(lambda s: {"name": s["body"], "bones": small_rig_table()}, rig=None),
+    "weight_rig": _row(lambda s: {"name": s["body"], "method": "automatic"}, rig=None,
+                       prepare=_authored_rig),
+    "store_rig": _row(lambda s: {"name": s["body"], "rig_name": "excluded_scan",
+                                 "dry_run": True}, rig=None, prepare=_authored_rig,
+                      performed=False),
 }
 
 UNWRAPPED = {

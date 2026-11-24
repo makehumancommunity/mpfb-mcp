@@ -336,7 +336,9 @@ application; and `mpfb_store_makeskin_material`
 ([FR 049](../feature-requests/done/049-makeskin-materials/README.md)) is the fourth, writing an MHMAT and its
 textures, the first to write several files as one artifact; and `mpfb_write_mesh_asset`
 ([FR 050](../feature-requests/done/050-writing-mesh-assets/README.md)) is the fifth, writing a complete asset, the
-first with a choice of destination. Four properties follow, and they are the whole of the
+first with a choice of destination; and `mpfb_store_rig`
+([FR 060](../feature-requests/done/060-authoring-rigs/README.md)) is the sixth, writing a rig and its weights into the
+user library. Four properties follow, and they are the whole of the
 extra obligation:
 
 - **Address the artifact by name, never by a path.** A preset is `<name>` within MPFB's user config
@@ -397,6 +399,15 @@ extra obligation:
   and data README, which both say user files take priority; the discrepancy is filed as item 8 of
   `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`. If MPFB changes its precedence, this refusal changes
   with it.
+- **Refuse to write what would be found as something else.** A stored rig is found by name, but recognised on an
+  armature by its identifying bones, and that is a second way to be unreachable
+  ([FR 060](../feature-requests/done/060-authoring-rigs/README.md)). `RigService.identify_rig()` tries every built-in
+  rule first and then takes the first custom rig, in directory order, whose identifying bones are all present, so a rig
+  stored while another claims its armature is written and then refitted, exported and saved as the other.
+  `mpfb_store_rig` therefore refuses `identified_as_builtin`, `identification_shadowed` (another rig's identifying bones
+  are all in this one) and `would_shadow` (this one's are all in another, which that one would then lose to), beside
+  `name_shadowed`, and picks identifying bones no other rig holds when none are named. These rest on MPFB's code and on
+  the request's live check, which provoked two matching custom rigs and got whichever the directory listed first.
 
 The general obligation those four serve is that **a refusal must never be a partial write**: every
 precondition is settled before the writing call is made. MPFB's own path happens to be safe here

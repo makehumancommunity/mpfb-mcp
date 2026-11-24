@@ -49,9 +49,17 @@ def _with_rig_tree(tmp_path):
     mpfb_data = build_rig_tree(str(tmp_path))
     user_data = os.path.join(str(tmp_path), "user-data")
     os.makedirs(os.path.join(user_data, "rigs"))
+    # MPFB's custom rig cache is the one piece of state the redirection does not reach: any
+    # earlier test that identified a rig filled it from the developer's own library. Dropped
+    # on the way in and out, so this tree is what is scanned and the developer's comes back.
+    asset_service = services["AssetService"]
     with redirected_locations(services, mpfb_data=mpfb_data, user_data=user_data,
                               second_root=os.path.join(str(tmp_path), "no-second-root")):
-        yield {"mpfb_data": mpfb_data, "user_data": user_data}
+        asset_service.invalidate_custom_rig_cache()
+        try:
+            yield {"mpfb_data": mpfb_data, "user_data": user_data}
+        finally:
+            asset_service.invalidate_custom_rig_cache()
 
 
 def _by_identifier(answer):

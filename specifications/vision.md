@@ -177,15 +177,17 @@ answer changes.
 | **Introspection** | ask what is already there, and what state it is in, before acting — always cheaply, and always getting an answer rather than an error — and, since FR 041, what a character's rig can move and what its pose is now and since FR 047 the shape of a Rigify character's hands | 12 tools |
 | **Catalogues** | learn what *could* be added, each entry named exactly as the acting tool will want it | 5 tools |
 | **Creation and modification** | build a character and change it: phenotype, modeling targets, rig, garments, materials, face, since FR 042 its pose, since FR 045 where it stands in the scene and since FR 047 a Rigify character's hands by a named shape or a curl per finger — and undo a mistake, for which `mpfb_reset_pose` and its `restore_with` are the first tool built; and **keep** it, as a preset that outlives the session and a face as an expression the library can apply, since FR 039 **take it elsewhere**, as a processed copy written to a file a game engine or another application opens | 25 tools |
-| **Authoring** | make a mesh into an asset other characters can wear, with no panel and no selection: measure how meshes intersect and whether one is ready (`mpfb_check_intersections`, `mpfb_check_mesh_asset`, FR 048), give it a MakeSkin material and keep that as an alternate or a skin (`mpfb_set_makeskin_material`, `mpfb_get_makeskin_material`, `mpfb_store_makeskin_material`, FR 049), give the body a delete group (`mpfb_generate_delete_group`, [FR 051](../feature-requests/done/051-delete-groups/README.md)) and write it (`mpfb_write_mesh_asset`, FR 050) | 7 tools |
+| **Authoring** | make a mesh into an asset other characters can wear, with no panel and no selection: measure how meshes intersect and whether one is ready (`mpfb_check_intersections`, `mpfb_check_mesh_asset`, FR 048), give it a MakeSkin material and keep that as an alternate or a skin (`mpfb_set_makeskin_material`, `mpfb_get_makeskin_material`, `mpfb_store_makeskin_material`, FR 049), give the body a delete group (`mpfb_generate_delete_group`, [FR 051](../feature-requests/done/051-delete-groups/README.md)) and write it (`mpfb_write_mesh_asset`, FR 050); and make a rig other characters can use: read any rig as a bone table, build one from a table against the body's joints, weight it, and store it as a `custom.*` rig that `mpfb_add_rig` applies and MPFB identifies as itself (`mpfb_get_rig_definition`, `mpfb_create_rig`, `mpfb_weight_rig`, `mpfb_store_rig`, [FR 060](../feature-requests/done/060-authoring-rigs/README.md)) | 11 tools |
 | **Documentation** | answer "how does MPFB do X" without the client shipping its own copy of the manual | 2 tools |
 
-[README.md](../README.md) lists the fifty-one that exist, grouped this way;
-[CLAUDE.md](../CLAUDE.md#the-fifty-one-tools) gives one line each and points at the module
-docstring that explains it. **Fifty-one tools are fifty bridge commands**, one for one
+[README.md](../README.md) lists the fifty-five that exist, grouped this way;
+[CLAUDE.md](../CLAUDE.md#the-fifty-five-tools) gives one line each and points at the module
+docstring that explains it. **Fifty-five tools are fifty-four bridge commands**, one for one
 except `mpfb_list_docs`, which needs no Blender at all. Authoring is an area of its own because what it
 makes is an asset rather than a character: it outlives the character it was made on, and is judged on another
-one. Exporting is part of keeping a character
+one. A rig is the second kind of authored asset (FR 060): it is made on one body, stored as a file, and is
+right only if it fits, deforms and is identified on every other body, which is why its last step hands back
+the calls that try it on a different one. Exporting is part of keeping a character
 rather than a fifth area: it is the same act, a character outliving the scene, aimed at another
 application rather than at MPFB.
 

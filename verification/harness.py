@@ -92,12 +92,15 @@ MUTATING_VERBS = {
     "mpfb_place_character": "placed",
     "mpfb_create_export_copy": "created",
     "mpfb_export_character": "exported",
+    "mpfb_create_rig": "created",
+    "mpfb_weight_rig": "weighted",
+    "mpfb_store_rig": "stored",
 }
 
 
 # The smoke run calls these with dry_run, because what they write would otherwise
 # grow the list of files it leaves behind. Saved and performed both come back false.
-DRY_RUN_TOOLS = ("mpfb_store_makeskin_material", "mpfb_write_mesh_asset")
+DRY_RUN_TOOLS = ("mpfb_store_makeskin_material", "mpfb_write_mesh_asset", "mpfb_store_rig")
 
 # The refusal a dry-run item may come back with instead, because no tool can build what it needs.
 REFUSED_DRY_RUN = {"mpfb_write_mesh_asset": "not_valid_as_asset"}

@@ -1,7 +1,7 @@
 """
-All thirty-five commands that take a subject, asked about the same three misses.
+All forty commands that take a subject, asked about the same three misses.
 
-The claim is about thirty-five commands at once, which is why it is here: every
+The claim is about forty commands at once, which is why it is here: every
 command that takes a subject resolves it the same way, because all of them go
 through ``shared/subject_resolution.py``
 ([FR 036](../../../../feature-requests/done/036-subject-resolver-and-duplication/README.md)).
@@ -59,7 +59,7 @@ SUBJECT_ONLY = ("get_object_info", "generate_delete_group", "generate_rigify_rig
 
 
 def _calls(subject):
-    """The thirty-six commands, each with the least that passes its parameter contract."""
+    """The forty commands, each with the least that passes its parameter contract."""
     return {
         "get_object_info": dict(name=subject),
         "check_intersections": dict(name=subject),
@@ -105,6 +105,12 @@ def _calls(subject):
         "get_rigify_hand_shape": dict(name=subject),
         "set_rigify_hand_shape": dict(name=subject, hands=[
             dict(body_part="left_hand", shape="fist")]),
+        "get_rig_definition": dict(name=subject),
+        "create_rig": dict(name=subject, bones=[dict(
+            name="root", parent="", head=dict(joint="joint-ground"),
+            tail=dict(joint="joint-pelvis"))]),
+        "weight_rig": dict(name=subject, method="automatic"),
+        "store_rig": dict(name=subject, rig_name="bridge_test_never_written"),
     }
 
 
@@ -208,7 +214,7 @@ def test_a_name_that_does_not_exist(tmp_path):
 
 
 def test_an_object_with_no_basemesh(tmp_path):
-    """The third sentence from twenty-eight commands, and a found subject from seven."""
+    """The third sentence from thirty-one commands, and a found subject from nine."""
     import bpy  # pylint: disable=import-outside-toplevel
     cube = linked_plain_object(CUBE)
     try:

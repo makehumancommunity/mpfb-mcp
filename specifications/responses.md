@@ -217,6 +217,15 @@ protects, 8.8 and 8.6 KB. The pose read-back, read after every change, holds nea
 (7.2 KB for 13 posed controls; about 290 B per posed control on 3.8 KB of fixed sections, so 20
 posed controls is 9.6 KB), and takes none of these filters: it lists only what is posed.
 
+**A table that is meant to be sent back is not capped.** `mpfb_get_rig_definition`
+([FR 060](../feature-requests/done/060-authoring-rigs/README.md)) answers in exactly the shape `mpfb_create_rig` takes,
+and a page of a rig could not be built. So it narrows rather than caps: `bone_names` for named bones, and `compact`,
+which drops each non-position end's read-only `position`, `features_not_carried` and every key at the builder's
+default, so a compact read-back is still a write. Measured as JSON envelopes: the 163-bone default rig is 53 KB and
+24 KB compact, with the 125 joint cubes 62 KB and 33 KB; `rigify.human_toes`' 213 bones 77 KB and 39 KB; and an
+authored 27-bone rig 9.4 KB, which is the case the tool is mostly for. FR 060 asked for the default answer to stay
+inside the read-only tools' size; a shipped rig's full table does not, and the description says what narrows it.
+
 ## How tools report a derived rather than recorded fact
 
 [How tools report the asset behind an object](#how-tools-report-the-asset-behind-an-object) draws a

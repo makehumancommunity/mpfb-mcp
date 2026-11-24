@@ -240,7 +240,14 @@ import mpfbmcp
 # the rest is named; `mpfb_add_asset` (+94) names `weights_from`, the field its weights warning
 # became. Requirement 4 moved nothing: every sentence the instructions lost was already in the
 # description of the tool it named. The ceiling keeps its headroom.
-DESCRIPTION_CEILING = 108250
+#
+# Raised from 108,250 to 115,750 by
+# [FR 060](../feature-requests/done/060-authoring-rigs/README.md), by what its four rig authoring tools
+# measure: `mpfb_create_rig` 1,977 B, `mpfb_weight_rig` 1,931 B, `mpfb_store_rig` 1,859 B and
+# `mpfb_get_rig_definition` 1,835 B, 7,602 B in all, less what the instructions' trims took off. Each is a table, three methods or four refusals
+# about identification that a caller cannot foresee, and the order across the four is said once,
+# in `mpfb_create_rig`. The instructions gained one clause, paid for by trimming four others.
+DESCRIPTION_CEILING = 115750
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -318,7 +325,10 @@ DESCRIPTION_CEILING = 108250
 # type rather than `anyOf` with `null` and a null default, which was 11.5 KB of 22.5 KB. Both rules
 # apply to whatever is registered, so the nullable arguments the raises above paid `anyOf` for now
 # cost a type each, and every later one will. The ceiling is the 11,008 B measured plus a paragraph.
-SCHEMA_CEILING = 11700
+#
+# Raised from 11,700 to 12,850 by FR 060: 1,136 B across four tools, most of it
+# `mpfb_weight_rig`'s seven arguments and `mpfb_store_rig`'s seven.
+SCHEMA_CEILING = 12850
 
 # The server instructions, in characters, since that is what the one observed limit counted.
 # A Claude Code session on 2026-11-05 received them cut off at exactly 4,096 characters, with the
@@ -426,7 +436,7 @@ class DescriptionBudgetTests(unittest.TestCase):
         self.measured = measure()
 
     def test_every_registered_tool_is_measured(self) -> None:
-        self.assertEqual(51, len(self.measured))
+        self.assertEqual(55, len(self.measured))
 
     def test_total_description_size_is_under_the_ceiling(self) -> None:
         total = sum(entry["description_bytes"] for entry in self.measured)

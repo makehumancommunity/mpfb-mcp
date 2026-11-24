@@ -1,13 +1,13 @@
 # Authoring a rig
 
-**Status:** Proposed
+**Status:** Done
 
-This scopes [Rig authoring is outside the tool surface](../NEXT_STEPS.md#rig-authoring-is-outside-the-tool-surface)
-and [Nothing in MPFB weights a new rig](../NEXT_STEPS.md#nothing-weights-a-new-rig), and the half of
-[What a saved custom rig loses](../NEXT_STEPS.md#what-a-saved-custom-rig-loses) that a tool can report.
-[A custom rig is unclassified for the posing tools](../NEXT_STEPS.md#a-custom-rig-is-unclassified-for-posing)
+This scopes [Rig authoring is outside the tool surface](../../HISTORY.md#fr-060--authoring-a-rig)
+and [Nothing in MPFB weights a new rig](../../NEXT_STEPS.md#nothing-weights-a-new-rig), and the half of
+[What a saved custom rig loses](../../NEXT_STEPS.md#what-a-saved-custom-rig-loses) that a tool can report.
+[A custom rig is unclassified for the posing tools](../../NEXT_STEPS.md#a-custom-rig-is-unclassified-for-posing)
 stays where it is (see Non-goals).
-[FR 061](../061-rig-weights-that-hold-up/README.md) follows up on `mpfb_weight_rig`. It weights the neutral
+[FR 061](../../061-rig-weights-that-hold-up/README.md) follows up on `mpfb_weight_rig`. It weights the neutral
 base mesh rather than the character as modelled, it binds the eyes and teeth rigidly rather than filling them
 from the nearest skin (which puts an eye on its eyelid), and it adds a cleaning step and a read-only
 `mpfb_check_rig_weights`. If FR 061 is accepted before this request is implemented, FRs 9 and 10 below are
@@ -147,7 +147,7 @@ user library as a `custom.*` rig that `mpfb_add_rig` applies and `identify_rig` 
     is the one that means the pass itself went wrong.
 11. **`bones`** (optional) limits the pass to those bones. The vertex groups it writes are replaced, and
     every group it replaced that it had not itself written is listed (`groups_replaced`), per [a tool that
-    destroys state it did not create](../../specifications/mutating-tools.md#a-tool-that-destroys-state-it-did-not-create-owes-the-caller-a-list).
+    destroys state it did not create](../../../specifications/mutating-tools.md#a-tool-that-destroys-state-it-did-not-create-owes-the-caller-a-list).
     The rig must be at rest (`rig_not_at_rest`). Per bone, the answer gives `vertex_count`, so a root that
     took the thighs is visible without a render.
 
@@ -158,7 +158,7 @@ user library as a `custom.*` rig that `mpfb_add_rig` applies and `identify_rig` 
     `weights.<rig_name>.json` in MPFB's user data. Both are staged and moved as one artifact. MPFB's custom
     rig cache is then invalidated, so `mpfb_list_rigs` and `mpfb_add_rig` see the rig at once.
     **`overwrite`** is false by default, there is a **`dry_run`**, and `path` is in every answer, per [a tool
-    whose effect is outside the `.blend`](../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more).
+    whose effect is outside the `.blend`](../../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more).
 13. **`identifying_bones`** is optional. When it is left out, the command picks the smallest set of the
     rig's bones that no built-in rig and no installed custom rig has, and reports it.
 14. **Identification is settled before writing.** The tool refuses in three cases:
@@ -187,7 +187,7 @@ user library as a `custom.*` rig that `mpfb_add_rig` applies and `identify_rig` 
   `mesh.vertices[].co`. Every position comes from MPFB's own position info, which evaluates shape keys. A
   bridge test holds this on a body where the two differ.
 - **All-or-nothing writes.** `bones` and `exclude_bones` resolve in full before the first write, per
-  [what the all-or-nothing batches caught](../NEXT_STEPS.md#what-the-all-or-nothing-batches-caught). A
+  [what the all-or-nothing batches caught](../../NEXT_STEPS.md#what-the-all-or-nothing-batches-caught). A
   build that fails part way removes its armature.
 - **Readability.** The translation between the bone-table shape and MPFB's format is one module, used in
   both directions. A disagreement between reader and builder would break the read-back-is-a-write claim.
@@ -201,13 +201,13 @@ user library as a `custom.*` rig that `mpfb_add_rig` applies and `identify_rig` 
   and `store_rig`. They are `create` rather than `add`, because `mpfb_add_rig` applies a catalogue entry.
 - **One new shared module, `shared/rig_definition.py`.** It holds the bone-table shape in both directions,
   the in-memory fit (FRs 1 and 9), and the joint-cube reading (FR 4). Three commands use it, which meets
-  the [shared-module rule](../../specifications/architecture.md#shared-modules-and-what-warrants-one). It
+  the [shared-module rule](../../../specifications/architecture.md#shared-modules-and-what-warrants-one). It
   builds a `Rig(basemesh)`, assigns `rig_header` and `rig_definition`, and calls
   `build_basemesh_position_info()`. It does not write a temporary file for `from_json_file_and_basemesh`.
   The upgrade step that function runs is version-gated and a no-op for a version-110 dictionary. That claim
   is checked by a bridge test rather than assumed.
 - **MPFB's operators are reimplemented, never called**, per
-  [mpfb-integration.md](../../specifications/mpfb-integration.md#a-third-party-add-ons-ui-operators-are-reimplemented-never-called).
+  [mpfb-integration.md](../../../specifications/mpfb-integration.md#a-third-party-add-ons-ui-operators-are-reimplemented-never-called).
   `save_rig_to_library`'s body is `Rig.from_given_armature_context`, `RigService.get_weights` and two
   `json.dump`s. Transfer replaces `auto_transfer_weights` rather than reproducing it. The departures are
   listed in the command docstrings, as FR 050 listed MakeClothes'.
@@ -227,19 +227,19 @@ user library as a `custom.*` rig that `mpfb_add_rig` applies and `identify_rig` 
 
 ## Affected specifications
 
-- [vision.md](../../specifications/vision.md#target-tool-catalog): the Authoring area gains rigs (seven
+- [vision.md](../../../specifications/vision.md#target-tool-catalog): the Authoring area gains rigs (seven
   tools become eleven), and the "what makes something a tool" reasoning gains a rig as the second kind of
   authored asset.
-- [tool-interface.md](../../specifications/tool-interface.md#the-glossary): the bone-table shape and the
+- [tool-interface.md](../../../specifications/tool-interface.md#the-glossary): the bone-table shape and the
   end kinds (`joint`, `vertex`, `mean`, `position`, `offset`, `snap`), `matched_by`, the fill counts, and
   the store's refusals.
-- [mutating-tools.md](../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more):
+- [mutating-tools.md](../../../specifications/mutating-tools.md#a-tool-whose-effect-is-outside-the-blend-owes-more):
   the sixth tool to write outside the `.blend`, and the first refusal that is about **identification**
   rather than about a name. The `name_shadowed` paragraph gains its sibling.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not):
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md#when-mpfb-mcp-models-a-concept-mpfbs-ui-has-but-its-services-do-not):
   MakeRig's departures, next to MakeSkin's and MakeClothes'. It also gets the mask default and what it rests
   on.
-- [testing.md](../../specifications/testing.md): no new rule is expected.
+- [testing.md](../../../specifications/testing.md): no new rule is expected.
 
 ## Tests
 
@@ -257,7 +257,7 @@ user library as a `custom.*` rig that `mpfb_add_rig` applies and `identify_rig` 
 - **Bridge, `eee_composite/rig_roundtrip_test.py`**: create, weight, store, then `mpfb_add_rig custom.*` on
   a different body. That rig is identified as itself, and its `mpfb_get_rig_definition` equals the table it
   was built from.
-- **Live, `060-authoring-rigs/live_check.py`**: the `claude_demo` session again, through the four tools.
+- **Live, [live_check.py](live_check.py)**: the `claude_demo` session again, through the four tools.
   The elbow is refitted on the second body, 0 vertices are unweighted after the fill (1,384 before it), a
   90-degree elbow and shoulder bend are read through `mpfb_get_pose`, and transfer is compared against
   MPFB's own operator on the same pair. That last check is the 8 matched and 19 unmatched, which `chain` and
@@ -269,6 +269,41 @@ user library as a `custom.*` rig that `mpfb_add_rig` applies and `identify_rig` 
   - a feature request for a masks checkbox on save-to-library, like `save_masks` on the other save path;
   - a defect report for `identify_rig`'s first-match over an unordered directory listing, if a collision
     is provoked.
+
+## Verification status
+
+Verified both ways, on Blender 5.1.0 with MPFB from source, 2026-11-24.
+
+- **The effort's own check**, [live_check.py](live_check.py): 25 checks, 0 failed. Its numbers are in
+  [HISTORY.md](../../HISTORY.md#fr-060--authoring-a-rig): the elbow refitted from 1.140 to 0.966, 0 vertices unweighted on
+  either body, a 90-degree shoulder bend read back as 90.0, MakeRig's transfer at 8 matched against this one's 26 of 27.
+- **The smoke run**: one item per tool, 57 of 57 in 4.4 s. `mpfb_store_rig`'s runs as `dry_run`.
+- **The bridge suite**: 38 new tests over the five modules the request named, and a row per new command in
+  `eee_composite/excluded_character_test.py`.
+
+**What the implementation decided that the request did not**, each argued in its module docstring:
+
+- **Heat weighting on a copy, without the joint cubes.** The request assumed heat weighting on the basemesh, with the
+  parenting and the modifier stack put back. Blender reads the Basis, not the shape-key mix the bones are fitted to, and
+  the joint cubes make the solve fail for every bone once the bones sit exactly on them. A copy at the fitted shape
+  without the cubes fixes both and touches nothing on the character. This changes FR 061's starting point.
+- **Snapping is MPFB's own matcher** (joint, vertex mean, vertex), not "the nearest joint, else the nearest vertex",
+  because the store runs that matcher on every end anyway.
+- **`DEFAULT` is expressible**, as `position` with `snap: false`; only `XYZ` and the reference-Z roll are not.
+- **`bone_names`**, not `bones`, for the reader's and the weighter's name filters, since one argument name carries one
+  JSON type.
+- **`compact` also drops keys at the builder's default**, and the full rows carry every key, as
+  [responses.md](../../../specifications/responses.md#how-tools-bound-a-large-answer) asks. The NFR that the default answer
+  stay inside the read-only tools' size holds for an authored rig (9.4 KB) and not for a shipped one (53 KB, 24 KB compact);
+  a table meant to be sent back is narrowed, not capped.
+- **`identification_shadowed` is checked before identifying bones are picked**, so a plain copy of a library rig is told
+  which rig it copies rather than that no bones are left to pick.
+- **The shape rules are a module of their own**, `shared/rig_table.py`, with no `bpy`, so the unit suite runs the
+  bridge's copy beside the tool's over one table of cases.
+- **The upstream reports were filed**, all three, each confirmed by the live check:
+  `mpfb2/efforts/bugs/local/identify-rig-custom-first-match.md`, `mpfb2/efforts/features/local/rig-format-use-deform.md`
+  and `mpfb2/efforts/features/local/save-rig-to-library-masks-option.md`. A stray mask does outlive its rig, which is why
+  the masks request is an opt-in.
 
 ## Decisions taken while scoping
 
@@ -294,9 +329,9 @@ as a method rather than a flag, so that a weighting and its mirror are two answe
 
 ## References
 
-- NEXT_STEPS: [Rig authoring is outside the tool surface](../NEXT_STEPS.md#rig-authoring-is-outside-the-tool-surface),
-  [Nothing in MPFB weights a new rig](../NEXT_STEPS.md#nothing-weights-a-new-rig),
-  [What a saved custom rig loses](../NEXT_STEPS.md#what-a-saved-custom-rig-loses).
+- NEXT_STEPS: [Rig authoring is outside the tool surface](../../HISTORY.md#fr-060--authoring-a-rig),
+  [Nothing in MPFB weights a new rig](../../NEXT_STEPS.md#nothing-weights-a-new-rig),
+  [What a saved custom rig loses](../../NEXT_STEPS.md#what-a-saved-custom-rig-loses).
 - mpfb2: `entities/rig.py` (`from_json_file_and_basemesh`, `create_armature_and_fit_to_basemesh`,
   `build_basemesh_position_info`, `from_given_armature_context`); `services/rigservice.py` (`get_weights`,
   `apply_weights`, `identify_rig`, `symmetrize_all_bone_weights`); `services/assetservice.py`
@@ -305,5 +340,5 @@ as a method rather than a flag, so that a weighting and its mirror are two answe
 - mpfb2 docs: `docs/fileformats/rig.md` and `docs/fileformats/weights.md`. Write against the code, not
   those pages: see `mpfb2/efforts/bugs/local/rig-authoring-docs-mismatches.md`, `truncate-weights-wipes-group.md`
   and `symmetrize-weights-not-implemented.md`.
-- [FR 050](../done/050-writing-mesh-assets/README.md), the pattern for an authored asset written whole into
+- [FR 050](../050-writing-mesh-assets/README.md), the pattern for an authored asset written whole into
   the library with a `try_with`.

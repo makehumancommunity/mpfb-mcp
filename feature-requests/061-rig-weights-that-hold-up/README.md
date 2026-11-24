@@ -2,12 +2,21 @@
 
 **Status:** Proposed
 
-This follows [FR 060](../060-authoring-rigs/README.md) on
-[Nothing in MPFB weights a new rig, and automatic weights miss the helpers](../NEXT_STEPS.md#nothing-weights-a-new-rig).
+This follows [FR 060](../done/060-authoring-rigs/README.md) on
+[Rig weights that hold up](../NEXT_STEPS.md#nothing-weights-a-new-rig).
 FR 060's `mpfb_weight_rig` gets an authored rig weighted at all: heat weighting, a transfer that understands
 merged chains, a mirror, and a fill for every vertex the pass missed. This request is about whether those
 weights are **right**, and about saying so with numbers rather than a render. It changes two behaviours of
 `mpfb_weight_rig`, adds a cleaning step, and adds one read-only tool.
+
+**FR 060 has landed since this was scoped, and changed its starting point** (recorded 2026-11-24, see
+[HISTORY.md](../HISTORY.md#fr-060--authoring-a-rig)). `mpfb_weight_rig`'s `automatic` already runs on a temporary copy,
+not on the character: Blender's skinning reads a mesh's Basis rather than the shape-key mix the bones are fitted to,
+and with the joint cubes in the mesh the heat solve fails for every bone, because MPFB fits bone ends exactly at the
+cubes' centres. So the copy is the mesh at the fitted shape **without the joint cubes**, and FR 1's copy becomes that
+copy at the neutral shape instead. FR 2's choice is narrower than written: the whole mesh is no longer a candidate,
+since it includes the cubes, and what is left to decide is skin only against skin and helpers, which is what ships
+today. The fill described below as FR 060's is the one that shipped. Nothing else here is affected.
 
 **Reading MPFB's shipped weights and Blender's heat weighting while scoping found:**
 
@@ -322,7 +331,7 @@ Asked on 2026-11-24:
 ## References
 
 - NEXT_STEPS: [Nothing in MPFB weights a new rig](../NEXT_STEPS.md#nothing-weights-a-new-rig).
-- [FR 060](../060-authoring-rigs/README.md), whose `mpfb_weight_rig`, `shared/rig_definition.py` and
+- [FR 060](../done/060-authoring-rigs/README.md), whose `mpfb_weight_rig`, `shared/rig_definition.py` and
   `mpfb_store_rig` this builds on.
 - mpfb2:
   - `data/mesh_metadata/basemesh_vertex_groups.json` and `data/mesh_metadata/hm08.mirror`;

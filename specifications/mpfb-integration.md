@@ -418,6 +418,12 @@ the path and `json.load()` it. Where a tool has to read a bundled data file, thr
   itself. Reporting the path, an overview, and a way to page through the contents is strictly more
   useful than truncating the file.
 
+`mpfb_weight_rig`'s mirror reads `mesh_metadata/hm08.mirror` this way
+([FR 060](../feature-requests/done/060-authoring-rigs/README.md)), through `get_mpfb_data()`, rather than
+through `TargetService._load_mirror_table()`, which is private and fills module globals. The format is one
+`<from> <to> <l|r|m>` line per vertex, and `symmetrize_shape_key()` copies the `l` lines left to right, which is
+the direction the weights follow too.
+
 ## MPFB caches what it scans, and a tool says what that costs and what it hides
 
 Several of MPFB's own caches sit under this package's catalogue tools, and each one changes what an
@@ -691,6 +697,52 @@ is false. Which of the two a body gets changes 2,674 exact lines to 624.
 for a window, and Blender drops the window from the context when a file is named on its command line, though the window
 manager still holds it. So `cli.py` serves from that window's context, and **a command reads the selection from the view
 layer**, never `bpy.context.selected_objects`, which is absent with no screen.
+
+### MakeRig: a rig authored through MPFB's own fitter, and what its save cannot carry
+
+MakeRig is operators over `Rig`, `RigService` and `AssetService`, so
+[FR 060](../feature-requests/done/060-authoring-rigs/README.md) reimplemented its "Load rig", "Auto transfer weights"
+and "Save rig to library" as `mpfb_create_rig`, `mpfb_weight_rig` and `mpfb_store_rig`, with `mpfb_get_rig_definition`
+as the reader the panel has no equivalent of. The departures are listed in each command's docstring; these rest on
+something provoked rather than read, in `bridge/test/` or the request's own live check:
+
+- **MPFB fits every bone, and nothing reads `mesh.vertices[].co`.** A table is resolved against the position info
+  `Rig.build_basemesh_position_info()` builds, which evaluates the shape keys, so on a modelled body a joint is where
+  MPFB's own `add_builtin_rig()` puts the bone. Reading `co` was 5 mm or more off on the test's body.
+- **The builder takes a dictionary, not a file.** `Rig(basemesh)` is given its header and definition and fitted with
+  `create_armature_and_fit_to_basemesh(for_developer=True)`, which saves each end's strategy on the bone for the store
+  to read back. `from_json_file_and_basemesh()`'s upgrade step is version-gated and a version-110 header needs none,
+  which a bridge test holds.
+- **A position snaps as MPFB's save would match it**: a joint within MPFB's `_MAX_ALLOWED_DIST`, else a vertex mean,
+  else a vertex, through the same public finders in `Rig._match_position_to_strategy()`'s order. The store runs that
+  matcher on every end anyway, so a builder that snapped differently would build a rig the store then changes; a fixed
+  position (`snap: false`) is the one end the store does change, and `ends_rematched` names it.
+- **Heat weighting is Blender's, run on a copy, and the copy leaves the joint cubes out.** Blender's skinning reads a
+  mesh's original vertex positions, the Basis shape, while MPFB fits the bones to the shape-keyed body; and with the
+  cubes in the mesh, where MPFB puts bone ends exactly at their centres, the heat solve fails for every bone (0 of
+  14,380 vertices weighted on the default body, 13,380 of 13,380 without the cubes). On the Basis the ends are a few
+  millimetres off the cubes and the pass happens to work. The copy is the mesh at the fitted shape, without the cubes,
+  and a fill gives every vertex still unweighted its nearest weighted body vertex's weights.
+- **A transfer understands merged chains.** MakeRig's operator matches only bones whose two ends both coincide within
+  1 mm, which took 8 of `claude_demo`'s 27 bones from `default_no_toes`; matching a head on one source bone and a tail
+  on a descendant's, and giving an unmatched source bone to its nearest matched ancestor's target, took 26, the root
+  being the one whose source end is a vertex rather than `joint-ground`.
+- **Identification is settled before a write, and a collision refuses.** `RigService.identify_rig()` tries every
+  built-in rule first and reaches the custom rigs only when none matched, then takes the first in `os.listdir` order
+  whose identifying bones are all present; the live check provoked two matching custom rigs and got the first one
+  listed. So a built-in claim, another rig's identifying bones inside this one, this one's inside another's, and the
+  same name in another data root are each a refusal, where the panel warns about twelve hard-coded names and writes.
+- **Masks stay out by default, as the panel leaves them.** `savetolibrary.py` has passed `all_masks=False` since the
+  commit that introduced custom rigs, with no comment, while `get_weights()` defaults to true and MakeRig's other save
+  path calls it `save_masks`. A mask on an authoring body may be left over: the live check deleted a `rigify.human_toes`
+  meta-rig and found `mhmask-no-smooth` and `mhmask-preserve-volume` still on the body. So `include_masks` is the
+  opt-in, and `masks_on_body` beside `masks_written` is on every answer.
+- **What the file loses is named, not added to the format.** MPFB's rig format has no `use_deform`, so a non-deforming
+  bone comes back deforming; `deform_flags_lost` says which, and the key is a feature request upstream rather than an
+  extension here.
+- **A roll strategy is read off the bone's registered property.** `restore_saved_strategies()` reads it with
+  `bone.get("mpfb_roll_strategy")`, which never finds a registered property, and gets the strategy from the edit bone
+  instead; the reader reads it the way it is stored.
 
 ### A character away from the origin: repair what MPFB visibly intends, report what it does not
 

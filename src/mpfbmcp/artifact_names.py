@@ -64,15 +64,18 @@ __all__ = (
     "MATERIAL_NAME_PATTERN",
     "NAME_MAX_LENGTH",
     "NAME_PATTERN",
+    "RIG_NAME_PATTERN",
     "asset_name_rejection",
     "material_name_rejection",
     "name_rejection",
+    "rig_name_rejection",
     "preset_name_rejection",
     "validated_asset_name",
     "validated_export_name",
     "validated_expression_name",
     "validated_material_name",
     "validated_preset_name",
+    "validated_rig_name",
 )
 
 import re
@@ -92,6 +95,11 @@ MATERIAL_NAME_PATTERN = "^[a-z0-9_]+$"
 
 # What a written mesh asset may be called. Narrower too: see asset_name_rejection().
 ASSET_NAME_PATTERN = "^[a-zA-Z0-9_]+$"
+
+# What a stored rig may be called: MPFB's own rule, which its custom-rig scan applies to every
+# file it finds and its save-to-library operator to every name it is given. See
+# rig_name_rejection().
+RIG_NAME_PATTERN = "^[a-zA-Z0-9_]+$"
 
 
 def name_rejection(name: object, noun: str) -> str | None:
@@ -171,6 +179,28 @@ def asset_name_rejection(name: object) -> str | None:
     return None
 
 
+def rig_name_rejection(name: object) -> str | None:
+    """Why this name may not become a stored rig, as a sentence, or ``None``.
+
+    Exactly MPFB's rule, ``^[a-zA-Z0-9_]+$``, and nothing stricter beyond the length bound
+    every name here has: ``AssetService.get_custom_rigs()`` skips any rig file whose name
+    fails it, so a rig stored under one would be written and never found
+    ([FR 060](../../feature-requests/done/060-authoring-rigs/README.md)). MPFB rejects rather than
+    normalises, so unlike a mesh asset's a doubled ``_`` is fine.
+    """
+    rejection = name_rejection(name, "rig")
+    if rejection is not None:
+        return rejection
+    if re.match(RIG_NAME_PATTERN, name) is None:  # type: ignore[arg-type]
+        illegal = sorted(set(
+            character for character in name
+            if re.match(RIG_NAME_PATTERN, character) is None))
+        return ("A rig name may hold only letters, digits and '_', which is MPFB's own rule for "
+                "a custom rig. This one also holds: {:s}.".format(
+                    ", ".join(repr(character) for character in illegal)))
+    return None
+
+
 def preset_name_rejection(name: object) -> str | None:
     """:func:`name_rejection` for a character preset."""
     return name_rejection(name, "preset")
@@ -236,3 +266,13 @@ def validated_export_name(name: object) -> str:
         "Exports are written by name, never by path: the file is always "
         "<export_name>.<extension> in the export directory, which the person running "
         "the MPFB Bridge chooses in its preferences.")
+
+
+def validated_rig_name(name: object) -> str:
+    """A stored rig's name, or ``ValueError``."""
+    rejection = rig_name_rejection(name)
+    if rejection is not None:
+        raise ValueError(
+            "{:s} A rig is stored by name, never by path: the files are always "
+            "rigs/<name>.json and rigs/weights.<name>.json in MPFB's user data.".format(rejection))
+    return name  # type: ignore[return-value]

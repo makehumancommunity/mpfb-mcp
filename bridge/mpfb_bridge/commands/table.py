@@ -49,6 +49,7 @@ from . import apply_expressions
 from . import check_intersections
 from . import check_mesh_asset
 from . import create_human
+from . import create_rig
 from . import create_export_copy
 from . import create_human_from_preset
 from . import generate_delete_group
@@ -64,6 +65,7 @@ from . import get_mpfb_status
 from . import get_object_info
 from . import get_pose
 from . import get_pose_controls
+from . import get_rig_definition
 from . import get_rigify_hand_shape
 from . import get_target_stack
 from . import get_status
@@ -93,7 +95,9 @@ from . import set_rigify_hand_shape
 from . import set_skin
 from . import set_targets
 from . import store_makeskin_material
+from . import store_rig
 from . import symmetrize_targets
+from . import weight_rig
 from . import write_mesh_asset
 from .command import Command
 
@@ -151,6 +155,12 @@ COMMANDS = {
         params=create_human_from_preset.PARAMS,
         requires_mpfb=True,
         summary=create_human_from_preset.SUMMARY),
+    "create_rig": Command(
+        name="create_rig",
+        handler=create_rig.create_rig,
+        params=create_rig.PARAMS,
+        requires_mpfb=True,
+        summary=create_rig.SUMMARY),
     "export_character": Command(
         name="export_character",
         handler=export_character.export_character,
@@ -240,6 +250,12 @@ COMMANDS = {
         params=get_pose_controls.PARAMS,
         requires_mpfb=True,
         summary=get_pose_controls.SUMMARY),
+    "get_rig_definition": Command(
+        name="get_rig_definition",
+        handler=get_rig_definition.get_rig_definition,
+        params=get_rig_definition.PARAMS,
+        requires_mpfb=True,
+        summary=get_rig_definition.SUMMARY),
     "get_rigify_hand_shape": Command(
         name="get_rigify_hand_shape",
         handler=get_rigify_hand_shape.get_rigify_hand_shape,
@@ -428,12 +444,24 @@ COMMANDS = {
         params=store_makeskin_material.PARAMS,
         requires_mpfb=True,
         summary=store_makeskin_material.SUMMARY),
+    "store_rig": Command(
+        name="store_rig",
+        handler=store_rig.store_rig,
+        params=store_rig.PARAMS,
+        requires_mpfb=True,
+        summary=store_rig.SUMMARY),
     "symmetrize_targets": Command(
         name="symmetrize_targets",
         handler=symmetrize_targets.symmetrize_targets,
         params=symmetrize_targets.PARAMS,
         requires_mpfb=True,
         summary=symmetrize_targets.SUMMARY),
+    "weight_rig": Command(
+        name="weight_rig",
+        handler=weight_rig.weight_rig,
+        params=weight_rig.PARAMS,
+        requires_mpfb=True,
+        summary=weight_rig.SUMMARY),
     "write_mesh_asset": Command(
         name="write_mesh_asset",
         handler=write_mesh_asset.write_mesh_asset,

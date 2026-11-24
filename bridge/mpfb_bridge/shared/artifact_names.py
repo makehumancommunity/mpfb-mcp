@@ -51,11 +51,13 @@ __all__ = (
     "MATERIAL_NAME_PATTERN",
     "NAME_MAX_LENGTH",
     "NAME_PATTERN",
+    "RIG_NAME_PATTERN",
     "asset_name_rejection",
     "file_facts",
     "material_name_rejection",
     "modified_iso",
     "name_rejection",
+    "rig_name_rejection",
 )
 
 import datetime
@@ -77,6 +79,11 @@ MATERIAL_NAME_PATTERN = "^[a-z0-9_]+$"
 
 # What a written mesh asset may be called. Narrower too: see asset_name_rejection().
 ASSET_NAME_PATTERN = "^[a-zA-Z0-9_]+$"
+
+# What a stored rig may be called: MPFB's own rule, which its custom-rig scan applies to every
+# file it finds and its save-to-library operator to every name it is given. See
+# rig_name_rejection().
+RIG_NAME_PATTERN = "^[a-zA-Z0-9_]+$"
 
 
 def name_rejection(name, noun):
@@ -155,6 +162,28 @@ def asset_name_rejection(name):
     if "__" in name:
         return ("A mesh asset name must not hold '__', which MPFB's normalisation collapses "
                 "to one '_'.")
+    return None
+
+
+def rig_name_rejection(name):
+    """Why this name may not become a stored rig, as a sentence, or ``None``.
+
+    Exactly MPFB's rule, ``^[a-zA-Z0-9_]+$``, and nothing stricter beyond the length bound
+    every name here has: ``AssetService.get_custom_rigs()`` skips any rig file whose name
+    fails it, so a rig stored under one would be written and never found
+    ([FR 060](../../../feature-requests/done/060-authoring-rigs/README.md)). MPFB rejects rather than
+    normalises, so unlike a mesh asset's a doubled ``_`` is fine.
+    """
+    rejection = name_rejection(name, "rig")
+    if rejection is not None:
+        return rejection
+    if re.match(RIG_NAME_PATTERN, name) is None:
+        illegal = sorted(set(
+            character for character in name
+            if re.match(RIG_NAME_PATTERN, character) is None))
+        return ("A rig name may hold only letters, digits and '_', which is MPFB's own rule for "
+                "a custom rig. This one also holds: {:s}.".format(
+                    ", ".join(repr(character) for character in illegal)))
     return None
 
 

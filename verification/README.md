@@ -169,14 +169,20 @@ builds a whole second character, which is the only honest way to call that tool.
   less far: an equipped asset has no vertex groups of its own, so MPFB's validator refuses it, and no tool makes a mesh it
   would pass. So its item must come back refused with exactly `not_valid_as_asset` (`harness.REFUSED_DRY_RUN`), which proves
   the socket, the arguments and the validator and nothing past them. The rest is that request's live check.
+  `mpfb_store_rig` ([FR 060](../feature-requests/done/060-authoring-rigs/README.md)) passes `dry_run` as well, so the
+  library does not gain a rig on every run; its item comes back ready and not performed, having settled the name and
+  the identification.
 - **The `mpfb_set_material_settings` item names one socket**, the other non-default argument in the
   table: the call naming nothing - what FR 040 planned as its item - answers `performed: false`,
   which the rule above does not allow. It writes the first writable float on the first colour
   adjustment the read reports, back to the value it already holds, so the scene is left as it was
   found. Which socket that is comes from the read, since the names are MPFB's.
-- **One item leaves a whole second character**: `mpfb_create_export_copy` copies the run's
+- **Two items leave a whole second character**: `mpfb_create_export_copy` copies the run's
   character with MPFB's Export copy panel's defaults, into an "export copy" collection, and the
-  copy stays, as everything else the run builds does. The export item writes that copy.
+  copy stays, as everything else the run builds does. The export item writes that copy. And
+  `mpfb_create_rig` builds on a character of its own, with a three-bone rig `mpfb_weight_rig` then
+  weights and `mpfb_store_rig` checks, since the run's character has a shipped rig and a rig cannot
+  be swapped.
 - **One item leaves a custom property on the character**: `mpfb_apply_expressions` writes MPFB's
   applied-expressions stack (`mpfb_applied_expressions`) on the run's basemesh, which the
   `mpfb_save_preset` item then serializes. It is inside the `.blend` and goes with the character. Before FR 025 this line said *nothing* outside the `.blend` was written, which

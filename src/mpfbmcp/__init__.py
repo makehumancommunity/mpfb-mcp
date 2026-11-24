@@ -203,7 +203,7 @@ INSTRUCTIONS = " ".join((
     # Where to start.
     "When a tool fails unexpectedly, call mpfb_get_status first. To act on a character this "
     "session did not create, find it with mpfb_list_objects and identify it with "
-    "mpfb_get_object_info rather than guessing from object names; to change one, read it with "
+    "mpfb_get_object_info rather than by its object names; to change one, read it with "
     "mpfb_get_character_summary and change only what should differ. The catalogues name entries "
     "the way the acting tool wants them: mpfb_list_assets (with no arguments, a summary of the "
     "library), mpfb_list_rigs and mpfb_list_targets.",
@@ -212,12 +212,12 @@ INSTRUCTIONS = " ".join((
     "Order matters and MPFB reports no error when it is wrong: add the rig with mpfb_add_rig "
     "BEFORE equipping anything with mpfb_add_asset, since nothing rigs an asset afterwards. A "
     "rigify.* rig is only a meta rig until mpfb_generate_rigify_rig, which is not undoable and "
-    "comes after the assets. Take an asset off with mpfb_remove_asset, never by deleting the "
+    "comes after the assets. Take an asset off with mpfb_remove_asset, not by deleting the "
     "object. A character with no skin is grey: give it one with mpfb_set_skin. Recolour a garment "
     "with mpfb_list_asset_materials and mpfb_set_asset_material. Shape a body with "
     "mpfb_set_macro_details, mpfb_set_targets or mpfb_symmetrize_targets, then refit once with "
-    "mpfb_refit_human, or everything fitted to it is left behind. MPFB builds every character at the origin; equip it before laying several out with "
-    "mpfb_place_character.",
+    "mpfb_refit_human, or everything fitted to it is left behind. Equip a character before "
+    "laying several out with mpfb_place_character.",
 
     # Face and pose.
     "Compose a face from ARKit units with mpfb_set_face_units or apply saved expressions with "
@@ -225,22 +225,22 @@ INSTRUCTIONS = " ".join((
     "mpfb_save_preset does not keep it and mpfb_save_expression does. Pose with "
     "mpfb_get_pose_controls (which bones to move, in a frame that turns with the character), "
     "mpfb_set_pose_bones, mpfb_set_pose_switches and mpfb_reset_pose, a Rigify hand with "
-    "mpfb_set_rigify_hand_shape, and read the result with mpfb_get_pose rather than a "
-    "screenshot.",
+    "mpfb_set_rigify_hand_shape, and read the result with mpfb_get_pose, not a screenshot.",
 
     # Measuring, materials and authoring assets.
-    "Whether meshes pass through each other is measured with mpfb_check_intersections, not seen "
-    "in a render. A material from textures is mpfb_set_makeskin_material's, kept with "
+    "Whether meshes pass through each other is measured with mpfb_check_intersections, not a "
+    "render. A material from textures is mpfb_set_makeskin_material's, kept with "
     "mpfb_store_makeskin_material. To author a mesh asset, check it with mpfb_check_mesh_asset, "
     "give the body a delete group with mpfb_generate_delete_group, write it with "
-    "mpfb_write_mesh_asset and follow its try_with.",
+    "mpfb_write_mesh_asset and follow its try_with; a rig with mpfb_create_rig "
+    "(mpfb_get_rig_definition reads a rig as a table), mpfb_weight_rig, mpfb_store_rig.",
 
     # Leaving Blender.
     "A character exists only in the .blend until mpfb_save_preset writes it; mpfb_list_presets "
     "lists them and mpfb_create_human_from_preset builds a NEW character from one. Export with "
     "mpfb_create_export_copy, then mpfb_export_character. For a community or documentation "
-    "address, use mpfb_list_urls, which answers even without Blender, or mpfb_list_docs rather "
-    "than composing a URL.",
+    "address, use mpfb_list_urls, which answers even without Blender, or mpfb_list_docs, never "
+    "a URL of your own.",
 ))
 
 
@@ -260,16 +260,16 @@ def build_server() -> FastMCP:
 
     from mpfbmcp.tools import (
         add_asset, add_rig, apply_expressions, check_intersections, check_mesh_asset,
-        create_export_copy, create_human,
+        create_export_copy, create_human, create_rig,
         create_human_from_preset, export_character, generate_delete_group, generate_rigify_rig, get_character_summary, get_expression, get_face_units,
         get_macro_details, get_makeskin_material, get_material_settings, get_object_info, get_pose, get_pose_controls,
-        get_rigify_hand_shape, get_status, get_target_stack,
+        get_rig_definition, get_rigify_hand_shape, get_status, get_target_stack,
         list_asset_materials, list_assets, list_docs, list_expressions, list_objects,
         list_presets, list_rigs, list_targets, list_urls, place_character, refit_human, remove_asset, reset_pose,
         save_expression, save_preset, set_asset_material, set_face_units, set_macro_details,
         set_makeskin_material, set_material_settings, set_pose_bones, set_pose_switches, set_rigify_hand_shape, set_skin,
-        set_targets, store_makeskin_material,
-        symmetrize_targets, write_mesh_asset)
+        set_targets, store_makeskin_material, store_rig,
+        symmetrize_targets, weight_rig, write_mesh_asset)
     add_asset.register(mcp)
     add_rig.register(mcp)
     apply_expressions.register(mcp)
@@ -277,6 +277,7 @@ def build_server() -> FastMCP:
     check_mesh_asset.register(mcp)
     create_export_copy.register(mcp)
     create_human.register(mcp)
+    create_rig.register(mcp)
     create_human_from_preset.register(mcp)
     export_character.register(mcp)
     generate_delete_group.register(mcp)
@@ -290,6 +291,7 @@ def build_server() -> FastMCP:
     get_object_info.register(mcp)
     get_pose.register(mcp)
     get_pose_controls.register(mcp)
+    get_rig_definition.register(mcp)
     get_rigify_hand_shape.register(mcp)
     get_status.register(mcp)
     get_target_stack.register(mcp)
@@ -319,7 +321,9 @@ def build_server() -> FastMCP:
     set_skin.register(mcp)
     set_targets.register(mcp)
     store_makeskin_material.register(mcp)
+    store_rig.register(mcp)
     symmetrize_targets.register(mcp)
+    weight_rig.register(mcp)
     write_mesh_asset.register(mcp)
 
     _shipped_without_source_indentation(mcp)

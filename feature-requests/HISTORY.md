@@ -1269,3 +1269,39 @@ its Rigify warning went from 306 characters to 100.
 
 **Not run: a fresh client session with the new server, and a real posing task in it**, which would confirm the text arrives whole and
 show how often a caller reads `mpfb_get_pose` after a narrowed write (5 reads to 66 writes before). See the FR's verification section.
+
+## [FR 060](done/060-authoring-rigs/README.md) — authoring a rig
+
+**Four tools, and a rig made on one body is right on another.** `mpfb_get_rig_definition` reads any rig as a bone table,
+`mpfb_create_rig` builds one from a table through MPFB's own fitter (`for_developer=True`), `mpfb_weight_rig` weights it and
+`mpfb_store_rig` stores it as a `custom.*` rig. The live check redid the `claude_demo` session through them: the rig was
+stored and identified as itself, applied with `mpfb_add_rig` to a male, old, heavy, short body with the left elbow refitted
+from 1.140 to 0.966 and no vertex unweighted, and a 90-degree shoulder bend read back as 90.0 through `mpfb_get_pose`,
+moving the forearm's vertices 40 cm and the torso's 4 mm. A read-back is a write: a table built and read back is the table,
+strategies and positions alike, on the authoring body and on the second.
+
+**Heat weighting runs on a copy, without the joint cubes, and both halves were findings.** Blender's skinning reads a mesh's
+Basis positions, not the shape-key mix MPFB fits bones to; and with the joint cubes in the mesh, where MPFB puts bone ends exactly
+at their centres, the heat solve fails for **every** bone - 0 of 14,380 body and cube vertices weighted on the default body. The
+session's run on the basemesh itself had worked only because, on the Basis, the bone ends were a few millimetres off the cubes.
+The copy is the mesh at the fitted shape without the cubes, and the fill gives the rest their nearest weighted body vertex's
+weights: 0 body vertices unweighted before it, 1,440 helper and 1,000 cube vertices filled, 0 after (the session had 1,384
+before its fill). A bridge test holds the failure, so a Blender that solves it shows up as a red line.
+
+**Transfer understands merged chains.** MakeRig's auto transfer, run for real on the same pair, matched 8 of `claude_demo`'s 27
+bones from `default_no_toes`, as the session found. `exact`, `chain` and `ancestor` matched 26; the one left is the root, whose
+source end is a vertex rather than `joint-ground`, and `pelvis.L`/`pelvis.R` and `root` are named as having nowhere to go.
+
+**The store refuses an identification that would not find the rig as itself**, before writing: a built-in rule claiming the
+armature, another custom rig's identifying bones all inside this one (a copy of `claude_demo` is refused as shadowed by it), this
+one's inside another's, and the name in another data root. `identify_rig()`'s first match between two custom rigs was provoked
+and is the directory's order, filed as `mpfb2/efforts/bugs/local/identify-rig-custom-first-match.md`. Masks stay out by default:
+deleting a `rigify.human_toes` meta-rig left `mhmask-no-smooth` and `mhmask-preserve-volume` on the body, so a stray mask does
+outlive its rig. `use_deform` in the format and a masks option on save-to-library are filed as MPFB feature requests, and the
+store names what the file loses (`deform_flags_lost`, `ends_rematched`) meanwhile.
+
+**Departures from the request**, each argued in its module: positions snap as MPFB's own save matches an end (joint, mean,
+vertex), not to a joint or a vertex alone; MPFB's `DEFAULT` strategy reads back as `position` with `snap: false`, since it is
+expressible; the name filters are `bone_names`, since `bones` is a list of objects; and a shipped rig's full table is 53 KB
+(24 KB compact), over the read-only tools' size, because a table meant to be sent back is narrowed rather than capped. FR 061's
+neutral-mesh weighting and rigid helpers remain; it was scoped before the copy existed.
