@@ -22,6 +22,10 @@ records what has already landed and why. When an effort below is finished, move 
 
 - [A windowed bridge answers once a second when Blender has nothing to do](#windowed-bridge-answers-once-a-second)
 - [Posing support](#posing-support)
+- [Rig authoring is outside the tool surface](#rig-authoring-is-outside-the-tool-surface)
+- [Nothing in MPFB weights a new rig, and automatic weights miss the helpers](#nothing-weights-a-new-rig)
+- [What a saved custom rig loses](#what-a-saved-custom-rig-loses)
+- [A custom rig is unclassified for the posing tools](#a-custom-rig-is-unclassified-for-posing)
 - [A material whose textures do not resolve is reported as applied](#a-material-whose-textures-do-not-resolve-is-reported-as-applied)
 - [The Rigify `fist` shape intersects itself, and "straight" is out of reach](#rigify-fist-intersects-itself)
 - [MPFB's loader drops a stored material's numbers](#mpfbs-loader-drops-a-stored-materials-numbers)
@@ -378,7 +382,8 @@ capability, and it converts a render nobody can explain into one line in the res
 material stored and applied again to read back equal, and it does for textures and `diffuseColor` only:
 `apply_node_tree()` parses `roughness`, `metallic`, `ior` and every intensity and uses none of them.
 `mpfb_store_makeskin_material` says so in `values_not_restored`, and the file holds them. **A decision is open**:
-fix it in MPFB, where it is two lines and every path benefits, which is filed in `MCP_DISCOVERED_BUGS.md`; or apply
+fix it in MPFB, where it is two lines and every path benefits, filed as
+`mpfb2/efforts/bugs/local/apply-node-tree-drops-mhmat-numbers.md`; or apply
 the file's numbers in `mpfb_set_asset_material` and `mpfb_set_skin` after MPFB builds, which meets the requirement
 today and makes every installed MHMAT look different through those tools than through MPFB's panel and
 `mpfb_add_asset`. FR 049 did neither.
@@ -592,7 +597,9 @@ already moved; its hand repair (both spaces `WORLD`, inverse recomputed) then br
 because it was a different binding.
 
 The tools already report each badly bound sub-rig as `subrigs_broken`, naming the refit, and the
-defect is filed in `mpfb2/features/MCP_DISCOVERED_BUGS.md`. **What is left is small**: whether `add_asset` should re-bind a sub-rig itself - setting the inverse pending again once
+defect is filed as
+`mpfb2/efforts/bugs/local/subrig-bound-wrong-away-from-origin.md`. **What is left is small**:
+whether `add_asset` should re-bind a sub-rig itself - setting the inverse pending again once
 the sub-rig is parented, which is what a refit does - rather than name the refit, and whether to
 propose that one-line ordering change upstream.
 
@@ -659,6 +666,139 @@ target, the silence viseme, resolved through `TargetService.target_full_path()` 
 `is_visemes02_installed()` beside the face units' probe would let this package use MPFB's own
 definition, as [mpfb-integration.md](../specifications/mpfb-integration.md#a-capability-that-depends-on-an-optional-asset-pack)
 prefers.
+
+<a id="rig-authoring-is-outside-the-tool-surface"></a>
+
+## Rig authoring is outside the tool surface
+
+MPFB's two rig-authoring panels, MakeRig and MakeWeight, have no counterpart among this
+package's tools. `mpfb_list_rigs` and `mpfb_add_rig` can *apply* a rig, a `custom.*` one already
+in the user library included, but nothing here can create one, place bones against the base
+mesh's joint cubes, read or write a weights file, or install a finished rig into the library. A
+session that tried it had to drive `bpy.ops.mpfb.load_rig`, `bpy.ops.mpfb.auto_transfer_weights`,
+`bpy.ops.mpfb.truncate_weights` and `bpy.ops.mpfb.save_rig_to_library` through the generic
+Blender MCP instead.
+
+It does work end to end, so the gap is reach rather than feasibility. A 27-bone rig written as a
+version-110 definition — every bone end a `CUBE` strategy naming one of the base mesh's 125 joint
+cubes — loaded with `mpfb.load_rig`, was weighted, and was saved with `mpfb.save_rig_to_library`
+as `claude_demo`. Adding it to a second, deliberately different character (male, old, heavy,
+short) with `mpfb_add_rig identifier="custom.claude_demo"` refitted the strategies: the left elbow
+sat at z = 1.140 on the first body and z = 0.992 on the second, and the weights file loaded with
+0 of 19,158 vertices unweighted. `RigService.identify_rig` then answered `custom.claude_demo`,
+which is what the `identifying_bones` key written into the saved file buys.
+
+The smallest useful set is probably three tools: build a rig definition from a bone table and load
+it onto a character; save the active rig, with its weights, into the user library under a name and
+identifying bones; and read or write a weights file for a named rig. The definition format is
+documented at `mpfb2/docs/fileformats/rig.md` and the weights format at
+`mpfb2/docs/fileformats/weights.md`, and both were accurate enough to author against on the first
+try. Six statements across those pages and the two panel pages do *not* describe the code, and are
+filed upstream as
+[`mpfb2/efforts/bugs/local/rig-authoring-docs-mismatches.md`](../../mpfb2/efforts/bugs/local/rig-authoring-docs-mismatches.md);
+anything built here should be written against the code rather than against those pages until they
+are corrected.
+
+One of those six is the trap a rig-authoring tool would fall into first, so it is worth repeating
+here: joint-cube centres computed from `mesh.vertices[].co` are **not** the positions MPFB fits
+bones to. `Rig.build_basemesh_position_info` evaluates the shape keys, so on any character with
+macro targets applied the two differ by centimetres — `joint-l-shoulder` was 2.3 cm apart on the
+test character, enough to put a shoulder bone inside the deltoid. Only the `default_position`
+fallbacks of a hand-written definition are affected, since the `CUBE` strategies are resolved by
+MPFB at fit time, but a tool that computed bone positions itself would be wrong everywhere.
+
+One practical note for anyone reaching MPFB through the generic Blender MCP meanwhile: MPFB is
+installed as an extension, so `import mpfb` raises `ModuleNotFoundError`. The services are at
+`importlib.import_module("bl_ext.repo.mpfb.services")`, and a panel's property set is on the
+package `__init__`, not on the module named after the panel.
+
+<a id="nothing-weights-a-new-rig"></a>
+
+## Nothing in MPFB weights a new rig, and automatic weights miss the helpers
+
+MakeRig's "Auto transfer weights" is the only weighting MPFB offers, and it is far narrower than
+its name. It interpolates nothing: `MPFB_OT_Auto_Transfer_Weights_Operator` pairs a source bone
+with a destination bone only when **both** endpoints are within `MAX_DIST = 0.001` of each other
+in armature-local space, then copies that one vertex group wholesale.
+
+Measured against the shipped `default_no_toes` rig fitted to the *same* base mesh, so that body
+shape could not be the cause, the 27-bone rig above matched 8 bones: `hips`→`spine05`,
+`spine_02`→`spine02`, `chest`→`spine01`, `head`, `foot.L`/`foot.R`, and
+`toes.L`/`toes.R`→`toe1-1.L`/`toe1-1.R`. Running the operator for real, between two characters
+built to identical macro settings, reported exactly that — *"Transferred 8 groups, leaving 19
+unmatched."* The 19 were every arm, hand and leg bone, which is where the weighting work actually
+is. They miss because a new rig merges the shipped rig's split chains: one `upperarm.L` from
+shoulder to elbow in place of `upperarm01` + `upperarm02`, whose closest candidate is 7.2 cm away
+at one endpoint. The tool solves a **rename** of an otherwise identical skeleton, and nothing
+else. Its matches crossing names freely (`chest` taking `spine01`'s weights) is the part worth
+keeping.
+
+The practical route is Blender's own `bpy.ops.object.parent_set(type='ARMATURE_AUTO')`, which
+weighted all 26 deform bones in one pass and produced an elbow and a shoulder that hold up under a
+90-degree bend. Two things have to happen around it:
+
+- **A root bone has to be excluded first.** `root` runs from `joint-ground` to `joint-pelvis`,
+  straight up between the legs; left deforming, heat weighting binds the thighs and the crotch to
+  it. Setting `use_deform = False` before the pass fixes it — and the flag is then lost on save,
+  see [what a saved custom rig loses](#what-a-saved-custom-rig-loses).
+- **Helper geometry and joint cubes come out unweighted.** 1,384 of 19,158 vertices had no
+  deform-bone weight afterwards: 1,120 helper vertices (the eye, eyelash, teeth, tongue, hair and
+  skirt/tights shells) and 264 joint-cube vertices. **Zero body vertices**, which is why this is
+  invisible until a garment, hair or eyes are equipped and the character is posed, those assets
+  being fitted to the helper shells. The shipped weights do cover them: the same count on a
+  `default_no_toes` character is 0 unweighted. The repair is mechanical — for every unweighted
+  vertex, copy the weights of the nearest *body* vertex through a KD-tree, about fifteen lines,
+  which took 1,384 to 0.
+
+If a weighting tool is added here, that fill belongs inside it rather than in each caller, and the
+count of vertices it had to fill belongs in the response.
+
+<a id="what-a-saved-custom-rig-loses"></a>
+
+## What a saved custom rig loses
+
+Two things do not survive `mpfb.save_rig_to_library` followed by `mpfb_add_rig custom.*`.
+
+**`use_deform`.** The rig definition format has no key for it: `mpfb2/docs/fileformats/rig.md`
+lists every bone field and `use_deform` is not among them, and `Rig.add_data_bone_info` writes
+none. A `root` bone set non-deforming before weighting came back from the round trip with
+`use_deform = True`, so the reloaded character carries a deform bone with no vertex group.
+Harmless until somebody re-runs automatic weights on it, at which point the root takes the legs
+again. Adding the key is a small upstream change and the loader can default it to `True`, so every
+existing file keeps its meaning.
+
+**Mask groups.** `MPFB_OT_Save_Rig_To_Library_Operator` calls `RigService.get_weights(...,
+all_groups=False, all_masks=False)`. `all_masks` defaults to `True` everywhere else, so this is a
+deliberate-looking hardcode whose effect is that a custom rig's weights file can never carry
+`mhmask-preserve-volume` or `mhmask-subrig` — the two groups
+`RigService.ensure_armature_modifier` looks for when deciding whether to add a preserve-volume
+modifier or a sub-rig modifier. A custom rig therefore cannot ship the volume-preservation setup
+the built-in rigs rely on.
+
+Worth establishing before filing the second one: whether `all_masks=False` is there to keep an
+author's stray `mhmask-*` groups out of a published rig. If it is, the fix is the checkbox the
+panel already has for masks on the *other* save path (`save_masks`, used by `mpfb.save_weights`)
+rather than a flipped default.
+
+<a id="a-custom-rig-is-unclassified-for-posing"></a>
+
+## A custom rig is unclassified for the posing tools
+
+`mpfb_get_pose_controls` classifies five rigs — the two generated Rigify humans, the generated
+game-engine rig, `default` and `default_no_toes`. A `custom.*` rig falls through to
+`classified: false` and a flat `bones` list carrying `parent` and `deform` and nothing else: no
+body parts, no roles, no `symmetry` grouping, and `roles` and `include_hidden` ignored.
+`mpfb_set_pose_bones` still worked on it — seven bones written in one batch, `symmetry: true`
+among them, every change `achieved: true` — so the writing half degrades well and only the reading
+half is blind.
+
+Part of the classification could come from the rig definition rather than from a name table. A
+custom rig's saved file carries the author's own bone collections (the test rig used `Body`,
+`Arms`, `Legs`) and the full parent hierarchy, which between them are enough to group bones by
+limb and to pair `.L` with `.R` without knowing the rig. Whether that is worth building depends on
+how often custom rigs are posed through these tools. The cheap half is already half done: the
+message says the rig is unclassified and names the rigs that are, and could also name which
+arguments of the request it therefore ignored.
 
 <a id="what-the-all-or-nothing-batches-caught"></a>
 
