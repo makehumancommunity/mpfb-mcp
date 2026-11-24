@@ -17,14 +17,14 @@ records what has already landed and why. When an effort below is finished, move 
 - [Hand-to-hand contact on a Rigify rig](#hand-to-hand-contact-on-rigify): FR 052, in part
 - [Loading poses](#loading-poses): FR 055
 - [No way to verify an install without an MCP client](#no-way-to-verify-an-install-without-an-mcp-client): FR 057
+- [Rig authoring is outside the tool surface](#rig-authoring-is-outside-the-tool-surface): FR 060
+- [Nothing in MPFB weights a new rig, and automatic weights miss the helpers](#nothing-weights-a-new-rig): FR 060
+- [What a saved custom rig loses](#what-a-saved-custom-rig-loses): FR 060, in part
 
 **Without one**, by apparent impact:
 
 - [A windowed bridge answers once a second when Blender has nothing to do](#windowed-bridge-answers-once-a-second)
 - [Posing support](#posing-support)
-- [Rig authoring is outside the tool surface](#rig-authoring-is-outside-the-tool-surface)
-- [Nothing in MPFB weights a new rig, and automatic weights miss the helpers](#nothing-weights-a-new-rig)
-- [What a saved custom rig loses](#what-a-saved-custom-rig-loses)
 - [A custom rig is unclassified for the posing tools](#a-custom-rig-is-unclassified-for-posing)
 - [A material whose textures do not resolve is reported as applied](#a-material-whose-textures-do-not-resolve-is-reported-as-applied)
 - [The Rigify `fist` shape intersects itself, and "straight" is out of reach](#rigify-fist-intersects-itself)
@@ -671,6 +671,9 @@ prefers.
 
 ## Rig authoring is outside the tool surface
 
+[FR 060](060-authoring-rigs/README.md) scopes this as four tools: read a rig as a bone table, build one,
+weight it and store it in the library.
+
 MPFB's two rig-authoring panels, MakeRig and MakeWeight, have no counterpart among this
 package's tools. `mpfb_list_rigs` and `mpfb_add_rig` can *apply* a rig, a `custom.*` one already
 in the user library included, but nothing here can create one, place bones against the base
@@ -716,6 +719,9 @@ package `__init__`, not on the module named after the panel.
 
 ## Nothing in MPFB weights a new rig, and automatic weights miss the helpers
 
+[FR 060](060-authoring-rigs/README.md)'s `mpfb_weight_rig` scopes this: automatic weights with the fill
+described below, a transfer from a shipped rig that understands merged chains, and a mirror.
+
 MakeRig's "Auto transfer weights" is the only weighting MPFB offers, and it is far narrower than
 its name. It interpolates nothing: `MPFB_OT_Auto_Transfer_Weights_Operator` pairs a source bone
 with a destination bone only when **both** endpoints are within `MAX_DIST = 0.001` of each other
@@ -757,6 +763,10 @@ count of vertices it had to fill belongs in the response.
 
 ## What a saved custom rig loses
 
+[FR 060](060-authoring-rigs/README.md) covers this in part. Its store reports both losses and makes masks an
+opt-in. Both upstream changes, `use_deform` in the format and a masks checkbox on save-to-library, stay
+MPFB's to make, and are filed as feature requests by that effort.
+
 Two things do not survive `mpfb.save_rig_to_library` followed by `mpfb_add_rig custom.*`.
 
 **`use_deform`.** The rig definition format has no key for it: `mpfb2/docs/fileformats/rig.md`
@@ -772,8 +782,9 @@ all_groups=False, all_masks=False)`. `all_masks` defaults to `True` everywhere e
 deliberate-looking hardcode whose effect is that a custom rig's weights file can never carry
 `mhmask-preserve-volume` or `mhmask-subrig` — the two groups
 `RigService.ensure_armature_modifier` looks for when deciding whether to add a preserve-volume
-modifier or a sub-rig modifier. A custom rig therefore cannot ship the volume-preservation setup
-the built-in rigs rely on.
+modifier or a sub-rig modifier. A custom rig therefore cannot ship the volume-preservation setup.
+That setup is rarer than it sounds: of MPFB's shipped weights files only `rigify/weights.human_toes.json`
+carries mask groups, and none of the `standard/` rigs' files does (FR 060, while scoping).
 
 Worth establishing before filing the second one: whether `all_masks=False` is there to keep an
 author's stray `mhmask-*` groups out of a published rig. If it is, the fix is the checkbox the
