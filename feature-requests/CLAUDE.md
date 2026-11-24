@@ -110,6 +110,48 @@ Then there should be the following sections, each under a level 2 heading (for e
 - "References" (optional, when relevant): Web links, references to earlier commits,
   references to other local code repos or similar things.
 
+## Filing an MPFB defect
+
+Driving MPFB from outside the panels it was written next to turns up defects in it. Filing one is a
+communication task aimed at another project, and it has its own rules.
+
+**Confirm it against a running install before filing.** A defect report is a claim about someone
+else's code and should be no stronger than the evidence. Of the ten candidates read from MPFB's
+source over the first six efforts, **two were wrong** — see the refuted candidates in
+[`mcp-discovered-bugs.md`](../../mpfb2/efforts/bugs/local/mcp-discovered-bugs.md). A reading is a
+reason to go and look, not a reason to file.
+
+**One document per defect**, under `mpfb2/efforts/bugs/local/`, written against
+[`mpfb2/efforts/templates/bug.md`](../../mpfb2/efforts/templates/bug.md) and named with a
+descriptive kebab-case slug — `refit-rigify-loses-pose.md`, not a number and not a section in a
+shared file. Then:
+
+- add an entry to `mpfb2/efforts/bug-index.md`, in the section the report's *Practical consequence
+  for the user* places it in;
+- list it in [`mcp-discovered-bugs.md`](../../mpfb2/efforts/bugs/local/mcp-discovered-bugs.md),
+  which is the overview of the whole set rather than a report itself.
+
+**A defect that is really a missing feature goes elsewhere.** If the finding is that MPFB does not
+expose something rather than that it does something wrong, it is a feature request:
+`mpfb2/efforts/features/local/`, against that directory's own template. The public getter for an
+asset pack's metadata is the worked example.
+
+**Write for a reader who did not run the session.** Those documents land in a repository whose
+developers have no access to this one's verification records, so each stands on its own: the symptom
+*as a user meets it*, the code path, what was observed, and what a fix would have to change. The
+template's required *Practical consequence for the user* section is the one that does not translate
+from a tool author's notes — an MCP tool's workaround is not a user-facing cost, and the report has
+to say what the defect does to someone using MPFB's panels.
+
+**Reproductions, not descriptions.** Name the check in `check_mpfb_issues.py`, the bridge test or
+the effort's `live_check.py` that provokes it. They are written so that a **fixed** MPFB makes them
+**fail**, so this repository finds out from a red line rather than from a changelog.
+
+**Filing is not fixing.** MPFB has its own priorities and none of these defects is owed a fix on any
+timescale. **Every workaround, coercion and defensive check this repository carries stays exactly
+where it is**, and a filed document is not a reason to remove one. A workaround goes when a
+*running* MPFB no longer needs it.
+
 ## Lifecycle
 
 A feature request moves through its status values as work proceeds. When the effort is

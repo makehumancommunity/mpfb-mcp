@@ -179,7 +179,7 @@ already warmed, which the global clear reached anyway.
 ## [FR 019](done/019-file-mpfb-defects/README.md) — the confirmed MPFB defects, written up where MPFB's own effort will read them
 
 The first effort whose deliverable is in another repository and the first that changes no behaviour:
-`MCP_DISCOVERED_BUGS.md` beside a local mpfb2 checkout (not published), six confirmed defects
+`mcp-discovered-bugs.md` beside a local mpfb2 checkout (not published), six confirmed defects
 worst-first, each with the code path, the observed values and the probe that provokes it. Nine
 candidates went in and six came out, which is why this was separate from the effort that found the
 evidence. **Filing is not fixing**: every workaround stays until a running MPFB no longer needs it.
@@ -377,7 +377,7 @@ default was wrong (the composer's `auto_refit` is `false`) and was corrected eve
 stated. `mpfb_set_face_units` also lacked the selection restore every other refitting command has
 around `refit()`; it was added to it and to `mpfb_apply_expressions`, though no disturbance could be
 provoked on this install even with a garment equipped, and the test that pins it says so. Three
-`FaceService` defects were filed as items 8-10 of `mpfb2/features/MCP_DISCOVERED_BUGS.md` — the
+`FaceService` defects were filed as items 8-10 of `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md` — the
 shadowing, and FR 026's two (`set_expression()` cannot report failure; the pack probe's cache is
 never invalidated). Three candidates were deliberately not filed; the request says why.
 
@@ -612,7 +612,7 @@ an operator that fails once `interpolate` has given the proxy shape keys, which 
 does, so that combination is refused up front. The predicted REMOVE-loop defect was refuted. FBX
 applies a mask and drops the shape keys beside it while glTF and USD keep the keys and ignore the
 mask, measured by re-importing, and USD renames a blend shape repeated across meshes. The three MPFB
-defects are filed in `mpfb2/features/MCP_DISCOVERED_BUGS.md`; what is left - a subdivision on a mesh
+defects are filed in `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`; what is left - a subdivision on a mesh
 asset under interpolated keys, the bake's cost in a crowded file, viseme install probes in MPFB, and
 the other ten commands' selection restore - is in [NEXT_STEPS](NEXT_STEPS.md#subdivision-on-mesh-assets-beside-shape-keys).
 
@@ -648,7 +648,7 @@ assigned against a declared 0.2 is stored - but it does clamp a built-in `Factor
 colour component, and it keeps a component above 1.0. So a colour must be four non-negative numbers,
 and a float outside its declared range is refused, **except** where MPFB's own value already lies
 outside it: `MpfbBody` defaults `NavelWidthMultiplier` to 11.0 against a declared 0.001-0.2, which
-went into mpfb2's `MCP_DISCOVERED_BUGS.md` as item 11. **A layered `SkinColor` shows by
+went into mpfb2's `mcp-discovered-bugs.md` as item 11. **A layered `SkinColor` shows by
 `DiffuseTextureStrength - SkinOverride`**: fully with no texture, over one only as far as
 `SkinOverride` raises it; the write's description says so in a sentence. **On an asset whose MHMAT
 has an AO map the colour adjustment is the AO strength**: the node on Base Color is MakeSkin's
@@ -864,7 +864,7 @@ been wrong both ways; it is `subrigs_broken`, a measurement of each sub-rig root
 `CHILD_OF` target, in `mpfb_add_asset`, `mpfb_place_character` and the summary, naming the refit,
 and the description tells a caller to dress before placing. `mpfb_add_asset`, `mpfb_refit_human`
 and `mpfb_remove_asset` leave a placed character where it is. Four MPFB defects are filed in
-`mpfb2/features/MCP_DISCOVERED_BUGS.md`: the two placements dropped, the sub-rig binding, and
+`mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`: the two placements dropped, the sub-rig binding, and
 `RigService.find_pose_bone_*_world_location()`, which ignore the rig's rotation and which nothing
 calls. The sub-rig repair, as a binding MPFB makes right, stays in
 [NEXT_STEPS](NEXT_STEPS.md#sub-rig-child-of-breaks-away-from-the-origin).
@@ -990,7 +990,7 @@ MPFB says `all_checks_ok: true`.
 
 **MPFB's validator turned out to have side effects**, found by a test comparing `bpy.data.meshes` before and after. It
 creates the xref cache's directory when absent, which its panel and writer then take for a built cache, and it leaves two
-orphaned meshes per call. Both are undone around the call and filed in `MCP_DISCOVERED_BUGS.md`.
+orphaned meshes per call. Both are undone around the call and filed in `mcp-discovered-bugs.md`.
 
 Also: `is_property_set()` tells a chosen `CC0` from MPFB's default, which FR 050 had asked; Blender's
 `mesh_linked_uv_islands()` joins islands that share a coordinate and no edge, so islands are worked out from edges; a closed
@@ -1218,7 +1218,7 @@ undone in reverse. **`hide_set()` is lost by the exclude itself**, measured with
 stops only Rigify**, measured, so only that is refused. The new asset joins its excluded character, or it would stand visible at the origin.
 
 **Moving the wrapped commands off `selection.restored()` moved all ten of its callers**, so it is deleted and that NEXT_STEPS entry closed, rather than
-narrowed as the request expected. Both MPFB defects are in `mpfb2/features/MCP_DISCOVERED_BUGS.md`.
+narrowed as the request expected. Both MPFB defects are in `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`.
 
 Verified by [`live_check.py`](done/054-refits-keep-the-pose/live_check.py), 0 failures of 23, and by the same tools against a windowed Blender and a real
 scene of 301 objects: the pose back at 0.0 m, `restore_with` back at 0.0 m, the collection excluded again and a lamp still selected and active. What was left
