@@ -264,7 +264,7 @@ trip. The request is `Done` when both have landed.
 - **The live check**, in this subdir as a script: the round trip on a real install; the pitfalls
   above (override semantics, clamping, `aoMix`, colour ceiling); the answer size for requirement 7;
   and confirmation of any MPFB defect candidate before it goes into
-  `mpfb2/features/MCP_DISCOVERED_BUGS.md`. It cannot judge whether a colour *looks* right. A render
+  `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`. It cannot judge whether a colour *looks* right. A render
   is optional evidence, not a pass criterion.
 - **Two smoke items** in [verification/](../../../verification/), default arguments. The write with
   default arguments is the no-op answer of requirement 14.
@@ -289,7 +289,7 @@ All of it ran, against Blender 5.1.0 with MPFB from source (mpfb2 at `6e96c5e`).
   `DiffuseTextureStrength - SkinOverride`, clamped: flat colour with no texture, texture with a
   texture unless `SkinOverride` raises the colour over it. `aoMix` is a MULTIPLY node whose colours
   are both linked, so its only setting is `Factor`, the AO strength.
-- **Two MPFB defects confirmed and filed** in `mpfb2/features/MCP_DISCOVERED_BUGS.md`: item 11,
+- **Two MPFB defects confirmed and filed** in `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`: item 11,
   `MpfbBody`'s `NavelWidthMultiplier` default of 11.0 against its declared 0.001-0.2, the only input
   on any of these nodes outside its own range; item 12, the colour adjustment on an asset with an AO
   map being the AO strength rather than the tint.
@@ -381,7 +381,7 @@ All of it ran, against Blender 5.1.0 with MPFB from source (mpfb2 at `6e96c5e`).
   `data/settings/eye_settings.default.json` is a readable list of the eye inputs and their defaults.
 - MPFB's panels for the two left-out file types: `mpfb2/src/mpfb/ui/presets/eyesettings/`,
   `.../enhancedsettings/`.
-- mpfb2 bug 306 (`mpfb2/features/bug_306_fix_eyes*.md`): the procedural eye material's rendering
+- mpfb2 bug 306 (`mpfb2/efforts/bugs/github/bug-306-procedural-eyes/`): the procedural eye material's rendering
   on Blender 5, and the reason to expect its node tree to change.
 - Precedents here: [FR 011](../011-skin-and-materials/README.md) (`mpfb_set_skin`),
   [FR 025](../025-character-presets/README.md) (the preset tools the round trip goes through),

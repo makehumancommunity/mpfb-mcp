@@ -303,7 +303,7 @@ Use `MPFB_BOOTSTRAP` (the raising one) for both. Neither tool is meaningful with
 
 Each to be confirmed against the running install before filing, per
 [FR 019](../019-file-mpfb-defects/README.md), in
-`../mpfb2/features/MCP_DISCOVERED_BUGS.md`:
+`../mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`:
 
 - **`set_expression` cannot report failure.** It warns and skips on an unknown name and on a missing
   target file, and returns `None` either way. A caller cannot distinguish "applied eight units" from
@@ -408,7 +408,7 @@ pack (`~/makehuman/mpfb/data/targets/faceunits/`, all 52 targets present).
 
 **The two defect candidates were confirmed** (`set_expression` cannot report failure;
 `is_faceunits01_installed`'s cache has no automatic invalidation on install) but **were not filed**
-into `mpfb2/features/MCP_DISCOVERED_BUGS.md` in this effort — a gap left open rather than hidden,
+into `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md` in this effort — a gap left open rather than hidden,
 should a future effort want to close it in the shape [FR 019](../019-file-mpfb-defects/README.md)
 established.
 

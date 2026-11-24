@@ -45,7 +45,7 @@ Reading the operator turned up three things this request has to deal with, not i
   The swap also rebuilds those materials, so the copy loses what FR 040's write set on them.
 - **The operator's REMOVE branches delete modifiers from the list they are iterating over**
   (`for modifier in new_basemesh.modifiers: ... remove(modifier)`), which can skip the neighbour of
-  each removed modifier. This is a defect candidate for `mpfb2/features/MCP_DISCOVERED_BUGS.md`,
+  each removed modifier. This is a defect candidate for `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`,
   to be confirmed against a running install before it is filed. That file already has a section of
   candidates that turned out to be wrong.
 

@@ -15,7 +15,7 @@ into the effort that found the evidence would have made both worse.
 
 **What "filing" means here.** Not an issue in a tracker: it means writing a summary of the
 confirmed defects to
-../mpfb2/features/MCP_DISCOVERED_BUGS.md, one
+../mpfb2/efforts/bugs/local/mcp-discovered-bugs.md, one
 section per defect, in the directory where that project already keeps its own investigations. That
 is the whole deliverable — a document handed to MPFB's own effort, not a promise from it.
 
@@ -23,7 +23,7 @@ is the whole deliverable — a document handed to MPFB's own effort, not a promi
 priorities and none of these defects is owed a fix on any particular timescale; several may stand
 for a long time, and one of them may be judged rare enough not to be worth the change. So **every
 workaround mpfb-mcp carries for these defects stays exactly where it is**, and a section appearing
-in `MCP_DISCOVERED_BUGS.md` is not a reason to remove one. A workaround goes when a *running* MPFB
+in `mcp-discovered-bugs.md` is not a reason to remove one. A workaround goes when a *running* MPFB
 no longer needs it — which is precisely what `check_mpfb_issues.py` is built to
 detect, by failing the day a defect is gone.
 
@@ -38,7 +38,7 @@ all.
 
 ## Goals
 
-**Primary: file the five confirmed defects** in `MCP_DISCOVERED_BUGS.md`, each with a
+**Primary: file the five confirmed defects** in `mcp-discovered-bugs.md`, each with a
 reproduction that runs rather than a description that has to be believed.
 
 **Secondary: correct this repository where a refuted candidate is still cited as a reason.** Two of
@@ -48,7 +48,7 @@ that never gave a reason.
 ## Functional requirements
 
 - **FR-1.** Write, to
-  ../mpfb2/features/MCP_DISCOVERED_BUGS.md, one
+  ../mpfb2/efforts/bugs/local/mcp-discovered-bugs.md, one
   section for each of the five confirmed:
   1. **A long-named user target prevents registration.** The one above. Severity is the argument:
      it disables the add-on, and the trigger is a file the user put in a directory MPFB told them
@@ -84,7 +84,7 @@ that never gave a reason.
 evidence.** Two of seven were wrong. Each section says what was observed, on what version, and
 what was inferred.
 
-**The document is written for a reader who did not run the session.** `MCP_DISCOVERED_BUGS.md`
+**The document is written for a reader who did not run the session.** `mcp-discovered-bugs.md`
 lands in a repository whose developers have no access to this one's verification records, so each
 section stands on its own: the symptom, the code path, what was observed, and what a fix would have
 to change.
@@ -96,7 +96,7 @@ to change.
 No code change in this repository beyond FR-5's corrections. `check_mpfb_issues.py`
 is the artifact; it runs against the install it is pointed at and prints one line per defect with
 the observed value. Outside this repository the effort writes a single Markdown file,
-`../mpfb2/features/MCP_DISCOVERED_BUGS.md`, and nothing else.
+`../mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`, and nothing else.
 
 **Note on the first one and this repository's own conduct.** The harness caused that outage on a
 user's install. `verification/fixtures.py` now carries `SAFE_AT_STARTUP` and the long probe target
@@ -138,7 +138,7 @@ out of `verification/` and into this subdir. It was never a check of mpfb-mcp's 
 defects in MPFB, on behalf of the report above — and it writes into MPFB's user `custom` directory,
 which the smoke run in `verification/` never does. The three probe targets came with it, including
 the long-named one that prevents MPFB from loading if it is left on disk when Blender starts. The
-paths `../mpfb2/features/MCP_DISCOVERED_BUGS.md`
+paths `../mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`
 cites were re-pointed in the same change.
 
 The Architecture note above says `verification/fixtures.py` carries `SAFE_AT_STARTUP`. It no longer

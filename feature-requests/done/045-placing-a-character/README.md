@@ -352,7 +352,7 @@ therefore compares a placement with a call that does nothing, and they matched.
 and `..._tail_...` were 0.47 m and 0.57 m out, since they add only the armature's location; nothing
 in the bridge calls them. `get_world_space_location_of_pose_bone()`, which MPFB's OpenPose export
 uses, applies the whole world matrix and so has no such fault; its head and tail are swapped, as its
-own docstring says. The first and the sub-rig binding are filed in `MCP_DISCOVERED_BUGS.md`.
+own docstring says. The first and the sub-rig binding are filed in `mcp-discovered-bugs.md`.
 
 ## References
 

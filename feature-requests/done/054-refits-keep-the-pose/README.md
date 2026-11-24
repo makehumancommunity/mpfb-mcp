@@ -112,7 +112,7 @@ user organised the scene.
 
 ### Upstream
 
-14. **Propose both to MPFB**, in `mpfb2/features/MCP_DISCOVERED_BUGS.md`: `refit()` regenerating a
+14. **Propose both to MPFB**, in `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`: `refit()` regenerating a
     rig loses its pose, and a refit needs its rig in the view layer. The bridge keeps working either
     way.
 

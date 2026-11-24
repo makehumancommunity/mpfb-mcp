@@ -263,7 +263,7 @@ pass-through — and nowhere else. Clothes are therefore always saved, and the d
 
 Nobody has noticed because both UI operators pass `True`. This is a defect in the
 [FR 019](../019-file-mpfb-defects/README.md) sense and should be filed in
-`../mpfb2/features/MCP_DISCOVERED_BUGS.md` —
+`../mpfb2/efforts/bugs/local/mcp-discovered-bugs.md` —
 **after** confirming it against the running install rather than from source alone, which is FR 013's
 correction and the reason FR 019 exists in the form it does. It is a small enough report that it
 belongs in this effort rather than in a request of its own.

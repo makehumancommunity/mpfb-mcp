@@ -410,7 +410,7 @@ def _check_save_clothes_is_ignored(report: Report, built: dict) -> None:
                       with_true=observed["clothes_with"]))
     report.note("the two serializations are byte-identical and both carry the garment, "
                 "so the documented default of False describes behaviour that does not "
-                "exist. Filed as item 7 in ../../../../mpfb2/features/MCP_DISCOVERED_BUGS.md.")
+                "exist. Filed as item 7 in ../../../../mpfb2/efforts/bugs/local/mcp-discovered-bugs.md.")
 
 
 def _check_the_two_lesser_candidates(report: Report) -> None:

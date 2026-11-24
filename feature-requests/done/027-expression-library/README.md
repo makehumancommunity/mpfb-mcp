@@ -437,7 +437,7 @@ stack read (the `{fragment, weight, resolved}` rows) callable apart from the com
 
 Each to be confirmed against the running install before filing, per
 [FR 019](../019-file-mpfb-defects/README.md), in
-`../mpfb2/features/MCP_DISCOVERED_BUGS.md`:
+`../mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`:
 
 - **User-saved expressions are shadowed, and the panel says the opposite.** The composer's
   `available_expression` property says "user-saved expressions take priority over system-shipped
@@ -639,7 +639,7 @@ All of it ran, against Blender 5.1.0 with MPFB 2.0.17 from source and this machi
 
 ### Defect candidates
 
-**Filed**, as items 8-10 of `mpfb2/features/MCP_DISCOVERED_BUGS.md`, each with a reproduction a
+**Filed**, as items 8-10 of `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`, each with a reproduction a
 fixed MPFB would make fail:
 
 - 8: user-saved expressions are hidden behind system ones, while the composer panel, the system

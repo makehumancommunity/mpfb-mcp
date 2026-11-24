@@ -171,7 +171,7 @@ this request must report it as unknown rather than guess it.
     different scans.
 
   **The first is recommended.** The effort should also propose a public getter upstream, such as
-  `AssetService.get_pack_metadata(pack_name)`, in `mpfb2/features/MCP_DISCOVERED_BUGS.md` or as a
+  `AssetService.get_pack_metadata(pack_name)`, in `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md` or as a
   change to MPFB. If that getter is present, the module uses it before the private read.
 - **`list_asset_materials` has a different subdir rule** from `list_assets`
   (`str(object_type).lower()`, not the section table; see its docstring). Attribution must not care
@@ -302,7 +302,7 @@ this request must report it as unknown rather than guess it.
   moved from 85,500 to 86,350, the schema ceiling from 17,100 to 17,200 (89 B for the argument).
   `tests/test_description_budget.py` says what each tool spent.
 - **The upstream getter is proposed** as `AssetService.get_pack_metadata(pack_name)`, in
-  `mpfb2/features/MCP_DISCOVERED_BUGS.md`, and the module already prefers it when present.
+  `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`, and the module already prefers it when present.
 - **Found, and not this request's: a garment behind a sub-rig is missing from the summary.**
   `ponytail01` carries its own sub-rig, and MPFB's `find_related_objects()` does not walk past a
   `Subrig`, so it is in neither the basemesh's `related_objects` nor the summary's

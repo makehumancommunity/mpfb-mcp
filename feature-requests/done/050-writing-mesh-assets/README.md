@@ -211,7 +211,7 @@ location an agent can then try it from, and says exactly what it wrote.
   template's own poses, so they are a reference and not a target. It must also show that `mpfb_get_object_info`
   and `mpfb_list_asset_materials` no longer report `mhclo_not_installed`. It provokes the posed-body pitfall and
   removes everything it wrote.
-- **Filing upstream:** whatever the live check provokes goes in `mpfb2/features/MCP_DISCOVERED_BUGS.md`, with
+- **Filing upstream:** whatever the live check provokes goes in `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`, with
   the OBJ mismatch, the dropped fields, the silent overwrite and the `{'ERROR'}`-then-`{'FINISHED'}` return.
 - **Smoke item** with `dry_run`.
 

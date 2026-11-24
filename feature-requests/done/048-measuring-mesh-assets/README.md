@@ -274,7 +274,7 @@ The 77 is exact. The other two are of the recorded order: the stash meets the de
 ### MPFB's validator has side effects, confirmed and undone
 
 Provoked on a running install with the cache redirected to an empty directory, and filed in
-`mpfb2/features/MCP_DISCOVERED_BUGS.md`:
+`mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`:
 
 - **It creates `basemesh_xref` when absent**, because `MeshCrossRef` does for any `cache_dir` it is given, and MPFB's
   panel and writer check only that the directory exists. So after a check, MPFB believes an empty directory is a cache.
