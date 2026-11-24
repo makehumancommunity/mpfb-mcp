@@ -7,6 +7,11 @@ and [Nothing in MPFB weights a new rig](../NEXT_STEPS.md#nothing-weights-a-new-r
 [What a saved custom rig loses](../NEXT_STEPS.md#what-a-saved-custom-rig-loses) that a tool can report.
 [A custom rig is unclassified for the posing tools](../NEXT_STEPS.md#a-custom-rig-is-unclassified-for-posing)
 stays where it is (see Non-goals).
+[FR 061](../061-rig-weights-that-hold-up/README.md) follows up on `mpfb_weight_rig`. It weights the neutral
+base mesh rather than the character as modelled, it binds the eyes and teeth rigidly rather than filling them
+from the nearest skin (which puts an eye on its eyelid), and it adds a cleaning step and a read-only
+`mpfb_check_rig_weights`. If FR 061 is accepted before this request is implemented, FRs 9 and 10 below are
+implemented as FR 061 revises them.
 
 **An agent can apply a rig but cannot make one.** `mpfb_list_rigs` and `mpfb_add_rig` handle every rig in
 the catalogue, `custom.*` ones included. Building one took `bpy.ops.mpfb.load_rig`,

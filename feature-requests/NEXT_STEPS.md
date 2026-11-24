@@ -18,7 +18,7 @@ records what has already landed and why. When an effort below is finished, move 
 - [Loading poses](#loading-poses): FR 055
 - [No way to verify an install without an MCP client](#no-way-to-verify-an-install-without-an-mcp-client): FR 057
 - [Rig authoring is outside the tool surface](#rig-authoring-is-outside-the-tool-surface): FR 060
-- [Nothing in MPFB weights a new rig, and automatic weights miss the helpers](#nothing-weights-a-new-rig): FR 060
+- [Nothing in MPFB weights a new rig, and automatic weights miss the helpers](#nothing-weights-a-new-rig): FR 060, and FR 061 for whether the weights hold up
 - [What a saved custom rig loses](#what-a-saved-custom-rig-loses): FR 060, in part
 
 **Without one**, by apparent impact:
@@ -721,6 +721,9 @@ package `__init__`, not on the module named after the panel.
 
 [FR 060](060-authoring-rigs/README.md)'s `mpfb_weight_rig` scopes this: automatic weights with the fill
 described below, a transfer from a shipped rig that understands merged chains, and a mirror.
+[FR 061](061-rig-weights-that-hold-up/README.md) follows it up: weighting the neutral base mesh, a rigid rule
+for the eyes and teeth in place of the nearest-skin fill below (which would put an eye on its eyelid), a
+cleaning step for influences and normalisation, and `mpfb_check_rig_weights` with a measured bend test.
 
 MakeRig's "Auto transfer weights" is the only weighting MPFB offers, and it is far narrower than
 its name. It interpolates nothing: `MPFB_OT_Auto_Transfer_Weights_Operator` pairs a source bone
