@@ -187,8 +187,10 @@ and load that onto another character, without touching the rest of what the char
 - **Pitfall:** rolls: `bpy.types.Bone.AxisRollFromMatrix()` gives one from `matrix_local`. The
   bridge test should compare it with a fresh rig's first, since the JSON's `roll` is the
   definition's rather than necessarily what fitting produced.
-- **File upstream** in `mpfb2/features/MCP_DISCOVERED_BUGS.md`: the orphaned armature and action per
-  load, and the missing check that a pose suits its rig.
+- **File upstream** as **one document each** under `mpfb2/efforts/bugs/local/`, written against
+  `mpfb2/efforts/templates/bug.md`: the orphaned armature and action per load, and the missing
+  check that a pose suits its rig. Add each to `mpfb2/efforts/bug-index.md` and list it in
+  `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`.
 
 ## Affected specifications
 
