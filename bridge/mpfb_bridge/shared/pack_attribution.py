@@ -61,7 +61,7 @@ entries. So the entries are read off ``assetservice.py``'s module global
 [`mpfb_surface.py`](mpfb_surface.py): one scan, MPFB's cached one, so ``pack``
 and ``license`` cannot describe two different reads, and ``refresh`` on either
 catalogue keeps its meaning. A public ``AssetService.get_pack_metadata()`` is
-used first if MPFB ever grows one (proposed in ``MCP_DISCOVERED_BUGS.md``). If
+used first if MPFB ever grows one (proposed in ``mcp-discovered-bugs.md``). If
 neither is there, the names still come from the published getters and every
 license is ``None``; :attr:`PackIndex.entries_read` says so, for the message.
 

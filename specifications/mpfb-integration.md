@@ -185,10 +185,15 @@ versus services" to *any* two MPFB code paths.
   `shared/mesh_asset_report.py`'s `validator()` undoes both, and `write_state()` looks inside the directory rather
   than at its name, reading before the validator runs. Found by a test that compared `bpy.data.meshes` before and
   after, which a reading of the validator's own body would not have suggested.
-- **Filing it changes nothing here.** A confirmed defect is written up in a defect list kept for
-  MPFB's maintainers, `MCP_DISCOVERED_BUGS.md`, one section each; it lives beside a local mpfb2
-  checkout and is not published. That is where the reporting ends: MPFB has its own priorities, so a reported
-  defect may stand for a long time. The workaround, the coercion or the defensive check that copes
+- **Filing it changes nothing here.** A confirmed defect is written up for MPFB's maintainers as
+  **its own document** under `mpfb2/efforts/bugs/local/`, written against
+  `mpfb2/efforts/templates/bug.md` and named with a descriptive kebab-case slug;
+  [`mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`](../../mpfb2/efforts/bugs/local/mcp-discovered-bugs.md)
+  is the overview that lists them and records what the set has in common. They live beside a local
+  mpfb2 checkout and are not published. **A defect that is really a missing feature rather than a
+  fault goes to `mpfb2/efforts/features/local/` instead**, against that directory's own template.
+  That is where the reporting ends: MPFB has its own priorities, so a reported defect may stand for
+  a long time. The workaround, the coercion or the defensive check that copes
   with it stays exactly as it is, and it is removed when a **running** MPFB no longer needs it —
   which is what the script detects, since it is written to fail once a defect is gone.
 - **Two readings of one material follow the serializer, and report the other one.**
@@ -203,7 +208,7 @@ versus services" to *any* two MPFB code paths.
   the eyes even when they carry a MakeSkin material, none for a MakeSkin body (the body is in
   neither of its lists), only **one** object of each body-part type, and on an asset whose MHMAT
   names an AO map it records the `aoMix` node - the AO strength - rather than the diffuse tint
-  behind it (MCP_DISCOVERED_BUGS item 12). `mpfb_get_material_settings` lists every mesh asset
+  behind it (recorded by FR 040 as an exclusion to follow, not filed as a defect). `mpfb_get_material_settings` lists every mesh asset
   anyway, each one the serializer skips with the `reason` it does, so an agent can see why a tint
   will not survive a preset rather than finding the asset missing. A tidier rule would make the
   read disagree with the file it describes.
@@ -290,8 +295,9 @@ socket**, beyond what MPFB's own code uses to *find* the node.
   rather than dropped.
 - **Ranges and links are read from the live node too**: a group input's range from its node group's
   interface item, a built-in node's from its RNA property's hard limits, and a link as the node and
-  socket it comes from. A range can be contradicted by MPFB's own value (MCP_DISCOVERED_BUGS
-  item 11), and the write does not enforce a range MPFB itself does not keep.
+  socket it comes from. A range can be contradicted by MPFB's own value
+  ([`navel-width-multiplier-out-of-range.md`](../../mpfb2/efforts/bugs/local/navel-width-multiplier-out-of-range.md)),
+  and the write does not enforce a range MPFB itself does not keep.
 
 ## A generated Rigify rig is read live, by Rigify's conventions
 
@@ -457,7 +463,7 @@ answer means rather than merely how fast it arrives.
   the two writing tools (`mpfb_set_face_units`, `mpfb_apply_expressions`) read the cached answer,
   since a caller who wants a fresh probe before writing reads one through a read tool first.
   Nothing in MPFB invalidates it on a pack install, which is filed as item 10 of
-  `mpfb2/features/MCP_DISCOVERED_BUGS.md`. `list_available_expressions()`, by contrast, is **not**
+  `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`. `list_available_expressions()`, by contrast, is **not**
   cached - it walks the disk on every call - so `mpfb_list_expressions`' `refresh` is about the pack
   probe only, and its description says which.
 
@@ -564,7 +570,7 @@ few percent of the call**: a caller told that its pose is gone still has nine ca
   so nothing is held across it but names.
 - **The opt-out gives MPFB's behaviour, and says so.** That is what lets the default differ from MPFB's panel.
 - **Propose it upstream as well**: both defects are in
-  `mpfb2/features/MCP_DISCOVERED_BUGS.md`. The wrap is why this package does not have to wait.
+  `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`. The wrap is why this package does not have to wait.
 
 ## When mpfb-mcp models a concept MPFB's UI has but its services do not
 
@@ -720,7 +726,7 @@ that places a character, checked each on a moved and turned character against a 
   `get_world_space_location_of_pose_bone()`, which MPFB's OpenPose export uses, applies the whole
   world matrix and is right.
 
-All four are filed in `MCP_DISCOVERED_BUGS.md`. The generation repair has a bridge test that fails
+All four are filed under `mpfb2/efforts/bugs/local/`, one document each. The generation repair has a bridge test that fails
 once MPFB no longer needs it; the rig repair does not, because the command takes the rotation off
 before MPFB sees it, so a fixed MPFB is found by FR 045's live check calling `add_builtin_rig()`
 directly.

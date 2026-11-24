@@ -584,7 +584,7 @@ pack names and each pack's asset names, but not the entries holding `license`, `
 `source`. Reading MPFB's cached copy rather than the files keeps `pack` and `license` on one scan.
 The fallback is the published names alone, with every license `null` and a message saying why, and
 a public `AssetService.get_pack_metadata()` is used first if MPFB ever grows one (proposed in
-`MCP_DISCOVERED_BUGS.md`). Being data from the disk, it is read **per call**, never at resolution.
+`mcp-discovered-bugs.md`). Being data from the disk, it is read **per call**, never at resolution.
 
 These reads may be done **once, at the point MPFB is resolved**, rather than on every call — a
 genuine simplification of being an add-on, since code sent into Blender per call had no way to

@@ -395,7 +395,7 @@ extra obligation:
   `mpfb_save_expression` refuses (`blocked_by: "name_shadowed"`), naming the file that would win.
   This rests on MPFB's *code*, which FR 027's live check confirmed, and not on MPFB's composer panel
   and data README, which both say user files take priority; the discrepancy is filed as item 8 of
-  `mpfb2/features/MCP_DISCOVERED_BUGS.md`. If MPFB changes its precedence, this refusal changes
+  `mpfb2/efforts/bugs/local/mcp-discovered-bugs.md`. If MPFB changes its precedence, this refusal changes
   with it.
 
 The general obligation those four serve is that **a refusal must never be a partial write**: every

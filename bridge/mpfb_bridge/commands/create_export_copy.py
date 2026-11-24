@@ -42,7 +42,7 @@ reproduced. Where this command departs, it is below and in the answer.
   fixed, because it is the same rule as the modifiers - a copy driven by its
   original is not a copy - and one rule covering both is simpler than a fix for
   one and a report for the other. The three are filed in
-  ``mpfb2/features/MCP_DISCOVERED_BUGS.md``.
+  ``mpfb2/efforts/bugs/local/mcp-discovered-bugs.md``.
 - **The REMOVE step collects before it removes.** The operator removes
   modifiers from the list it is iterating, which FR 039 recorded as a defect
   candidate. The live check **refuted** it: Blender 5.1's collection iterator
@@ -635,7 +635,7 @@ def _proxy_modifiers_mpfb_cannot_bake(params, bodyproxy):
     refuses on a mesh with shape keys. A proxy has none of its own, until
     ``interpolate`` copies the loaded visemes and face units onto it - which the
     operator does first. FR 039's live check met it as a ``RuntimeError`` half way
-    through a copy; it is filed in ``mpfb2/features/MCP_DISCOVERED_BUGS.md``. The
+    through a copy; it is filed in ``mpfb2/efforts/bugs/local/mcp-discovered-bugs.md``. The
     selection mirrors the service's own: masks when baking masks, subdivision
     at a render level above zero when baking subdivision.
     """
