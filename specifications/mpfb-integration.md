@@ -418,8 +418,9 @@ the path and `json.load()` it. Where a tool has to read a bundled data file, thr
   itself. Reporting the path, an overview, and a way to page through the contents is strictly more
   useful than truncating the file.
 
-`mpfb_weight_rig`'s mirror reads `mesh_metadata/hm08.mirror` this way
-([FR 060](../feature-requests/done/060-authoring-rigs/README.md)), through `get_mpfb_data()`, rather than
+`mpfb_weight_rig`'s mirror and `mpfb_check_rig_weights`' symmetry read `mesh_metadata/hm08.mirror` this way
+([FR 060](../feature-requests/done/060-authoring-rigs/README.md), [FR 061](../feature-requests/done/061-rig-weights-that-hold-up/README.md)),
+through `get_mpfb_data()`, rather than
 through `TargetService._load_mirror_table()`, which is private and fills module globals. The format is one
 `<from> <to> <l|r|m>` line per vertex, and `symmetrize_shape_key()` copies the `l` lines left to right, which is
 the direction the weights follow too.
@@ -717,12 +718,39 @@ something provoked rather than read, in `bridge/test/` or the request's own live
   else a vertex, through the same public finders in `Rig._match_position_to_strategy()`'s order. The store runs that
   matcher on every end anyway, so a builder that snapped differently would build a rig the store then changes; a fixed
   position (`snap: false`) is the one end the store does change, and `ends_rematched` names it.
-- **Heat weighting is Blender's, run on a copy, and the copy leaves the joint cubes out.** Blender's skinning reads a
-  mesh's original vertex positions, the Basis shape, while MPFB fits the bones to the shape-keyed body; and with the
-  cubes in the mesh, where MPFB puts bone ends exactly at their centres, the heat solve fails for every bone (0 of
-  14,380 vertices weighted on the default body, 13,380 of 13,380 without the cubes). On the Basis the ends are a few
-  millimetres off the cubes and the pass happens to work. The copy is the mesh at the fitted shape, without the cubes,
-  and a fill gives every vertex still unweighted its nearest weighted body vertex's weights.
+- **Heat weighting is Blender's, run on the neutral body, and never over the joint cubes.** A weights file is per
+  base-mesh vertex and reaches every body, so the rig's own definition is fitted to the **Basis** in memory
+  (`fit_definition(shape_keys=False)`, the one fit in the add-on that is not to the modelled body), a temporary armature
+  is built from that fit by `create_armature_and_fit_to_basemesh(add_modifier=False)`, and the pass runs on a
+  temporary mesh at the Basis positions ([FR 061](../feature-requests/done/061-rig-weights-that-hold-up/README.md)).
+  Two bodies modelled differently got the same groups, to the 1.3e-6 that MPFB's feet-on-the-ground shift of each
+  Basis leaves; weighting the modelled body instead, as FR 060 did, differed by up to 1.0. Blender's skinning reads a
+  mesh's original positions, so the pass needs a mesh whose positions are the body it means; and with the cubes in the
+  mesh, where MPFB puts bone ends exactly at their centres, the heat solve fails for every bone (0 of 14,380 vertices
+  weighted on the default body, FR 060). **The pass is over the skin alone**: FR 061's live check found the skin's
+  weights the same with the helpers in the pass or out, the whole-mesh pass 24% slower (567 ms against 459) and its
+  helper weights giving three times as many vertices beyond their bone's reach (9,834 against 3,226), and an eye is
+  not a thing to heat-weight.
+- **The helpers follow a rule, not the nearest skin.** The nearest skin to an eyeball is its eyelid, so a fill from
+  it closes the eye with the lid and never turns it; MPFB's `default` binds each eye 100% to `eye.L`/`eye.R`. The eyes
+  and teeth are bound rigidly to the deforming bone whose head is on the eye or mouth joint, read off the bone's stored
+  strategy (`eye.L` and two eyelid bones all have theirs on `joint-l-eye`, which no distance separates), by a word in
+  the name among several, else by the weight of the nearest skin; the tongue blends the bones inside it; everything
+  else is an inverse-distance blend of the four nearest weighted skin vertices. Which group is a helper, which skin and
+  which a joint cube is MPFB's `basemesh_vertex_groups.json`, through
+  `ObjectService.get_base_mesh_vertex_group_definition()`, never a list here. **A skirt is the one helper the
+  nearest skin cannot weight well**: between the legs its nearest skin is one thigh or the other, at any `k` from 2 to
+  16, so its edges stretch 4.8 at the 99th percentile with the hip abducted 45 degrees, against 2.7 on MPFB's
+  hand-made `default` weights.
+- **MakeWeight's Truncate and symmetrize are replaced, not called.** Truncate empties the group
+  ([`truncate-weights-wipes-group.md`](../../mpfb2/efforts/bugs/local/truncate-weights-wipes-group.md)) and
+  symmetrize does nothing
+  ([`symmetrize-weights-not-implemented.md`](../../mpfb2/efforts/bugs/local/symmetrize-weights-not-implemented.md)).
+  `mpfb_weight_rig`'s `mirror` and its clean - a weight below `min_weight` dropped, `max_influences` kept, the rest
+  normalised - stand in for them, over the deforming bones' groups only: a normalised `mhmask-*` group is a broken mask.
+  Three of MPFB's shipped weights files are unnormalised (`mixamo` on 9,858 vertices, `mixamo_unity`, `openpose`),
+  which Blender hides by normalising at deform time; that is filed nowhere until an export is seen to pass it on.
+
 - **A transfer understands merged chains.** MakeRig's operator matches only bones whose two ends both coincide within
   1 mm, which took 8 of `claude_demo`'s 27 bones from `default_no_toes`; matching a head on one source bone and a tail
   on a descendant's, and giving an unmatched source bone to its nearest matched ancestor's target, took 26, the root

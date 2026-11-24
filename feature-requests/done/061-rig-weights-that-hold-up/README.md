@@ -1,16 +1,16 @@
 # Rig weights that hold up, measured
 
-**Status:** Proposed
+**Status:** Done
 
-This follows [FR 060](../done/060-authoring-rigs/README.md) on
-[Rig weights that hold up](../NEXT_STEPS.md#nothing-weights-a-new-rig).
+This follows [FR 060](../060-authoring-rigs/README.md) on
+[Rig weights that hold up](../../HISTORY.md#fr-061--rig-weights-that-hold-up-measured).
 FR 060's `mpfb_weight_rig` gets an authored rig weighted at all: heat weighting, a transfer that understands
 merged chains, a mirror, and a fill for every vertex the pass missed. This request is about whether those
 weights are **right**, and about saying so with numbers rather than a render. It changes two behaviours of
 `mpfb_weight_rig`, adds a cleaning step, and adds one read-only tool.
 
 **FR 060 has landed since this was scoped, and changed its starting point** (recorded 2026-11-24, see
-[HISTORY.md](../HISTORY.md#fr-060--authoring-a-rig)). `mpfb_weight_rig`'s `automatic` already runs on a temporary copy,
+[HISTORY.md](../../HISTORY.md#fr-060--authoring-a-rig)). `mpfb_weight_rig`'s `automatic` already runs on a temporary copy,
 not on the character: Blender's skinning reads a mesh's Basis rather than the shape-key mix the bones are fitted to,
 and with the joint cubes in the mesh the heat solve fails for every bone, because MPFB fits bone ends exactly at the
 cubes' centres. So the copy is the mesh at the fitted shape **without the joint cubes**, and FR 1's copy becomes that
@@ -45,9 +45,9 @@ today. The fill described below as FR 060's is the one that shipped. Nothing els
     visible in Blender. It is visible to an engine that takes weights as given, and in any comparison of
     two rigs' files.
 - **Nothing in MPFB reads a weighting back.** MakeWeight's Truncate empties the group
-  ([`truncate-weights-wipes-group.md`](../../../mpfb2/efforts/bugs/local/truncate-weights-wipes-group.md)), and
+  ([`truncate-weights-wipes-group.md`](../../../../mpfb2/efforts/bugs/local/truncate-weights-wipes-group.md)), and
   its symmetrize does nothing
-  ([`symmetrize-weights-not-implemented.md`](../../../mpfb2/efforts/bugs/local/symmetrize-weights-not-implemented.md)).
+  ([`symmetrize-weights-not-implemented.md`](../../../../mpfb2/efforts/bugs/local/symmetrize-weights-not-implemented.md)).
   The only evidence that the NEXT_STEPS weights "hold up" is a 90-degree bend, looked at in a render.
 
 ## Goals
@@ -76,7 +76,7 @@ by looking.
   what the armature modifier does with these weights, as it is configured. FR 060's `include_masks` covers
   what a stored rig carries for preserve volume.
 - **Capping influences at export.** That stays with the exporters and with
-  [FR 039](../done/039-exporting-characters/README.md)'s engine presets. A cap applied here goes into the
+  [FR 039](../039-exporting-characters/README.md)'s engine presets. A cap applied here goes into the
   library file and so reaches every body.
 - **Hand weight painting and smoothing brushes.**
 - **Fixing MPFB.** What this request provokes gets filed (see Tests).
@@ -227,7 +227,7 @@ by looking.
   - the helper rule table and its fill.
 
   `weight_rig`, `check_rig_weights` and `store_rig` use it, which meets the
-  [shared-module rule](../../specifications/architecture.md#shared-modules-and-what-warrants-one). The bend
+  [shared-module rule](../../../specifications/architecture.md#shared-modules-and-what-warrants-one). The bend
   test has one user and stays in its command. That command imports `pose_writing.py`, `mesh_overlap.py`
   and `character_frame.py`.
 - **The group vocabulary is MPFB's.** `helper-*`, `joint-*` and `body` come from
@@ -254,18 +254,18 @@ by looking.
 
 ## Affected specifications
 
-- [vision.md](../../specifications/vision.md#target-tool-catalog): Authoring gains one more tool beyond
+- [vision.md](../../../specifications/vision.md#target-tool-catalog): Authoring gains one more tool beyond
   FR 060's four.
-- [tool-interface.md](../../specifications/tool-interface.md#the-glossary): the fill rules (`rigid`,
+- [tool-interface.md](../../../specifications/tool-interface.md#the-glossary): the fill rules (`rigid`,
   `interior_chain`, `nearest`), `chosen_by`, `clean`, `min_weight` and `max_influences`, the report's
   sections, and the bend measurements.
-- [mutating-tools.md](../../specifications/mutating-tools.md#a-tool-that-destroys-state-it-did-not-create-owes-the-caller-a-list):
+- [mutating-tools.md](../../../specifications/mutating-tools.md#a-tool-that-destroys-state-it-did-not-create-owes-the-caller-a-list):
   `groups_rescaled` is a second kind of change to state the call did not create, alongside
   `groups_replaced`.
-- [mpfb-integration.md](../../specifications/mpfb-integration.md): MakeWeight's Truncate and symmetrize are
+- [mpfb-integration.md](../../../specifications/mpfb-integration.md): MakeWeight's Truncate and symmetrize are
   replaced, not called. The group vocabulary is taken from MPFB's file, and the mirror table is read
   through a private name.
-- [testing.md](../../specifications/testing.md): no new rule is expected.
+- [testing.md](../../../specifications/testing.md): no new rule is expected.
 
 ## Tests
 
@@ -328,10 +328,50 @@ Asked on 2026-11-24:
 - **Rigid candidates are found by anchor joint, with a name tie-break and an override**, because no
   geometric rule separates the eye bone from the eyelid bones on `default`.
 
+## Outcome
+
+Landed as scoped, with the two choices left to the live check made by it. What it measured is in
+[HISTORY.md](../../HISTORY.md#fr-061--rig-weights-that-hold-up-measured); in brief:
+
+- **FR 1 holds.** Two characters modelled differently, one authored rig, the same groups to within 1.3e-6 (MPFB moves each
+  Basis to put the feet on the ground, 2.4 mm apart on the bridge test's pair). Weighting the modelled body differed by up
+  to 1.0.
+- **FR 2: the skin-only pass ships.** The skin's weights and every bend number were the same with the helpers in the pass;
+  the whole-mesh pass was 24% slower and its helper weights put 9,834 vertices beyond their bone's reach, against 3,226.
+- **`k = 4`.** `k = 1` splits the skirt; 2 to 16 are identical, and none comes near MPFB's hand-made skirt weights (99th-
+  percentile stretch 4.8 against 2.7), which is
+  [a NEXT_STEPS entry](../../NEXT_STEPS.md#a-skirt-weighted-from-the-nearest-skin) now.
+- **`clean` to 4 on `default`** removed at most 0.168 of a weight and changed the bend little.
+- **The bend section** takes 100 to 140 ms; the default answer is 7.8 KB.
+
+**Departures**, each argued in its module's docstring:
+
+- **The bend region.** It is the skin within a fixed 10 cm of the joint, not a radius scaled by the bone's length. The
+  scaled radius measured 13 vertices at `default`'s short shoulder bone against 407 at `claude_demo`'s merged one, so the
+  two rigs' numbers did not compare.
+- **The bend measures the skin only.** Helper shells' tiny edges put the hip's maximum stretch at 37.
+- **`spine_bend` tries four spine joints in order**, since rigs split a spine differently.
+- **A constrained bone is `not_tested`.** That is every bone a generated Rigify rig deforms with.
+- **`coverage` lists two kinds of stray group.** `orphan_groups` are named after a bone that does not deform, and
+  `other_groups` after no bone of this rig at all.
+- **`far_vertices` cannot catch a root between the legs**, which is not far from the thighs, so such a root shows in its
+  `vertex_count` and in the hip bends.
+- **The helper rules run only when a call writes every deforming bone.** A call narrowed by `bone_names` gets the nearest
+  fill alone.
+- **The mirror table is read off `hm08.mirror` through `LocationService`**, as FR 060's `mirror` reads it, rather than
+  through the private `_load_mirror_table()`.
+- **`helper_bones` and the clean's arguments are refused with the methods they do nothing for.** `helper_bones` goes with
+  `automatic` and `transfer` only, and `bone_names` and `exclude_bones` are refused with `clean`.
+
+**Verified**: [live_check.py](live_check.py), 15 checks and every measurement above, against a headless Blender 5.1; the
+bridge suite's four new or extended modules (`bbb_shared/rig_weights_test.py`, `ddd_mutating/weight_rig_test.py`,
+`ccc_reading/check_rig_weights_test.py`, `eee_composite/rig_weights_agreement_test.py`); and one smoke item,
+`mpfb_check_rig_weights` with default arguments. Nothing was filed upstream, as the request expected.
+
 ## References
 
-- NEXT_STEPS: [Nothing in MPFB weights a new rig](../NEXT_STEPS.md#nothing-weights-a-new-rig).
-- [FR 060](../done/060-authoring-rigs/README.md), whose `mpfb_weight_rig`, `shared/rig_definition.py` and
+- NEXT_STEPS: [Nothing in MPFB weights a new rig](../../HISTORY.md#fr-061--rig-weights-that-hold-up-measured).
+- [FR 060](../060-authoring-rigs/README.md), whose `mpfb_weight_rig`, `shared/rig_definition.py` and
   `mpfb_store_rig` this builds on.
 - mpfb2:
   - `data/mesh_metadata/basemesh_vertex_groups.json` and `data/mesh_metadata/hm08.mirror`;
@@ -343,5 +383,5 @@ Asked on 2026-11-24:
   - `source/blender/editors/armature/meshlaplacian.cc` (`heat_ray_source_visible`,
     `heat_bone_weighting`);
   - `source/blender/blenkernel/intern/armature_deform.cc` (normalisation by `contrib`).
-- [FR 048](../done/048-measuring-mesh-assets/README.md), whose "count, put back exactly, no verdict" this
+- [FR 048](../048-measuring-mesh-assets/README.md), whose "count, put back exactly, no verdict" this
   report follows.

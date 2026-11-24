@@ -82,6 +82,7 @@ __all__ = (
     "features_from_definition",
     "fit_definition",
     "fit_file",
+    "head_joints",
     "header_for",
     "is_authored",
     "joint_names",
@@ -185,11 +186,14 @@ def _scale_factor(services, basemesh):
     return None
 
 
-def fit_definition(services, basemesh, header):
+def fit_definition(services, basemesh, header, shape_keys=True):
     """A ``Rig`` holding ``header``, its position info built from ``basemesh``. No file, no object.
 
     ``relative_scale`` is set as ``from_json_file_and_basemesh()`` sets it, so an offset in
     a header that carries a ``scale_factor`` is scaled the same way on either road.
+    ``shape_keys`` false fits to the neutral body, the Basis, which is what ``weight_rig``'s
+    heat pass weights ([FR 061](../../../feature-requests/done/061-rig-weights-that-hold-up/README.md))
+    and the only fit in this add-on that is not to the modelled body.
     """
     Rig = rig_class(services)
     rig = Rig(basemesh)
@@ -200,7 +204,7 @@ def fit_definition(services, basemesh, header):
         if scale_factor:
             rig.relative_scale = scale_factor / float(header["scale_factor"])
     with _active_shape_key_kept(basemesh):
-        rig.build_basemesh_position_info()
+        rig.build_basemesh_position_info(take_shape_keys_into_account=shape_keys)
     return rig
 
 
@@ -260,6 +264,41 @@ def rig_file_definition(path):
     if "bones" in data:
         return (data, data["bones"])
     return ({"version": 100, "bones": data}, data)
+
+
+def head_joints(services, armature_object, fit, space):
+    """``({bone: joint cube its head is on, or None}, anchors_from)`` for every bone of a rig.
+
+    The joint is read, not measured, wherever it can be: off the strategy saved on the bone
+    (``"armature"``, every rig ``create_rig`` built), else off the catalogue file
+    ``identify_rig()`` names (``"catalogue"``, a shipped rig, which carries none). Only a rig
+    with neither, a generated Rigify rig or one made by hand, is matched by position, a head
+    within :data:`EXACT_METRES` of a cube's centre on this body (``"positions"``). Several bones
+    can have their head on one joint - ``eye.L`` and two eyelid bones on ``joint-l-eye`` - and
+    no distance would separate them, which is why the reading comes first.
+    """
+    definition, saved = armature_definition(services, armature_object)
+    if saved:
+        return ({name: _cube_of(info["head"]) for name, info in definition.items()}, "armature")
+    identified = services["RigService"].identify_rig(armature_object)
+    if identified and not identified.startswith("rigify_generated") \
+            and not identified.endswith("unknown"):
+        path = catalogue_files(services, identified)[0]
+        if path is not None:
+            _header, file_definition = rig_file_definition(path)
+            return ({bone.name: _cube_of(file_definition.get(bone.name, {}).get("head") or {})
+                     for bone in armature_object.data.bones}, "catalogue")
+    cubes = {name: Vector(position) for name, position in fit.position_info.get("cubes", {}).items()}
+    found = {}
+    for bone in armature_object.data.bones:
+        head = space.armature_to_local(armature_object, bone.head_local)
+        ranked = sorted(((cubes[name] - head).length, name) for name in cubes)
+        found[bone.name] = ranked[0][1] if ranked and ranked[0][0] < EXACT_METRES else None
+    return (found, "positions")
+
+
+def _cube_of(end_info):
+    return end_info.get("cube_name") if end_info.get("strategy") == "CUBE" else None
 
 
 def joint_names(fit):

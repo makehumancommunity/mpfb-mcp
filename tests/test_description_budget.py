@@ -247,7 +247,14 @@ import mpfbmcp
 # `mpfb_get_rig_definition` 1,835 B, 7,602 B in all, less what the instructions' trims took off. Each is a table, three methods or four refusals
 # about identification that a caller cannot foresee, and the order across the four is said once,
 # in `mpfb_create_rig`. The instructions gained one clause, paid for by trimming four others.
-DESCRIPTION_CEILING = 115750
+#
+# Raised from 115,750 to 119,250 by
+# [FR 061](../feature-requests/done/061-rig-weights-that-hold-up/README.md), by what it measures:
+# `mpfb_check_rig_weights` 2,326 B, new, its six sections and the bend's four measurements, and
+# `mpfb_weight_rig` +676 B to 2,607 B, for the helper rules, `helper_bones` and the clean, which a
+# caller cannot foresee and which change what a weighting writes. The instructions gained one tool
+# name, paid for by shortening two clauses.
+DESCRIPTION_CEILING = 119250
 
 # The parameter schemas FastMCP derives from the signatures and annotations.
 # Not docstring text, not written by hand, and not what FR 016 was about - but
@@ -436,7 +443,7 @@ class DescriptionBudgetTests(unittest.TestCase):
         self.measured = measure()
 
     def test_every_registered_tool_is_measured(self) -> None:
-        self.assertEqual(55, len(self.measured))
+        self.assertEqual(56, len(self.measured))
 
     def test_total_description_size_is_under_the_ceiling(self) -> None:
         total = sum(entry["description_bytes"] for entry in self.measured)

@@ -597,6 +597,15 @@ def _weight_rig(run: _Run) -> dict:
     return run.tools["mpfb_weight_rig"](name=run.authoring, method="automatic")
 
 
+@_item("mpfb_check_rig_weights", "coverage", "influences", "bones", "helpers", "symmetry")
+def _check_rig_weights(run: _Run) -> dict:
+    # Default sections, so no bend: the item says the reading works, and FR 061's live check is
+    # where the bend was measured.
+    if run.authoring is None:
+        raise Skipped("no rig was authored")
+    return run.tools["mpfb_check_rig_weights"](name=run.authoring)
+
+
 @_item("mpfb_store_rig", "path", "identifying_bones", "masks_on_body", "deform_flags_lost")
 def _store_rig(run: _Run) -> dict:
     # dry_run, so the library does not gain a rig on every run (harness.DRY_RUN_TOOLS).

@@ -39,7 +39,8 @@ Its body is ``Rig.from_given_armature_context()``, ``RigService.get_weights()`` 
 ``deform_flags_lost`` names every non-deforming bone that will come back deforming; the
 key is a feature request upstream rather than an extension here. ``features_not_carried``
 is ``get_rig_definition``'s reading. ``unweighted_bones`` names deforming bones with no
-weights. And ``ends_rematched`` names every end whose strategy MPFB's save changed:
+weights, read by ``shared/rig_weights.py`` as ``weight_rig`` and ``check_rig_weights`` read them
+(FR 061), so the three cannot disagree. And ``ends_rematched`` names every end whose strategy MPFB's save changed:
 ``from_given_armature_context()`` matches each end afresh and keeps a saved strategy only if
 it is no worse, so a fixed position (``snap: false``) comes back as a vertex or a mean.
 """
@@ -62,6 +63,7 @@ from ..shared import artifact_names
 from ..shared import mpfb_surface
 from ..shared import rig_definition
 from ..shared import rig_lookup
+from ..shared import rig_weights
 from ..shared import selection
 from ..shared import subject_resolution
 from ..shared import view_layer
@@ -356,8 +358,9 @@ def _store_rig(params, resolution):  # pylint: disable=too-many-locals,too-many-
     if params["include_weights"]:
         weights = rig_service.get_weights([armature], basemesh, all_groups=False,
                                           all_masks=params["include_masks"])
-        unweighted = sorted(bone.name for bone in armature.data.bones
-                            if bone.use_deform and not weights["weights"].get(bone.name))
+        deforming = rig_weights.deforming_bones(armature)
+        unweighted = rig_weights.unweighted_bones(
+            rig_weights.read_weights(basemesh, set(deforming)), deforming)
     saved, _count = rig_definition.armature_definition(services, armature)
     deform_lost = sorted(bone.name for bone in armature.data.bones if not bone.use_deform)
     features = {}

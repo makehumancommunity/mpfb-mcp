@@ -1305,3 +1305,49 @@ vertex), not to a joint or a vertex alone; MPFB's `DEFAULT` strategy reads back 
 expressible; the name filters are `bone_names`, since `bones` is a list of objects; and a shipped rig's full table is 53 KB
 (24 KB compact), over the read-only tools' size, because a table meant to be sent back is narrowed rather than capped. FR 061's
 neutral-mesh weighting and rigid helpers remain; it was scoped before the copy existed.
+
+## [FR 061](done/061-rig-weights-that-hold-up/README.md) — rig weights that hold up, measured
+
+**One tool that measures a weighting, and weights that are the same whatever body they were authored on.**
+`mpfb_check_rig_weights` reads any rig's weights - coverage, influences, each bone's reach, the helpers, symmetry - and an
+opt-in bend test of eight movements, measured on the skin and put back. `mpfb_weight_rig` now heat-weights the **neutral
+body**, fills the helpers by a rule each, and ends every method with a clean, which is also a method of its own. All three
+count through one new shared module, `shared/rig_weights.py`, and so does `mpfb_store_rig`'s `unweighted_bones`; a bridge
+test weights, checks and stores one character and gets the same counts three times.
+
+**The neutral pass is the claim the request rested on, and it holds.** The rig's own definition is fitted to the Basis in
+memory and a temporary armature built from that fit; two differently modelled characters carrying one authored rig got
+groups equal to within 1.3e-6, the noise of MPFB shifting each Basis to put the feet on the ground. Weighting the modelled
+body, as FR 060 did, differed by up to 1.0 (mean 0.08). Carried by index to a third body, the two weightings bent about as
+well as each other, so the gain is that the file is one file, not that a bend on any one body is better.
+
+**Skin-only heat ships, and the live check chose it.** With the helpers in the pass, `claude_demo`'s skin weights and every
+bend number came out the same, the pass was 24% slower, and the helpers it weighted put 9,834 vertices beyond their bone's
+reach against 3,226. The helper rules bind the eyes and teeth rigidly: on MPFB's own `default` anchors they choose
+`eye.L` and `jaw` by name, among bones that share the joint, and `head` for the upper teeth by the nearest skin's weight,
+which is what MPFB's file does. On `claude_demo`, which has no jaw or eye bone, the eyes go to its head and the teeth and
+tongue to its **neck**, because heat weighting gives the mouth's inner skin to the neck; the report shows it.
+
+**`k = 4`, and the skirt is a follow-up.** `k = 1` splits the skirt between the legs (edge stretch 8.0 at the 99th
+percentile with the hip abducted 45 degrees); every `k` from 2 to 16 gives 4.8, because the nearest skin is one thigh or the
+other however many are taken; MPFB's hand-made `default` weights give 2.7. That gap is
+[in NEXT_STEPS](NEXT_STEPS.md#a-skirt-weighted-from-the-nearest-skin).
+
+**The baselines.** On one body, `claude_demo` authored and checked bends about as `default` and `game_engine` do:
+elbow collapse 0.85 on all three, the shoulder's 99th-percentile stretch 1.8 against 3.2, and stray vertices only where
+the shipped rigs have them too, at the neck and the spine.
+`default`'s own file is normalised, rigid at the eyes and teeth and at most 8 influences, and 24 of its deforming bones, all in
+the face, have no weights at all; `mixamo` is unnormalised on exactly 9,858 vertices, as read. A clean to four influences on `default`'s
+weights removed at most 0.168 of a weight from 4,025 vertices and changed the bend little, the shoulder's stray vertices
+falling from 132 to 53 and the neck's stretch rising from 1.28 to 1.49. The bend section is 100 to 140 ms, the check
+with it 0.4 s, and the default answer 7.8 KB.
+
+**Departures from the request**, each argued in its module: the bend region is the skin within a fixed 10 cm of the joint
+rather than a radius scaled by the bone, so a rig that merges two bones is measured over the same skin as one that splits
+them; the bend measures the skin only, since helper shells' tiny edges swamped the stretch; `spine_bend` tries four spine
+joints in order; a constrained bone is `not_tested`, which is every bone a generated Rigify rig deforms with; `coverage`
+splits `orphan_groups` (a bone that does not deform) from `other_groups` (no bone of this rig); `far_vertices` does not
+catch a root between the legs, which is not far from the thighs, so that shows in its `vertex_count` and the hip bends
+instead; the helper rules run only when a call writes every deforming bone; and the mirror table is read off the data file,
+as FR 060's mirror reads it, rather than through the private `_load_mirror_table()`.
+

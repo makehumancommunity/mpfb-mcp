@@ -205,8 +205,8 @@ INSTRUCTIONS = " ".join((
     "session did not create, find it with mpfb_list_objects and identify it with "
     "mpfb_get_object_info rather than by its object names; to change one, read it with "
     "mpfb_get_character_summary and change only what should differ. The catalogues name entries "
-    "the way the acting tool wants them: mpfb_list_assets (with no arguments, a summary of the "
-    "library), mpfb_list_rigs and mpfb_list_targets.",
+    "the way the acting tool wants them: mpfb_list_assets (no arguments: a library summary), "
+    "mpfb_list_rigs and mpfb_list_targets.",
 
     # Building a character, in the order MPFB needs and does not check.
     "Order matters and MPFB reports no error when it is wrong: add the rig with mpfb_add_rig "
@@ -223,7 +223,7 @@ INSTRUCTIONS = " ".join((
     "Compose a face from ARKit units with mpfb_set_face_units or apply saved expressions with "
     "mpfb_apply_expressions; a composed face is transient: "
     "mpfb_save_preset does not keep it and mpfb_save_expression does. Pose with "
-    "mpfb_get_pose_controls (which bones to move, in a frame that turns with the character), "
+    "mpfb_get_pose_controls (which bones to move, in the character's own frame), "
     "mpfb_set_pose_bones, mpfb_set_pose_switches and mpfb_reset_pose, a Rigify hand with "
     "mpfb_set_rigify_hand_shape, and read the result with mpfb_get_pose, not a screenshot.",
 
@@ -233,7 +233,8 @@ INSTRUCTIONS = " ".join((
     "mpfb_store_makeskin_material. To author a mesh asset, check it with mpfb_check_mesh_asset, "
     "give the body a delete group with mpfb_generate_delete_group, write it with "
     "mpfb_write_mesh_asset and follow its try_with; a rig with mpfb_create_rig "
-    "(mpfb_get_rig_definition reads a rig as a table), mpfb_weight_rig, mpfb_store_rig.",
+    "(mpfb_get_rig_definition reads a rig as a table), mpfb_weight_rig, "
+    "mpfb_check_rig_weights, mpfb_store_rig.",
 
     # Leaving Blender.
     "A character exists only in the .blend until mpfb_save_preset writes it; mpfb_list_presets "
@@ -260,6 +261,7 @@ def build_server() -> FastMCP:
 
     from mpfbmcp.tools import (
         add_asset, add_rig, apply_expressions, check_intersections, check_mesh_asset,
+        check_rig_weights,
         create_export_copy, create_human, create_rig,
         create_human_from_preset, export_character, generate_delete_group, generate_rigify_rig, get_character_summary, get_expression, get_face_units,
         get_macro_details, get_makeskin_material, get_material_settings, get_object_info, get_pose, get_pose_controls,
@@ -275,6 +277,7 @@ def build_server() -> FastMCP:
     apply_expressions.register(mcp)
     check_intersections.register(mcp)
     check_mesh_asset.register(mcp)
+    check_rig_weights.register(mcp)
     create_export_copy.register(mcp)
     create_human.register(mcp)
     create_rig.register(mcp)

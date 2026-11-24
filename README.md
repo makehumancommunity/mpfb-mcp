@@ -16,7 +16,7 @@ you can speed up things and save some tokens.
 
 ## Status
 
-Early beta. Fifty-five tools are implemented.
+Early beta. Fifty-six tools are implemented.
 
 **Introspection** — read-only, and each of them always answers rather than failing:
 
@@ -116,8 +116,11 @@ Early beta. Fifty-five tools are implemented.
 - `mpfb_get_rig_definition` — read any rig, shipped, library or authored, as a bone table against the body's
   joints, in exactly the shape the builder takes, so a shipped rig can be the start of a new one.
 - `mpfb_create_rig` — build a rig onto a character from such a table, fitted by MPFB so that it follows any body.
-- `mpfb_weight_rig` — weight it: Blender's heat weighting, a transfer from a catalogue rig that understands merged
-  bones, or a mirror, then a fill for what the pass missed, with the counts.
+- `mpfb_weight_rig` — weight it: Blender's heat weighting on the neutral body, so the stored weights suit every
+  body, a transfer from a catalogue rig that understands merged bones, or a mirror; then a rule per helper for what
+  the pass missed (the eyes and teeth bound rigidly) and a clean that caps influences and normalises.
+- `mpfb_check_rig_weights` — measure any rig's weighting: coverage, influences, each bone's reach, the helpers,
+  symmetry, and an opt-in bend test. Numbers, not a verdict: compare against a shipped rig on a similar body.
 - `mpfb_store_rig` — store it in the library as `custom.<name>`, refusing a name or identifying bones that would let
   MPFB mistake it for another rig, and saying what the file loses.
 
@@ -178,6 +181,8 @@ The same shape as an asset: **author on one character, store, then try it on ano
 2. Build it with `mpfb_create_rig` on a character with no rig and nothing equipped; `replace` rebuilds while
    iterating.
 3. Weight it with `mpfb_weight_rig`. Leave a root from the ground out with `exclude_bones`, or it takes the thighs.
+   Check it with `mpfb_check_rig_weights`, and the same with `bend` on a character carrying `default`, as the
+   baseline.
 4. Store it with `mpfb_store_rig`, `dry_run` first. `try_with` is the next two calls: a new character, and
    `mpfb_add_rig` with `custom.<name>`. Pose it with `mpfb_set_pose_bones`, and read it back with `mpfb_get_pose`.
 

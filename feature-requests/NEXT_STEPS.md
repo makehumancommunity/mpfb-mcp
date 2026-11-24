@@ -17,7 +17,6 @@ records what has already landed and why. When an effort below is finished, move 
 - [Hand-to-hand contact on a Rigify rig](#hand-to-hand-contact-on-rigify): FR 052, in part
 - [Loading poses](#loading-poses): FR 055
 - [No way to verify an install without an MCP client](#no-way-to-verify-an-install-without-an-mcp-client): FR 057
-- [Rig weights that hold up](#nothing-weights-a-new-rig): FR 061
 
 **Without one**, by apparent impact:
 
@@ -25,6 +24,7 @@ records what has already landed and why. When an effort below is finished, move 
 - [Posing support](#posing-support)
 - [A custom rig is unclassified for the posing tools](#a-custom-rig-is-unclassified-for-posing)
 - [What a saved custom rig loses](#what-a-saved-custom-rig-loses): MPFB's to change, filed
+- [A skirt weighted from the nearest skin splits between the legs](#a-skirt-weighted-from-the-nearest-skin)
 - [A material whose textures do not resolve is reported as applied](#a-material-whose-textures-do-not-resolve-is-reported-as-applied)
 - [The Rigify `fist` shape intersects itself, and "straight" is out of reach](#rigify-fist-intersects-itself)
 - [MPFB's loader drops a stored material's numbers](#mpfbs-loader-drops-a-stored-materials-numbers)
@@ -666,21 +666,22 @@ target, the silence viseme, resolved through `TargetService.target_full_path()` 
 definition, as [mpfb-integration.md](../specifications/mpfb-integration.md#a-capability-that-depends-on-an-optional-asset-pack)
 prefers.
 
-<a id="nothing-weights-a-new-rig"></a>
+<a id="a-skirt-weighted-from-the-nearest-skin"></a>
 
-## Rig weights that hold up
+## A skirt weighted from the nearest skin splits between the legs
 
-[FR 060](done/060-authoring-rigs/README.md) landed rig authoring, `mpfb_weight_rig` among it, and
-[HISTORY.md](HISTORY.md#fr-060--authoring-a-rig) says what it measured. Before it, nothing in MPFB weighted a new rig:
-MakeRig's auto transfer pairs bones only when both ends coincide within 1 mm, which took 8 of a 27-bone rig's bones from
-`default_no_toes`, and heat weighting through the generic Blender MCP needed a root excluded and the helpers filled by hand.
+[FR 061](done/061-rig-weights-that-hold-up/README.md) gave `mpfb_weight_rig` a rule per helper, and
+[HISTORY.md](HISTORY.md#fr-061--rig-weights-that-hold-up-measured) says what it measured. The `helper-skirt` group, which
+a skirt or a dress is fitted to, falls to `nearest`: an inverse-distance blend of the four nearest weighted skin vertices.
+Between the legs its nearest skin is one thigh or the other, and that does not change from `k = 2` to `k = 16`. With the left
+hip abducted 45 degrees, its edges stretch 4.8 at the 99th percentile, against 2.7 on MPFB's hand-made `default` weights.
+`k = 1` is 8.0, which is the split the request predicted.
 
-What is left is whether the weights are **right**, and saying so with numbers:
-[FR 061](061-rig-weights-that-hold-up/README.md) weights the neutral base mesh rather than the character as modelled,
-binds the eyes and teeth rigidly rather than filling them from the nearest skin (which puts an eye on its eyelid), cleans
-influences and normalisation, and adds `mpfb_check_rig_weights` with a bend test. FR 060 found two things FR 061 should
-start from: heat weighting reads a mesh's Basis, and fails for every bone when the joint cubes are in the mesh, so
-`mpfb_weight_rig` already runs it on a copy at the fitted shape without the cubes.
+A fix would weight the skirt from the bones rather than the skin: a blend over the thighs and the hips by height and by
+distance from the body's midline, which is what `default`'s file looks like. It is a fourth rule in
+`shared/rig_weights.py`'s table, and `live_check_skirt` in FR 061's live check is the measurement to compare it by.
+Until then, an authored rig's skirt reads as it is in `mpfb_check_rig_weights`' `helpers` row, and `helper_bones` can bind
+it rigidly to one bone instead, which nobody has measured.
 
 <a id="what-a-saved-custom-rig-loses"></a>
 

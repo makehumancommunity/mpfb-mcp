@@ -567,6 +567,14 @@ different tabs and a human sees sliders move. Across MCP there is no such feedba
   and a spread at all (a hook, a twist), which an amount cannot express. Amounts keep seven
   decimals, so a live round trip put every channel back within 1e-5, the bound single-precision
   Euler channels allow ([FR 047](../feature-requests/done/047-rigify-hand-shapes/README.md)).
+- **A change to state nobody asked about is named even when it is a side effect of a rule.**
+  `mpfb_weight_rig` lists `groups_replaced`, the groups it was asked to write that had weights before
+  ([FR 060](../feature-requests/done/060-authoring-rigs/README.md)), and since
+  [FR 061](../feature-requests/done/061-rig-weights-that-hold-up/README.md) `groups_rescaled` too: every method
+  ends by normalising each vertex, and a vertex the call wrote one group of has its other groups rescaled, so a
+  call narrowed to `bone_names` can change groups it never named. The second list is the first's kind of change
+  reached a different way, and a caller reading only `groups_replaced` would not know. A mask is never in either:
+  the clean reads only the groups of deforming bones.
 - **Where the undo is too large to return, a kept copy is the undo, and the answer names it.**
   `mpfb_generate_delete_group` changes a vertex group of perhaps 3,209 members, about 20 KB as a list. So
   the group as it first found it stays on the body as `<group>.original`, reported as `original_kept_as`.

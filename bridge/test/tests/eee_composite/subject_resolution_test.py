@@ -1,7 +1,7 @@
 """
-All forty commands that take a subject, asked about the same three misses.
+All forty-two commands that take a subject, asked about the same three misses.
 
-The claim is about forty commands at once, which is why it is here: every
+The claim is about forty-two commands at once, which is why it is here: every
 command that takes a subject resolves it the same way, because all of them go
 through ``shared/subject_resolution.py``
 ([FR 036](../../../../feature-requests/done/036-subject-resolver-and-duplication/README.md)).
@@ -59,7 +59,7 @@ SUBJECT_ONLY = ("get_object_info", "generate_delete_group", "generate_rigify_rig
 
 
 def _calls(subject):
-    """The forty commands, each with the least that passes its parameter contract."""
+    """The forty-two commands, each with the least that passes its parameter contract."""
     return {
         "get_object_info": dict(name=subject),
         "check_intersections": dict(name=subject),
@@ -110,6 +110,7 @@ def _calls(subject):
             name="root", parent="", head=dict(joint="joint-ground"),
             tail=dict(joint="joint-pelvis"))]),
         "weight_rig": dict(name=subject, method="automatic"),
+        "check_rig_weights": dict(name=subject),
         "store_rig": dict(name=subject, rig_name="bridge_test_never_written"),
     }
 

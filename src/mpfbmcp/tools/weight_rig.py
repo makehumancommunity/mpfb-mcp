@@ -1,18 +1,23 @@
 """
-The ``mpfb_weight_rig`` tool: vertex weights for an authored rig, and a fill for what they miss.
+The ``mpfb_weight_rig`` tool: vertex weights for an authored rig, a fill for what they miss, and a
+clean.
 
 The second of [FR 060](../../../feature-requests/done/060-authoring-rigs/README.md)'s rig authoring
 steps. Nothing in MPFB weights a new rig: MakeRig's auto transfer matches only bones whose
 ends coincide and MakeWeight's symmetrize does nothing. Why each method is built the way it is
-- heat weighting on a copy without the joint cubes, which break Blender's solve, and a transfer
-that understands merged chains - is in the bridge command's docstring.
+- heat weighting on the neutral body without the joint cubes, which break Blender's solve, a
+transfer that understands merged chains, a rule per helper and a clean that never touches a
+mask ([FR 061](../../../feature-requests/done/061-rig-weights-that-hold-up/README.md)) - is in
+the bridge command's docstring.
 
 **Validated here is shape**: ``method`` and ``direction`` are this package's own vocabularies,
 so they are checked here, as ``mpfb_symmetrize_targets`` checks ``direction``. Each method's own
 argument is refused beside another method (``from_rig`` with ``mirror`` is a mistake, not an
 argument to ignore), and a method missing its own is refused too. ``exclude_bones`` and
-``bone_names`` are optional non-empty lists of distinct names, ``fill_unweighted`` a real bool.
-**No bone or rig vocabulary is checked here.**
+``bone_names`` are optional non-empty lists of distinct names, ``fill_unweighted`` a real bool,
+``helper_bones`` an object of non-empty names, ``min_weight`` a finite number in [0, 1) and
+``max_influences`` a positive count that is not a bool. **No bone, helper or rig vocabulary is
+checked here.**
 """
 
 from __future__ import annotations
@@ -29,11 +34,16 @@ from mcp.types import ToolAnnotations  # pylint: disable=import-error,no-name-in
 from mpfbmcp import arguments
 from mpfbmcp import backend
 
-METHODS = ("automatic", "transfer", "mirror")
+METHODS = ("automatic", "transfer", "mirror", "clean")
 DIRECTIONS = ("left_to_right", "right_to_left")
 
 # Each method's own argument, which another method refuses.
-_OWNED = {"exclude_bones": "automatic", "from_rig": "transfer", "direction": "mirror"}
+_OWNED = {"exclude_bones": ("automatic",), "from_rig": ("transfer",), "direction": ("mirror",),
+          "helper_bones": ("automatic", "transfer"),
+          "bone_names": ("automatic", "transfer", "mirror")}
+
+# MPFB's ``exclude_weights_below``, the clean's default.
+_MIN_WEIGHT = 0.0001
 
 
 def _validated_method(method: object) -> str:
@@ -51,11 +61,41 @@ def _validated_direction(direction: object) -> str | None:
     return direction  # type: ignore[return-value]
 
 
+def _validated_helper_bones(value: object) -> dict[str, str] | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict) or not value:
+        raise ValueError("helper_bones must be a non-empty object of helper group to bone, or "
+                         "omitted, got {!r}".format(value))
+    for key, bone in value.items():
+        if not isinstance(key, str) or not key.strip() or not isinstance(bone, str) \
+                or not bone.strip():
+            raise ValueError("helper_bones maps a helper group's name to a bone's name, both "
+                             "non-empty strings, got {!r}: {!r}".format(key, bone))
+    return dict(value)
+
+
+def _validated_min_weight(value: object) -> float:
+    if not arguments.is_finite_number(value) or not 0.0 <= value < 1.0:  # type: ignore[operator]
+        raise ValueError("min_weight must be a number from 0.0 up to but not including 1.0, "
+                         "got {!r}".format(value))
+    return float(value)  # type: ignore[arg-type]
+
+
+def _validated_max_influences(value: object) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError("max_influences must be a positive int, or omitted for no cap, got "
+                         "{!r}".format(value))
+    return value
+
+
 def _refused_combination(method: str, supplied: dict[str, object]) -> None:
-    for argument, owner in _OWNED.items():
-        if supplied[argument] is not None and method != owner:
+    for argument, owners in _OWNED.items():
+        if supplied[argument] is not None and method not in owners:
             raise ValueError("{} is taken only with method {}, not {}".format(
-                argument, owner, method))
+                argument, " or ".join(owners), method))
     if method == "transfer" and supplied["from_rig"] is None:
         raise ValueError("method transfer needs from_rig, an identifier from mpfb_list_rigs")
     if method == "mirror" and supplied["direction"] is None:
@@ -80,39 +120,50 @@ def register(mcp: FastMCP) -> None:
         direction: str | None = None,
         fill_unweighted: bool = True,
         bone_names: list[str] | None = None,
+        helper_bones: dict[str, str] | None = None,
+        min_weight: float = _MIN_WEIGHT,
+        max_influences: int | None = None,
     ) -> dict[str, object]:
         """
-        Weight a rig `mpfb_create_rig` built (or one identified as `unknown`): the second
-        step, after create and before `mpfb_store_rig`. Writes only the vertex groups of
-        deforming bones, each replaced whole. The rig must be at rest.
+        Weight a rig `mpfb_create_rig` built (or one identified as `unknown`): after create,
+        then `mpfb_check_rig_weights`, then `mpfb_store_rig`. Writes only the vertex groups
+        of deforming bones, never a mask. The rig must be at rest.
 
         `method` is required:
-        - `"automatic"`: Blender's heat weighting, run on a copy of the body at the shape
-          MPFB fitted the bones to. `exclude_bones` leaves bones out and sets them
-          non-deforming; **a bone from `joint-ground` takes the thighs**, and every answer
-          names any in `deforming_bones_on_ground`.
-        - `"transfer"`: `from_rig`'s weights (an `mpfb_list_rigs` identifier, the file
-          `mpfb_add_rig` would load), by vertex index. Per bone `matched_by` is `exact`
-          (both ends within 1 mm of one source bone), `chain` (head on one, tail on a
-          descendant's, the chain summed) or `none` with `nearest_miss`; `sources` names
-          each contribution, `ancestor` for a source bone nothing covered, given to its
-          nearest matched ancestor's bone. `source_bones_unassigned` lost their weights.
+        - `"automatic"`: Blender's heat weighting **on the neutral body** (the rig fitted to
+          the Basis), whatever this character's shape, so a stored file suits every body;
+          `weighted_on` says so and `ends_not_following_body` names fixed `position` ends.
+          `exclude_bones` leaves bones out, set non-deforming; **a bone from `joint-ground`
+          takes the thighs** (`deforming_bones_on_ground`).
+        - `"transfer"`: `from_rig`'s weights (an `mpfb_list_rigs` identifier), by vertex
+          index. Per bone `matched_by` is `exact` (both ends within 1 mm), `chain` (head on
+          one, tail on a descendant's, summed) or `none` with `nearest_miss`; `sources` names
+          each, `ancestor` for one nothing covered. `source_bones_unassigned` lost theirs.
         - `"mirror"`: one side onto the other through MPFB's `hm08.mirror`, `direction`
-          `"left_to_right"` or `"right_to_left"`; bones pair by `.L`/`.R` or `_l`/`_r`, a
-          centre bone onto itself, and `bones_without_partner` are not guessed.
+          `"left_to_right"` or `"right_to_left"`; `.L`/`.R` or `_l`/`_r`, a centre bone onto
+          itself, `bones_without_partner` not guessed.
+        - `"clean"`: only the clean below.
 
-        `fill_unweighted` (default true, not for mirror) gives every vertex left with no
-        weight the weights of the nearest weighted body vertex. `unweighted` counts
-        `before_fill` and `after_fill` as `body`, `helper` and `joint_cube`; **a body count
-        before the fill means the pass itself failed there.** `bone_names` limits the call
-        to those bones.
+        `fill_unweighted` (default true; automatic, transfer) weights every vertex left
+        unweighted, **by a rule per helper**: eyes and teeth `rigid` to one bone (the one
+        with its head on the eye or mouth joint; `chosen_by` `only_candidate`,
+        `anchor_name`, `nearest_dominant` or `helper_bones`, with the other `candidates`),
+        the tongue `interior_chain`, everything else `nearest` skin. `helper_bones`
+        (`{"helper-l-eye": "eye.L"}`) chooses a rigid helper's bone. `helpers` reports each.
+        `unweighted` counts `before_fill`/`after_fill` as `body`, `helper`, `joint_cube`;
+        **a body count before the fill means the pass failed there.**
 
-        `result` has `bones`, each with its `vertex_count`, `bones_without_weights`,
-        `groups_replaced` (groups that had weights before), `set_non_deforming` and
-        `next_with`. Refusals:
-        `subject_not_found`, `not_rigged`, `rig_not_authored`, `rig_not_at_rest`,
-        `not_object_mode`, `unknown_bone_names`, `not_deforming`, `unknown_identifier`,
-        `no_weights`.
+        **Every method ends by cleaning** the deform groups: weights below `min_weight`
+        (default 0.0001) dropped, at most `max_influences` per vertex (no cap by default),
+        each vertex normalised. `clean` has `histogram_before`/`_after`,
+        `vertices_trimmed`, `vertices_normalised`, `max_weight_removed`.
+
+        `result` has `bones` with `vertex_count`, `bones_without_weights`, `groups_replaced`
+        (had weights before), `groups_rescaled` (changed only by the clean),
+        `set_non_deforming`, `next_with`. `bone_names` limits the call to those bones, and
+        then the fill is `nearest` only. Refusals: `subject_not_found`, `not_rigged`,
+        `rig_not_authored`, `rig_not_at_rest`, `not_object_mode`, `unknown_bone_names`,
+        `unknown_helper_groups`, `not_deforming`, `unknown_identifier`, `no_weights`.
         """
         checked_method = _validated_method(method)
         supplied = {
@@ -121,6 +172,9 @@ def register(mcp: FastMCP) -> None:
             "from_rig": arguments.validated_text(
                 from_rig, "from_rig", "omit it unless method is transfer"),
             "direction": _validated_direction(direction),
+            "helper_bones": _validated_helper_bones(helper_bones),
+            "bone_names": arguments.validated_names(
+                bone_names, "bone_names", "every deforming bone"),
         }
         _refused_combination(checked_method, supplied)
         return backend.send(
@@ -132,7 +186,9 @@ def register(mcp: FastMCP) -> None:
                 "from_rig": supplied["from_rig"],
                 "direction": supplied["direction"],
                 "fill_unweighted": arguments.validated_flag(fill_unweighted, "fill_unweighted"),
-                "bone_names": arguments.validated_names(
-                    bone_names, "bone_names", "every deforming bone"),
+                "bone_names": supplied["bone_names"],
+                "helper_bones": supplied["helper_bones"],
+                "min_weight": _validated_min_weight(min_weight),
+                "max_influences": _validated_max_influences(max_influences),
             },
         )

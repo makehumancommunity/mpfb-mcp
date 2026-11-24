@@ -48,6 +48,7 @@ from . import add_rig
 from . import apply_expressions
 from . import check_intersections
 from . import check_mesh_asset
+from . import check_rig_weights
 from . import create_human
 from . import create_rig
 from . import create_export_copy
@@ -132,6 +133,12 @@ COMMANDS = {
         params=check_mesh_asset.PARAMS,
         requires_mpfb=True,
         summary=check_mesh_asset.SUMMARY),
+    "check_rig_weights": Command(
+        name="check_rig_weights",
+        handler=check_rig_weights.check_rig_weights,
+        params=check_rig_weights.PARAMS,
+        requires_mpfb=True,
+        summary=check_rig_weights.SUMMARY),
     "create_export_copy": Command(
         name="create_export_copy",
         handler=create_export_copy.create_export_copy,

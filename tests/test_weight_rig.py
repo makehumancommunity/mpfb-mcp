@@ -5,10 +5,12 @@
 Two layers (see ``tests/test_list_objects.py``, the template). ``method`` and ``direction`` are
 this package's own vocabularies and are checked here, held to the bridge command's by reading
 its source as data; each method's own argument is refused beside another method, and a method
-without its own is refused. **No bone or rig vocabulary is checked here.** What each method
-writes - the heat pass without the joint cubes, the exact, chain and ancestor matches against
-``default_no_toes``, the mirror of a one-sided weighting and the fill's counts - is
-``bridge/test/tests/ddd_mutating/weight_rig_test.py``'s.
+without its own is refused. FR 061's three are shapes: ``helper_bones`` an object of names,
+``min_weight`` finite in [0, 1), ``max_influences`` a positive count that is not a ``bool``.
+**No bone, helper or rig vocabulary is checked here.** What each method writes - the neutral
+heat pass, the exact, chain and ancestor matches against ``default_no_toes``, the mirror of a
+one-sided weighting, the helper rules and the clean - is
+``bridge/test/tests/ddd_mutating/weight_rig_test.py``'s and ``bbb_shared/rig_weights_test.py``'s.
 
 Run with::
 
@@ -70,7 +72,36 @@ class ArgumentValidationTests(unittest.TestCase):
     def test_the_automatic_call_reaches_the_wire(self):
         self.assertEqual(self._sent(method="automatic", exclude_bones=["root"]), {
             "name": None, "method": "automatic", "exclude_bones": ["root"], "from_rig": None,
-            "direction": None, "fill_unweighted": True, "bone_names": None})
+            "direction": None, "fill_unweighted": True, "bone_names": None,
+            "helper_bones": None, "min_weight": 0.0001, "max_influences": None})
+
+    def test_the_clean_reaches_the_wire(self):
+        sent = self._sent(method="clean", min_weight=0.01, max_influences=4)
+        self.assertEqual((sent["method"], sent["min_weight"], sent["max_influences"]),
+                         ("clean", 0.01, 4))
+        self.assertEqual(self._sent(method="clean", min_weight=0)["min_weight"], 0.0)
+
+    def test_helper_bones_reach_the_wire(self):
+        sent = self._sent(method="automatic", helper_bones={"helper-l-eye": "eye.L"})
+        self.assertEqual(sent["helper_bones"], {"helper-l-eye": "eye.L"})
+        sent = self._sent(method="transfer", from_rig="default",
+                          helper_bones={"helper-upper-teeth": "head"})
+        self.assertEqual(sent["helper_bones"], {"helper-upper-teeth": "head"})
+
+    def test_the_clean_arguments_are_shapes(self):
+        for arguments in ({"min_weight": 1.0}, {"min_weight": -0.1},
+                          {"min_weight": float("nan")}, {"min_weight": True},
+                          {"min_weight": "0.1"}, {"max_influences": 0},
+                          {"max_influences": True}, {"max_influences": 4.0},
+                          {"max_influences": -1}):
+            with self.subTest(arguments=arguments):
+                self._refused(method="automatic", **arguments)
+
+    def test_helper_bones_is_an_object_of_names(self):
+        for value in ({}, ["helper-l-eye"], {"helper-l-eye": ""}, {"": "eye.L"},
+                      {"helper-l-eye": 1}):
+            with self.subTest(helper_bones=value):
+                self._refused(method="automatic", helper_bones=value)
 
     def test_each_method_takes_its_own_argument(self):
         self.assertEqual(self._sent(method="transfer", from_rig="default_no_toes")["from_rig"],
@@ -87,6 +118,11 @@ class ArgumentValidationTests(unittest.TestCase):
         self._refused(method="automatic", direction="left_to_right")
         self._refused(method="transfer", from_rig="default", exclude_bones=["root"])
         self._refused(method="mirror", direction="left_to_right", from_rig="default")
+        self._refused(method="mirror", direction="left_to_right",
+                      helper_bones={"helper-l-eye": "eye.L"})
+        self._refused(method="clean", helper_bones={"helper-l-eye": "eye.L"})
+        self._refused(method="clean", bone_names=["root"])
+        self._refused(method="clean", exclude_bones=["root"])
 
     def test_shapes_are_refused_before_sending(self):
         for arguments in ({"method": "mirror", "direction": "left"},
@@ -103,6 +139,8 @@ class ArgumentValidationTests(unittest.TestCase):
                           bone_names=["no_such_bone"])
         self.assertEqual((sent["from_rig"], sent["bone_names"]),
                          ("custom.not_installed", ["no_such_bone"]))
+        sent = self._sent(method="automatic", helper_bones={"helper-nothing": "no_such_bone"})
+        self.assertEqual(sent["helper_bones"], {"helper-nothing": "no_such_bone"})
 
 
 @unittest.skipUnless(_COMMAND.exists(), "the add-on's source is not beside this checkout")
